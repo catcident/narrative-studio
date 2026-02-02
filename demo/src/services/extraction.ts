@@ -454,14 +454,6 @@ function inferMissingRelationships(extracted: any): any {
     /^(.+?)의\s+/,  // "~의 물건" 패턴
   ];
 
-  // 인물 이름 목록
-  const characterNames = entities
-    .filter((e: any) => e.category === 'character')
-    .map((e: any) => e.name.toLowerCase());
-
-  // 1인칭 표현
-  const firstPersonNames = ['나', '화자', '주인공', '나는'];
-
   for (const entity of entities) {
     if (entity.category === 'character') continue; // 인물은 스킵
 

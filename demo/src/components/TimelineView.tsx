@@ -165,7 +165,7 @@ export function TimelineView() {
 
             {/* 이벤트 목록 */}
             <div className="space-y-4">
-              {events.map((event, index) => {
+              {events.map((event) => {
                 const isExpanded = expandedEvents.has(event.id);
                 const characters = event.entities.filter(e => e.category === 'character');
                 const mainSentiment = event.edges[0]?.sentiment || 'neutral';
@@ -234,7 +234,7 @@ export function TimelineView() {
                         <div className="flex items-center gap-3">
                           {/* 인물 아바타 */}
                           <div className="flex -space-x-2">
-                            {characters.slice(0, 4).map((char, i) => (
+                            {characters.slice(0, 4).map((char) => (
                               <div
                                 key={char.id}
                                 className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm"

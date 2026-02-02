@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Users, Package, Globe, Filter, Star, Link2 } from 'lucide-react';
+import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Package, Globe, Filter, Star, Link2 } from 'lucide-react';
 import { useStore } from '../store';
 import type { Entity, HyperEdge } from '../types';
 
@@ -241,9 +241,9 @@ export function WorldView() {
               ? 'bg-white shadow-lg ring-2'
               : 'bg-white/60 hover:bg-white hover:shadow-md'
           }`}
-          style={{
-            ringColor: isSelected ? currentTabConfig.color : undefined,
-          }}
+          style={isSelected ? {
+            '--tw-ring-color': currentTabConfig.color,
+          } as React.CSSProperties : undefined}
           onClick={() => selectEntity(node.entity.id)}
         >
           {/* 중요도 인디케이터 */}
@@ -305,7 +305,7 @@ export function WorldView() {
               {node.relatedCharacters.length > 0 && (
                 <div className="flex items-center gap-2 mt-3">
                   <div className="flex -space-x-2">
-                    {node.relatedCharacters.slice(0, 4).map((char, i) => (
+                    {node.relatedCharacters.slice(0, 4).map((char) => (
                       <div
                         key={char.id}
                         className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 border-2 border-white flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
