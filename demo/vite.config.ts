@@ -9,7 +9,7 @@ export default defineConfig({
     sourcemap: false,
   },
   define: {
-    // Railway에서 환경변수 주입
-    'import.meta.env.VITE_OPENROUTER_API_KEY': JSON.stringify(process.env.VITE_OPENROUTER_API_KEY || ''),
+    // 환경변수 주입 (로컬 .env 및 Railway)
+    'import.meta.env.OPENROUTER_API_KEY': JSON.stringify(process.env.OPENROUTER_API_KEY || ''),
   },
 })
