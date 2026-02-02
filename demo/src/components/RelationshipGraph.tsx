@@ -308,10 +308,12 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const centerX = 400;
     const centerY = 350;
 
-    // 인물 원 반지름: 인물 수에 맞춰 적당히 (최소 150, 인물당 50px)
-    const charRadius = Math.max(150, chars.length * 50);
-    const locationRadius = charRadius + 140;
-    const otherRadius = locationRadius + 120;
+    // 인물 원 반지름: 원 하나 간격 (노드 64px + 간격 70px = 134px 간격)
+    // 원둘레 = 2 * PI * r, 노드 간격 = 원둘레 / 노드수 => r = (노드수 * 간격) / (2 * PI)
+    const charSpacing = 134; // 노드 크기(64) + 여백(70)
+    const charRadius = Math.max(180, (chars.length * charSpacing) / (2 * Math.PI));
+    const locationRadius = charRadius + 100;
+    const otherRadius = locationRadius + 100;
 
     // 캐릭터를 원형으로 배치 (내부 원)
     const charNodes: Node[] = chars.map((entity, i) => {
