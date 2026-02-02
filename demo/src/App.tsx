@@ -4,12 +4,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Network, Clock, User, RotateCcw, Database, Save } from 'lucide-react';
+import { Network, Clock, User, RotateCcw, Database, Save, Globe } from 'lucide-react';
 import { useStore } from './store';
 import { FileUpload } from './components/FileUpload';
 import { RelationshipGraph, GraphLegend } from './components/RelationshipGraph';
 import { TimelineView } from './components/TimelineView';
 import { CharacterChronicle } from './components/CharacterChronicle';
+import { WorldView } from './components/WorldView';
 import { DetailPanel } from './components/DetailPanel';
 import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
@@ -17,12 +18,13 @@ import { SavedDataGrid } from './components/SavedDataGrid';
 import { saveOntology } from './services/storage';
 import type { NovelOntology } from './types';
 
-type ViewMode = 'graph' | 'timeline' | 'chronicle';
+type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'graph', label: '관계도', icon: Network },
   { mode: 'timeline', label: '타임라인', icon: Clock },
   { mode: 'chronicle', label: '연대기', icon: User },
+  { mode: 'world', label: '세계관', icon: Globe },
 ];
 
 function App() {
@@ -256,6 +258,8 @@ function App() {
           {viewMode === 'timeline' && <TimelineView />}
 
           {viewMode === 'chronicle' && <CharacterChronicle />}
+
+          {viewMode === 'world' && <WorldView />}
         </div>
 
         {/* 오른쪽: 상세 패널 */}

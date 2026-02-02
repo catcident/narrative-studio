@@ -43,6 +43,8 @@ export type RelationType =
   | '주인'
   | '위치'
   | '소유'
+  | '소속'
+  | '포함'
   | '관련';
 
 export interface SourceRef {
