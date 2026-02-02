@@ -258,15 +258,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     );
   }
 
-  // 연결된 엔티티 ID 집합 계산 (useMemo로 캐싱)
-  const connectedEntityIds = useMemo(() => {
-    const connected = new Set<string>();
-    displayEdges.forEach(edge => {
-      edge.entities.forEach(id => connected.add(id));
-    });
-    return connected;
-  }, [displayEdges]);
-
   // 노드 생성 - 인물/장소는 특별하게, 나머지는 작게
   const initialNodes = useMemo(() => {
     const chars = displayEntities.filter(e => e.category === 'character');
