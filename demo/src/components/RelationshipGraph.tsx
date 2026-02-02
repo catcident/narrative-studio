@@ -299,6 +299,35 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     );
   }
 
+  // 반발력 시뮬레이션으로 노드 위치 계산
+  const applyRepulsion = (positions: { id: string; x: number; y: number; size: number }[], iterations = 50) => {
+    const repulsionStrength = 8000;
+    const minDistance = 80;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+          const dx = positions[j].x - positions[i].x;
+          const dy = positions[j].y - positions[i].y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const minDist = (positions[i].size + positions[j].size) / 2 + minDistance;
+
+          if (dist < minDist) {
+            const force = repulsionStrength / (dist * dist);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+
+            positions[i].x -= fx * 0.5;
+            positions[i].y -= fy * 0.5;
+            positions[j].x += fx * 0.5;
+            positions[j].y += fy * 0.5;
+          }
+        }
+      }
+    }
+    return positions;
+  };
+
   // 노드 생성 - 인물/장소는 특별하게, 나머지는 작게
   const initialNodes = useMemo(() => {
     const chars = displayEntities.filter(e => e.category === 'character');
@@ -308,27 +337,160 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const centerX = 400;
     const centerY = 350;
 
-    // 인물 원 반지름: 원 하나 간격 (노드 64px + 간격 70px = 134px 간격)
-    // 원둘레 = 2 * PI * r, 노드 간격 = 원둘레 / 노드수 => r = (노드수 * 간격) / (2 * PI)
-    const charSpacing = 134; // 노드 크기(64) + 여백(70)
+    // 인물 중심 모드: 선택한 인물이 중앙에 위치
+    const isFocusedMode = viewMode === 'focused' && focusedCharId;
+    const focusedEntity = isFocusedMode ? displayEntities.find(e => e.id === focusedCharId) : null;
+
+    // 인물 중심 모드일 때 - 중앙에 선택된 인물, 주변에 관련 엔티티
+    if (isFocusedMode && focusedEntity) {
+      const relatedChars = chars.filter(e => e.id !== focusedCharId);
+      const allRelated = [...relatedChars, ...locations, ...others];
+
+      // 초기 위치 설정 (원형 배치)
+      const positions = allRelated.map((entity, i) => {
+        const angle = (2 * Math.PI * i) / allRelated.length - Math.PI / 2;
+        const radius = 200;
+        const size = entity.category === 'character' ? 64 : entity.category === 'location' ? 72 : 28;
+        return {
+          id: entity.id,
+          x: centerX + radius * Math.cos(angle),
+          y: centerY + radius * Math.sin(angle),
+          size,
+        };
+      });
+
+      // 반발력 적용
+      applyRepulsion(positions, 30);
+
+      // 중앙 노드 (포커스된 인물)
+      const focusedNode: Node = {
+        id: focusedEntity.id,
+        type: 'default',
+        position: { x: centerX, y: centerY },
+        data: { label: focusedEntity.name, entity: focusedEntity },
+        style: {
+          background: CATEGORY_COLORS[focusedEntity.category],
+          color: 'white',
+          border: '4px solid #fbbf24',
+          borderRadius: '50%',
+          width: 80,
+          height: 80,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '14px',
+          fontWeight: 600,
+          boxShadow: '0 0 30px rgba(251, 191, 36, 0.6)',
+        },
+      };
+
+      // 관련 노드들
+      const relatedNodes: Node[] = allRelated.map((entity) => {
+        const pos = positions.find(p => p.id === entity.id)!;
+        if (entity.category === 'character') {
+          return {
+            id: entity.id,
+            type: 'default',
+            position: { x: pos.x, y: pos.y },
+            data: { label: entity.name, entity },
+            style: {
+              background: CATEGORY_COLORS[entity.category],
+              color: 'white',
+              border: selectedEntityId === entity.id ? '3px solid #1e40af' : 'none',
+              borderRadius: '50%',
+              width: 64,
+              height: 64,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: 500,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            },
+          };
+        } else if (entity.category === 'location') {
+          return {
+            id: entity.id,
+            type: 'default',
+            position: { x: pos.x, y: pos.y },
+            data: { label: entity.name, entity },
+            style: {
+              background: CATEGORY_COLORS[entity.category],
+              color: 'white',
+              borderRadius: '8px',
+              width: 72,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              fontWeight: 500,
+              boxShadow: '0 3px 8px rgba(0,0,0,0.12)',
+            },
+          };
+        } else {
+          return {
+            id: entity.id,
+            type: 'smallDot',
+            position: { x: pos.x, y: pos.y },
+            data: { label: entity.name, entity },
+          };
+        }
+      });
+
+      return [focusedNode, ...relatedNodes];
+    }
+
+    // 일반 모드 - 원형 배치 + 반발력
+    const charSpacing = 134;
     const charRadius = Math.max(180, (chars.length * charSpacing) / (2 * Math.PI));
     const locationRadius = charRadius + 100;
     const otherRadius = locationRadius + 100;
 
-    // 캐릭터를 원형으로 배치 (내부 원)
-    const charNodes: Node[] = chars.map((entity, i) => {
+    // 초기 위치 설정
+    const allPositions: { id: string; x: number; y: number; size: number }[] = [];
+
+    chars.forEach((entity, i) => {
       const angle = (2 * Math.PI * i) / chars.length - Math.PI / 2;
+      allPositions.push({
+        id: entity.id,
+        x: centerX + charRadius * Math.cos(angle),
+        y: centerY + charRadius * Math.sin(angle),
+        size: 64,
+      });
+    });
+
+    locations.forEach((entity, i) => {
+      const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
+      allPositions.push({
+        id: entity.id,
+        x: centerX + locationRadius * Math.cos(angle),
+        y: centerY + locationRadius * Math.sin(angle),
+        size: 72,
+      });
+    });
+
+    others.forEach((entity, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
+      allPositions.push({
+        id: entity.id,
+        x: centerX + otherRadius * Math.cos(angle),
+        y: centerY + otherRadius * Math.sin(angle),
+        size: 28,
+      });
+    });
+
+    // 반발력 적용
+    applyRepulsion(allPositions, 30);
+
+    // 캐릭터 노드
+    const charNodes: Node[] = chars.map((entity) => {
+      const pos = allPositions.find(p => p.id === entity.id)!;
       return {
         id: entity.id,
         type: 'default',
-        position: {
-          x: centerX + charRadius * Math.cos(angle),
-          y: centerY + charRadius * Math.sin(angle),
-        },
-        data: {
-          label: entity.name,
-          entity,
-        },
+        position: { x: pos.x, y: pos.y },
+        data: { label: entity.name, entity },
         style: {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
@@ -348,20 +510,14 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       };
     });
 
-    // 장소는 1:2 비율 직사각형 (가로가 길게)
-    const locationNodes: Node[] = locations.map((entity, i) => {
-      const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
+    // 장소 노드
+    const locationNodes: Node[] = locations.map((entity) => {
+      const pos = allPositions.find(p => p.id === entity.id)!;
       return {
         id: entity.id,
         type: 'default',
-        position: {
-          x: centerX + locationRadius * Math.cos(angle),
-          y: centerY + locationRadius * Math.sin(angle),
-        },
-        data: {
-          label: entity.name,
-          entity,
-        },
+        position: { x: pos.x, y: pos.y },
+        data: { label: entity.name, entity },
         style: {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
@@ -381,25 +537,19 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       };
     });
 
-    // 나머지 엔티티는 작은 원 + 밑에 라벨로 표시 (커스텀 노드)
-    const otherNodes: Node[] = others.map((entity, i) => {
-      const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
+    // 기타 노드
+    const otherNodes: Node[] = others.map((entity) => {
+      const pos = allPositions.find(p => p.id === entity.id)!;
       return {
         id: entity.id,
         type: 'smallDot',
-        position: {
-          x: centerX + otherRadius * Math.cos(angle),
-          y: centerY + otherRadius * Math.sin(angle),
-        },
-        data: {
-          label: entity.name,
-          entity,
-        },
+        position: { x: pos.x, y: pos.y },
+        data: { label: entity.name, entity },
       };
     });
 
     return [...charNodes, ...locationNodes, ...otherNodes];
-  }, [displayEntities, selectedEntityId]);
+  }, [displayEntities, selectedEntityId, viewMode, focusedCharId]);
 
   // 엣지 ID -> 원본 HyperEdge 매핑
   const edgeMap = useMemo(() => {
