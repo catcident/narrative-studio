@@ -1,0 +1,437 @@
+/**
+ * 상세 정보 패널 (개선된 버전)
+ * 선택한 엔티티의 상세 정보 + 관계의 방향/시점 표시
+ */
+
+import { X, User, MapPin, Building, Sword, Clock, Zap, Info, ArrowRight, Heart, Swords, Users, Film } from 'lucide-react';
+import { useStore, useSelectedEntity, useEntityEdges } from '../store';
+import type { EntityCategory, HyperEdge, Entity } from '../types';
+
+// 카테고리 아이콘
+const CATEGORY_ICONS: Record<EntityCategory, any> = {
+  character: User,
+  location: MapPin,
+  organization: Building,
+  item: Sword,
+  creature: Zap,
+  event: Clock,
+  concept: Info,
+  time_period: Clock,
+  status: Info,
+  emotion: Heart,
+};
+
+const CATEGORY_LABELS: Record<EntityCategory, string> = {
+  character: '인물',
+  location: '장소',
+  organization: '조직',
+  item: '아이템',
+  creature: '생물',
+  event: '사건',
+  concept: '개념',
+  time_period: '시간',
+  status: '상태',
+  emotion: '감정',
+};
+
+const CATEGORY_COLORS: Record<EntityCategory, string> = {
+  character: 'bg-blue-500',
+  location: 'bg-green-500',
+  organization: 'bg-purple-500',
+  item: 'bg-amber-500',
+  creature: 'bg-red-500',
+  event: 'bg-pink-500',
+  concept: 'bg-indigo-500',
+  time_period: 'bg-teal-500',
+  status: 'bg-slate-500',
+  emotion: 'bg-rose-500',
+};
+
+// 속성 라벨 한글화
+const ATTR_LABELS: Record<string, string> = {
+  gender: '성별',
+  age: '나이',
+  occupation: '직업',
+  affiliation: '소속',
+  appearance: '외모',
+  personality: '성격',
+  abilities: '능력',
+  current_location: '현재 위치',
+  current_status: '현재 상태',
+  knowledge: '알고 있는 정보',
+  goals: '목표',
+  backstory: '과거사',
+  type: '유형',
+  parent_location: '상위 장소',
+  features: '특징',
+  residents: '거주자',
+  leader: '리더',
+  members: '구성원',
+  purpose: '목적',
+  location: '위치',
+  time: '시점',
+  participants: '참여자',
+  cause: '원인',
+  outcome: '결과',
+};
+
+// 관계 유형 한글화
+const RELATION_LABELS: Record<string, string> = {
+  // 영어 -> 한글
+  family: '가족',
+  romantic: '연인',
+  friendship: '친구',
+  rivalry: '적대',
+  mentor: '스승',
+  subordinate: '부하',
+  trust: '신뢰',
+  belongs_to: '소속',
+  owns: '소유',
+  knows_about: '인지',
+  located_at: '위치',
+  related_to: '관련',
+  // 한글은 그대로 표시
+  '가족': '가족',
+  '연인': '연인',
+  '친구': '친구',
+  '적대': '적대',
+  '동료': '동료',
+  '주인': '주인',
+  '위치': '위치',
+  '소유': '소유',
+  '관련': '관련',
+};
+
+export function DetailPanel() {
+  const { ontology, selectEntity, selectedSceneId } = useStore();
+  const entity = useSelectedEntity();
+  const allEdges = useEntityEdges(entity?.id || null);
+
+  // 현재 장면 정보
+  const currentScene = selectedSceneId && ontology?.snapshots ? ontology.snapshots[selectedSceneId] : null;
+  const sceneIndex = selectedSceneId && ontology?.snapshots
+    ? Object.keys(ontology.snapshots).sort().indexOf(selectedSceneId) + 1
+    : 0;
+
+  // 현재 장면에서의 관계만 필터링
+  const edges = selectedSceneId
+    ? allEdges.filter(e => e.scenes?.includes(selectedSceneId))
+    : allEdges;
+
+  // 현재 장면에서의 엔티티 정보 (sceneData에서 가져오기)
+  const getSceneEntityInfo = (entity: Entity): string | null => {
+    if (!currentScene || !entity) return null;
+    // sceneData에 엔티티별 정보가 있다면 반환
+    const sceneData = currentScene as any;
+    if (sceneData.entityStates && sceneData.entityStates[entity.id]) {
+      return sceneData.entityStates[entity.id];
+    }
+    // summary에서 엔티티 이름이 포함된 문장 추출
+    if (currentScene.summary && entity.name) {
+      const sentences = currentScene.summary.split(/[.!?]/).filter((s: string) => s.trim());
+      const relevant = sentences.filter((s: string) => s.includes(entity.name));
+      if (relevant.length > 0) {
+        return relevant.join('. ').trim() + '.';
+      }
+    }
+    return null;
+  };
+
+  if (!entity) {
+    return (
+      <div className="h-full flex items-center justify-center bg-white text-gray-400 p-6">
+        <div className="text-center">
+          <Info className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">그래프에서 노드를 선택하세요</p>
+        </div>
+      </div>
+    );
+  }
+
+  const Icon = CATEGORY_ICONS[entity.category] || Info;
+  const sceneEntityInfo = getSceneEntityInfo(entity);
+
+  // 속성 렌더링 (배열은 콤마로 연결)
+  const renderAttrValue = (value: any): string => {
+    if (Array.isArray(value)) return value.join(', ');
+    return String(value);
+  };
+
+  // 관계를 그룹화 (sentiment별)
+  const positiveEdges = edges.filter(e => e.sentiment === 'positive');
+  const negativeEdges = edges.filter(e => e.sentiment === 'negative');
+  const otherEdges = edges.filter(e => e.sentiment !== 'positive' && e.sentiment !== 'negative');
+
+  const renderEdge = (edge: HyperEdge) => {
+    const otherEntityIds = edge.entities.filter((id) => id !== entity.id);
+    const otherEntities = otherEntityIds
+      .map((id) => ontology?.entities[id])
+      .filter(Boolean);
+
+    // from/to 방향 확인
+    const isFrom = edge.entities[0] === entity.id;
+    const perspective = isFrom ? (edge as any).fromPerspective : (edge as any).toPerspective;
+
+    return (
+      <div
+        key={edge.id}
+        className={`p-3 rounded-lg border ${
+          edge.sentiment === 'positive' ? 'bg-green-50 border-green-200' :
+          edge.sentiment === 'negative' ? 'bg-red-50 border-red-200' :
+          'bg-gray-50 border-gray-200'
+        }`}
+      >
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+              edge.sentiment === 'positive' ? 'bg-green-200 text-green-800' :
+              edge.sentiment === 'negative' ? 'bg-red-200 text-red-800' :
+              'bg-gray-200 text-gray-700'
+            }`}>
+              {RELATION_LABELS[edge.type] || edge.type}
+              {(edge as any).subtype && ` · ${(edge as any).subtype}`}
+            </span>
+            {(edge as any).bidirectional && (
+              <span className="text-xs text-gray-400">쌍방향</span>
+            )}
+          </div>
+          {edge.strength && (
+            <div className="flex gap-0.5">
+              {[...Array(10)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1 h-2 rounded-sm ${
+                    i < edge.strength!
+                      ? edge.sentiment === 'positive' ? 'bg-green-400' :
+                        edge.sentiment === 'negative' ? 'bg-red-400' : 'bg-gray-400'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 관계 대상 */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-medium text-gray-700">{entity.name}</span>
+          <ArrowRight className="w-4 h-4 text-gray-400" />
+          {otherEntities.map((e) => (
+            <button
+              key={e!.id}
+              onClick={() => selectEntity(e!.id)}
+              className="text-sm font-medium px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              {e!.name}
+            </button>
+          ))}
+        </div>
+
+        {/* 관계 설명 - 더 눈에 띄게 */}
+        {edge.statement && (
+          <div className="p-2 bg-white rounded border border-gray-100 mb-2">
+            <p className="text-sm text-gray-800 leading-relaxed">{edge.statement}</p>
+          </div>
+        )}
+
+        {/* 시점에서의 관점 */}
+        {perspective && (
+          <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700 italic">
+            💭 "{perspective}"
+          </div>
+        )}
+
+        {/* 등장 장면 정보 */}
+        {edge.scenes && edge.scenes.length > 0 && (
+          <div className="mt-2 flex items-center gap-1 flex-wrap">
+            <span className="text-xs text-gray-400">등장 장면:</span>
+            {edge.scenes.map((sceneId, i) => (
+              <span key={i} className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">
+                {sceneId.replace('S', '장면 ').replace(/^0+/, '')}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 시간 정보 */}
+        {edge.timeline?.start && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            {edge.timeline.start}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      {/* 헤더 */}
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-xl ${CATEGORY_COLORS[entity.category]} text-white`}>
+              <Icon className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">{entity.name}</h2>
+              {entity.aliases && entity.aliases.length > 0 && (
+                <p className="text-sm text-gray-500">
+                  {entity.aliases.join(', ')}
+                </p>
+              )}
+              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded mt-1 inline-block">
+                {CATEGORY_LABELS[entity.category]}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => selectEntity(null)}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* 내용 - 스크롤 */}
+      <div className="flex-1 overflow-y-auto">
+        {/* 설명 */}
+        {entity.description && (
+          <div className="p-4 border-b border-gray-100">
+            <p className="text-sm text-gray-700 leading-relaxed">{entity.description}</p>
+          </div>
+        )}
+
+        {/* 속성 */}
+        {entity.attributes && Object.keys(entity.attributes).length > 0 && (
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">상세 정보</h3>
+            <div className="space-y-2">
+              {Object.entries(entity.attributes).map(([key, value]) => (
+                <div key={key} className="flex">
+                  <span className="text-xs text-gray-500 w-20 flex-shrink-0 pt-0.5">
+                    {ATTR_LABELS[key] || key}
+                  </span>
+                  <span className="text-sm text-gray-800 flex-1">
+                    {renderAttrValue(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─────────────────────────────────────────── */}
+        {/* 현재 장면에서의 정보 */}
+        {selectedSceneId && currentScene && (
+          <div className="p-4 border-b-4 border-blue-200 bg-gradient-to-b from-blue-50 to-white">
+            <div className="flex items-center gap-2 mb-3">
+              <Film className="w-4 h-4 text-blue-500" />
+              <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                장면 {sceneIndex}에서의 {entity.name}
+              </h3>
+            </div>
+
+            {/* 장면 정보 */}
+            <div className="mb-3 p-2 bg-white rounded-lg border border-blue-100">
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                {currentScene.time && <span>{currentScene.time}</span>}
+                {currentScene.location && (
+                  <>
+                    <span>·</span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {currentScene.location}
+                    </span>
+                  </>
+                )}
+              </div>
+              {currentScene.mood && (
+                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-600 rounded">
+                  {currentScene.mood}
+                </span>
+              )}
+            </div>
+
+            {/* 이 장면에서의 엔티티 상태/행동 */}
+            {sceneEntityInfo ? (
+              <div className="p-3 bg-white rounded-lg border border-blue-200">
+                <p className="text-sm text-gray-800 leading-relaxed">{sceneEntityInfo}</p>
+              </div>
+            ) : currentScene.summary ? (
+              <div className="p-3 bg-white rounded-lg border border-blue-200">
+                <p className="text-xs text-gray-400 mb-1">장면 요약:</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{currentScene.summary}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">이 장면에 대한 상세 정보가 없습니다</p>
+            )}
+
+            {/* 이 장면에서의 관계 수 */}
+            {edges.length > 0 && (
+              <div className="mt-3 text-xs text-blue-600">
+                이 장면에서 {edges.length}개의 관계가 활성화됨
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 관계 */}
+        <div className="p-4">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            {selectedSceneId ? `이 장면의 관계 (${edges.length})` : `전체 관계 (${allEdges.length})`}
+          </h3>
+
+          {edges.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">
+              연결된 관계가 없습니다
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* 긍정적 관계 */}
+              {positiveEdges.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Heart className="w-3.5 h-3.5 text-green-500" />
+                    <span className="text-xs font-medium text-green-700">긍정적 관계</span>
+                  </div>
+                  <div className="space-y-2">
+                    {positiveEdges.map(renderEdge)}
+                  </div>
+                </div>
+              )}
+
+              {/* 부정적 관계 */}
+              {negativeEdges.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Swords className="w-3.5 h-3.5 text-red-500" />
+                    <span className="text-xs font-medium text-red-700">부정적 관계</span>
+                  </div>
+                  <div className="space-y-2">
+                    {negativeEdges.map(renderEdge)}
+                  </div>
+                </div>
+              )}
+
+              {/* 기타 관계 */}
+              {otherEdges.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Users className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="text-xs font-medium text-gray-700">기타 관계</span>
+                  </div>
+                  <div className="space-y-2">
+                    {otherEdges.map(renderEdge)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
