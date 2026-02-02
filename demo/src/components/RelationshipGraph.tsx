@@ -195,22 +195,22 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     [entities]
   );
 
-  // 인물 중심 모드: 필터링된 엔티티와 엣지
+  // 인물 중심 모드: 해당 인물이 직접 연결된 것만 표시
   const { filteredEntities, filteredEdges } = useMemo(() => {
     if (viewMode !== 'focused' || !focusedCharId) {
       return { filteredEntities: entities, filteredEdges: edges };
     }
 
-    // 포커스된 인물과 관련된 엔티티 찾기
+    // 포커스된 인물이 직접 연결된 관계만 필터링
+    const fEdges = edges.filter(e => e.entities.includes(focusedCharId));
+
+    // 해당 관계에 포함된 엔티티만 표시 (포커스된 인물 + 직접 연결된 엔티티들)
     const relatedEntityIds = new Set<string>([focusedCharId]);
-    edges.forEach(edge => {
-      if (edge.entities.includes(focusedCharId)) {
-        edge.entities.forEach(id => relatedEntityIds.add(id));
-      }
+    fEdges.forEach(edge => {
+      edge.entities.forEach(id => relatedEntityIds.add(id));
     });
 
     const fEntities = entities.filter(e => relatedEntityIds.has(e.id));
-    const fEdges = edges.filter(e => e.entities.includes(focusedCharId));
 
     return { filteredEntities: fEntities, filteredEdges: fEdges };
   }, [entities, edges, viewMode, focusedCharId]);
