@@ -107,8 +107,12 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     return edges.filter(e => e.entities.every(id => entityIds.has(id)));
   })();
 
-  // 그래프 업데이트
-  const updateGraph = useCallback(async () => {
+  // 선택 상태 ref (콜백에서 사용)
+  const selectedEntityIdRef = useRef(selectedEntityId);
+  selectedEntityIdRef.current = selectedEntityId;
+
+  // 그래프 초기화 (데이터 변경 시에만)
+  const initGraph = useCallback(async () => {
     if (!containerRef.current || filteredEntities.length === 0) return;
 
     // 동적 import
@@ -162,7 +166,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       .nodeCanvasObject((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const isCharacter = node.category === 'character';
         const isLocation = node.category === 'location';
-        const isSelected = selectedEntityId === node.id;
+        const isSelected = selectedEntityIdRef.current === node.id;
 
         // 크기 계산 (중요도 기반)
         const baseSize = isCharacter ? 12 : isLocation ? 10 : 6;
@@ -313,17 +317,26 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       graphRef.current?.zoomToFit(400, 50);
     }, 500);
 
-  }, [filteredEntities, filteredEdges, selectedEntityId, onNodeClick, selectEntity, entities]);
+  }, [filteredEntities, filteredEdges, onNodeClick, selectEntity, entities]);
 
-  // 그래프 업데이트
+  // 선택 변경 시 리렌더링만 트리거 (그래프 재생성 없이)
   useEffect(() => {
-    updateGraph();
+    // force-graph는 자동으로 다시 그려지므로 별도 처리 불필요
+    // 다만 nodeCanvasObject가 ref를 참조하므로 tick을 한번 발생시킴
+    if (graphRef.current) {
+      graphRef.current.refresh();
+    }
+  }, [selectedEntityId]);
+
+  // 그래프 초기화
+  useEffect(() => {
+    initGraph();
     return () => {
       if (graphRef.current) {
         graphRef.current._destructor?.();
       }
     };
-  }, [updateGraph]);
+  }, [initGraph]);
 
   // 리사이즈 처리
   useEffect(() => {
