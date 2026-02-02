@@ -16,7 +16,6 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "@xyflow/react": "^12.10.0",
-    "force-graph": "^1.51.0",
     "lucide-react": "^0.563.0",
     "pdfjs-dist": "^5.4.624",
     "react": "^19.2.0",

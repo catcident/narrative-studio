@@ -1,13 +1,28 @@
 /**
  * 인물 관계도 그래프 컴포넌트
- * force-graph를 사용한 Canvas 기반 시각화
- * d3-force로 자동 배치 + 드래그 지원
+ * React Flow를 사용한 하이퍼그래프 시각화
+ * 인물 중심 원형 배치 + 연결 없는 노드는 외곽 배치
  */
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  ConnectionMode,
+  Handle,
+  Position,
+} from '@xyflow/react';
+import type { Node, Edge, NodeProps } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { useStore } from '../store';
 import type { Entity, HyperEdge, EntityCategory } from '../types';
-import { X, Eye, EyeOff, Filter } from 'lucide-react';
+import { X, Eye, EyeOff, Focus, Filter } from 'lucide-react';
+
+type GraphViewMode = 'full' | 'simple' | 'focused';
 
 // 카테고리별 색상
 const CATEGORY_COLORS: Record<EntityCategory, string> = {
@@ -33,7 +48,6 @@ const RELATION_COLORS: Record<string, string> = {
   '주인': '#f59e0b',
   '위치': '#14b8a6',
   '소유': '#f59e0b',
-  '소속': '#a855f7',
   '관련': '#9ca3af',
   family: '#8b5cf6',
   romantic: '#ec4899',
@@ -55,7 +69,33 @@ const RELATION_COLORS: Record<string, string> = {
   related_to: '#9ca3af',
 };
 
-type ViewMode = 'full' | 'simple';
+const RELATION_LABELS: Record<string, string> = {
+  family: '가족',
+  romantic: '연인',
+  friendship: '친구',
+  rivalry: '적대',
+  mentor: '스승',
+  subordinate: '부하',
+  belongs_to: '소속',
+  owns: '소유',
+  rules: '지배',
+  located_at: '위치',
+  occurred_at: '발생',
+  during: '기간',
+  participates: '참여',
+  causes: '원인',
+  transforms: '변화',
+  knows: '아는 사이',
+  has_status: '상태',
+  related_to: '관련',
+};
+
+const SENTIMENT_STYLES = {
+  positive: { strokeDasharray: 'none' },
+  negative: { strokeDasharray: '5,5' },
+  neutral: { strokeDasharray: '2,2' },
+  complex: { strokeDasharray: '10,5,2,5' },
+};
 
 interface EntityWithOpacity extends Entity {
   isPastScene?: boolean;
@@ -71,297 +111,193 @@ interface Props {
   onNodeClick?: (entity: Entity) => void;
 }
 
-// 툴팁 데이터
-interface TooltipData {
-  x: number;
-  y: number;
-  entity: Entity;
+// 작은 원 + 밑에 라벨 커스텀 노드
+function SmallDotNode({ data }: NodeProps) {
+  const entity = data.entity as Entity;
+  const isPast = data.isPast as boolean;
+  const color = CATEGORY_COLORS[entity?.category] || '#9ca3af';
+
+  return (
+    <div className="flex flex-col items-center" style={{ opacity: isPast ? 0.35 : 1 }}>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: color,
+          border: '2px solid white',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+        }}
+      />
+      <div
+        style={{
+          marginTop: 6,
+          fontSize: 10,
+          color: '#6b7280',
+          fontWeight: 400,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {entity?.name || ''}
+      </div>
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
 }
 
-// 선택된 엣지 정보
-interface SelectedEdgeData {
+// 커스텀 노드 타입
+const nodeTypes = {
+  smallDot: SmallDotNode,
+};
+
+// 선택된 관계 정보를 표시하는 팝업
+function EdgeDetailPopup({
+  edge,
+  entities,
+  onClose
+}: {
   edge: HyperEdge;
   entities: Entity[];
+  onClose: () => void;
+}) {
+  const relationLabel = RELATION_LABELS[edge.type] || edge.type;
+  const entityNames = edge.entities
+    .map(id => entities.find(e => e.id === id)?.name || id)
+    .join(' ↔ ');
+
+  return (
+    <div className="absolute bottom-4 left-4 right-4 z-50 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 max-w-md">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <span
+            className="text-xs font-bold px-2 py-1 rounded"
+            style={{
+              backgroundColor: (RELATION_COLORS[edge.type] || '#9ca3af') + '20',
+              color: RELATION_COLORS[edge.type] || '#666'
+            }}
+          >
+            {relationLabel}
+          </span>
+          {edge.sentiment && (
+            <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
+              edge.sentiment === 'positive' ? 'bg-green-100 text-green-700' :
+              edge.sentiment === 'negative' ? 'bg-red-100 text-red-700' :
+              'bg-gray-100 text-gray-600'
+            }`}>
+              {edge.sentiment === 'positive' ? '긍정' :
+               edge.sentiment === 'negative' ? '부정' : '중립'}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <X className="w-4 h-4 text-gray-400" />
+        </button>
+      </div>
+
+      <div className="text-sm font-medium text-gray-800 mb-2">
+        {entityNames}
+      </div>
+
+      {edge.statement && (
+        <p className="text-sm text-gray-600 leading-relaxed mb-3">
+          {edge.statement}
+        </p>
+      )}
+
+      <div className="flex items-center gap-4 text-xs text-gray-400">
+        {edge.strength && (
+          <div className="flex items-center gap-1">
+            <span>강도:</span>
+            <div className="flex gap-0.5">
+              {[...Array(10)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1.5 h-2 rounded-sm ${
+                    i < edge.strength! ? 'bg-blue-400' : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        {edge.scenes && edge.scenes.length > 0 && (
+          <span>장면: {edge.scenes.join(', ')}</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<any>(null);
   const { selectedEntityId, selectEntity } = useStore();
+  const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
+  const [viewMode, setViewMode] = useState<GraphViewMode>('full');
+  const [focusedCharId, setFocusedCharId] = useState<string | null>(null);
+  const [minImportance, setMinImportance] = useState<number>(1);  // 최소 중요도 필터
 
-  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<SelectedEdgeData | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('full');
-  const [minImportance, setMinImportance] = useState<number>(1);
+  // 인물 목록 추출
+  const characters = useMemo(() =>
+    entities.filter(e => e.category === 'character'),
+    [entities]
+  );
 
-  // 필터링된 엔티티
-  const filteredEntities = useMemo(() => {
-    if (viewMode === 'simple') {
-      return entities.filter(e => e.category === 'character');
-    }
-    if (minImportance > 1) {
-      return entities.filter(e => e.category === 'character' || (e.importance || 5) >= minImportance);
-    }
-    return entities;
-  }, [entities, viewMode, minImportance]);
+  // 중요도 필터 적용
+  const importanceFilteredEntities = useMemo(() => {
+    if (minImportance <= 1) return entities;
+    // 인물은 항상 표시, 나머지는 중요도 필터 적용
+    return entities.filter(e =>
+      e.category === 'character' || (e.importance || 5) >= minImportance
+    );
+  }, [entities, minImportance]);
 
-  // 필터링된 엣지
-  const filteredEdges = useMemo(() => {
-    const entityIds = new Set(filteredEntities.map(e => e.id));
+  const importanceFilteredEdges = useMemo(() => {
+    if (minImportance <= 1) return edges;
+    const entityIds = new Set(importanceFilteredEntities.map(e => e.id));
     return edges.filter(e => e.entities.every(id => entityIds.has(id)));
-  }, [edges, filteredEntities]);
+  }, [edges, importanceFilteredEntities, minImportance]);
 
-  // 콜백 refs (의존성에서 제외하기 위해)
-  const selectedEntityIdRef = useRef(selectedEntityId);
-  const onNodeClickRef = useRef(onNodeClick);
-  const selectEntityRef = useRef(selectEntity);
-  const entitiesRef = useRef(entities);
-  const filteredEntitiesRef = useRef(filteredEntities);
+  // 인물 중심 모드: 해당 인물이 직접 연결된 것만 표시
+  const { filteredEntities, filteredEdges } = useMemo(() => {
+    if (viewMode !== 'focused' || !focusedCharId) {
+      return { filteredEntities: importanceFilteredEntities, filteredEdges: importanceFilteredEdges };
+    }
 
-  selectedEntityIdRef.current = selectedEntityId;
-  onNodeClickRef.current = onNodeClick;
-  selectEntityRef.current = selectEntity;
-  entitiesRef.current = entities;
-  filteredEntitiesRef.current = filteredEntities;
+    // 포커스된 인물이 직접 연결된 관계만 필터링
+    const fEdges = importanceFilteredEdges.filter(e => e.entities.includes(focusedCharId));
 
-  // 그래프 초기화 (데이터 변경 시에만)
-  const initGraph = useCallback(async () => {
-    if (!containerRef.current || filteredEntities.length === 0) return;
-
-    // 동적 import
-    const ForceGraph = (await import('force-graph')).default as any;
-
-    // 노드 데이터
-    const graphNodes = filteredEntities.map(entity => ({
-      id: entity.id,
-      name: entity.name,
-      category: entity.category,
-      importance: entity.importance || 5,
-      description: entity.description,
-      isPast: entity.isPastScene,
-      color: CATEGORY_COLORS[entity.category] || '#9ca3af',
-    }));
-
-    // 엣지 데이터 (하이퍼엣지를 페어로 분해)
-    const graphLinks: any[] = [];
-    filteredEdges.forEach(edge => {
-      for (let i = 0; i < edge.entities.length; i++) {
-        for (let j = i + 1; j < edge.entities.length; j++) {
-          graphLinks.push({
-            source: edge.entities[i],
-            target: edge.entities[j],
-            type: edge.type,
-            color: RELATION_COLORS[edge.type] || '#9ca3af',
-            strength: edge.strength || 5,
-            edgeData: edge,
-          });
-        }
-      }
+    // 해당 관계에 포함된 엔티티만 표시 (포커스된 인물 + 직접 연결된 엔티티들)
+    const relatedEntityIds = new Set<string>([focusedCharId]);
+    fEdges.forEach(edge => {
+      edge.entities.forEach(id => relatedEntityIds.add(id));
     });
 
-    const graphData = { nodes: graphNodes, links: graphLinks };
+    const fEntities = importanceFilteredEntities.filter(e => relatedEntityIds.has(e.id));
 
-    // 기존 그래프 제거
-    if (graphRef.current) {
-      graphRef.current._destructor?.();
-      containerRef.current.innerHTML = '';
+    return { filteredEntities: fEntities, filteredEdges: fEdges };
+  }, [importanceFilteredEntities, importanceFilteredEdges, viewMode, focusedCharId]);
+
+  // 간소화 모드: 인물만 표시
+  const displayEntities = useMemo(() => {
+    if (viewMode === 'simple') {
+      return filteredEntities.filter(e => e.category === 'character');
     }
+    return filteredEntities;
+  }, [filteredEntities, viewMode]);
 
-    // 컨테이너 크기
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
-
-    // 새 그래프 생성
-    graphRef.current = ForceGraph()(containerRef.current)
-      .graphData(graphData)
-      .width(width)
-      .height(height)
-      .nodeCanvasObject((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const isCharacter = node.category === 'character';
-        const isLocation = node.category === 'location';
-        const isSelected = selectedEntityIdRef.current === node.id;
-
-        // 크기 계산 (중요도 기반)
-        const baseSize = isCharacter ? 12 : isLocation ? 10 : 6;
-        const size = baseSize + (node.importance - 5) * 0.5;
-
-        ctx.globalAlpha = node.isPast ? 0.4 : 1;
-
-        // 선택된 노드 하이라이트
-        if (isSelected) {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, size + 4, 0, 2 * Math.PI);
-          ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
-          ctx.fill();
-        }
-
-        // 노드 그리기
-        if (isLocation) {
-          // 장소: 둥근 사각형
-          const w = size * 2;
-          const h = size * 1.2;
-          ctx.beginPath();
-          ctx.roundRect(node.x - w/2, node.y - h/2, w, h, 3);
-          ctx.fillStyle = node.color;
-          ctx.fill();
-        } else {
-          // 기본: 원
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
-          ctx.fillStyle = node.color;
-          ctx.fill();
-        }
-
-        // 테두리
-        ctx.strokeStyle = isSelected ? '#1e40af' : 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.stroke();
-
-        ctx.globalAlpha = 1;
-
-        // 라벨 (인물, 장소만)
-        if (isCharacter || isLocation) {
-          const fontSize = Math.max(10 / globalScale, 4);
-          ctx.font = `${isCharacter ? 'bold ' : ''}${fontSize}px 'Pretendard', sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillStyle = node.isPast ? '#9ca3af' : '#374151';
-          ctx.fillText(node.name, node.x, node.y + size + 2);
-        }
-      })
-      .nodeCanvasObjectMode(() => 'replace')
-      .nodePointerAreaPaint((node: any, color: string, ctx: CanvasRenderingContext2D) => {
-        const size = node.category === 'character' ? 16 : 12;
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
-        ctx.fill();
-      })
-      .linkCanvasObject((link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const start = link.source;
-        const end = link.target;
-        if (typeof start.x !== 'number' || typeof end.x !== 'number') return;
-
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.strokeStyle = link.color;
-        ctx.lineWidth = Math.min(link.strength / 3, 2);
-        ctx.globalAlpha = 0.6;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        // 엣지 라벨 (줌인 했을 때만)
-        if (globalScale > 0.8 && link.type) {
-          const midX = (start.x + end.x) / 2;
-          const midY = (start.y + end.y) / 2;
-          const fontSize = Math.max(8 / globalScale, 4);
-          ctx.font = `${fontSize}px 'Pretendard', sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-
-          const text = link.type;
-          const textWidth = ctx.measureText(text).width;
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.fillRect(midX - textWidth/2 - 2, midY - fontSize/2 - 1, textWidth + 4, fontSize + 2);
-          ctx.fillStyle = link.color;
-          ctx.fillText(text, midX, midY);
-        }
-      })
-      .linkCanvasObjectMode(() => 'replace')
-      .backgroundColor('#f9fafb')
-      .onNodeHover((node: any) => {
-        if (node && graphRef.current && typeof node.x === 'number') {
-          const screenCoords = graphRef.current.graph2ScreenCoords(node.x, node.y);
-          const rect = containerRef.current?.getBoundingClientRect();
-          if (rect && screenCoords) {
-            const entity = filteredEntitiesRef.current.find(e => e.id === node.id);
-            if (entity) {
-              setTooltip({
-                x: rect.left + screenCoords.x + 15,
-                y: rect.top + screenCoords.y - 10,
-                entity,
-              });
-            }
-          }
-        } else {
-          setTooltip(null);
-        }
-        if (containerRef.current) {
-          containerRef.current.style.cursor = node ? 'pointer' : 'default';
-        }
-      })
-      .onNodeClick((node: any) => {
-        selectEntityRef.current(node.id);
-        const entity = filteredEntitiesRef.current.find(e => e.id === node.id);
-        if (entity) {
-          onNodeClickRef.current?.(entity);
-        }
-      })
-      .onLinkClick((link: any) => {
-        if (link.edgeData) {
-          const relatedEntities = link.edgeData.entities
-            .map((id: string) => entitiesRef.current.find(e => e.id === id))
-            .filter(Boolean) as Entity[];
-          setSelectedEdge({ edge: link.edgeData, entities: relatedEntities });
-        }
-      })
-      .onBackgroundClick(() => {
-        setSelectedEdge(null);
-      });
-
-    // Force 설정
-    graphRef.current.d3Force('charge').strength(-150);
-    graphRef.current.d3Force('link')
-      .distance((link: any) => {
-        const srcCat = link.source?.category;
-        const tgtCat = link.target?.category;
-        // 인물-인물: 가깝게
-        if (srcCat === 'character' && tgtCat === 'character') return 80;
-        // 인물-장소: 중간
-        if (srcCat === 'character' || tgtCat === 'character') return 100;
-        // 기타
-        return 60;
-      })
-      .strength(0.5);
-
-    // 초기 줌
-    setTimeout(() => {
-      graphRef.current?.zoomToFit(400, 50);
-    }, 500);
-
-  }, [filteredEntities, filteredEdges]);  // 데이터 변경 시에만 재생성
-
-  // 선택 변경 시 리렌더링만 트리거 (그래프 재생성 없이)
-  useEffect(() => {
-    // force-graph는 자동으로 다시 그려지므로 별도 처리 불필요
-    // 다만 nodeCanvasObject가 ref를 참조하므로 tick을 한번 발생시킴
-    if (graphRef.current) {
-      graphRef.current.refresh();
+  const displayEdges = useMemo(() => {
+    if (viewMode === 'simple') {
+      // 인물 간의 관계만 표시
+      const charIds = new Set(displayEntities.map(e => e.id));
+      return filteredEdges.filter(e =>
+        e.entities.every(id => charIds.has(id))
+      );
     }
-  }, [selectedEntityId]);
-
-  // 그래프 초기화
-  useEffect(() => {
-    initGraph();
-    return () => {
-      if (graphRef.current) {
-        graphRef.current._destructor?.();
-      }
-    };
-  }, [initGraph]);
-
-  // 리사이즈 처리
-  useEffect(() => {
-    const handleResize = () => {
-      if (graphRef.current && containerRef.current) {
-        graphRef.current.width(containerRef.current.clientWidth);
-        graphRef.current.height(containerRef.current.clientHeight);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    return filteredEdges;
+  }, [filteredEdges, displayEntities, viewMode]);
 
   if (entities.length === 0) {
     return (
@@ -371,37 +307,443 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     );
   }
 
+  // 노드 생성 - 인물/장소는 특별하게, 나머지는 작게
+  const initialNodes = useMemo(() => {
+    const chars = displayEntities.filter(e => e.category === 'character');
+    const locations = displayEntities.filter(e => e.category === 'location');
+    const others = displayEntities.filter(e => e.category !== 'character' && e.category !== 'location');
+
+    const centerX = 400;
+    const centerY = 350;
+
+    // 인물 중심 모드: 선택한 인물이 중앙에 위치
+    const isFocusedMode = viewMode === 'focused' && focusedCharId;
+    const focusedEntity = isFocusedMode ? displayEntities.find(e => e.id === focusedCharId) : null;
+
+    // 원 크기 계산: 최대 반지름 제한으로 전체가 보이도록
+    const getRadius = (count: number, nodeSize: number, minCount: number) => {
+      const effectiveCount = Math.max(count, minCount);
+      const spacing = nodeSize + 10; // 노드 크기 + 여백
+      const calculated = (effectiveCount * spacing) / (2 * Math.PI);
+      // 최소 100, 최대 350으로 제한
+      return Math.min(350, Math.max(100, calculated));
+    };
+
+    // 인물 중심 모드일 때도 동일한 구조: 중앙 → 인물 → 장소 → 기타
+    if (isFocusedMode && focusedEntity) {
+      const relatedChars = chars.filter(e => e.id !== focusedCharId);
+
+      // 각 레이어별 반지름
+      const charRadius = getRadius(relatedChars.length, 50, 4);
+      const locationRadius = charRadius + 60;
+      const otherRadius = locationRadius + 50;
+
+      const allPositions: { id: string; x: number; y: number; size: number; layer: number }[] = [];
+
+      // 인물 레이어
+      relatedChars.forEach((entity, i) => {
+        const angle = (2 * Math.PI * i) / Math.max(relatedChars.length, 1) - Math.PI / 2;
+        allPositions.push({
+          id: entity.id,
+          x: centerX + charRadius * Math.cos(angle),
+          y: centerY + charRadius * Math.sin(angle),
+          size: 50,
+          layer: 1,
+        });
+      });
+
+      // 장소 레이어
+      locations.forEach((entity, i) => {
+        const angle = (2 * Math.PI * i) / Math.max(locations.length, 1) + Math.PI / 6;
+        allPositions.push({
+          id: entity.id,
+          x: centerX + locationRadius * Math.cos(angle),
+          y: centerY + locationRadius * Math.sin(angle),
+          size: 56,
+          layer: 2,
+        });
+      });
+
+      // 기타 레이어
+      others.forEach((entity, i) => {
+        const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
+        allPositions.push({
+          id: entity.id,
+          x: centerX + otherRadius * Math.cos(angle),
+          y: centerY + otherRadius * Math.sin(angle),
+          size: 28,
+          layer: 3,
+        });
+      });
+
+      // 중앙 노드 (포커스된 인물)
+      const focusedNode: Node = {
+        id: focusedEntity.id,
+        type: 'default',
+        position: { x: centerX, y: centerY },
+        data: { label: focusedEntity.name, entity: focusedEntity },
+        style: {
+          background: CATEGORY_COLORS[focusedEntity.category],
+          color: 'white',
+          border: '3px solid #fbbf24',
+          borderRadius: '50%',
+          width: 60,
+          height: 60,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '11px',
+          fontWeight: 600,
+          boxShadow: '0 0 20px rgba(251, 191, 36, 0.5)',
+        },
+      };
+
+      // 노드 생성
+      const nodes: Node[] = [focusedNode];
+
+      relatedChars.forEach((entity) => {
+        const pos = allPositions.find(p => p.id === entity.id)!;
+        const isPast = entity.isPastScene;
+        nodes.push({
+          id: entity.id,
+          type: 'default',
+          position: { x: pos.x, y: pos.y },
+          data: { label: entity.name, entity },
+          style: {
+            background: CATEGORY_COLORS[entity.category],
+            color: 'white',
+            border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
+            borderRadius: '50%',
+            width: 50,
+            height: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: 500,
+            opacity: isPast ? 0.35 : 1,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+          },
+        });
+      });
+
+      locations.forEach((entity) => {
+        const pos = allPositions.find(p => p.id === entity.id)!;
+        const isPast = entity.isPastScene;
+        nodes.push({
+          id: entity.id,
+          type: 'default',
+          position: { x: pos.x, y: pos.y },
+          data: { label: entity.name, entity },
+          style: {
+            background: CATEGORY_COLORS[entity.category],
+            color: 'white',
+            borderRadius: '6px',
+            width: 56,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '9px',
+            fontWeight: 500,
+            opacity: isPast ? 0.35 : 1,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+          },
+        });
+      });
+
+      others.forEach((entity) => {
+        const pos = allPositions.find(p => p.id === entity.id)!;
+        const isPast = entity.isPastScene;
+        nodes.push({
+          id: entity.id,
+          type: 'smallDot',
+          position: { x: pos.x, y: pos.y },
+          data: { label: entity.name, entity, isPast },
+        });
+      });
+
+      return nodes;
+    }
+
+    // 일반 모드 - 원형 배치
+    const charRadius = getRadius(chars.length, 50, 4);
+    const locationRadius = charRadius + 60;
+    const otherRadius = locationRadius + 50;
+
+    // 초기 위치 설정
+    const allPositions: { id: string; x: number; y: number; size: number; layer: number }[] = [];
+
+    chars.forEach((entity, i) => {
+      const angle = (2 * Math.PI * i) / chars.length - Math.PI / 2;
+      allPositions.push({
+        id: entity.id,
+        x: centerX + charRadius * Math.cos(angle),
+        y: centerY + charRadius * Math.sin(angle),
+        size: 50,
+        layer: 1,
+      });
+    });
+
+    locations.forEach((entity, i) => {
+      const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
+      allPositions.push({
+        id: entity.id,
+        x: centerX + locationRadius * Math.cos(angle),
+        y: centerY + locationRadius * Math.sin(angle),
+        size: 56,
+        layer: 2,
+      });
+    });
+
+    others.forEach((entity, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
+      allPositions.push({
+        id: entity.id,
+        x: centerX + otherRadius * Math.cos(angle),
+        y: centerY + otherRadius * Math.sin(angle),
+        size: 28,
+        layer: 3,
+      });
+    });
+
+    // 캐릭터 노드
+    const charNodes: Node[] = chars.map((entity) => {
+      const pos = allPositions.find(p => p.id === entity.id)!;
+      const isPast = entity.isPastScene;
+      return {
+        id: entity.id,
+        type: 'default',
+        position: { x: pos.x, y: pos.y },
+        data: { label: entity.name, entity },
+        style: {
+          background: CATEGORY_COLORS[entity.category],
+          color: 'white',
+          border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
+          borderRadius: '50%',
+          width: 50,
+          height: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '10px',
+          fontWeight: 500,
+          opacity: isPast ? 0.35 : 1,
+          boxShadow: selectedEntityId === entity.id
+            ? '0 0 15px rgba(59, 130, 246, 0.5)'
+            : '0 2px 8px rgba(0,0,0,0.12)',
+        },
+      };
+    });
+
+    // 장소 노드
+    const locationNodes: Node[] = locations.map((entity) => {
+      const pos = allPositions.find(p => p.id === entity.id)!;
+      const isPast = entity.isPastScene;
+      return {
+        id: entity.id,
+        type: 'default',
+        position: { x: pos.x, y: pos.y },
+        data: { label: entity.name, entity },
+        style: {
+          background: CATEGORY_COLORS[entity.category],
+          color: 'white',
+          border: selectedEntityId === entity.id ? '2px solid #166534' : 'none',
+          borderRadius: '6px',
+          width: 56,
+          height: 28,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '9px',
+          fontWeight: 500,
+          opacity: isPast ? 0.35 : 1,
+          boxShadow: selectedEntityId === entity.id
+            ? '0 0 15px rgba(34, 197, 94, 0.4)'
+            : '0 3px 8px rgba(0,0,0,0.12)',
+        },
+      };
+    });
+
+    // 기타 노드
+    const otherNodes: Node[] = others.map((entity) => {
+      const pos = allPositions.find(p => p.id === entity.id)!;
+      const isPast = entity.isPastScene;
+      return {
+        id: entity.id,
+        type: 'smallDot',
+        position: { x: pos.x, y: pos.y },
+        data: { label: entity.name, entity, isPast },
+      };
+    });
+
+    return [...charNodes, ...locationNodes, ...otherNodes];
+  }, [displayEntities, selectedEntityId, viewMode, focusedCharId]);
+
+  // 엣지 ID -> 원본 HyperEdge 매핑
+  const edgeMap = useMemo(() => {
+    const map: Record<string, HyperEdge> = {};
+    displayEdges.forEach(edge => {
+      map[edge.id] = edge;
+    });
+    return map;
+  }, [displayEdges]);
+
+  // 엣지 생성 - hover 효과 제거로 성능 개선
+  const initialEdges = useMemo(() => {
+    const result: Edge[] = [];
+
+    displayEdges.forEach((edge) => {
+      const color = RELATION_COLORS[edge.type] || '#9ca3af';
+      const dashArray = SENTIMENT_STYLES[edge.sentiment || 'neutral'].strokeDasharray;
+      const relationLabel = RELATION_LABELS[edge.type] || edge.type;
+      const isPast = (edge as EdgeWithOpacity).isPastScene;
+
+      for (let i = 0; i < edge.entities.length; i++) {
+        for (let j = i + 1; j < edge.entities.length; j++) {
+          result.push({
+            id: `${edge.id}-${i}-${j}`,
+            source: edge.entities[i],
+            target: edge.entities[j],
+            type: 'default',
+            animated: false, // 애니메이션 비활성화로 성능 개선
+            style: {
+              stroke: color,
+              strokeWidth: Math.min((edge.strength || 5) / 3, 3),
+              strokeDasharray: dashArray,
+              cursor: 'pointer',
+              opacity: isPast ? 0.25 : 0.7,
+            },
+            label: i === 0 && j === 1 ? relationLabel : undefined,
+            labelStyle: {
+              fontSize: 9,
+              fill: '#666',
+              fontWeight: 400,
+              opacity: isPast ? 0.25 : 1,
+            },
+            labelBgStyle: {
+              fill: 'white',
+              fillOpacity: isPast ? 0.5 : 0.9,
+            },
+            data: {
+              originalEdge: edge,
+            },
+          });
+        }
+      }
+    });
+
+    return result;
+  }, [displayEdges, viewMode]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [flowEdges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // 노드 업데이트 (위치 변경 없이 스타일만)
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
+
+  const handleNodeClick = useCallback((_: any, node: Node) => {
+    const entity = node.data.entity as Entity;
+    selectEntity(entity.id);
+    onNodeClick?.(entity);
+  }, [selectEntity, onNodeClick]);
+
+  const handleEdgeClick = useCallback((_: any, edge: Edge) => {
+    const originalEdgeId = edge.id.split('-')[0] + '-' + edge.id.split('-')[1];
+    const originalEdge = edgeMap[originalEdgeId] || (edge.data?.originalEdge as HyperEdge);
+    if (originalEdge) {
+      if (selectedEdge?.id === originalEdge.id) {
+        setSelectedEdge(null);
+      } else {
+        setSelectedEdge(originalEdge);
+      }
+    }
+  }, [edgeMap, selectedEdge]);
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedEdge(null);
+  }, []);
+
+  const getCharColor = (index: number) => {
+    const colors = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#14b8a6', '#6366f1', '#f43f5e'];
+    return colors[index % colors.length];
+  };
+
   return (
-    <div className="relative w-full h-full bg-gray-50 rounded-xl overflow-hidden">
-      {/* 컨트롤 패널 */}
+    <div className="w-full h-full bg-gray-50 rounded-xl overflow-hidden relative">
+      {/* 뷰 모드 컨트롤 */}
       <div className="absolute top-3 left-3 z-10 bg-white rounded-lg shadow-lg p-2">
         <div className="flex items-center gap-1 mb-2">
           <button
-            onClick={() => setViewMode('full')}
+            onClick={() => { setViewMode('full'); setFocusedCharId(null); }}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
               viewMode === 'full'
                 ? 'bg-blue-100 text-blue-700 font-medium'
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
+            title="전체 보기"
           >
             <Eye className="w-3 h-3" />
             전체
           </button>
           <button
-            onClick={() => setViewMode('simple')}
+            onClick={() => { setViewMode('simple'); setFocusedCharId(null); }}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
               viewMode === 'simple'
                 ? 'bg-green-100 text-green-700 font-medium'
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
+            title="간소화 (인물만)"
           >
             <EyeOff className="w-3 h-3" />
-            인물만
+            간소화
+          </button>
+          <button
+            onClick={() => setViewMode('focused')}
+            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
+              viewMode === 'focused'
+                ? 'bg-purple-100 text-purple-700 font-medium'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            title="인물 중심"
+          >
+            <Focus className="w-3 h-3" />
+            인물 중심
           </button>
         </div>
 
-        {viewMode === 'full' && (
+        {/* 인물 중심 모드: 인물 선택 */}
+        {viewMode === 'focused' && (
           <div className="border-t border-gray-100 pt-2">
+            <div className="text-[10px] text-gray-400 mb-1">관점 인물 선택:</div>
+            <div className="flex flex-wrap gap-1 max-w-[200px]">
+              {characters.map((char, i) => (
+                <button
+                  key={char.id}
+                  onClick={() => setFocusedCharId(focusedCharId === char.id ? null : char.id)}
+                  className={`px-1.5 py-0.5 text-[10px] rounded transition-all ${
+                    focusedCharId === char.id
+                      ? 'text-white shadow'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  style={focusedCharId === char.id ? { backgroundColor: getCharColor(i) } : undefined}
+                >
+                  {char.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 중요도 필터 */}
+        {viewMode === 'full' && (
+          <div className="border-t border-gray-100 pt-2 mt-2">
             <div className="flex items-center gap-2">
               <Filter className="w-3 h-3 text-gray-400" />
               <span className="text-[10px] text-gray-400">중요도</span>
@@ -417,87 +759,50 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
             </div>
             {minImportance > 1 && (
               <div className="text-[9px] text-gray-400 mt-1">
-                {filteredEntities.length}/{entities.length} 표시
+                {displayEntities.length}/{entities.length} 표시
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* 통계 */}
-      <div className="absolute top-3 right-3 z-10 bg-white/95 px-3 py-2 rounded-lg shadow-sm text-xs">
-        <span className="text-gray-500">노드: </span>
-        <span className="font-bold text-blue-600">{filteredEntities.length}</span>
-        <span className="text-gray-300 mx-2">|</span>
-        <span className="text-gray-500">관계: </span>
-        <span className="font-bold text-blue-600">{filteredEdges.length}</span>
-      </div>
+      <ReactFlow
+        nodes={nodes}
+        edges={flowEdges}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
+        onPaneClick={handlePaneClick}
+        connectionMode={ConnectionMode.Loose}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        minZoom={0.2}
+        maxZoom={2}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        edgesFocusable={false}
+        style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
+      >
+        <Background color="#e5e7eb" gap={20} />
+        <Controls className="bg-white rounded-lg shadow-lg" />
+        {displayEntities.length <= 100 && (
+          <MiniMap
+            nodeColor={(node) => {
+              const entity = node.data?.entity as Entity;
+              return entity ? CATEGORY_COLORS[entity.category] : '#ccc';
+            }}
+            className="bg-white rounded-lg shadow-lg"
+          />
+        )}
+      </ReactFlow>
 
-      {/* 그래프 컨테이너 */}
-      <div ref={containerRef} className="w-full h-full" />
-
-      {/* 호버 툴팁 */}
-      {tooltip && (
-        <div
-          className="fixed bg-slate-800 text-white px-3 py-2 rounded-lg shadow-lg text-xs z-50 max-w-xs pointer-events-none"
-          style={{ left: tooltip.x, top: tooltip.y }}
-        >
-          <div className="font-bold text-sm mb-1">{tooltip.entity.name}</div>
-          <div className="text-slate-300 mb-1">
-            <span className="text-slate-400">유형:</span> {tooltip.entity.category}
-          </div>
-          {tooltip.entity.description && (
-            <div className="text-slate-300 text-[11px] leading-tight mt-1 border-t border-slate-600 pt-1">
-              {tooltip.entity.description.slice(0, 100)}
-              {tooltip.entity.description.length > 100 ? '...' : ''}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 선택된 관계 정보 */}
       {selectedEdge && (
-        <div className="absolute bottom-4 left-4 right-4 z-10 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 max-w-md">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <span
-                className="text-xs font-bold px-2 py-1 rounded"
-                style={{
-                  backgroundColor: (RELATION_COLORS[selectedEdge.edge.type] || '#9ca3af') + '20',
-                  color: RELATION_COLORS[selectedEdge.edge.type] || '#666'
-                }}
-              >
-                {selectedEdge.edge.type}
-              </span>
-              {selectedEdge.edge.sentiment && (
-                <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
-                  selectedEdge.edge.sentiment === 'positive' ? 'bg-green-100 text-green-700' :
-                  selectedEdge.edge.sentiment === 'negative' ? 'bg-red-100 text-red-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  {selectedEdge.edge.sentiment === 'positive' ? '긍정' :
-                   selectedEdge.edge.sentiment === 'negative' ? '부정' : '중립'}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setSelectedEdge(null)}
-              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
-
-          <div className="text-sm font-medium text-gray-800 mb-2">
-            {selectedEdge.entities.map(e => e.name).join(' ↔ ')}
-          </div>
-
-          {selectedEdge.edge.statement && (
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {selectedEdge.edge.statement}
-            </p>
-          )}
-        </div>
+        <EdgeDetailPopup
+          edge={selectedEdge}
+          entities={entities}
+          onClose={() => setSelectedEdge(null)}
+        />
       )}
     </div>
   );
@@ -511,6 +816,7 @@ export function GraphLegend() {
     ['organization', '조직'],
     ['item', '아이템'],
     ['event', '사건'],
+    ['time_period', '시간'],
   ];
 
   return (
