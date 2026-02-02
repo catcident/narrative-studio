@@ -15,10 +15,20 @@ interface Scene {
   mood?: string;
   events?: string[];
   order?: number;
+  chapter?: string | null;
+  chapterNumber?: number | null;
+}
+
+interface Chapter {
+  id: string;
+  number: number;
+  title: string;
+  summary?: string;
 }
 
 interface Props {
   scenes: [string, Scene][];
+  chapters?: Record<string, Chapter>;
   selectedSceneId: string | null;
   sceneRangeStart: string | null;
   sceneRangeEnd: string | null;
@@ -28,6 +38,7 @@ interface Props {
 
 export function SceneTimeline({
   scenes,
+  chapters,
   selectedSceneId,
   sceneRangeStart,
   sceneRangeEnd,
@@ -191,6 +202,26 @@ export function SceneTimeline({
     return '시작점을 선택하세요';
   };
 
+  // 장별로 장면 그룹화
+  const groupedScenes = scenes.reduce((acc, [sceneId, scene], index) => {
+    const chapterNum = scene.chapterNumber || 0;
+    if (!acc[chapterNum]) {
+      acc[chapterNum] = [];
+    }
+    acc[chapterNum].push({ sceneId, scene, index });
+    return acc;
+  }, {} as Record<number, { sceneId: string; scene: Scene; index: number }[]>);
+
+  const chapterNumbers = Object.keys(groupedScenes).map(Number).sort((a, b) => a - b);
+  const hasChapters = chapters && Object.keys(chapters).length > 0;
+
+  // 장 제목 가져오기
+  const getChapterTitle = (chapterNum: number): string => {
+    if (!chapters || chapterNum === 0) return '';
+    const chapterId = `C${String(chapterNum).padStart(4, '0')}`;
+    return chapters[chapterId]?.title || `제${chapterNum}장`;
+  };
+
   return (
     <div className="bg-white border-b border-gray-200">
       {/* 타임라인 헤더 */}
@@ -322,104 +353,217 @@ export function SceneTimeline({
             {/* 연결선 */}
             <div className="w-8 h-0.5 bg-gradient-to-r from-gray-300 to-blue-300" />
 
-            {scenes.map(([sceneId, scene], index) => {
-              const isSelected = sceneId === selectedSceneId;
-              const isPast = currentIndex >= 0 && index < currentIndex;
-              const isCurrent = index === currentIndex;
-              const inRange = isInRange(index);
-              const isRangeStart = sceneId === sceneRangeStart;
-              const isRangeEnd = sceneId === sceneRangeEnd;
+            {hasChapters ? (
+              // 장별 그룹화 표시
+              chapterNumbers.map((chapterNum, chapterIdx) => {
+                const chapterScenes = groupedScenes[chapterNum];
+                const chapterTitle = getChapterTitle(chapterNum);
 
-              return (
-                <div key={sceneId} className="flex items-center">
-                  {/* 장면 노드 */}
-                  <button
-                    data-scene-id={sceneId}
-                    onClick={() => handleSceneClick(sceneId, index)}
-                    className={`
-                      relative flex flex-col items-center group
-                      transition-all duration-200
-                    `}
-                  >
-                    {/* 노드 */}
-                    <div
-                      className={`
-                        w-8 h-8 rounded-full flex items-center justify-center
-                        text-xs font-bold transition-all duration-200
-                        ${isRangeMode && inRange
-                          ? 'bg-purple-500 text-white ring-4 ring-purple-200'
-                          : isRangeMode && rangeSelecting
-                            ? 'bg-purple-100 text-purple-600 hover:bg-purple-200 hover:ring-2 hover:ring-purple-300'
-                            : isSelected
-                              ? 'bg-blue-500 text-white ring-4 ring-blue-200 scale-110'
-                              : isPast
-                                ? 'bg-blue-400 text-white'
-                                : 'bg-gray-200 text-gray-600 hover:bg-blue-100 hover:text-blue-600'
-                        }
-                      `}
-                    >
-                      {index + 1}
-                    </div>
-
-                    {/* 범위 표시 마커 */}
-                    {(isRangeStart || isRangeEnd) && (
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2">
-                        <div className={`px-1 py-0.5 rounded text-[8px] font-bold ${
-                          isRangeStart ? 'bg-purple-600 text-white' : 'bg-purple-400 text-white'
-                        }`}>
-                          {isRangeStart ? 'A' : 'B'}
-                        </div>
+                return (
+                  <div key={chapterNum} className="flex items-center">
+                    {/* 장 구분선 (첫 번째 장 제외) */}
+                    {chapterIdx > 0 && (
+                      <div className="flex flex-col items-center mx-2">
+                        <div className="w-0.5 h-12 bg-gradient-to-b from-transparent via-orange-300 to-transparent" />
                       </div>
                     )}
 
-                    {/* 시간 라벨 */}
-                    <div
-                      className={`
-                        mt-1 max-w-[80px] text-center truncate
-                        ${inRange ? 'text-purple-600 font-medium' :
-                          isSelected ? 'text-blue-600 font-medium' : 'text-gray-500'}
-                        text-[10px] leading-tight
-                      `}
-                      title={scene.time || `장면 ${index + 1}`}
-                    >
-                      {scene.time || `장면 ${index + 1}`}
-                    </div>
+                    {/* 장 그룹 */}
+                    <div className="flex flex-col">
+                      {/* 장 제목 */}
+                      {chapterNum > 0 && (
+                        <div className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded mb-1 text-center truncate max-w-[200px]" title={chapterTitle}>
+                          {chapterTitle}
+                        </div>
+                      )}
 
-                    {/* 장소 (선택 시) */}
-                    {scene.location && (
+                      {/* 장면들 */}
+                      <div className="flex items-center">
+                        {chapterScenes.map(({ sceneId, scene, index }, sceneIdx) => {
+                          const isSelected = sceneId === selectedSceneId;
+                          const isPast = currentIndex >= 0 && index < currentIndex;
+                          const isCurrent = index === currentIndex;
+                          const inRange = isInRange(index);
+                          const isRangeStart = sceneId === sceneRangeStart;
+                          const isRangeEnd = sceneId === sceneRangeEnd;
+
+                          return (
+                            <div key={sceneId} className="flex items-center">
+                              {/* 장면 노드 */}
+                              <button
+                                data-scene-id={sceneId}
+                                onClick={() => handleSceneClick(sceneId, index)}
+                                className="relative flex flex-col items-center group transition-all duration-200"
+                              >
+                                {/* 노드 */}
+                                <div
+                                  className={`
+                                    w-8 h-8 rounded-full flex items-center justify-center
+                                    text-xs font-bold transition-all duration-200
+                                    ${isRangeMode && inRange
+                                      ? 'bg-purple-500 text-white ring-4 ring-purple-200'
+                                      : isRangeMode && rangeSelecting
+                                        ? 'bg-purple-100 text-purple-600 hover:bg-purple-200 hover:ring-2 hover:ring-purple-300'
+                                        : isSelected
+                                          ? 'bg-blue-500 text-white ring-4 ring-blue-200 scale-110'
+                                          : isPast
+                                            ? 'bg-blue-400 text-white'
+                                            : 'bg-gray-200 text-gray-600 hover:bg-blue-100 hover:text-blue-600'
+                                    }
+                                  `}
+                                >
+                                  {index + 1}
+                                </div>
+
+                                {/* 범위 표시 마커 */}
+                                {(isRangeStart || isRangeEnd) && (
+                                  <div className="absolute -top-1 left-1/2 -translate-x-1/2">
+                                    <div className={`px-1 py-0.5 rounded text-[8px] font-bold ${
+                                      isRangeStart ? 'bg-purple-600 text-white' : 'bg-purple-400 text-white'
+                                    }`}>
+                                      {isRangeStart ? 'A' : 'B'}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* 시간 라벨 */}
+                                <div
+                                  className={`
+                                    mt-1 max-w-[60px] text-center truncate
+                                    ${inRange ? 'text-purple-600 font-medium' :
+                                      isSelected ? 'text-blue-600 font-medium' : 'text-gray-500'}
+                                    text-[10px] leading-tight
+                                  `}
+                                  title={scene.time || `장면 ${index + 1}`}
+                                >
+                                  {scene.time || `${index + 1}`}
+                                </div>
+
+                                {/* 현재 마커 (일반 모드) */}
+                                {!isRangeMode && isCurrent && (
+                                  <div className="absolute -top-1 left-1/2 -translate-x-1/2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                                  </div>
+                                )}
+                              </button>
+
+                              {/* 연결선 (같은 장 내) */}
+                              {sceneIdx < chapterScenes.length - 1 && (
+                                <div
+                                  className={`
+                                    w-8 h-0.5 mx-0.5
+                                    ${inRange && isInRange(index + 1) ? 'bg-purple-400' :
+                                      isPast || isCurrent ? 'bg-blue-400' : 'bg-gray-200'}
+                                    transition-colors duration-200
+                                  `}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              // 장 구분 없이 단순 표시
+              scenes.map(([sceneId, scene], index) => {
+                const isSelected = sceneId === selectedSceneId;
+                const isPast = currentIndex >= 0 && index < currentIndex;
+                const isCurrent = index === currentIndex;
+                const inRange = isInRange(index);
+                const isRangeStart = sceneId === sceneRangeStart;
+                const isRangeEnd = sceneId === sceneRangeEnd;
+
+                return (
+                  <div key={sceneId} className="flex items-center">
+                    {/* 장면 노드 */}
+                    <button
+                      data-scene-id={sceneId}
+                      onClick={() => handleSceneClick(sceneId, index)}
+                      className="relative flex flex-col items-center group transition-all duration-200"
+                    >
+                      {/* 노드 */}
                       <div
                         className={`
-                          text-[9px] text-gray-400 max-w-[80px] truncate
-                          ${isSelected || inRange ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
-                          transition-opacity
+                          w-8 h-8 rounded-full flex items-center justify-center
+                          text-xs font-bold transition-all duration-200
+                          ${isRangeMode && inRange
+                            ? 'bg-purple-500 text-white ring-4 ring-purple-200'
+                            : isRangeMode && rangeSelecting
+                              ? 'bg-purple-100 text-purple-600 hover:bg-purple-200 hover:ring-2 hover:ring-purple-300'
+                              : isSelected
+                                ? 'bg-blue-500 text-white ring-4 ring-blue-200 scale-110'
+                                : isPast
+                                  ? 'bg-blue-400 text-white'
+                                  : 'bg-gray-200 text-gray-600 hover:bg-blue-100 hover:text-blue-600'
+                          }
                         `}
                       >
-                        {scene.location}
+                        {index + 1}
                       </div>
-                    )}
 
-                    {/* 현재 마커 (일반 모드) */}
-                    {!isRangeMode && isCurrent && (
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                      {/* 범위 표시 마커 */}
+                      {(isRangeStart || isRangeEnd) && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2">
+                          <div className={`px-1 py-0.5 rounded text-[8px] font-bold ${
+                            isRangeStart ? 'bg-purple-600 text-white' : 'bg-purple-400 text-white'
+                          }`}>
+                            {isRangeStart ? 'A' : 'B'}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 시간 라벨 */}
+                      <div
+                        className={`
+                          mt-1 max-w-[80px] text-center truncate
+                          ${inRange ? 'text-purple-600 font-medium' :
+                            isSelected ? 'text-blue-600 font-medium' : 'text-gray-500'}
+                          text-[10px] leading-tight
+                        `}
+                        title={scene.time || `장면 ${index + 1}`}
+                      >
+                        {scene.time || `장면 ${index + 1}`}
                       </div>
-                    )}
-                  </button>
 
-                  {/* 연결선 */}
-                  {index < scenes.length - 1 && (
-                    <div
-                      className={`
-                        w-12 h-0.5 mx-1
-                        ${inRange && isInRange(index + 1) ? 'bg-purple-400' :
-                          isPast || isCurrent ? 'bg-blue-400' : 'bg-gray-200'}
-                        transition-colors duration-200
-                      `}
-                    />
-                  )}
-                </div>
-              );
-            })}
+                      {/* 장소 (선택 시) */}
+                      {scene.location && (
+                        <div
+                          className={`
+                            text-[9px] text-gray-400 max-w-[80px] truncate
+                            ${isSelected || inRange ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+                            transition-opacity
+                          `}
+                        >
+                          {scene.location}
+                        </div>
+                      )}
+
+                      {/* 현재 마커 (일반 모드) */}
+                      {!isRangeMode && isCurrent && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* 연결선 */}
+                    {index < scenes.length - 1 && (
+                      <div
+                        className={`
+                          w-12 h-0.5 mx-1
+                          ${inRange && isInRange(index + 1) ? 'bg-purple-400' :
+                            isPast || isCurrent ? 'bg-blue-400' : 'bg-gray-200'}
+                          transition-colors duration-200
+                        `}
+                      />
+                    )}
+                  </div>
+                );
+              })
+            )}
 
             {/* 연결선 */}
             <div className="w-8 h-0.5 bg-gradient-to-r from-blue-300 to-gray-300" />

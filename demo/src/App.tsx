@@ -273,6 +273,7 @@ function App() {
       {viewMode === 'graph' && scenes.length > 0 && (
         <SceneTimeline
           scenes={scenes}
+          chapters={ontology.chapters}
           selectedSceneId={selectedSceneId}
           sceneRangeStart={sceneRangeStart}
           sceneRangeEnd={sceneRangeEnd}
