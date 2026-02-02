@@ -67,6 +67,7 @@ export interface Entity {
   firstMention?: SourceRef;
   mentions?: SourceRef[];
   scenes?: string[];  // 등장 장면 ID 목록
+  importance?: number;  // 중요도 1~10 (10이 가장 중요)
 }
 
 export interface HyperEdge {

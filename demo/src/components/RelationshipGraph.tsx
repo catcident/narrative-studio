@@ -18,7 +18,7 @@ import type { Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useStore } from '../store';
 import type { Entity, HyperEdge, EntityCategory } from '../types';
-import { X, Eye, EyeOff, Focus } from 'lucide-react';
+import { X, Eye, EyeOff, Focus, Filter } from 'lucide-react';
 
 type GraphViewMode = 'full' | 'simple' | 'focused';
 
@@ -188,6 +188,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharId, setFocusedCharId] = useState<string | null>(null);
+  const [minImportance, setMinImportance] = useState<number>(1);  // 최소 중요도 필터
 
   // 인물 목록 추출
   const characters = useMemo(() =>
@@ -195,14 +196,29 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     [entities]
   );
 
+  // 중요도 필터 적용
+  const importanceFilteredEntities = useMemo(() => {
+    if (minImportance <= 1) return entities;
+    // 인물은 항상 표시, 나머지는 중요도 필터 적용
+    return entities.filter(e =>
+      e.category === 'character' || (e.importance || 5) >= minImportance
+    );
+  }, [entities, minImportance]);
+
+  const importanceFilteredEdges = useMemo(() => {
+    if (minImportance <= 1) return edges;
+    const entityIds = new Set(importanceFilteredEntities.map(e => e.id));
+    return edges.filter(e => e.entities.every(id => entityIds.has(id)));
+  }, [edges, importanceFilteredEntities, minImportance]);
+
   // 인물 중심 모드: 해당 인물이 직접 연결된 것만 표시
   const { filteredEntities, filteredEdges } = useMemo(() => {
     if (viewMode !== 'focused' || !focusedCharId) {
-      return { filteredEntities: entities, filteredEdges: edges };
+      return { filteredEntities: importanceFilteredEntities, filteredEdges: importanceFilteredEdges };
     }
 
     // 포커스된 인물이 직접 연결된 관계만 필터링
-    const fEdges = edges.filter(e => e.entities.includes(focusedCharId));
+    const fEdges = importanceFilteredEdges.filter(e => e.entities.includes(focusedCharId));
 
     // 해당 관계에 포함된 엔티티만 표시 (포커스된 인물 + 직접 연결된 엔티티들)
     const relatedEntityIds = new Set<string>([focusedCharId]);
@@ -210,10 +226,10 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       edge.entities.forEach(id => relatedEntityIds.add(id));
     });
 
-    const fEntities = entities.filter(e => relatedEntityIds.has(e.id));
+    const fEntities = importanceFilteredEntities.filter(e => relatedEntityIds.has(e.id));
 
     return { filteredEntities: fEntities, filteredEdges: fEdges };
-  }, [entities, edges, viewMode, focusedCharId]);
+  }, [importanceFilteredEntities, importanceFilteredEdges, viewMode, focusedCharId]);
 
   // 간소화 모드: 인물만 표시
   const displayEntities = useMemo(() => {
@@ -521,6 +537,30 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 중요도 필터 */}
+        {viewMode === 'full' && (
+          <div className="border-t border-gray-100 pt-2 mt-2">
+            <div className="flex items-center gap-2">
+              <Filter className="w-3 h-3 text-gray-400" />
+              <span className="text-[10px] text-gray-400">중요도</span>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={minImportance}
+                onChange={(e) => setMinImportance(Number(e.target.value))}
+                className="w-16 h-1 accent-blue-500"
+              />
+              <span className="text-[10px] text-gray-600 font-medium w-4">{minImportance}</span>
+            </div>
+            {minImportance > 1 && (
+              <div className="text-[9px] text-gray-400 mt-1">
+                {displayEntities.length}/{entities.length} 표시
+              </div>
+            )}
           </div>
         )}
       </div>

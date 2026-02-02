@@ -46,7 +46,8 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
       "description": "설명 (소유자/위치 정보 포함)",
       "scenes": [1, 2],
       "attributes": {"gender": "", "age": "", "occupation": "", "owner": "소유자명(있으면)"},
-      "aliases": ["별칭1"]
+      "aliases": ["별칭1"],
+      "importance": 5
     }
   ],
   "relationships": [
@@ -101,7 +102,15 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 
 ### 4. 조직/기관 추출
 - 학교, 회사, 동아리, 가게 등은 organization으로 추출
-- 인물과의 소속 관계도 추출`;
+- 인물과의 소속 관계도 추출
+
+### 5. 중요도(importance) 평가 (1~10)
+각 엔티티의 스토리 중요도를 1~10으로 평가:
+- **10**: 주인공, 핵심 인물
+- **8-9**: 주요 조연, 중요 장소 (집, 학교 등 반복 등장)
+- **6-7**: 일반 조연, 주요 아이템 (스토리에 영향을 주는 물건)
+- **4-5**: 배경 인물, 일반 장소
+- **1-3**: 단순 언급, 일회성 소품 (커피, 담배 등 디테일용)`;
 
 export async function extractOntology(
   text: string,
@@ -548,6 +557,7 @@ function buildOntology(extracted: any, title: string): NovelOntology {
       attributes: e.attributes || {},
       scenes: sceneIds,  // 등장 장면 ID들 (문자열)
       firstMention: { chapter: 1 },
+      importance: e.importance || 5,  // 기본 중요도 5
     };
     nameToId[e.name] = id;
     // 소문자로도 매핑

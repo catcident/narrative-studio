@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Users, Package, Sparkles } from 'lucide-react';
+import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Users, Package, Sparkles, Filter } from 'lucide-react';
 import { useStore } from '../store';
 import type { Entity, HyperEdge } from '../types';
 
@@ -28,17 +28,33 @@ export function WorldView() {
   const { ontology, selectEntity, selectedEntityId } = useStore();
   const [activeTab, setActiveTab] = useState<WorldTab>('locations');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [minImportance, setMinImportance] = useState<number>(1);
 
-  // 카테고리별 엔티티 분류
+  // 카테고리별 엔티티 분류 (중요도 필터 적용)
   const categorizedEntities = useMemo(() => {
     if (!ontology) return { locations: [], organizations: [], concepts: [], items: [] };
 
     const entities = Object.values(ontology.entities);
+    const filterByImportance = (e: Entity) =>
+      minImportance <= 1 || (e.importance || 5) >= minImportance;
+
     return {
-      locations: entities.filter(e => e.category === 'location'),
-      organizations: entities.filter(e => e.category === 'organization'),
-      concepts: entities.filter(e => e.category === 'concept'),
-      items: entities.filter(e => e.category === 'item'),
+      locations: entities.filter(e => e.category === 'location' && filterByImportance(e)),
+      organizations: entities.filter(e => e.category === 'organization' && filterByImportance(e)),
+      concepts: entities.filter(e => e.category === 'concept' && filterByImportance(e)),
+      items: entities.filter(e => e.category === 'item' && filterByImportance(e)),
+    };
+  }, [ontology, minImportance]);
+
+  // 전체 카운트 (필터 전)
+  const totalCounts = useMemo(() => {
+    if (!ontology) return { locations: 0, organizations: 0, concepts: 0, items: 0 };
+    const entities = Object.values(ontology.entities);
+    return {
+      locations: entities.filter(e => e.category === 'location').length,
+      organizations: entities.filter(e => e.category === 'organization').length,
+      concepts: entities.filter(e => e.category === 'concept').length,
+      items: entities.filter(e => e.category === 'item').length,
     };
   }, [ontology]);
 
@@ -341,9 +357,28 @@ export function WorldView() {
     <div className="h-full flex flex-col bg-gray-50">
       {/* 탭 헤더 */}
       <div className="p-3 bg-white border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-indigo-500" />
-          <span className="text-sm font-medium text-gray-700">세계관 설정</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-indigo-500" />
+            <span className="text-sm font-medium text-gray-700">세계관 설정</span>
+          </div>
+
+          {/* 중요도 필터 */}
+          <div className="flex items-center gap-2">
+            <Filter className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-xs text-gray-500">중요도</span>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={minImportance}
+              onChange={(e) => setMinImportance(Number(e.target.value))}
+              className="w-20 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+            />
+            <span className="text-xs font-medium text-gray-600 w-4">
+              {minImportance > 1 ? `${minImportance}+` : '전체'}
+            </span>
+          </div>
         </div>
 
         {/* 탭 버튼 */}
@@ -412,10 +447,22 @@ export function WorldView() {
       <div className="p-3 bg-white border-t border-gray-200">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>
-            총 {categorizedEntities.locations.length}개 장소 ·{' '}
-            {categorizedEntities.organizations.length}개 조직 ·{' '}
-            {categorizedEntities.concepts.length}개 세계관 설정 ·{' '}
-            {categorizedEntities.items.length}개 아이템
+            {minImportance > 1 ? (
+              <>
+                중요도 {minImportance}+ 필터 적용: {' '}
+                {categorizedEntities.locations.length}/{totalCounts.locations} 장소 ·{' '}
+                {categorizedEntities.organizations.length}/{totalCounts.organizations} 조직 ·{' '}
+                {categorizedEntities.concepts.length}/{totalCounts.concepts} 세계관 ·{' '}
+                {categorizedEntities.items.length}/{totalCounts.items} 아이템
+              </>
+            ) : (
+              <>
+                총 {totalCounts.locations}개 장소 ·{' '}
+                {totalCounts.organizations}개 조직 ·{' '}
+                {totalCounts.concepts}개 세계관 설정 ·{' '}
+                {totalCounts.items}개 아이템
+              </>
+            )}
           </span>
         </div>
       </div>
