@@ -146,64 +146,171 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 - **4-5**: 배경 인물, 일반 장소
 - **1-3**: 단순 언급, 일회성 소품 (커피, 담배 등 디테일용)`;
 
+// 중간 저장용 타입
+export interface ExtractionProgress {
+  title: string;
+  totalChunks: number;
+  processedChunks: number;
+  allExtracted: any[];
+  knownCharacters: { name: string; description: string; aliases?: string[] }[];
+  chunks: string[];
+  timestamp: number;
+}
+
+// localStorage 키
+const PROGRESS_KEY = 'novel-extraction-progress';
+
+// 중간 결과 저장
+export function saveProgress(progress: ExtractionProgress): void {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+    console.log(`진행상황 저장: ${progress.processedChunks}/${progress.totalChunks}`);
+  } catch (e) {
+    console.warn('진행상황 저장 실패:', e);
+  }
+}
+
+// 저장된 진행상황 불러오기
+export function loadProgress(): ExtractionProgress | null {
+  try {
+    const saved = localStorage.getItem(PROGRESS_KEY);
+    if (saved) {
+      const progress = JSON.parse(saved) as ExtractionProgress;
+      // 24시간 이내의 것만 복원
+      if (Date.now() - progress.timestamp < 24 * 60 * 60 * 1000) {
+        return progress;
+      }
+    }
+  } catch (e) {
+    console.warn('진행상황 불러오기 실패:', e);
+  }
+  return null;
+}
+
+// 진행상황 삭제
+export function clearProgress(): void {
+  localStorage.removeItem(PROGRESS_KEY);
+}
+
+// 저장된 진행상황이 있는지 확인
+export function hasProgress(): ExtractionProgress | null {
+  return loadProgress();
+}
+
+// knownCharacters 크기 제한 (최근 50명만 유지)
+const MAX_KNOWN_CHARACTERS = 50;
+
+function trimKnownCharacters(
+  characters: { name: string; description: string; aliases?: string[] }[]
+): { name: string; description: string; aliases?: string[] }[] {
+  if (characters.length <= MAX_KNOWN_CHARACTERS) {
+    return characters;
+  }
+  // 최근 것들만 유지
+  return characters.slice(-MAX_KNOWN_CHARACTERS);
+}
+
 export async function extractOntology(
   text: string,
   title: string,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  resumeFrom?: ExtractionProgress
 ): Promise<NovelOntology> {
   // 텍스트를 청크로 분할 (5000자씩)
   const CHUNK_SIZE = 5000;
-  const chunks: string[] = [];
-  for (let i = 0; i < text.length; i += CHUNK_SIZE) {
-    chunks.push(text.slice(i, i + CHUNK_SIZE));
+  let chunks: string[] = [];
+  let allExtracted: any[] = [];
+  let knownCharacters: { name: string; description: string; aliases?: string[] }[] = [];
+  let startChunk = 0;
+
+  // 이어하기인 경우
+  if (resumeFrom) {
+    chunks = resumeFrom.chunks;
+    allExtracted = resumeFrom.allExtracted;
+    knownCharacters = resumeFrom.knownCharacters;
+    startChunk = resumeFrom.processedChunks;
+    console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개`);
+    onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
+  } else {
+    // 새로 시작
+    for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+      chunks.push(text.slice(i, i + CHUNK_SIZE));
+    }
   }
 
   const totalChunks = chunks.length;
-  console.log(`텍스트를 ${totalChunks}개 청크로 분할`);
-  onProgress?.(`텍스트를 ${totalChunks}개 부분으로 분할...`);
 
-  // 각 청크에서 추출 (이전 인물 정보를 다음 청크에 전달)
-  const allExtracted: any[] = [];
-  let knownCharacters: { name: string; description: string; aliases?: string[] }[] = [];
+  if (!resumeFrom) {
+    console.log(`텍스트를 ${totalChunks}개 청크로 분할`);
+    onProgress?.(`텍스트를 ${totalChunks}개 부분으로 분할...`);
+  }
 
-  for (let i = 0; i < chunks.length; i++) {
+  for (let i = startChunk; i < chunks.length; i++) {
     const msg = `AI 분석 중... (${i + 1}/${totalChunks})`;
     console.log(msg);
     onProgress?.(msg);
 
-    const extracted = await extractFromChunk(chunks[i], title, i + 1, knownCharacters);
-    if (extracted) {
-      allExtracted.push(extracted);
+    try {
+      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimKnownCharacters(knownCharacters));
+      if (extracted) {
+        allExtracted.push(extracted);
 
-      // 이 청크에서 발견된 인물들을 다음 청크를 위해 저장
-      for (const entity of (extracted.entities || [])) {
-        if (entity.category === 'character') {
-          const existing = knownCharacters.find(c =>
-            c.name === entity.name ||
-            c.aliases?.includes(entity.name) ||
-            entity.aliases?.includes(c.name)
-          );
-          if (existing) {
-            // 설명 업데이트
-            if (entity.description && !existing.description.includes(entity.description)) {
-              existing.description = (existing.description + ' ' + entity.description).slice(0, 200);
+        // 이 청크에서 발견된 인물들을 다음 청크를 위해 저장
+        for (const entity of (extracted.entities || [])) {
+          if (entity.category === 'character') {
+            const existing = knownCharacters.find(c =>
+              c.name === entity.name ||
+              c.aliases?.includes(entity.name) ||
+              entity.aliases?.includes(c.name)
+            );
+            if (existing) {
+              // 설명 업데이트
+              if (entity.description && !existing.description.includes(entity.description)) {
+                existing.description = (existing.description + ' ' + entity.description).slice(0, 200);
+              }
+              // 별칭 병합
+              if (entity.aliases) {
+                existing.aliases = [...new Set([...(existing.aliases || []), ...entity.aliases])];
+              }
+            } else {
+              knownCharacters.push({
+                name: entity.name,
+                description: (entity.description || '').slice(0, 100),
+                aliases: entity.aliases || []
+              });
             }
-            // 별칭 병합
-            if (entity.aliases) {
-              existing.aliases = [...new Set([...(existing.aliases || []), ...entity.aliases])];
-            }
-          } else {
-            knownCharacters.push({
-              name: entity.name,
-              description: (entity.description || '').slice(0, 100),
-              aliases: entity.aliases || []
-            });
           }
         }
+
+        // 매 청크 후 진행상황 저장
+        saveProgress({
+          title,
+          totalChunks,
+          processedChunks: i + 1,
+          allExtracted,
+          knownCharacters,
+          chunks,
+          timestamp: Date.now(),
+        });
       }
+    } catch (error: any) {
+      console.error(`청크 ${i + 1} 처리 실패:`, error);
+      // 진행상황 저장 후 에러 전파
+      saveProgress({
+        title,
+        totalChunks,
+        processedChunks: i,
+        allExtracted,
+        knownCharacters,
+        chunks,
+        timestamp: Date.now(),
+      });
+      throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${error.message}. 이어하기로 재시도할 수 있습니다.`);
     }
   }
 
+  // 완료되면 진행상황 삭제
+  clearProgress();
   onProgress?.('인물 정보 병합 중...');
 
   // 결과 병합
