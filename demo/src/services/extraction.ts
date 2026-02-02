@@ -8,18 +8,21 @@ import type { NovelOntology } from '../types';
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
 const MODEL = 'google/gemini-2.0-flash-lite-001';
 
-const SYSTEM_PROMPT = `당신은 소설 분석 전문가입니다. 텍스트에서 인물, 장소, 물건, 관계를 빠짐없이 추출합니다.
+const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍스트에서 인물, 장소, 물건, 세계관, 배경 정보를 빠짐없이 추출하여 "설정집"을 만듭니다.
 
 규칙:
 1. 텍스트에 명시된 정보만 추출 (추측 금지)
 2. 인물의 모든 특성을 기록 (성별, 나이, 직업, 성격, 외모, 말투 등)
 3. 인물 간 관계를 구체적으로 분석 (감정, 갈등, 신뢰 등)
 4. 1인칭 화자("나")도 인물로 취급
-5. 물건/아이템의 소유자나 사용자가 언급되면 반드시 관계로 추출
-   예: "화자가 피우는 담배" → "나"와 "담배" 사이에 "소유" 관계 필수
-6. JSON만 출력 (설명 없이)`;
+5. 장소/건물/지역은 반드시 location 카테고리로 추출
+   예: 학교, 집, 카페, 거리, 공원, 사무실, 병원 등
+6. 물건/아이템은 반드시 item 카테고리로 추출하고, 소유자/사용자 관계 필수
+   예: "화자가 피우는 담배" → "나"와 "담배" 사이에 "소유" 관계
+7. 세계관/시대배경/사회적 맥락은 concept 카테고리로 추출
+8. JSON만 출력 (설명 없이)`;
 
-const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석.
+const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정집을 만드세요.
 
 {{text}}
 
@@ -34,22 +37,23 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석.
 ## JSON 형식
 {
   "scenes": [
-    {"id": 1, "time": "시간표현(있으면)", "location": "장소", "summary": "요약"}
+    {"id": 1, "time": "시간표현(있으면)", "location": "장소명", "summary": "요약"}
   ],
   "entities": [
     {
       "name": "이름",
-      "category": "character/location/item/event/concept",
-      "description": "설명",
+      "category": "character/location/item/event/concept/organization",
+      "description": "설명 (소유자/위치 정보 포함)",
       "scenes": [1, 2],
-      "attributes": {"gender": "", "age": "", "occupation": ""}
+      "attributes": {"gender": "", "age": "", "occupation": "", "owner": "소유자명(있으면)"},
+      "aliases": ["별칭1"]
     }
   ],
   "relationships": [
     {
       "from": "A",
       "to": "B",
-      "type": "가족/연인/친구/적대/동료/주인/위치/소유/관련",
+      "type": "관계타입",
       "description": "관계 설명",
       "sentiment": "positive/negative/neutral",
       "strength": 5,
@@ -58,25 +62,46 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석.
   ]
 }
 
+## 엔티티 카테고리 (필수 구분)
+- **character**: 인물 (이름 있는 사람, 화자 "나" 포함)
+- **location**: 장소/건물/지역 (학교, 집, 카페, 거리, 공원, 사무실, 병원, 방, 골목 등)
+- **item**: 물건/도구 (담배, 책, 휴대폰, 자동차, 음식, 옷 등)
+- **organization**: 조직/단체 (회사, 학교 기관, 동아리, 가게 등)
+- **event**: 사건/행사 (축제, 사고, 모임 등)
+- **concept**: 추상적 개념/세계관 설정 (시대, 규칙, 전통, 감정 등)
+
 ## 관계 타입 (한글로 작성)
 - 가족: 부모, 자녀, 형제, 친척 등
 - 연인: 연애, 짝사랑, 전 연인 등
 - 친구: 친한 친구, 아는 사람 등
 - 적대: 적, 라이벌, 갈등 관계 등
 - 동료: 직장동료, 학교친구, 팀원 등
-- 주인: 반려동물, 소유물의 주인
-- 위치: 어딘가에 있음 (인물-장소)
-- 소유: 무언가를 가지고/사용하고 있음 (인물-물건)
-- 습관: 특정 행위나 물건을 습관적으로 사용 (예: "나"가 담배를 피움)
+- 소속: 인물이 조직/장소에 소속됨 (예: 학생-학교)
+- 위치: 인물/물건이 장소에 있음
+- 소유: 인물이 물건을 가지고 있음/사용함
+- 포함: 장소가 다른 장소를 포함 (예: 학교-교실)
 - 관련: 기타 연관 관계
 
-## ⚠️ 중요: 인물-물건/개념 관계 추출 필수
-- 인물이 소유하거나 사용하는 물건은 반드시 관계로 추출
-- 예시: "화자가 피우는 담배" → "나"(from) - "담배"(to), type: "소유" 또는 "습관"
-- 예시: "그녀가 타고 다니는 자전거" → "그녀"(from) - "자전거"(to), type: "소유"
-- 물건의 설명에 소유자가 언급되면 반드시 해당 관계 추출
-- 인물뿐 아니라 장소, 물건, 개념도 엔티티로
-- 인물과 장소/물건 사이 관계도 빠짐없이 추출`;
+## ⚠️ 필수 추출 규칙
+
+### 1. 장소는 반드시 추출
+- 장면에 등장하는 모든 장소를 location으로 추출
+- 예: "학교 앞 카페에서" → "학교"(location), "카페"(location) 둘 다 추출
+- 장소 간 포함 관계도 추출 (학교 안에 교실이 있으면 "포함" 관계)
+
+### 2. 물건-인물 관계 필수
+- 물건의 description에 소유자가 언급되면 반드시 관계 추출
+- "화자가 피우는 담배" → entities에 담배 추가 + relationships에 "나"-"담배" 소유관계 추가
+- "그녀의 가방" → entities에 가방 추가 + relationships에 "그녀"-"가방" 소유관계 추가
+- attributes의 owner 필드에 소유자 이름도 기록
+
+### 3. 인물-장소 관계 필수
+- 인물이 어떤 장소에 있으면/방문하면 "위치" 관계 추출
+- "그는 학교에 갔다" → "그"-"학교" 위치 관계
+
+### 4. 조직/기관 추출
+- 학교, 회사, 동아리, 가게 등은 organization으로 추출
+- 인물과의 소속 관계도 추출`;
 
 export async function extractOntology(
   text: string,
@@ -140,7 +165,12 @@ export async function extractOntology(
 
   // 결과 병합
   const merged = mergeExtractions(allExtracted);
-  return buildOntology(merged, title);
+
+  // 후처리: 누락된 관계 자동 생성
+  onProgress?.('관계 검증 및 보완 중...');
+  const validated = inferMissingRelationships(merged);
+
+  return buildOntology(validated, title);
 }
 
 async function extractFromChunk(
@@ -398,6 +428,104 @@ function tryFixJson(content: string): any {
   } catch {
     return null;
   }
+}
+
+/**
+ * 후처리: 엔티티 설명에서 누락된 관계 자동 생성
+ * "화자가 피우는 담배" 같은 설명에서 소유 관계를 추출
+ */
+function inferMissingRelationships(extracted: any): any {
+  const { entities, relationships } = extracted;
+  const newRelationships: any[] = [];
+
+  // 소유자/사용자 패턴
+  const ownerPatterns = [
+    /^(.+?)(?:가|이|의)\s*(?:피우는|먹는|마시는|쓰는|타는|가진|입는|쓰던|읽는|보는|사용하는|운전하는|타고\s*다니는|가지고\s*있는)/,
+    /^(.+?)(?:가|이)\s*(?:사는|있는|거주하는|다니는|일하는|근무하는)\s*/,
+    /^(.+?)의\s+/,  // "~의 물건" 패턴
+  ];
+
+  // 인물 이름 목록
+  const characterNames = entities
+    .filter((e: any) => e.category === 'character')
+    .map((e: any) => e.name.toLowerCase());
+
+  // 1인칭 표현
+  const firstPersonNames = ['나', '화자', '주인공', '나는'];
+
+  for (const entity of entities) {
+    if (entity.category === 'character') continue; // 인물은 스킵
+
+    const desc = entity.description || '';
+    const attrOwner = entity.attributes?.owner;
+
+    // attributes.owner가 있으면 관계 생성
+    if (attrOwner) {
+      const ownerName = normalizeOwnerName(attrOwner);
+      if (!hasRelationship(relationships, ownerName, entity.name) &&
+          !hasRelationship(newRelationships, ownerName, entity.name)) {
+        newRelationships.push({
+          from: ownerName,
+          to: entity.name,
+          type: '소유',
+          description: `${ownerName}의 ${entity.name}`,
+          sentiment: 'neutral',
+          strength: 5,
+          scenes: entity.scenes || []
+        });
+      }
+    }
+
+    // 설명에서 소유자 패턴 찾기
+    for (const pattern of ownerPatterns) {
+      const match = desc.match(pattern);
+      if (match) {
+        let ownerName = match[1].trim();
+        ownerName = normalizeOwnerName(ownerName);
+
+        // 이미 관계가 있는지 확인
+        if (!hasRelationship(relationships, ownerName, entity.name) &&
+            !hasRelationship(newRelationships, ownerName, entity.name)) {
+          newRelationships.push({
+            from: ownerName,
+            to: entity.name,
+            type: '소유',
+            description: desc,
+            sentiment: 'neutral',
+            strength: 5,
+            scenes: entity.scenes || []
+          });
+        }
+        break; // 첫 번째 매칭만 사용
+      }
+    }
+  }
+
+  console.log(`후처리: ${newRelationships.length}개의 누락된 관계 추가됨`);
+
+  return {
+    ...extracted,
+    relationships: [...relationships, ...newRelationships]
+  };
+}
+
+// 소유자 이름 정규화
+function normalizeOwnerName(name: string): string {
+  const firstPersonAliases = ['화자', '주인공', '나는', '내'];
+  if (firstPersonAliases.includes(name.toLowerCase())) {
+    return '나';
+  }
+  return name;
+}
+
+// 관계 존재 여부 확인
+function hasRelationship(relationships: any[], from: string, to: string): boolean {
+  const normFrom = from.toLowerCase();
+  const normTo = to.toLowerCase();
+  return relationships.some(r =>
+    (r.from?.toLowerCase() === normFrom && r.to?.toLowerCase() === normTo) ||
+    (r.from?.toLowerCase() === normTo && r.to?.toLowerCase() === normFrom)
+  );
 }
 
 function buildOntology(extracted: any, title: string): NovelOntology {
