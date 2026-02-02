@@ -779,7 +779,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         minZoom={0.2}
         maxZoom={2}
-        nodesDraggable={false}
+        nodesDraggable={true}
         nodesConnectable={false}
         edgesFocusable={false}
         style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
