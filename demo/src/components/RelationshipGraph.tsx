@@ -308,15 +308,15 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const centerX = 400;
     const centerY = 350;
 
-    // 인물 수에 따라 동적으로 반지름 계산 (넉넉하게)
+    // 인물 수에 따라 동적으로 반지름 계산
     const charCount = chars.length;
     const locationCount = locations.length;
     const otherCount = others.length;
 
-    // 각 레이어별로 노드 수에 맞춰 반지름 계산 (노드끼리 안 겹치게)
-    const charRadius = Math.max(200, charCount * 40);
-    const locationRadius = Math.max(charRadius + 180, charRadius + locationCount * 30);
-    const otherRadius = Math.max(locationRadius + 200, locationRadius + otherCount * 25);
+    // 인물 원 반지름: 인물 수에 맞춰 적당히 (최소 150, 인물당 50px)
+    const charRadius = Math.max(150, charCount * 50);
+    const locationRadius = charRadius + 140;
+    const otherRadius = locationRadius + 120;
 
     // 캐릭터를 원형으로 배치 (내부 원)
     const charNodes: Node[] = chars.map((entity, i) => {
@@ -351,7 +351,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       };
     });
 
-    // 장소는 1:2 비율 직사각형 (세로가 길게)
+    // 장소는 1:2 비율 직사각형 (가로가 길게)
     const locationNodes: Node[] = locations.map((entity, i) => {
       const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
       return {
@@ -370,15 +370,13 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           color: 'white',
           border: selectedEntityId === entity.id ? '2px solid #166534' : 'none',
           borderRadius: '8px',
-          width: 36,
-          height: 72,
+          width: 72,
+          height: 36,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: '10px',
           fontWeight: 500,
-          textAlign: 'center' as const,
-          padding: '4px',
           boxShadow: selectedEntityId === entity.id
             ? '0 0 15px rgba(34, 197, 94, 0.4)'
             : '0 3px 8px rgba(0,0,0,0.12)',
