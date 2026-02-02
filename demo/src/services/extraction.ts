@@ -964,3 +964,132 @@ function buildOntology(extracted: any, title: string): NovelOntology {
     },
   };
 }
+
+/**
+ * 두 온톨로지를 병합 (기존 결과에 새 분석 결과 추가)
+ */
+export function mergeOntologies(
+  existing: NovelOntology,
+  newOntology: NovelOntology
+): NovelOntology {
+  // 엔티티 이름 -> ID 매핑 (기존)
+  const existingNameToId: Record<string, string> = {};
+  Object.values(existing.entities).forEach((e: any) => {
+    existingNameToId[e.name] = e.id;
+    (e.aliases || []).forEach((alias: string) => {
+      existingNameToId[alias] = e.id;
+    });
+  });
+
+  // 새 엔티티 ID 매핑 (중복 방지)
+  const newIdMapping: Record<string, string> = {};
+  const mergedEntities = { ...existing.entities };
+
+  let entityCounter = Object.keys(existing.entities).length;
+  Object.values(newOntology.entities).forEach((e: any) => {
+    // 이름이나 별칭으로 기존 엔티티 찾기
+    const existingId = existingNameToId[e.name] ||
+      (e.aliases || []).find((a: string) => existingNameToId[a]);
+
+    if (existingId) {
+      // 기존 엔티티에 정보 추가
+      newIdMapping[e.id] = existingNameToId[e.name] || existingId;
+      const existing = mergedEntities[newIdMapping[e.id]];
+      if (existing) {
+        // 별칭 병합
+        existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
+        // 설명 추가 (중복 아닐 때만)
+        if (e.description && !existing.description?.includes(e.description)) {
+          existing.description = (existing.description + ' ' + e.description).slice(0, 500);
+        }
+      }
+    } else {
+      // 새 엔티티 추가
+      entityCounter++;
+      const newId = `E${String(entityCounter).padStart(4, '0')}`;
+      newIdMapping[e.id] = newId;
+      existingNameToId[e.name] = newId;
+      mergedEntities[newId] = { ...e, id: newId };
+    }
+  });
+
+  // 관계 병합
+  const mergedEdges = { ...existing.hyperedges };
+  let edgeCounter = Object.keys(existing.hyperedges).length;
+
+  Object.values(newOntology.hyperedges).forEach((edge: any) => {
+    // 엔티티 ID 변환
+    const mappedEntities = edge.entities.map((id: string) => newIdMapping[id] || id);
+
+    // 동일한 관계가 이미 있는지 확인
+    const isDuplicate = Object.values(mergedEdges).some((e: any) =>
+      e.type === edge.type &&
+      e.entities.length === mappedEntities.length &&
+      e.entities.every((id: string) => mappedEntities.includes(id))
+    );
+
+    if (!isDuplicate) {
+      edgeCounter++;
+      const newId = `H${String(edgeCounter).padStart(4, '0')}`;
+      mergedEdges[newId] = { ...edge, id: newId, entities: mappedEntities };
+    }
+  });
+
+  // 장면 병합
+  const mergedSnapshots = { ...existing.snapshots };
+  let snapshotCounter = Object.keys(existing.snapshots || {}).length;
+
+  Object.values(newOntology.snapshots || {}).forEach((snap: any) => {
+    snapshotCounter++;
+    const newId = `S${String(snapshotCounter).padStart(4, '0')}`;
+    const mappedCharacters = (snap.charactersPresent || []).map((id: string) => newIdMapping[id] || id);
+    mergedSnapshots[newId] = {
+      ...snap,
+      id: newId,
+      order: snapshotCounter,
+      charactersPresent: mappedCharacters
+    };
+  });
+
+  // 챕터 병합
+  const mergedChapters = { ...existing.chapters };
+  let chapterCounter = Object.keys(existing.chapters || {}).length;
+
+  Object.values(newOntology.chapters || {}).forEach((ch: any) => {
+    chapterCounter++;
+    const newId = `C${String(chapterCounter).padStart(4, '0')}`;
+    mergedChapters[newId] = { ...ch, id: newId, number: chapterCounter };
+  });
+
+  // 통계 재계산
+  const entitiesByCategory: Record<string, number> = {};
+  const edgesByType: Record<string, number> = {};
+
+  Object.values(mergedEntities).forEach((e: any) => {
+    entitiesByCategory[e.category] = (entitiesByCategory[e.category] || 0) + 1;
+  });
+
+  Object.values(mergedEdges).forEach((e: any) => {
+    edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
+  });
+
+  return {
+    metadata: {
+      ...existing.metadata,
+      title: `${existing.metadata.title} + ${newOntology.metadata.title}`,
+      updatedAt: new Date().toISOString(),
+    },
+    entities: mergedEntities,
+    hyperedges: mergedEdges,
+    chapters: mergedChapters,
+    timeline: [...(existing.timeline || []), ...(newOntology.timeline || [])],
+    snapshots: mergedSnapshots,
+    stats: {
+      totalEntities: Object.keys(mergedEntities).length,
+      totalEdges: Object.keys(mergedEdges).length,
+      totalChapters: Object.keys(mergedChapters).length,
+      entitiesByCategory: entitiesByCategory as any,
+      edgesByType: edgesByType as any,
+    },
+  };
+}

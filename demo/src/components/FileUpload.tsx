@@ -3,12 +3,12 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus } from 'lucide-react';
 import { useStore } from '../store';
-import { extractOntology, hasProgress, clearProgress, type ExtractionProgress } from '../services/extraction';
+import { extractOntology, mergeOntologies, hasProgress, clearProgress, type ExtractionProgress } from '../services/extraction';
 
 export function FileUpload() {
-  const { setOntology, setLoading, setError, error } = useStore();
+  const { ontology, setOntology, setLoading, setError, error } = useStore();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -217,6 +217,78 @@ export function FileUpload() {
     }
   }, [handleFile, handleFiles]);
 
+  // 추가 분석 (기존 결과에 새 파일 병합)
+  const handleAddFile = useCallback(async (file: File) => {
+    if (!ontology) return;
+
+    console.log('추가 분석 시작:', file.name);
+    setLocalLoading(true);
+    setLoading(true);
+    setError(null);
+    setProgress('파일 읽는 중...');
+
+    try {
+      let text = '';
+
+      if (file.type === 'application/pdf') {
+        setProgress('PDF 파싱 중...');
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        const textParts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          setProgress(`PDF 페이지 ${i}/${pdf.numPages} 처리 중...`);
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((item: any) => item.str).join(' ');
+          textParts.push(pageText);
+        }
+        text = textParts.join('\n\n');
+      } else {
+        text = await file.text();
+      }
+
+      if (!text.trim()) {
+        throw new Error('파일 내용이 비어있습니다.');
+      }
+
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      setProgress('추가 분석 중...');
+      const newOntology = await extractOntology(text, title, (msg) => {
+        setProgress(`추가: ${msg}`);
+      });
+
+      // 기존 결과와 병합
+      setProgress('기존 결과와 병합 중...');
+      const merged = mergeOntologies(ontology, newOntology);
+
+      console.log('병합 완료:', merged.metadata.title);
+      console.log('총 엔티티:', Object.keys(merged.entities).length);
+      console.log('총 관계:', Object.keys(merged.hyperedges).length);
+
+      setOntology(merged);
+      setProgress('');
+      setSavedProgress(null);
+    } catch (err: any) {
+      console.error('추가 분석 오류:', err);
+      setError(err.message || '추가 분석 중 오류가 발생했습니다.');
+      setProgress('');
+      setSavedProgress(hasProgress());
+    } finally {
+      setLocalLoading(false);
+      setLoading(false);
+    }
+  }, [ontology, setOntology, setLoading, setError]);
+
+  const handleAddChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    handleAddFile(files[0]);
+  }, [handleAddFile]);
+
   return (
     <div className="space-y-4">
       <div
@@ -281,6 +353,33 @@ export function FileUpload() {
           )}
         </div>
       </div>
+
+      {/* 추가 분석 버튼 (기존 결과가 있을 때만) */}
+      {ontology && !localLoading && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <Plus className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-blue-800">추가 분석</p>
+              <p className="text-sm text-blue-700 mt-1">
+                현재 "{ontology.metadata.title}"에 새 파일을 추가할 수 있습니다
+              </p>
+              <div className="flex gap-2 mt-3">
+                <label className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+                  <Plus className="w-4 h-4" />
+                  파일 추가
+                  <input
+                    type="file"
+                    accept=".txt,.pdf"
+                    onChange={handleAddChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 이어하기 UI */}
       {savedProgress && !localLoading && (
