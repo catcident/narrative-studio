@@ -347,7 +347,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       };
     });
 
-    // 장소는 작은 네모 (둥근 모서리)
+    // 장소는 정사각형 (둥근 모서리)
     const locationNodes: Node[] = locations.map((entity, i) => {
       const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
       return {
@@ -365,9 +365,13 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
           border: selectedEntityId === entity.id ? '2px solid #166534' : 'none',
-          borderRadius: '6px',
-          padding: '6px 12px',
-          fontSize: '11px',
+          borderRadius: '8px',
+          width: 48,
+          height: 48,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '10px',
           fontWeight: 500,
           boxShadow: selectedEntityId === entity.id
             ? '0 0 15px rgba(34, 197, 94, 0.4)'
