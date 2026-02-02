@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Network, Clock, User, RotateCcw, Database, Save, Globe } from 'lucide-react';
+import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2 } from 'lucide-react';
 import { useStore } from './store';
 import { FileUpload } from './components/FileUpload';
 import { RelationshipGraph, GraphLegend } from './components/RelationshipGraph';
@@ -16,6 +16,7 @@ import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
 import { saveOntology } from './services/storage';
+import { extractOntology, mergeOntologies } from './services/extraction';
 import type { NovelOntology } from './types';
 
 type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world';
@@ -35,6 +36,8 @@ function App() {
   } = useStore();
   const [showDataManager, setShowDataManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [isAddingFile, setIsAddingFile] = useState(false);
+  const [addProgress, setAddProgress] = useState('');
 
   // 온톨로지가 변경되면 자동 저장
   useEffect(() => {
@@ -54,6 +57,54 @@ function App() {
   const handleLoadOntology = (loaded: NovelOntology) => {
     setOntology(loaded);
     setShowDataManager(false);
+  };
+
+  // 파일 추가 (기존 결과에 병합)
+  const handleAddFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !ontology) return;
+
+    setIsAddingFile(true);
+    setAddProgress('파일 읽는 중...');
+
+    try {
+      let text = '';
+      if (file.type === 'application/pdf') {
+        setAddProgress('PDF 파싱 중...');
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const textParts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          setAddProgress(`PDF ${i}/${pdf.numPages}...`);
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          textParts.push(content.items.map((item: any) => item.str).join(' '));
+        }
+        text = textParts.join('\n\n');
+      } else {
+        text = await file.text();
+      }
+
+      if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
+
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      const newOntology = await extractOntology(text, title, (msg) => {
+        setAddProgress(msg);
+      });
+
+      setAddProgress('병합 중...');
+      const merged = mergeOntologies(ontology, newOntology);
+      setOntology(merged);
+      setAddProgress('');
+    } catch (err: any) {
+      console.error('파일 추가 오류:', err);
+      alert(err.message || '파일 추가 중 오류가 발생했습니다.');
+    } finally {
+      setIsAddingFile(false);
+      e.target.value = '';  // input 초기화
+    }
   };
 
   // 업로드 화면
@@ -256,6 +307,32 @@ function App() {
               <Database className="w-4 h-4" />
               데이터 관리
             </button>
+
+            {/* 파일 추가 */}
+            <label className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer ${
+              isAddingFile
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+            }`}>
+              {isAddingFile ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {addProgress || '추가 중...'}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  파일 추가
+                </>
+              )}
+              <input
+                type="file"
+                accept=".txt,.pdf"
+                onChange={handleAddFile}
+                className="hidden"
+                disabled={isAddingFile}
+              />
+            </label>
 
             {/* 리셋 */}
             <button
