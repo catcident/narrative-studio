@@ -4,7 +4,7 @@
  * d3-force로 자동 배치 + 드래그 지원
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useStore } from '../store';
 import type { Entity, HyperEdge, EntityCategory } from '../types';
 import { X, Eye, EyeOff, Filter } from 'lucide-react';
@@ -95,21 +95,34 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
   const [minImportance, setMinImportance] = useState<number>(1);
 
   // 필터링된 엔티티
-  const filteredEntities = viewMode === 'simple'
-    ? entities.filter(e => e.category === 'character')
-    : minImportance > 1
-      ? entities.filter(e => e.category === 'character' || (e.importance || 5) >= minImportance)
-      : entities;
+  const filteredEntities = useMemo(() => {
+    if (viewMode === 'simple') {
+      return entities.filter(e => e.category === 'character');
+    }
+    if (minImportance > 1) {
+      return entities.filter(e => e.category === 'character' || (e.importance || 5) >= minImportance);
+    }
+    return entities;
+  }, [entities, viewMode, minImportance]);
 
   // 필터링된 엣지
-  const filteredEdges = (() => {
+  const filteredEdges = useMemo(() => {
     const entityIds = new Set(filteredEntities.map(e => e.id));
     return edges.filter(e => e.entities.every(id => entityIds.has(id)));
-  })();
+  }, [edges, filteredEntities]);
 
-  // 선택 상태 ref (콜백에서 사용)
+  // 콜백 refs (의존성에서 제외하기 위해)
   const selectedEntityIdRef = useRef(selectedEntityId);
+  const onNodeClickRef = useRef(onNodeClick);
+  const selectEntityRef = useRef(selectEntity);
+  const entitiesRef = useRef(entities);
+  const filteredEntitiesRef = useRef(filteredEntities);
+
   selectedEntityIdRef.current = selectedEntityId;
+  onNodeClickRef.current = onNodeClick;
+  selectEntityRef.current = selectEntity;
+  entitiesRef.current = entities;
+  filteredEntitiesRef.current = filteredEntities;
 
   // 그래프 초기화 (데이터 변경 시에만)
   const initGraph = useCallback(async () => {
@@ -262,7 +275,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           const screenCoords = graphRef.current.graph2ScreenCoords(node.x, node.y);
           const rect = containerRef.current?.getBoundingClientRect();
           if (rect && screenCoords) {
-            const entity = filteredEntities.find(e => e.id === node.id);
+            const entity = filteredEntitiesRef.current.find(e => e.id === node.id);
             if (entity) {
               setTooltip({
                 x: rect.left + screenCoords.x + 15,
@@ -279,16 +292,16 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         }
       })
       .onNodeClick((node: any) => {
-        selectEntity(node.id);
-        const entity = filteredEntities.find(e => e.id === node.id);
+        selectEntityRef.current(node.id);
+        const entity = filteredEntitiesRef.current.find(e => e.id === node.id);
         if (entity) {
-          onNodeClick?.(entity);
+          onNodeClickRef.current?.(entity);
         }
       })
       .onLinkClick((link: any) => {
         if (link.edgeData) {
           const relatedEntities = link.edgeData.entities
-            .map((id: string) => entities.find(e => e.id === id))
+            .map((id: string) => entitiesRef.current.find(e => e.id === id))
             .filter(Boolean) as Entity[];
           setSelectedEdge({ edge: link.edgeData, entities: relatedEntities });
         }
@@ -317,7 +330,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       graphRef.current?.zoomToFit(400, 50);
     }, 500);
 
-  }, [filteredEntities, filteredEdges, onNodeClick, selectEntity, entities]);
+  }, [filteredEntities, filteredEdges]);  // 데이터 변경 시에만 재생성
 
   // 선택 변경 시 리렌더링만 트리거 (그래프 재생성 없이)
   useEffect(() => {
