@@ -109,26 +109,25 @@ function SmallDotNode({ data }: NodeProps) {
   const color = CATEGORY_COLORS[entity?.category] || '#9ca3af';
 
   return (
-    <div className="flex flex-col items-center" style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
+    <div className="flex flex-col items-center">
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <div
         style={{
-          width: 14,
-          height: 14,
+          width: 18,
+          height: 18,
           borderRadius: '50%',
           background: color,
-          border: '2px solid rgba(255,255,255,0.8)',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          border: '2px solid white',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
         }}
       />
       <div
         style={{
-          marginTop: 4,
-          fontSize: 9,
-          color: '#4b5563',
-          fontWeight: 500,
+          marginTop: 6,
+          fontSize: 10,
+          color: '#6b7280',
+          fontWeight: 400,
           whiteSpace: 'nowrap',
-          textShadow: '0 1px 2px rgba(255,255,255,0.8)',
         }}
       >
         {entity?.name || ''}
@@ -306,13 +305,14 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const locations = displayEntities.filter(e => e.category === 'location');
     const others = displayEntities.filter(e => e.category !== 'character' && e.category !== 'location');
 
-    const centerX = 300;
-    const centerY = 250;
+    const centerX = 400;
+    const centerY = 350;
 
-    // 인물 수에 따라 동적으로 반지름 계산
+    // 인물 수에 따라 동적으로 반지름 계산 (1.5배 더 넓게)
     const charCount = chars.length;
-    const charRadius = Math.max(80, Math.min(140, charCount * 12));
-    const locationRadius = charRadius + 70;
+    const charRadius = Math.max(120, Math.min(220, charCount * 18));
+    const locationRadius = charRadius + 120;
+    const otherRadius = locationRadius + 100;
 
     // 캐릭터를 원형으로 배치 (내부 원)
     const charNodes: Node[] = chars.map((entity, i) => {
@@ -329,26 +329,25 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           entity,
         },
         style: {
-          background: `linear-gradient(135deg, ${CATEGORY_COLORS[entity.category]} 0%, ${CATEGORY_COLORS[entity.category]}dd 100%)`,
+          background: CATEGORY_COLORS[entity.category],
           color: 'white',
-          border: selectedEntityId === entity.id ? '3px solid #1e40af' : '2px solid rgba(255,255,255,0.4)',
+          border: selectedEntityId === entity.id ? '3px solid #1e40af' : 'none',
           borderRadius: '50%',
-          width: 56,
-          height: 56,
+          width: 64,
+          height: 64,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '11px',
-          fontWeight: 600,
-          letterSpacing: '-0.02em',
+          fontSize: '12px',
+          fontWeight: 500,
           boxShadow: selectedEntityId === entity.id
-            ? '0 4px 20px rgba(59, 130, 246, 0.4)'
-            : '0 3px 10px rgba(0,0,0,0.15)',
+            ? '0 0 20px rgba(59, 130, 246, 0.5)'
+            : '0 4px 12px rgba(0,0,0,0.15)',
         },
       };
     });
 
-    // 장소는 네모 (둥근 모서리)
+    // 장소는 작은 네모 (둥근 모서리)
     const locationNodes: Node[] = locations.map((entity, i) => {
       const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
       return {
@@ -363,15 +362,16 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           entity,
         },
         style: {
-          background: `linear-gradient(135deg, ${CATEGORY_COLORS[entity.category]} 0%, ${CATEGORY_COLORS[entity.category]}cc 100%)`,
+          background: CATEGORY_COLORS[entity.category],
           color: 'white',
-          border: selectedEntityId === entity.id ? '2px solid #166534' : '2px solid rgba(255,255,255,0.3)',
-          borderRadius: '8px',
+          border: selectedEntityId === entity.id ? '2px solid #166534' : 'none',
+          borderRadius: '6px',
+          padding: '6px 12px',
+          fontSize: '11px',
           fontWeight: 500,
-          letterSpacing: '-0.01em',
           boxShadow: selectedEntityId === entity.id
-            ? '0 4px 15px rgba(34, 197, 94, 0.4)'
-            : '0 2px 8px rgba(0,0,0,0.12)',
+            ? '0 0 15px rgba(34, 197, 94, 0.4)'
+            : '0 3px 8px rgba(0,0,0,0.12)',
         },
       };
     });
@@ -379,13 +379,12 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     // 나머지 엔티티는 작은 원 + 밑에 라벨로 표시 (커스텀 노드)
     const otherNodes: Node[] = others.map((entity, i) => {
       const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
-      const radius = locationRadius + 70;
       return {
         id: entity.id,
         type: 'smallDot',
         position: {
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle),
+          x: centerX + otherRadius * Math.cos(angle),
+          y: centerY + otherRadius * Math.sin(angle),
         },
         data: {
           label: entity.name,
