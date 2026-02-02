@@ -320,21 +320,23 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const isFocusedMode = viewMode === 'focused' && focusedCharId;
     const focusedEntity = isFocusedMode ? displayEntities.find(e => e.id === focusedCharId) : null;
 
-    // 원 크기 계산: 노드 수의 2배로 (10개면 20개 기준)
+    // 원 크기 계산: 최대 반지름 제한으로 전체가 보이도록
     const getRadius = (count: number, nodeSize: number, minCount: number) => {
-      const effectiveCount = Math.max(count, minCount) * 2;
-      const spacing = nodeSize + 20; // 노드 크기 + 여백
-      return Math.max(120, (effectiveCount * spacing) / (2 * Math.PI));
+      const effectiveCount = Math.max(count, minCount);
+      const spacing = nodeSize + 10; // 노드 크기 + 여백
+      const calculated = (effectiveCount * spacing) / (2 * Math.PI);
+      // 최소 100, 최대 350으로 제한
+      return Math.min(350, Math.max(100, calculated));
     };
 
     // 인물 중심 모드일 때도 동일한 구조: 중앙 → 인물 → 장소 → 기타
     if (isFocusedMode && focusedEntity) {
       const relatedChars = chars.filter(e => e.id !== focusedCharId);
 
-      // 각 레이어별 반지름 (노드 수의 2.5배 기준)
-      const charRadius = getRadius(relatedChars.length, 64, 4);
-      const locationRadius = charRadius + 90;
-      const otherRadius = locationRadius + 80;
+      // 각 레이어별 반지름
+      const charRadius = getRadius(relatedChars.length, 50, 4);
+      const locationRadius = charRadius + 60;
+      const otherRadius = locationRadius + 50;
 
       const allPositions: { id: string; x: number; y: number; size: number; layer: number }[] = [];
 
@@ -345,7 +347,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           id: entity.id,
           x: centerX + charRadius * Math.cos(angle),
           y: centerY + charRadius * Math.sin(angle),
-          size: 64,
+          size: 50,
           layer: 1,
         });
       });
@@ -357,7 +359,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           id: entity.id,
           x: centerX + locationRadius * Math.cos(angle),
           y: centerY + locationRadius * Math.sin(angle),
-          size: 72,
+          size: 56,
           layer: 2,
         });
       });
@@ -383,16 +385,16 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         style: {
           background: CATEGORY_COLORS[focusedEntity.category],
           color: 'white',
-          border: '4px solid #fbbf24',
+          border: '3px solid #fbbf24',
           borderRadius: '50%',
-          width: 80,
-          height: 80,
+          width: 60,
+          height: 60,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '14px',
+          fontSize: '11px',
           fontWeight: 600,
-          boxShadow: '0 0 30px rgba(251, 191, 36, 0.6)',
+          boxShadow: '0 0 20px rgba(251, 191, 36, 0.5)',
         },
       };
 
@@ -410,17 +412,17 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           style: {
             background: CATEGORY_COLORS[entity.category],
             color: 'white',
-            border: selectedEntityId === entity.id ? '3px solid #1e40af' : 'none',
+            border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
             borderRadius: '50%',
-            width: 64,
-            height: 64,
+            width: 50,
+            height: 50,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '12px',
+            fontSize: '10px',
             fontWeight: 500,
             opacity: isPast ? 0.35 : 1,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
           },
         });
       });
@@ -436,16 +438,16 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           style: {
             background: CATEGORY_COLORS[entity.category],
             color: 'white',
-            borderRadius: '8px',
-            width: 72,
-            height: 36,
+            borderRadius: '6px',
+            width: 56,
+            height: 28,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '10px',
+            fontSize: '9px',
             fontWeight: 500,
             opacity: isPast ? 0.35 : 1,
-            boxShadow: '0 3px 8px rgba(0,0,0,0.12)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
           },
         });
       });
@@ -464,10 +466,10 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       return nodes;
     }
 
-    // 일반 모드 - 원형 배치 (노드 수의 2.5배 기준)
-    const charRadius = getRadius(chars.length, 64, 4);
-    const locationRadius = charRadius + 90;
-    const otherRadius = locationRadius + 80;
+    // 일반 모드 - 원형 배치
+    const charRadius = getRadius(chars.length, 50, 4);
+    const locationRadius = charRadius + 60;
+    const otherRadius = locationRadius + 50;
 
     // 초기 위치 설정
     const allPositions: { id: string; x: number; y: number; size: number; layer: number }[] = [];
@@ -478,7 +480,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         id: entity.id,
         x: centerX + charRadius * Math.cos(angle),
         y: centerY + charRadius * Math.sin(angle),
-        size: 64,
+        size: 50,
         layer: 1,
       });
     });
@@ -489,7 +491,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         id: entity.id,
         x: centerX + locationRadius * Math.cos(angle),
         y: centerY + locationRadius * Math.sin(angle),
-        size: 72,
+        size: 56,
         layer: 2,
       });
     });
@@ -517,19 +519,19 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         style: {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
-          border: selectedEntityId === entity.id ? '3px solid #1e40af' : 'none',
+          border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
           borderRadius: '50%',
-          width: 64,
-          height: 64,
+          width: 50,
+          height: 50,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '12px',
+          fontSize: '10px',
           fontWeight: 500,
           opacity: isPast ? 0.35 : 1,
           boxShadow: selectedEntityId === entity.id
-            ? '0 0 20px rgba(59, 130, 246, 0.5)'
-            : '0 4px 12px rgba(0,0,0,0.15)',
+            ? '0 0 15px rgba(59, 130, 246, 0.5)'
+            : '0 2px 8px rgba(0,0,0,0.12)',
         },
       };
     });
@@ -547,13 +549,13 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
           border: selectedEntityId === entity.id ? '2px solid #166534' : 'none',
-          borderRadius: '8px',
-          width: 72,
-          height: 36,
+          borderRadius: '6px',
+          width: 56,
+          height: 28,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '10px',
+          fontSize: '9px',
           fontWeight: 500,
           opacity: isPast ? 0.35 : 1,
           boxShadow: selectedEntityId === entity.id
@@ -774,8 +776,8 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         connectionMode={ConnectionMode.Loose}
-        defaultViewport={{ x: 0, y: 0, zoom: 1.2 }}
-        minZoom={0.3}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        minZoom={0.2}
         maxZoom={2}
         nodesDraggable={false}
         nodesConnectable={false}
