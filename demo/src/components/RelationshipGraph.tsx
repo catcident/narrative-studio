@@ -308,13 +308,8 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const centerX = 400;
     const centerY = 350;
 
-    // 인물 수에 따라 동적으로 반지름 계산
-    const charCount = chars.length;
-    const locationCount = locations.length;
-    const otherCount = others.length;
-
     // 인물 원 반지름: 인물 수에 맞춰 적당히 (최소 150, 인물당 50px)
-    const charRadius = Math.max(150, charCount * 50);
+    const charRadius = Math.max(150, chars.length * 50);
     const locationRadius = charRadius + 140;
     const otherRadius = locationRadius + 120;
 
