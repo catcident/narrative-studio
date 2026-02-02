@@ -4,17 +4,17 @@
  */
 
 import { useState, useMemo } from 'react';
-import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Users, Package, Sparkles, Filter } from 'lucide-react';
+import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Users, Package, Globe, Filter, Star, Link2 } from 'lucide-react';
 import { useStore } from '../store';
 import type { Entity, HyperEdge } from '../types';
 
 type WorldTab = 'locations' | 'organizations' | 'concepts' | 'items';
 
-const TAB_CONFIG: { id: WorldTab; label: string; icon: typeof MapPin; color: string }[] = [
-  { id: 'locations', label: '장소', icon: MapPin, color: '#22c55e' },
-  { id: 'organizations', label: '조직', icon: Building, color: '#a855f7' },
-  { id: 'concepts', label: '세계관', icon: Lightbulb, color: '#6366f1' },
-  { id: 'items', label: '아이템', icon: Package, color: '#f59e0b' },
+const TAB_CONFIG: { id: WorldTab; label: string; icon: typeof MapPin; color: string; gradient: string; emoji: string }[] = [
+  { id: 'locations', label: '장소', icon: MapPin, color: '#22c55e', gradient: 'from-green-500 to-emerald-600', emoji: '📍' },
+  { id: 'organizations', label: '조직', icon: Building, color: '#a855f7', gradient: 'from-purple-500 to-violet-600', emoji: '🏢' },
+  { id: 'concepts', label: '세계관', icon: Lightbulb, color: '#6366f1', gradient: 'from-indigo-500 to-blue-600', emoji: '💡' },
+  { id: 'items', label: '아이템', icon: Package, color: '#f59e0b', gradient: 'from-amber-500 to-orange-600', emoji: '📦' },
 ];
 
 interface TreeNode {
@@ -64,9 +64,7 @@ export function WorldView() {
 
     const locations = categorizedEntities.locations;
     const edges = Object.values(ontology.hyperedges);
-    const allEntities = Object.values(ontology.entities);
 
-    // 포함 관계 찾기 (부모 -> 자식)
     const parentChildMap = new Map<string, string[]>();
     const childParentMap = new Map<string, string>();
 
@@ -83,7 +81,6 @@ export function WorldView() {
       }
     });
 
-    // 엔티티와 연결된 캐릭터 찾기
     const getRelatedCharacters = (entityId: string): Entity[] => {
       const relatedIds = new Set<string>();
       edges.forEach(edge => {
@@ -99,12 +96,10 @@ export function WorldView() {
       return Array.from(relatedIds).map(id => ontology.entities[id]).filter(Boolean);
     };
 
-    // 엔티티와 연결된 관계 찾기
     const getRelatedEdges = (entityId: string): HyperEdge[] => {
       return edges.filter(edge => edge.entities.includes(entityId));
     };
 
-    // 트리 노드 생성
     const buildNode = (entity: Entity): TreeNode => {
       const childIds = parentChildMap.get(entity.id) || [];
       const children = childIds
@@ -121,9 +116,7 @@ export function WorldView() {
       };
     };
 
-    // 루트 노드 찾기 (부모가 없는 장소)
     const rootLocations = locations.filter(loc => !childParentMap.has(loc.id));
-
     return rootLocations.map(buildNode);
   }, [ontology, categorizedEntities.locations]);
 
@@ -133,8 +126,6 @@ export function WorldView() {
 
     const organizations = categorizedEntities.organizations;
     const edges = Object.values(ontology.hyperedges);
-
-    // 소속 관계 찾기
     const orgMembers = new Map<string, Entity[]>();
 
     edges.forEach(edge => {
@@ -145,7 +136,6 @@ export function WorldView() {
             if (!orgMembers.has(entityId)) {
               orgMembers.set(entityId, []);
             }
-            // 다른 엔티티들을 멤버로 추가
             edge.entities.forEach(memberId => {
               if (memberId !== entityId) {
                 const member = ontology.entities[memberId];
@@ -167,7 +157,7 @@ export function WorldView() {
     }));
   }, [ontology, categorizedEntities.organizations]);
 
-  // 아이템 목록 (소유자 정보 포함)
+  // 아이템 목록
   const itemsList = useMemo(() => {
     if (!ontology) return [];
 
@@ -175,7 +165,6 @@ export function WorldView() {
     const edges = Object.values(ontology.hyperedges);
 
     return items.map(item => {
-      // 소유자 찾기
       const ownerEdges = edges.filter(e =>
         e.entities.includes(item.id) &&
         (e.type === '소유' || e.type === 'owns')
@@ -227,116 +216,150 @@ export function WorldView() {
 
   if (!ontology) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 text-gray-400">
-        <div className="text-center">
-          <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>데이터가 없습니다</p>
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
+        <div className="text-center text-gray-400">
+          <Globe className="w-16 h-16 mx-auto mb-3 opacity-30" />
+          <p>데이터를 불러와주세요</p>
         </div>
       </div>
     );
   }
 
-  const renderTreeNode = (node: TreeNode, depth: number = 0) => {
+  const currentTabConfig = TAB_CONFIG.find(t => t.id === activeTab)!;
+
+  const renderCard = (node: TreeNode, depth: number = 0) => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedIds.has(node.entity.id);
     const isSelected = selectedEntityId === node.entity.id;
+    const importance = node.entity.importance || 5;
 
     return (
-      <div key={node.entity.id} className="select-none">
+      <div key={node.entity.id} className="select-none" style={{ marginLeft: depth * 16 }}>
         <div
-          className={`flex items-start gap-2 p-3 rounded-lg cursor-pointer transition-all ${
+          className={`group relative p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
             isSelected
-              ? 'bg-blue-50 border-2 border-blue-300'
-              : 'hover:bg-gray-50 border-2 border-transparent'
+              ? 'bg-white shadow-lg ring-2'
+              : 'bg-white/60 hover:bg-white hover:shadow-md'
           }`}
-          style={{ marginLeft: depth * 24 }}
+          style={{
+            ringColor: isSelected ? currentTabConfig.color : undefined,
+          }}
           onClick={() => selectEntity(node.entity.id)}
         >
-          {/* 확장/축소 버튼 */}
-          {hasChildren ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleExpand(node.entity.id);
-              }}
-              className="p-0.5 hover:bg-gray-200 rounded"
+          {/* 중요도 인디케이터 */}
+          {importance >= 7 && (
+            <div
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-sm"
+              style={{ backgroundColor: currentTabConfig.color }}
             >
-              {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-gray-500" />
-              )}
-            </button>
-          ) : (
-            <div className="w-5" />
+              <Star className="w-3 h-3 text-white fill-white" />
+            </div>
           )}
 
-          {/* 아이콘 */}
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{
-              backgroundColor: TAB_CONFIG.find(t =>
-                t.id === activeTab ||
-                (activeTab === 'locations' && node.entity.category === 'location') ||
-                (activeTab === 'organizations' && node.entity.category === 'organization')
-              )?.color + '20',
-            }}
-          >
-            {activeTab === 'locations' && <MapPin className="w-4 h-4" style={{ color: '#22c55e' }} />}
-            {activeTab === 'organizations' && <Building className="w-4 h-4" style={{ color: '#a855f7' }} />}
-            {activeTab === 'concepts' && <Lightbulb className="w-4 h-4" style={{ color: '#6366f1' }} />}
-            {activeTab === 'items' && <Package className="w-4 h-4" style={{ color: '#f59e0b' }} />}
-          </div>
+          <div className="flex items-start gap-3">
+            {/* 확장 버튼 + 아이콘 */}
+            <div className="flex items-center gap-1">
+              {hasChildren && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleExpand(node.entity.id);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+              )}
+              <div
+                className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentTabConfig.gradient} flex items-center justify-center shadow-lg`}
+              >
+                <currentTabConfig.icon className="w-5 h-5 text-white" />
+              </div>
+            </div>
 
-          {/* 정보 */}
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-gray-800">{node.entity.name}</div>
-            {node.entity.description && (
-              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                {node.entity.description}
-              </p>
-            )}
-
-            {/* 관련 캐릭터 */}
-            {node.relatedCharacters.length > 0 && (
-              <div className="flex items-center gap-1 mt-2 flex-wrap">
-                <Users className="w-3 h-3 text-gray-400" />
-                {node.relatedCharacters.slice(0, 5).map(char => (
+            {/* 정보 */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-gray-800">{node.entity.name}</h3>
+                {hasChildren && (
                   <span
-                    key={char.id}
-                    className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium"
+                    style={{ backgroundColor: currentTabConfig.color }}
                   >
-                    {char.name}
-                  </span>
-                ))}
-                {node.relatedCharacters.length > 5 && (
-                  <span className="text-xs text-gray-400">
-                    +{node.relatedCharacters.length - 5}
+                    {node.children.length}
                   </span>
                 )}
               </div>
-            )}
 
-            {/* 관계 수 */}
-            {node.relatedEdges.length > 0 && (
-              <div className="text-xs text-gray-400 mt-1">
-                {node.relatedEdges.length}개의 관계
+              {node.entity.description && (
+                <p className="text-sm text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                  {node.entity.description}
+                </p>
+              )}
+
+              {/* 관련 캐릭터 */}
+              {node.relatedCharacters.length > 0 && (
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="flex -space-x-2">
+                    {node.relatedCharacters.slice(0, 4).map((char, i) => (
+                      <div
+                        key={char.id}
+                        className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 border-2 border-white flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
+                        title={char.name}
+                      >
+                        {char.name[0]}
+                      </div>
+                    ))}
+                    {node.relatedCharacters.length > 4 && (
+                      <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[9px] font-medium text-gray-500">
+                        +{node.relatedCharacters.length - 4}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {node.relatedCharacters.map(c => c.name).slice(0, 3).join(', ')}
+                    {node.relatedCharacters.length > 3 && ` 외 ${node.relatedCharacters.length - 3}명`}
+                  </span>
+                </div>
+              )}
+
+              {/* 관계 수 */}
+              {node.relatedEdges.length > 0 && (
+                <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                  <Link2 className="w-3 h-3" />
+                  <span>{node.relatedEdges.length}개의 관계</span>
+                </div>
+              )}
+            </div>
+
+            {/* 중요도 바 */}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-3 rounded-full"
+                    style={{
+                      backgroundColor: i < Math.ceil(importance / 2)
+                        ? currentTabConfig.color
+                        : '#e5e7eb'
+                    }}
+                  />
+                ))}
               </div>
-            )}
+              <span className="text-[10px] text-gray-400">{importance}/10</span>
+            </div>
           </div>
-
-          {/* 자식 수 */}
-          {hasChildren && (
-            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              {node.children.length}
-            </span>
-          )}
         </div>
 
         {/* 자식 노드 */}
         {hasChildren && isExpanded && (
-          <div className="ml-2 border-l-2 border-gray-100">
-            {node.children.map(child => renderTreeNode(child, depth + 1))}
+          <div className="mt-2 ml-4 pl-4 border-l-2 space-y-2" style={{ borderColor: currentTabConfig.color + '30' }}>
+            {node.children.map(child => renderCard(child, depth + 1))}
           </div>
         )}
       </div>
@@ -354,18 +377,23 @@ export function WorldView() {
                        categorizedEntities.items.length;
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* 탭 헤더 */}
-      <div className="p-3 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-500" />
-            <span className="text-sm font-medium text-gray-700">세계관 설정</span>
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+      {/* 헤더 */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white/80 backdrop-blur border-b border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentTabConfig.gradient} flex items-center justify-center shadow-lg`}>
+              <Globe className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">세계관 설정집</h2>
+              <p className="text-xs text-gray-500">스토리의 배경과 요소들</p>
+            </div>
           </div>
 
           {/* 중요도 필터 */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-3.5 h-3.5 text-gray-400" />
+          <div className="flex items-center gap-3 bg-gray-50 px-3 py-2 rounded-xl">
+            <Filter className="w-4 h-4 text-gray-400" />
             <span className="text-xs text-gray-500">중요도</span>
             <input
               type="range"
@@ -373,38 +401,41 @@ export function WorldView() {
               max="10"
               value={minImportance}
               onChange={(e) => setMinImportance(Number(e.target.value))}
-              className="w-20 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              className="w-24 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
             />
-            <span className="text-xs font-medium text-gray-600 w-4">
+            <span className="text-xs font-bold text-indigo-600 w-8">
               {minImportance > 1 ? `${minImportance}+` : '전체'}
             </span>
           </div>
         </div>
 
         {/* 탭 버튼 */}
-        <div className="flex gap-1 mt-3">
+        <div className="flex gap-2">
           {TAB_CONFIG.map(tab => {
             const Icon = tab.icon;
             const count = tab.id === 'locations' ? categorizedEntities.locations.length :
                          tab.id === 'organizations' ? categorizedEntities.organizations.length :
                          tab.id === 'concepts' ? categorizedEntities.concepts.length :
                          categorizedEntities.items.length;
+            const isActive = activeTab === tab.id;
 
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-white shadow-sm font-medium'
-                    : 'text-gray-500 hover:bg-gray-100'
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                  isActive
+                    ? 'text-white shadow-lg scale-105'
+                    : 'bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                 }`}
-                style={activeTab === tab.id ? { color: tab.color } : undefined}
+                style={isActive ? {
+                  background: `linear-gradient(135deg, ${tab.color}, ${tab.color}dd)`,
+                } : undefined}
               >
                 <Icon className="w-4 h-4" />
                 {tab.label}
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab.id ? 'bg-gray-100' : 'bg-gray-200'
+                  isActive ? 'bg-white/20' : 'bg-gray-100'
                 }`}>
                   {count}
                 </span>
@@ -415,55 +446,60 @@ export function WorldView() {
       </div>
 
       {/* 컨텐츠 */}
-      <div className="flex-1 overflow-auto p-3">
+      <div className="flex-1 overflow-auto p-4">
         {currentCount === 0 ? (
-          <div className="h-full flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <div className="text-4xl mb-2">
-                {activeTab === 'locations' && '🗺️'}
-                {activeTab === 'organizations' && '🏢'}
-                {activeTab === 'concepts' && '💡'}
-                {activeTab === 'items' && '📦'}
-              </div>
-              <p className="text-sm">
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center p-8 bg-white/60 rounded-3xl">
+              <div className="text-6xl mb-4">{currentTabConfig.emoji}</div>
+              <p className="text-gray-600 font-medium">
                 {activeTab === 'locations' && '장소 정보가 없습니다'}
                 {activeTab === 'organizations' && '조직 정보가 없습니다'}
                 {activeTab === 'concepts' && '세계관 설정이 없습니다'}
                 {activeTab === 'items' && '아이템 정보가 없습니다'}
               </p>
-              <p className="text-xs mt-1 text-gray-300">
+              <p className="text-sm mt-2 text-gray-400">
                 소설을 다시 분석하면 추출됩니다
               </p>
             </div>
           </div>
         ) : (
-          <div className="space-y-1">
-            {currentData.map(node => renderTreeNode(node))}
+          <div className="space-y-3">
+            {currentData.map(node => renderCard(node))}
           </div>
         )}
       </div>
 
       {/* 하단 요약 */}
-      <div className="p-3 bg-white border-t border-gray-200">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>
-            {minImportance > 1 ? (
-              <>
-                중요도 {minImportance}+ 필터 적용: {' '}
-                {categorizedEntities.locations.length}/{totalCounts.locations} 장소 ·{' '}
-                {categorizedEntities.organizations.length}/{totalCounts.organizations} 조직 ·{' '}
-                {categorizedEntities.concepts.length}/{totalCounts.concepts} 세계관 ·{' '}
-                {categorizedEntities.items.length}/{totalCounts.items} 아이템
-              </>
-            ) : (
-              <>
-                총 {totalCounts.locations}개 장소 ·{' '}
-                {totalCounts.organizations}개 조직 ·{' '}
-                {totalCounts.concepts}개 세계관 설정 ·{' '}
-                {totalCounts.items}개 아이템
-              </>
-            )}
-          </span>
+      <div className="flex-shrink-0 px-6 py-3 bg-white/80 backdrop-blur border-t border-gray-100">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-4">
+            {TAB_CONFIG.map(tab => {
+              const count = tab.id === 'locations' ? categorizedEntities.locations.length :
+                           tab.id === 'organizations' ? categorizedEntities.organizations.length :
+                           tab.id === 'concepts' ? categorizedEntities.concepts.length :
+                           categorizedEntities.items.length;
+              const total = tab.id === 'locations' ? totalCounts.locations :
+                           tab.id === 'organizations' ? totalCounts.organizations :
+                           tab.id === 'concepts' ? totalCounts.concepts :
+                           totalCounts.items;
+
+              return (
+                <div key={tab.id} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tab.color }} />
+                  <span className="text-gray-500">
+                    {tab.label} <span className="font-bold text-gray-700">{count}</span>
+                    {minImportance > 1 && <span className="text-gray-400">/{total}</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {minImportance > 1 && (
+            <span className="text-indigo-600 font-medium">
+              중요도 {minImportance}+ 필터 적용
+            </span>
+          )}
         </div>
       </div>
     </div>
