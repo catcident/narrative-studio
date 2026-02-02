@@ -96,6 +96,7 @@ function App() {
 
   // 선택된 장면에 따른 필터링
   const currentScene = selectedSceneId ? ontology.snapshots[selectedSceneId] : null;
+  const selectedSceneIndex = selectedSceneId ? scenes.findIndex(([id]) => id === selectedSceneId) : -1;
 
   // 범위 내 장면 ID 목록 계산
   const getScenesInRange = (): string[] => {
@@ -108,10 +109,32 @@ function App() {
     return scenes.slice(minIdx, maxIdx + 1).map(([id]) => id);
   };
 
+  // 선택된 장면까지의 모든 장면 ID (누적)
+  const getScenesUpTo = (): string[] => {
+    if (selectedSceneIndex === -1) return [];
+    return scenes.slice(0, selectedSceneIndex + 1).map(([id]) => id);
+  };
+
   const scenesInRange = getScenesInRange();
+  const scenesUpTo = getScenesUpTo();
   const hasRangeSelection = scenesInRange.length > 0;
 
-  // 장면 선택 시: 해당 장면에 등장하는 엔티티와 관계만 표시
+  // 현재 장면의 엔티티/엣지인지 확인 (투명도 구분용)
+  const isCurrentSceneEntity = (e: typeof entities[0]): boolean => {
+    if (!selectedSceneId) return true;
+    if (e.scenes && e.scenes.includes(selectedSceneId)) return true;
+    if (currentScene?.charactersPresent?.includes(e.id)) return true;
+    return false;
+  };
+
+  const isCurrentSceneEdge = (e: typeof allEdges[0]): boolean => {
+    if (!selectedSceneId) return true;
+    if (e.scenes && e.scenes.includes(selectedSceneId)) return true;
+    if (currentScene?.activeEdges?.includes(e.id)) return true;
+    return false;
+  };
+
+  // 장면 선택 시: 해당 장면까지의 모든 엔티티와 관계 표시 (누적)
   // 범위 선택 시: 범위 내 모든 장면의 엔티티와 관계 표시
   const filteredEntities = hasRangeSelection
     ? entities.filter(e => {
@@ -126,8 +149,13 @@ function App() {
       })
     : selectedSceneId
       ? entities.filter(e => {
-          if (e.scenes && e.scenes.includes(selectedSceneId)) return true;
-          if (currentScene?.charactersPresent?.includes(e.id)) return true;
+          // 선택한 장면까지의 모든 장면에서 등장한 엔티티 포함 (누적)
+          if (e.scenes && e.scenes.some(s => scenesUpTo.includes(s))) return true;
+          // snapshots의 charactersPresent 확인
+          for (const sceneId of scenesUpTo) {
+            const snapshot = ontology.snapshots?.[sceneId];
+            if (snapshot?.charactersPresent?.includes(e.id)) return true;
+          }
           return false;
         })
       : entities;
@@ -145,11 +173,27 @@ function App() {
       })
     : selectedSceneId
       ? allEdges.filter(e => {
-          if (e.scenes && e.scenes.includes(selectedSceneId)) return true;
-          if (currentScene?.activeEdges?.includes(e.id)) return true;
+          // 선택한 장면까지의 모든 장면에서 등장한 엣지 포함 (누적)
+          if (e.scenes && e.scenes.some(s => scenesUpTo.includes(s))) return true;
+          // snapshots의 activeEdges 확인
+          for (const sceneId of scenesUpTo) {
+            const snapshot = ontology.snapshots?.[sceneId];
+            if (snapshot?.activeEdges?.includes(e.id)) return true;
+          }
           return false;
         })
       : allEdges;
+
+  // 투명도 정보 추가 (현재 장면이 아닌 것은 투명하게)
+  const entitiesWithOpacity = filteredEntities.map(e => ({
+    ...e,
+    isPastScene: selectedSceneId ? !isCurrentSceneEntity(e) : false,
+  }));
+
+  const edgesWithOpacity = filteredEdges.map(e => ({
+    ...e,
+    isPastScene: selectedSceneId ? !isCurrentSceneEdge(e) : false,
+  }));
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
@@ -248,8 +292,8 @@ function App() {
               </div>
               <div className="flex-1 p-3 pt-0">
                 <RelationshipGraph
-                  entities={filteredEntities}
-                  edges={filteredEdges}
+                  entities={entitiesWithOpacity}
+                  edges={edgesWithOpacity}
                 />
               </div>
             </>

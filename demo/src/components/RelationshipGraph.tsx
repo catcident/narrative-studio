@@ -97,19 +97,28 @@ const SENTIMENT_STYLES = {
   complex: { strokeDasharray: '10,5,2,5' },
 };
 
+interface EntityWithOpacity extends Entity {
+  isPastScene?: boolean;
+}
+
+interface EdgeWithOpacity extends HyperEdge {
+  isPastScene?: boolean;
+}
+
 interface Props {
-  entities: Entity[];
-  edges: HyperEdge[];
+  entities: EntityWithOpacity[];
+  edges: EdgeWithOpacity[];
   onNodeClick?: (entity: Entity) => void;
 }
 
 // 작은 원 + 밑에 라벨 커스텀 노드
 function SmallDotNode({ data }: NodeProps) {
   const entity = data.entity as Entity;
+  const isPast = data.isPast as boolean;
   const color = CATEGORY_COLORS[entity?.category] || '#9ca3af';
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center" style={{ opacity: isPast ? 0.35 : 1 }}>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <div
         style={{
@@ -433,6 +442,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
 
       relatedChars.forEach((entity) => {
         const pos = allPositions.find(p => p.id === entity.id)!;
+        const isPast = entity.isPastScene;
         nodes.push({
           id: entity.id,
           type: 'default',
@@ -450,6 +460,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
             justifyContent: 'center',
             fontSize: '12px',
             fontWeight: 500,
+            opacity: isPast ? 0.35 : 1,
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           },
         });
@@ -457,6 +468,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
 
       locations.forEach((entity) => {
         const pos = allPositions.find(p => p.id === entity.id)!;
+        const isPast = entity.isPastScene;
         nodes.push({
           id: entity.id,
           type: 'default',
@@ -473,6 +485,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
             justifyContent: 'center',
             fontSize: '10px',
             fontWeight: 500,
+            opacity: isPast ? 0.35 : 1,
             boxShadow: '0 3px 8px rgba(0,0,0,0.12)',
           },
         });
@@ -480,11 +493,12 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
 
       others.forEach((entity) => {
         const pos = allPositions.find(p => p.id === entity.id)!;
+        const isPast = entity.isPastScene;
         nodes.push({
           id: entity.id,
           type: 'smallDot',
           position: { x: pos.x, y: pos.y },
-          data: { label: entity.name, entity },
+          data: { label: entity.name, entity, isPast },
         });
       });
 
@@ -538,6 +552,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     // 캐릭터 노드
     const charNodes: Node[] = chars.map((entity) => {
       const pos = allPositions.find(p => p.id === entity.id)!;
+      const isPast = entity.isPastScene;
       return {
         id: entity.id,
         type: 'default',
@@ -555,6 +570,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           justifyContent: 'center',
           fontSize: '12px',
           fontWeight: 500,
+          opacity: isPast ? 0.35 : 1,
           boxShadow: selectedEntityId === entity.id
             ? '0 0 20px rgba(59, 130, 246, 0.5)'
             : '0 4px 12px rgba(0,0,0,0.15)',
@@ -565,6 +581,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     // 장소 노드
     const locationNodes: Node[] = locations.map((entity) => {
       const pos = allPositions.find(p => p.id === entity.id)!;
+      const isPast = entity.isPastScene;
       return {
         id: entity.id,
         type: 'default',
@@ -582,6 +599,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           justifyContent: 'center',
           fontSize: '10px',
           fontWeight: 500,
+          opacity: isPast ? 0.35 : 1,
           boxShadow: selectedEntityId === entity.id
             ? '0 0 15px rgba(34, 197, 94, 0.4)'
             : '0 3px 8px rgba(0,0,0,0.12)',
@@ -592,11 +610,12 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     // 기타 노드
     const otherNodes: Node[] = others.map((entity) => {
       const pos = allPositions.find(p => p.id === entity.id)!;
+      const isPast = entity.isPastScene;
       return {
         id: entity.id,
         type: 'smallDot',
         position: { x: pos.x, y: pos.y },
-        data: { label: entity.name, entity },
+        data: { label: entity.name, entity, isPast },
       };
     });
 
@@ -621,6 +640,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       const dashArray = SENTIMENT_STYLES[edge.sentiment || 'neutral'].strokeDasharray;
       const isHovered = hoveredEdgeId?.startsWith(edge.id);
       const relationLabel = RELATION_LABELS[edge.type] || edge.type;
+      const isPast = (edge as EdgeWithOpacity).isPastScene;
 
       for (let i = 0; i < edge.entities.length; i++) {
         for (let j = i + 1; j < edge.entities.length; j++) {
@@ -635,16 +655,18 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
               strokeWidth: isHovered ? 4 : Math.min((edge.strength || 5) / 3, 4),
               strokeDasharray: dashArray,
               cursor: 'pointer',
+              opacity: isPast ? 0.25 : 1,
             },
             label: i === 0 && j === 1 ? relationLabel : undefined,
             labelStyle: {
               fontSize: isHovered ? 12 : 10,
               fill: isHovered ? '#1d4ed8' : '#666',
               fontWeight: isHovered ? 600 : 400,
+              opacity: isPast ? 0.25 : 1,
             },
             labelBgStyle: {
               fill: 'white',
-              fillOpacity: 0.9,
+              fillOpacity: isPast ? 0.5 : 0.9,
             },
             data: {
               originalEdge: edge,
