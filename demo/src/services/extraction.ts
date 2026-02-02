@@ -83,6 +83,12 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 - 포함: 장소가 다른 장소를 포함 (예: 학교-교실)
 - 관련: 기타 연관 관계
 
+## ⚠️ 중요: 관계의 from/to는 반드시 entities의 name과 정확히 일치해야 함
+- relationships의 from, to 값은 entities에 등록된 name과 **동일한 문자열**이어야 함
+- 예: entities에 "춘향"으로 등록했으면, relationships에서도 "춘향" 사용 ("춘향이" X)
+- 예: entities에 "이도령"으로 등록했으면, relationships에서도 "이도령" 사용 ("이몽룡" X)
+- 같은 인물의 다른 이름은 aliases에 등록하고, 관계에서는 대표 name만 사용
+
 ## ⚠️ 필수 추출 규칙
 
 ### 1. 장소는 반드시 추출
@@ -554,19 +560,81 @@ function buildOntology(extracted: any, title: string): NovelOntology {
     nameToId[e.name] = id;
     // 소문자로도 매핑
     nameToId[e.name.toLowerCase()] = id;
+    // 정규화된 이름으로도 매핑
+    nameToId[normalizeName(e.name)] = id;
     (e.aliases || []).forEach((alias: string) => {
       nameToId[alias] = id;
       nameToId[alias.toLowerCase()] = id;
+      nameToId[normalizeName(alias)] = id;
     });
   });
 
+  // 유연한 이름 매칭 함수
+  const findEntityId = (name: string): string | undefined => {
+    if (!name) return undefined;
+
+    // 1. 정확한 매칭
+    if (nameToId[name]) return nameToId[name];
+    if (nameToId[name.toLowerCase()]) return nameToId[name.toLowerCase()];
+
+    // 2. 정규화된 이름으로 매칭
+    const normalized = normalizeName(name);
+    if (nameToId[normalized]) return nameToId[normalized];
+
+    // 3. 부분 매칭 (이름이 포함되거나 포함하는 경우)
+    const nameLower = name.toLowerCase();
+    for (const [entityName, id] of Object.entries(nameToId)) {
+      const entityNameLower = entityName.toLowerCase();
+      // "춘향" ↔ "춘향이", "이도령" ↔ "이몽룡 이도령"
+      if (entityNameLower.includes(nameLower) || nameLower.includes(entityNameLower)) {
+        return id;
+      }
+    }
+
+    // 4. 2글자 이상 공통 부분 매칭
+    if (name.length >= 2) {
+      for (const [entityName, id] of Object.entries(nameToId)) {
+        // 한글 이름에서 겹치는 부분이 2글자 이상이면 매칭
+        const overlap = findOverlap(name, entityName);
+        if (overlap.length >= 2) {
+          return id;
+        }
+      }
+    }
+
+    return undefined;
+  };
+
+  // 두 문자열의 최대 겹치는 부분 찾기
+  const findOverlap = (a: string, b: string): string => {
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
+    let maxOverlap = '';
+
+    for (let i = 0; i < aLower.length; i++) {
+      for (let j = i + 1; j <= aLower.length; j++) {
+        const sub = aLower.slice(i, j);
+        if (bLower.includes(sub) && sub.length > maxOverlap.length) {
+          maxOverlap = sub;
+        }
+      }
+    }
+    return maxOverlap;
+  };
+
   // 관계 등록
   (extracted.relationships || []).forEach((r: any, i: number) => {
-    // 대소문자 무시하고 찾기
-    const fromId = nameToId[r.from] || nameToId[r.from?.toLowerCase()];
-    const toId = nameToId[r.to] || nameToId[r.to?.toLowerCase()];
+    // 유연한 이름 매칭
+    const fromId = findEntityId(r.from);
+    const toId = findEntityId(r.to);
     if (!fromId || !toId) {
-      console.log('관계 매핑 실패:', r.from, '->', r.to);
+      console.log('관계 매핑 실패:', r.from, '->', r.to, '(엔티티를 찾을 수 없음)');
+      return;
+    }
+
+    // 같은 엔티티 간의 관계는 무시
+    if (fromId === toId) {
+      console.log('자기참조 관계 무시:', r.from, '->', r.to);
       return;
     }
 
