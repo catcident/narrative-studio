@@ -4,7 +4,7 @@
  * 인물 중심 원형 배치 + 연결 없는 노드는 외곽 배치
  */
 
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -639,10 +639,41 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // 노드 업데이트 (위치 변경 없이 스타일만)
+  // 엔티티/뷰모드 변경 시에만 노드 위치 재설정 (선택 상태 변경 시 제외)
+  const prevDisplayEntitiesRef = useRef<string>('');
+  const prevViewModeRef = useRef<string>('');
+  const prevFocusedCharIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    setNodes(initialNodes);
-  }, [initialNodes, setNodes]);
+    const entitiesKey = displayEntities.map(e => e.id).sort().join(',');
+    const shouldResetPositions =
+      entitiesKey !== prevDisplayEntitiesRef.current ||
+      viewMode !== prevViewModeRef.current ||
+      focusedCharId !== prevFocusedCharIdRef.current;
+
+    if (shouldResetPositions) {
+      // 엔티티 구성이나 뷰모드가 변경됨 → 위치 초기화
+      setNodes(initialNodes);
+      prevDisplayEntitiesRef.current = entitiesKey;
+      prevViewModeRef.current = viewMode;
+      prevFocusedCharIdRef.current = focusedCharId;
+    } else {
+      // 선택 상태만 변경됨 → 스타일만 업데이트 (위치 유지)
+      setNodes(currentNodes =>
+        currentNodes.map(node => {
+          const newNode = initialNodes.find(n => n.id === node.id);
+          if (newNode) {
+            return {
+              ...node,
+              style: newNode.style, // 스타일만 업데이트
+              data: newNode.data,
+            };
+          }
+          return node;
+        })
+      );
+    }
+  }, [initialNodes, setNodes, displayEntities, viewMode, focusedCharId]);
 
   useEffect(() => {
     setEdges(initialEdges);
