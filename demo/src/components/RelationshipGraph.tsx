@@ -349,11 +349,11 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const isFocusedMode = viewMode === 'focused' && focusedCharId;
     const focusedEntity = isFocusedMode ? displayEntities.find(e => e.id === focusedCharId) : null;
 
-    // 원 크기 계산: 노드 수의 2.5배로 (4개면 10개 기준)
+    // 원 크기 계산: 노드 수의 2배로 (10개면 20개 기준)
     const getRadius = (count: number, nodeSize: number, minCount: number) => {
-      const effectiveCount = Math.max(count, minCount) * 2.5;
-      const spacing = nodeSize + 30; // 노드 크기 + 여백
-      return Math.max(150, (effectiveCount * spacing) / (2 * Math.PI));
+      const effectiveCount = Math.max(count, minCount) * 2;
+      const spacing = nodeSize + 20; // 노드 크기 + 여백
+      return Math.max(120, (effectiveCount * spacing) / (2 * Math.PI));
     };
 
     // 인물 중심 모드일 때도 동일한 구조: 중앙 → 인물 → 장소 → 기타
@@ -807,8 +807,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         onEdgeMouseLeave={handleEdgeMouseLeave}
         onPaneClick={handlePaneClick}
         connectionMode={ConnectionMode.Loose}
-        fitView
-        fitViewOptions={{ padding: 0.05 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 1.2 }}
         minZoom={0.3}
         maxZoom={2}
         style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
