@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (보안)
+.env
+.env.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +27,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+Thumbs.db
+
+# Build outputs
+*.ontology.json
