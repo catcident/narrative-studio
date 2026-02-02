@@ -1,4 +1,4 @@
-# Railway Nixpacks configuration
+# Railway Nixpacks configuration for Character-Relationship-Chart
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
