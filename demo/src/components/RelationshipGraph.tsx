@@ -267,28 +267,29 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     return connected;
   }, [displayEdges]);
 
-  // 노드 생성 - selectedEntityId만 의존, hoveredNodeId 제거
+  // 노드 생성 - 인물/장소는 특별하게, 나머지는 작게
   const initialNodes = useMemo(() => {
     const chars = displayEntities.filter(e => e.category === 'character');
-    const others = displayEntities.filter(e => e.category !== 'character');
+    const locations = displayEntities.filter(e => e.category === 'location');
+    const others = displayEntities.filter(e => e.category !== 'character' && e.category !== 'location');
 
-    // 연결된 것과 연결 안된 것 분리
-    const connectedOthers = others.filter(e => connectedEntityIds.has(e.id));
-    const disconnectedOthers = others.filter(e => !connectedEntityIds.has(e.id));
+    const centerX = 300;
+    const centerY = 250;
 
-    const centerX = 400;
-    const centerY = 300;
+    // 인물 수에 따라 동적으로 반지름 계산
+    const charCount = chars.length;
+    const charRadius = Math.max(80, Math.min(140, charCount * 12));
+    const locationRadius = charRadius + 70;
 
-    // 캐릭터를 원형으로 배치 (내부 원)
+    // 캐릭터를 원형으로 배치 (내부 원, 특별하게)
     const charNodes: Node[] = chars.map((entity, i) => {
       const angle = (2 * Math.PI * i) / chars.length - Math.PI / 2;
-      const radius = 200;
       return {
         id: entity.id,
         type: 'default',
         position: {
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle),
+          x: centerX + charRadius * Math.cos(angle),
+          y: centerY + charRadius * Math.sin(angle),
         },
         data: {
           label: entity.name,
@@ -297,26 +298,59 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         style: {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
-          border: selectedEntityId === entity.id ? '3px solid #1e40af' : 'none',
+          border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
           borderRadius: '50%',
-          width: 80,
-          height: 80,
+          width: 50,
+          height: 50,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '12px',
+          fontSize: '10px',
           fontWeight: 600,
           boxShadow: selectedEntityId === entity.id
-            ? '0 0 20px rgba(59, 130, 246, 0.5)'
-            : '0 2px 8px rgba(0,0,0,0.1)',
+            ? '0 0 12px rgba(59, 130, 246, 0.5)'
+            : '0 2px 4px rgba(0,0,0,0.1)',
         },
       };
     });
 
-    // 연결된 기타 엔티티는 중간 원에 배치
-    const connectedOtherNodes: Node[] = connectedOthers.map((entity, i) => {
-      const angle = (2 * Math.PI * i) / connectedOthers.length;
-      const radius = 380;
+    // 장소는 중간 원에 배치 (특별하게, 원형)
+    const locationNodes: Node[] = locations.map((entity, i) => {
+      const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
+      return {
+        id: entity.id,
+        type: 'default',
+        position: {
+          x: centerX + locationRadius * Math.cos(angle),
+          y: centerY + locationRadius * Math.sin(angle),
+        },
+        data: {
+          label: entity.name,
+          entity,
+        },
+        style: {
+          background: CATEGORY_COLORS[entity.category],
+          color: 'white',
+          border: selectedEntityId === entity.id ? '2px solid #166534' : '2px solid rgba(255,255,255,0.3)',
+          borderRadius: '50%',
+          width: 40,
+          height: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '8px',
+          fontWeight: 600,
+          boxShadow: selectedEntityId === entity.id
+            ? '0 0 12px rgba(34, 197, 94, 0.5)'
+            : '0 2px 4px rgba(0,0,0,0.1)',
+        },
+      };
+    });
+
+    // 나머지 엔티티는 작은 점으로 외곽에 배치
+    const otherNodes: Node[] = others.map((entity, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
+      const radius = locationRadius + 50;
       return {
         id: entity.id,
         type: 'default',
@@ -331,47 +365,19 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         style: {
           background: CATEGORY_COLORS[entity.category],
           color: 'white',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          fontSize: '11px',
+          borderRadius: '4px',
+          padding: '2px 4px',
+          fontSize: '7px',
           fontWeight: 500,
-          border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          opacity: 0.7,
+          border: selectedEntityId === entity.id ? '1px solid #1e40af' : 'none',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
         },
       };
     });
 
-    // 연결 없는 엔티티는 외곽 원에 배치 (더 작고 흐리게)
-    const disconnectedOtherNodes: Node[] = disconnectedOthers.map((entity, i) => {
-      const angle = (2 * Math.PI * i) / disconnectedOthers.length + Math.PI / 4;
-      const radius = 520;
-      return {
-        id: entity.id,
-        type: 'default',
-        position: {
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle),
-        },
-        data: {
-          label: entity.name,
-          entity,
-        },
-        style: {
-          background: CATEGORY_COLORS[entity.category],
-          color: 'white',
-          borderRadius: '6px',
-          padding: '6px 10px',
-          fontSize: '10px',
-          fontWeight: 500,
-          opacity: 0.6,
-          border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        },
-      };
-    });
-
-    return [...charNodes, ...connectedOtherNodes, ...disconnectedOtherNodes];
-  }, [displayEntities, selectedEntityId, connectedEntityIds]);
+    return [...charNodes, ...locationNodes, ...otherNodes];
+  }, [displayEntities, selectedEntityId]);
 
   // 엣지 ID -> 원본 HyperEdge 매핑
   const edgeMap = useMemo(() => {
