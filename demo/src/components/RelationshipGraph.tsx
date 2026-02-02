@@ -13,8 +13,10 @@ import {
   useNodesState,
   useEdgesState,
   ConnectionMode,
+  Handle,
+  Position,
 } from '@xyflow/react';
-import type { Node, Edge } from '@xyflow/react';
+import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useStore } from '../store';
 import type { Entity, HyperEdge, EntityCategory } from '../types';
@@ -100,6 +102,46 @@ interface Props {
   edges: HyperEdge[];
   onNodeClick?: (entity: Entity) => void;
 }
+
+// 작은 원 + 밑에 라벨 커스텀 노드
+function SmallDotNode({ data }: NodeProps) {
+  const entity = data.entity as Entity;
+  const color = CATEGORY_COLORS[entity?.category] || '#9ca3af';
+
+  return (
+    <div className="flex flex-col items-center" style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <div
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: '50%',
+          background: color,
+          border: '2px solid rgba(255,255,255,0.8)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }}
+      />
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 9,
+          color: '#4b5563',
+          fontWeight: 500,
+          whiteSpace: 'nowrap',
+          textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+        }}
+      >
+        {entity?.name || ''}
+      </div>
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
+}
+
+// 커스텀 노드 타입
+const nodeTypes = {
+  smallDot: SmallDotNode,
+};
 
 // 선택된 관계 정보를 표시하는 팝업
 function EdgeDetailPopup({
@@ -272,7 +314,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const charRadius = Math.max(80, Math.min(140, charCount * 12));
     const locationRadius = charRadius + 70;
 
-    // 캐릭터를 원형으로 배치 (내부 원, 특별하게)
+    // 캐릭터를 원형으로 배치 (내부 원)
     const charNodes: Node[] = chars.map((entity, i) => {
       const angle = (2 * Math.PI * i) / chars.length - Math.PI / 2;
       return {
@@ -287,25 +329,26 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           entity,
         },
         style: {
-          background: CATEGORY_COLORS[entity.category],
+          background: `linear-gradient(135deg, ${CATEGORY_COLORS[entity.category]} 0%, ${CATEGORY_COLORS[entity.category]}dd 100%)`,
           color: 'white',
-          border: selectedEntityId === entity.id ? '2px solid #1e40af' : 'none',
+          border: selectedEntityId === entity.id ? '3px solid #1e40af' : '2px solid rgba(255,255,255,0.4)',
           borderRadius: '50%',
-          width: 50,
-          height: 50,
+          width: 56,
+          height: 56,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '10px',
+          fontSize: '11px',
           fontWeight: 600,
+          letterSpacing: '-0.02em',
           boxShadow: selectedEntityId === entity.id
-            ? '0 0 12px rgba(59, 130, 246, 0.5)'
-            : '0 2px 4px rgba(0,0,0,0.1)',
+            ? '0 4px 20px rgba(59, 130, 246, 0.4)'
+            : '0 3px 10px rgba(0,0,0,0.15)',
         },
       };
     });
 
-    // 장소는 중간 원에 배치 (특별하게, 원형)
+    // 장소는 네모 (둥근 모서리)
     const locationNodes: Node[] = locations.map((entity, i) => {
       const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
       return {
@@ -320,31 +363,26 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           entity,
         },
         style: {
-          background: CATEGORY_COLORS[entity.category],
+          background: `linear-gradient(135deg, ${CATEGORY_COLORS[entity.category]} 0%, ${CATEGORY_COLORS[entity.category]}cc 100%)`,
           color: 'white',
           border: selectedEntityId === entity.id ? '2px solid #166534' : '2px solid rgba(255,255,255,0.3)',
-          borderRadius: '50%',
-          width: 40,
-          height: 40,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '8px',
-          fontWeight: 600,
+          borderRadius: '8px',
+          fontWeight: 500,
+          letterSpacing: '-0.01em',
           boxShadow: selectedEntityId === entity.id
-            ? '0 0 12px rgba(34, 197, 94, 0.5)'
-            : '0 2px 4px rgba(0,0,0,0.1)',
+            ? '0 4px 15px rgba(34, 197, 94, 0.4)'
+            : '0 2px 8px rgba(0,0,0,0.12)',
         },
       };
     });
 
-    // 나머지 엔티티는 작은 점으로 외곽에 배치
+    // 나머지 엔티티는 작은 원 + 밑에 라벨로 표시 (커스텀 노드)
     const otherNodes: Node[] = others.map((entity, i) => {
       const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
-      const radius = locationRadius + 50;
+      const radius = locationRadius + 70;
       return {
         id: entity.id,
-        type: 'default',
+        type: 'smallDot',
         position: {
           x: centerX + radius * Math.cos(angle),
           y: centerY + radius * Math.sin(angle),
@@ -352,17 +390,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         data: {
           label: entity.name,
           entity,
-        },
-        style: {
-          background: CATEGORY_COLORS[entity.category],
-          color: 'white',
-          borderRadius: '4px',
-          padding: '2px 4px',
-          fontSize: '7px',
-          fontWeight: 500,
-          opacity: 0.7,
-          border: selectedEntityId === entity.id ? '1px solid #1e40af' : 'none',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
         },
       };
     });
@@ -565,6 +592,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
@@ -577,6 +605,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.3}
         maxZoom={2}
+        style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
       >
         <Background color="#e5e7eb" gap={20} />
         <Controls className="bg-white rounded-lg shadow-lg" />
