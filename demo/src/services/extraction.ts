@@ -29,15 +29,26 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 ---
 {{previousCharacters}}
 
-## 핵심: 장면(scene) 단위로 분석
+## 핵심: 장(chapter)과 장면(scene) 단위로 분석
+
+### 장(chapter) 추출 규칙
+- 텍스트에 명시적으로 "제1장", "제2장", "제1편", "제2편", "1장", "2장" 등의 장 구분이 있을 때만 추출
+- 장 구분이 없으면 chapters 배열을 비워두거나 생략
+- 장 제목이 있으면 함께 기록 (예: "제1장 춘향의 탄생")
+
+### 장면(scene) 추출 규칙
 - 시간/장소가 바뀌면 새 장면
 - 각 장면에 순서 번호 부여 (이 청크 내에서 1, 2, 3...)
+- 장면이 어느 장에 속하는지 chapter 필드에 기록 (장 구분이 없으면 null)
 - 모든 엔티티와 관계에 어떤 장면에서 등장했는지 기록
 
 ## JSON 형식
 {
+  "chapters": [
+    {"id": 1, "title": "제1장 춘향의 탄생", "summary": "요약(선택)"}
+  ],
   "scenes": [
-    {"id": 1, "time": "시간표현(있으면)", "location": "장소명", "summary": "요약"}
+    {"id": 1, "chapter": 1, "time": "시간표현(있으면)", "location": "장소명", "summary": "요약"}
   ],
   "entities": [
     {
@@ -280,6 +291,8 @@ function mergeExtractions(extractions: any[]): any {
   const entities: any[] = [];
   const relationships: any[] = [];
   const scenes: any[] = [];
+  const chapters: any[] = [];
+  const chapterMap: Record<string, number> = {}; // 장 제목 -> id 매핑
   const nameMap: Record<string, number> = {}; // 이름 -> entities 인덱스
 
   let globalSceneOffset = 0;
@@ -287,14 +300,39 @@ function mergeExtractions(extractions: any[]): any {
   for (let chunkIdx = 0; chunkIdx < extractions.length; chunkIdx++) {
     const ext = extractions[chunkIdx];
 
+    // 장(chapter) 병합 (중복 제거)
+    for (const chapter of (ext.chapters || [])) {
+      const key = chapter.title || `제${chapter.id}장`;
+      if (!chapterMap[key]) {
+        const newId = chapters.length + 1;
+        chapterMap[key] = newId;
+        chapters.push({
+          ...chapter,
+          id: newId,
+        });
+      }
+    }
+
     // 장면 병합 (글로벌 번호 부여)
     const localToGlobal: Record<number, number> = {};
     for (const scene of (ext.scenes || [])) {
       const globalId = globalSceneOffset + scene.id;
       localToGlobal[scene.id] = globalId;
+
+      // 장면의 chapter를 글로벌 chapter id로 변환
+      let globalChapter = scene.chapter;
+      if (scene.chapter && ext.chapters) {
+        const chapterInfo = ext.chapters.find((c: any) => c.id === scene.chapter);
+        if (chapterInfo) {
+          const key = chapterInfo.title || `제${chapterInfo.id}장`;
+          globalChapter = chapterMap[key] || scene.chapter;
+        }
+      }
+
       scenes.push({
         ...scene,
         id: globalId,
+        chapter: globalChapter,
         chunkNum: chunkIdx + 1
       });
     }
@@ -356,7 +394,7 @@ function mergeExtractions(extractions: any[]): any {
     }
   }
 
-  return { entities, relationships, scenes };
+  return { entities, relationships, scenes, chapters };
 }
 
 // 이름 정규화 (공백, 호칭 제거)
@@ -673,10 +711,23 @@ function buildOntology(extracted: any, title: string): NovelOntology {
     edges: [],
   })).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
+  // 장(Chapter) 정보 처리
+  const chapters: Record<string, any> = {};
+  (extracted.chapters || []).forEach((c: any) => {
+    const chapterId = `C${String(c.id).padStart(4, '0')}`;
+    chapters[chapterId] = {
+      id: chapterId,
+      number: c.id,
+      title: c.title || `제${c.id}장`,
+      summary: c.summary || '',
+    };
+  });
+
   // 장면(Scene)을 snapshots로
   const snapshots: Record<string, any> = {};
   (extracted.scenes || []).forEach((s: any) => {
     const sceneId = `S${String(s.id).padStart(4, '0')}`;
+    const chapterId = s.chapter ? `C${String(s.chapter).padStart(4, '0')}` : null;
 
     // 이 장면에 등장하는 엔티티들 (scenes 배열에 sceneId가 포함된 것)
     const entitiesInScene = Object.values(entities)
@@ -691,6 +742,8 @@ function buildOntology(extracted: any, title: string): NovelOntology {
     snapshots[sceneId] = {
       sceneId,
       order: s.id,
+      chapter: chapterId,
+      chapterNumber: s.chapter || null,
       time: s.time || `장면 ${s.id}`,
       location: s.location,
       summary: s.summary,
@@ -722,11 +775,13 @@ function buildOntology(extracted: any, title: string): NovelOntology {
     },
     entities,
     hyperedges,
+    chapters,
     timeline,
     snapshots,
     stats: {
       totalEntities: Object.keys(entities).length,
       totalEdges: Object.keys(hyperedges).length,
+      totalChapters: Object.keys(chapters).length,
       entitiesByCategory: entitiesByCategory as any,
       edgesByType: edgesByType as any,
     },

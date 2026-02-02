@@ -96,6 +96,13 @@ export interface TimelinePoint {
   edges: string[];
 }
 
+export interface Chapter {
+  id: string;
+  number: number;
+  title: string;
+  summary?: string;
+}
+
 export interface NovelOntology {
   metadata: {
     title: string;
@@ -106,11 +113,13 @@ export interface NovelOntology {
   };
   entities: Record<string, Entity>;
   hyperedges: Record<string, HyperEdge>;
+  chapters?: Record<string, Chapter>;
   timeline: TimelinePoint[];
   snapshots: Record<string, any>;
   stats: {
     totalEntities: number;
     totalEdges: number;
+    totalChapters?: number;
     entitiesByCategory: Record<EntityCategory, number>;
     edgesByType: Record<RelationType, number>;
   };
