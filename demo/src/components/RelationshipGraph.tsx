@@ -235,7 +235,6 @@ function EdgeDetailPopup({
 export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
   const { selectedEntityId, selectEntity } = useStore();
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
-  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharId, setFocusedCharId] = useState<string | null>(null);
   const [minImportance, setMinImportance] = useState<number>(1);  // 최소 중요도 필터
@@ -308,43 +307,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     );
   }
 
-  // 반발력 시뮬레이션으로 노드 위치 계산
-  const applyRepulsion = (positions: { id: string; x: number; y: number; size: number; layer: number }[], centerX: number, centerY: number, iterations = 50) => {
-    const minDistance = 40;
-
-    for (let iter = 0; iter < iterations; iter++) {
-      for (let i = 0; i < positions.length; i++) {
-        for (let j = i + 1; j < positions.length; j++) {
-          // 같은 레이어끼리만 반발
-          if (positions[i].layer !== positions[j].layer) continue;
-
-          const dx = positions[j].x - positions[i].x;
-          const dy = positions[j].y - positions[i].y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minDist = (positions[i].size + positions[j].size) / 2 + minDistance;
-
-          if (dist < minDist) {
-            // 중심에서의 거리 유지하면서 각도만 조정
-            const angle1 = Math.atan2(positions[i].y - centerY, positions[i].x - centerX);
-            const angle2 = Math.atan2(positions[j].y - centerY, positions[j].x - centerX);
-            const r1 = Math.sqrt((positions[i].x - centerX) ** 2 + (positions[i].y - centerY) ** 2);
-            const r2 = Math.sqrt((positions[j].x - centerX) ** 2 + (positions[j].y - centerY) ** 2);
-
-            const angleForce = 0.02;
-            const newAngle1 = angle1 - angleForce;
-            const newAngle2 = angle2 + angleForce;
-
-            positions[i].x = centerX + r1 * Math.cos(newAngle1);
-            positions[i].y = centerY + r1 * Math.sin(newAngle1);
-            positions[j].x = centerX + r2 * Math.cos(newAngle2);
-            positions[j].y = centerY + r2 * Math.sin(newAngle2);
-          }
-        }
-      }
-    }
-    return positions;
-  };
-
   // 노드 생성 - 인물/장소는 특별하게, 나머지는 작게
   const initialNodes = useMemo(() => {
     const chars = displayEntities.filter(e => e.category === 'character');
@@ -411,9 +373,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           layer: 3,
         });
       });
-
-      // 반발력 적용
-      applyRepulsion(allPositions, centerX, centerY, 30);
 
       // 중앙 노드 (포커스된 인물)
       const focusedNode: Node = {
@@ -546,9 +505,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       });
     });
 
-    // 반발력 적용
-    applyRepulsion(allPositions, centerX, centerY, 30);
-
     // 캐릭터 노드
     const charNodes: Node[] = chars.map((entity) => {
       const pos = allPositions.find(p => p.id === entity.id)!;
@@ -631,14 +587,13 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     return map;
   }, [displayEdges]);
 
-  // 엣지 생성 - hoveredEdgeId 의존하지만 노드 위치에는 영향 없음
+  // 엣지 생성 - hover 효과 제거로 성능 개선
   const initialEdges = useMemo(() => {
     const result: Edge[] = [];
 
     displayEdges.forEach((edge) => {
       const color = RELATION_COLORS[edge.type] || '#9ca3af';
       const dashArray = SENTIMENT_STYLES[edge.sentiment || 'neutral'].strokeDasharray;
-      const isHovered = hoveredEdgeId?.startsWith(edge.id);
       const relationLabel = RELATION_LABELS[edge.type] || edge.type;
       const isPast = (edge as EdgeWithOpacity).isPastScene;
 
@@ -649,19 +604,19 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
             source: edge.entities[i],
             target: edge.entities[j],
             type: 'default',
-            animated: edge.sentiment === 'positive',
+            animated: false, // 애니메이션 비활성화로 성능 개선
             style: {
-              stroke: isHovered ? '#3b82f6' : color,
-              strokeWidth: isHovered ? 4 : Math.min((edge.strength || 5) / 3, 4),
+              stroke: color,
+              strokeWidth: Math.min((edge.strength || 5) / 3, 3),
               strokeDasharray: dashArray,
               cursor: 'pointer',
-              opacity: isPast ? 0.25 : 1,
+              opacity: isPast ? 0.25 : 0.7,
             },
             label: i === 0 && j === 1 ? relationLabel : undefined,
             labelStyle: {
-              fontSize: isHovered ? 12 : 10,
-              fill: isHovered ? '#1d4ed8' : '#666',
-              fontWeight: isHovered ? 600 : 400,
+              fontSize: 9,
+              fill: '#666',
+              fontWeight: 400,
               opacity: isPast ? 0.25 : 1,
             },
             labelBgStyle: {
@@ -677,7 +632,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     });
 
     return result;
-  }, [displayEdges, hoveredEdgeId, viewMode]);
+  }, [displayEdges, viewMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -711,14 +666,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
 
   const handlePaneClick = useCallback(() => {
     setSelectedEdge(null);
-  }, []);
-
-  const handleEdgeMouseEnter = useCallback((_: any, edge: Edge) => {
-    setHoveredEdgeId(edge.id);
-  }, []);
-
-  const handleEdgeMouseLeave = useCallback(() => {
-    setHoveredEdgeId(null);
   }, []);
 
   const getCharColor = (index: number) => {
@@ -825,24 +772,27 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
-        onEdgeMouseEnter={handleEdgeMouseEnter}
-        onEdgeMouseLeave={handleEdgeMouseLeave}
         onPaneClick={handlePaneClick}
         connectionMode={ConnectionMode.Loose}
         defaultViewport={{ x: 0, y: 0, zoom: 1.2 }}
         minZoom={0.3}
         maxZoom={2}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        edgesFocusable={false}
         style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
       >
         <Background color="#e5e7eb" gap={20} />
         <Controls className="bg-white rounded-lg shadow-lg" />
-        <MiniMap
-          nodeColor={(node) => {
-            const entity = node.data?.entity as Entity;
-            return entity ? CATEGORY_COLORS[entity.category] : '#ccc';
-          }}
-          className="bg-white rounded-lg shadow-lg"
-        />
+        {displayEntities.length <= 100 && (
+          <MiniMap
+            nodeColor={(node) => {
+              const entity = node.data?.entity as Entity;
+              return entity ? CATEGORY_COLORS[entity.category] : '#ccc';
+            }}
+            className="bg-white rounded-lg shadow-lg"
+          />
+        )}
       </ReactFlow>
 
       {selectedEdge && (
