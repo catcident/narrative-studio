@@ -1,4 +1,6 @@
 import './globals.css'
+import { AUTH_ENABLED } from '@/lib/auth'
+import { AuthProvider } from '@/components/AuthProvider'
 
 export const metadata = {
   title: '인물 관계도',
@@ -13,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        {children}
+        {AUTH_ENABLED ? <AuthProvider>{children}</AuthProvider> : children}
       </body>
     </html>
   )
