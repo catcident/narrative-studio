@@ -6,8 +6,8 @@
 
 import type { NovelKnowledgeGraph } from '../types';
 
-// API 베이스 URL (환경변수 또는 빈 문자열 = 로컬만 사용)
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// API 서버 URL (Railway 서버 서비스)
+const API_BASE = '';
 
 export interface SavedKnowledgeGraph {
   id: string;
