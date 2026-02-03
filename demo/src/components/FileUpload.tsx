@@ -6,10 +6,11 @@ import { useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu } from 'lucide-react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
+import { saveKnowledgeGraph } from '../services/storage';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
 export function FileUpload() {
-  const { knowledgeGraph, setKnowledgeGraph, setLoading, setError, error } = useStore();
+  const { knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, error } = useStore();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -55,11 +56,15 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
-      const knowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg) => {
         setProgress(msg);
       }, savedProgress);
 
-      setKnowledgeGraph(knowledgeGraph);
+      // 저장하고 ID 받기
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -133,12 +138,16 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      const knowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
         setProgress(msg);
       }, undefined, currentModel);
 
-      // 원본 텍스트와 함께 저장
-      setKnowledgeGraph(knowledgeGraph, combinedText);
+      // 저장하고 ID 받기
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 원본 텍스트와 함께 저장 (ID도 함께)
+      setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -192,21 +201,25 @@ export function FileUpload() {
       console.log('Extracting knowledgeGraph from text:', text.slice(0, 200) + '...');
 
       const title = file.name.replace(/\.[^/.]+$/, '');
-      const knowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(msg);
       }, undefined, currentModel);
 
-      console.log('Extracted knowledgeGraph:', knowledgeGraph);
-      console.log('Entities:', Object.keys(knowledgeGraph.entities).length);
-      console.log('Edges:', Object.keys(knowledgeGraph.hyperedges).length);
-      console.log('Scenes:', Object.keys(knowledgeGraph.snapshots || {}).length);
+      console.log('Extracted knowledgeGraph:', newKnowledgeGraph);
+      console.log('Entities:', Object.keys(newKnowledgeGraph.entities).length);
+      console.log('Edges:', Object.keys(newKnowledgeGraph.hyperedges).length);
+      console.log('Scenes:', Object.keys(newKnowledgeGraph.snapshots || {}).length);
 
-      if (Object.keys(knowledgeGraph.entities).length === 0) {
+      if (Object.keys(newKnowledgeGraph.entities).length === 0) {
         throw new Error('추출된 엔티티가 없습니다. 소설 내용을 확인해주세요.');
       }
 
-      // 원본 텍스트와 함께 저장
-      setKnowledgeGraph(knowledgeGraph, text);
+      // 저장하고 ID 받기
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 원본 텍스트와 함께 저장 (ID도 함께)
+      setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -297,7 +310,11 @@ export function FileUpload() {
       console.log('총 엔티티:', Object.keys(merged.entities).length);
       console.log('총 관계:', Object.keys(merged.hyperedges).length);
 
-      setKnowledgeGraph(merged);
+      // 기존 ID를 사용하여 저장 (버전 업데이트)
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
+
+      setKnowledgeGraph(merged, undefined, saved.id);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -309,7 +326,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [knowledgeGraph, setKnowledgeGraph, setLoading, setError, currentModel]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel]);
 
   const handleAddChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

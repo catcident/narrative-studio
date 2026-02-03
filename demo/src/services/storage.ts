@@ -37,6 +37,7 @@ export interface SavedKnowledgeGraphMeta {
   entityCount: number;
   edgeCount: number;
   sceneCount: number;
+  model?: string;  // 분석에 사용된 모델
 }
 
 // ==================== 로컬 IndexedDB (폴백용) ====================
@@ -87,6 +88,7 @@ async function getLocalList(): Promise<SavedKnowledgeGraphMeta[]> {
           entityCount: o.entityCount,
           edgeCount: o.edgeCount,
           sceneCount: o.sceneCount,
+          model: o.data?.metadata?.model,  // 모델 정보 추가
         })).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
       };
     });
@@ -116,7 +118,7 @@ async function loadLocal(id: string): Promise<NovelKnowledgeGraph | null> {
   }
 }
 
-async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnowledgeGraphMeta> {
+async function saveLocal(knowledgeGraph: NovelKnowledgeGraph, existingId?: string): Promise<SavedKnowledgeGraphMeta> {
   const dbConn = await openDB();
   const now = new Date().toISOString();
   const title = knowledgeGraph.metadata.title;
@@ -125,11 +127,47 @@ async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnow
   const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
   const sceneCount = Object.keys(knowledgeGraph.snapshots || {}).length;
 
-  // 기존 데이터 찾기
-  const existingList = await getLocalList();
-  const existing = existingList.find(o => o.title === title);
+  // 기존 데이터 찾기 (ID가 제공되면 ID로, 아니면 첫 번째 제목 부분으로)
+  let existing: SavedKnowledgeGraph | null = null;
+
+  if (existingId) {
+    // ID로 직접 찾기
+    const tx = dbConn.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    existing = await new Promise<SavedKnowledgeGraph | null>((resolve, reject) => {
+      const request = store.get(existingId);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || null);
+    });
+  }
+
+  // ID로 못 찾으면 제목의 첫 번째 부분으로 찾기 (기존 호환성)
+  if (!existing) {
+    const baseTitle = title.split(' + ')[0]; // "01화 + 02화" -> "01화"
+    const allItems = await getLocalListFull();
+    existing = allItems.find(o => {
+      const existingBaseTitle = o.title.split(' + ')[0];
+      return existingBaseTitle === baseTitle;
+    }) || null;
+  }
 
   if (existing) {
+    // 이전 버전을 VERSION_STORE에 저장
+    const versionTx = dbConn.transaction(VERSION_STORE_NAME, 'readwrite');
+    const versionStore = versionTx.objectStore(VERSION_STORE_NAME);
+    await new Promise<void>((resolve, reject) => {
+      const versionItem = {
+        dataId: existing!.id,
+        version: existing!.version,
+        savedAt: existing!.updatedAt,
+        note: `v${existing!.version}: ${existing!.title}`,
+        data: existing!.data,
+      };
+      const request = versionStore.put(versionItem);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+
     const updatedItem: SavedKnowledgeGraph = {
       id: existing.id,
       title,
@@ -149,6 +187,8 @@ async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnow
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve();
     });
+
+    console.log(`[storage] 기존 데이터 업데이트: ${existing.title} -> ${title} (v${updatedItem.version})`);
 
     return {
       id: updatedItem.id,
@@ -181,6 +221,8 @@ async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnow
       request.onsuccess = () => resolve();
     });
 
+    console.log(`[storage] 새 데이터 저장: ${title} (v1)`);
+
     return {
       id: newItem.id,
       title: newItem.title,
@@ -191,6 +233,27 @@ async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnow
       edgeCount,
       sceneCount,
     };
+  }
+}
+
+// 전체 데이터 포함 목록 (내부용)
+async function getLocalListFull(): Promise<SavedKnowledgeGraph[]> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const items: SavedKnowledgeGraph[] = request.result;
+        resolve(items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+      };
+    });
+  } catch (err) {
+    console.error('로컬 목록 로드 실패:', err);
+    return [];
   }
 }
 
@@ -296,11 +359,13 @@ export async function loadKnowledgeGraph(id: string): Promise<NovelKnowledgeGrap
 
 /**
  * 지식 그래프 저장
+ * @param existingId - 기존 데이터의 ID (업데이트 시)
  */
 export async function saveKnowledgeGraph(
   knowledgeGraph: NovelKnowledgeGraph,
   novelId?: string,
-  userId?: string
+  userId?: string,
+  existingId?: string
 ): Promise<SavedKnowledgeGraphMeta> {
   try {
     const response = await fetch(`${API_BASE}/knowledge-graphs`, {
@@ -310,6 +375,7 @@ export async function saveKnowledgeGraph(
         knowledgeGraph,
         novelId: novelId || null,
         userId: userId || null,
+        existingId: existingId || null,
       }),
     });
 
@@ -318,7 +384,7 @@ export async function saveKnowledgeGraph(
     return await response.json();
   } catch (err) {
     console.warn('서버 저장 실패, 로컬 저장:', err);
-    return saveLocal(knowledgeGraph);
+    return saveLocal(knowledgeGraph, existingId);
   }
 }
 

@@ -31,7 +31,7 @@ import type { NovelKnowledgeGraph } from '../types';
 
 interface Props {
   onClose: () => void;
-  onLoad: (data: NovelKnowledgeGraph) => void;
+  onLoad: (data: NovelKnowledgeGraph, dataId?: string) => void;
 }
 
 export function DataManager({ onClose, onLoad }: Props) {
@@ -67,7 +67,7 @@ export function DataManager({ onClose, onLoad }: Props) {
   const handleLoad = async (id: string) => {
     const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
-      onLoad(loaded);
+      onLoad(loaded, id);
       onClose();
     }
   };
@@ -93,7 +93,7 @@ export function DataManager({ onClose, onLoad }: Props) {
   const handleRestoreVersion = async (dataId: string, version: number) => {
     const restored = await restoreVersion(dataId, version);
     if (restored) {
-      onLoad(restored);
+      onLoad(restored, dataId);
       onClose();
     }
   };

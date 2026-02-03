@@ -27,9 +27,10 @@ import {
   type SavedKnowledgeGraphMeta,
 } from '../services/storage';
 import type { NovelKnowledgeGraph } from '../types';
+import { AVAILABLE_MODELS } from '../types';
 
 interface Props {
-  onLoad: (data: NovelKnowledgeGraph) => void;
+  onLoad: (data: NovelKnowledgeGraph, dataId?: string) => void;
 }
 
 export function SavedDataGrid({ onLoad }: Props) {
@@ -65,7 +66,7 @@ export function SavedDataGrid({ onLoad }: Props) {
   const handleLoad = async (id: string) => {
     const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
-      onLoad(loaded);
+      onLoad(loaded, id);
     }
   };
 
@@ -93,7 +94,7 @@ export function SavedDataGrid({ onLoad }: Props) {
     e.stopPropagation();
     const restored = await restoreVersion(dataId, version);
     if (restored) {
-      onLoad(restored);
+      onLoad(restored, dataId);
     }
   };
 
@@ -194,6 +195,13 @@ export function SavedDataGrid({ onLoad }: Props) {
                   v{item.version}
                 </span>
               </div>
+
+              {/* 모델 정보 */}
+              {item.model && (
+                <div className="mt-2 text-xs text-purple-500 truncate" title={item.model}>
+                  {AVAILABLE_MODELS.find(m => m.id === item.model)?.name || item.model.split('/')[1]}
+                </div>
+              )}
             </button>
 
             {/* 액션 버튼들 (호버 시 표시) */}

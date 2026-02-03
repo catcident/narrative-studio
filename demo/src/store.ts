@@ -9,6 +9,7 @@ interface AppState {
   // 데이터
   knowledgeGraph: NovelKnowledgeGraph | null;
   originalText: string | null;  // 원본 소설 텍스트
+  currentDataId: string | null;  // 현재 로드된 데이터의 저장소 ID (버전 관리용)
   isLoading: boolean;
   error: string | null;
 
@@ -21,7 +22,7 @@ interface AppState {
   viewMode: 'graph' | 'timeline' | 'chronicle' | 'world';
 
   // 액션
-  setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string) => void;
+  setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   selectEntity: (id: string | null) => void;
@@ -35,6 +36,7 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   knowledgeGraph: null,
   originalText: null,
+  currentDataId: null,
   isLoading: false,
   error: null,
   selectedEntityId: null,
@@ -44,7 +46,12 @@ export const useStore = create<AppState>((set) => ({
   sceneRangeEnd: null,
   viewMode: 'graph',
 
-  setKnowledgeGraph: (knowledgeGraph, originalText) => set({ knowledgeGraph, originalText: originalText || null, error: null }),
+  setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set({
+    knowledgeGraph,
+    originalText: originalText || null,
+    currentDataId: dataId || null,
+    error: null,
+  }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   selectEntity: (selectedEntityId) => set({ selectedEntityId }),
@@ -55,6 +62,7 @@ export const useStore = create<AppState>((set) => ({
   reset: () => set({
     knowledgeGraph: null,
     originalText: null,
+    currentDataId: null,
     selectedEntityId: null,
     selectedTimePoint: null,
     selectedSceneId: null,

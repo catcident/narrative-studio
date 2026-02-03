@@ -30,7 +30,7 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
 
 function App() {
   const {
-    knowledgeGraph, originalText, viewMode, setViewMode, reset, setKnowledgeGraph, error,
+    knowledgeGraph, originalText, currentDataId, viewMode, setViewMode, reset, setKnowledgeGraph, error,
     selectedSceneId, selectScene,
     sceneRangeStart, sceneRangeEnd, selectSceneRange
   } = useStore();
@@ -40,8 +40,10 @@ function App() {
   const [addProgress, setAddProgress] = useState('');
 
   // 지식 그래프가 변경되면 자동 저장
+  // FileUpload에서 저장한 경우 currentDataId가 이미 있으므로 중복 저장 방지
   useEffect(() => {
-    if (knowledgeGraph) {
+    if (knowledgeGraph && !currentDataId) {
+      // currentDataId가 없으면 아직 저장되지 않은 것이므로 저장
       setSaveStatus('saving');
 
       const saveData = async () => {
@@ -69,12 +71,17 @@ function App() {
       // 2초 후 상태 초기화
       const timer = setTimeout(() => setSaveStatus('idle'), 2000);
       return () => clearTimeout(timer);
+    } else if (currentDataId) {
+      // 이미 저장된 상태면 저장됨 표시만
+      setSaveStatus('saved');
+      const timer = setTimeout(() => setSaveStatus('idle'), 2000);
+      return () => clearTimeout(timer);
     }
-  }, [knowledgeGraph, originalText]);
+  }, [knowledgeGraph, originalText, currentDataId]);
 
-  // 데이터 관리자에서 불러오기
-  const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph) => {
-    setKnowledgeGraph(loaded);
+  // 데이터 관리자에서 불러오기 (ID 포함)
+  const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph, dataId?: string) => {
+    setKnowledgeGraph(loaded, undefined, dataId);
     setShowDataManager(false);
   };
 

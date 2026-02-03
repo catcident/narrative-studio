@@ -126,7 +126,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   { id: 'google/gemini-2.0-flash-lite-preview-02-05', name: 'Gemini 2.0 Flash Lite', inputCost: 0.075, outputCost: 0.30, description: '9위 - 가장 저렴' },
 ];
 
-export const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+export const DEFAULT_MODEL = 'deepseek/deepseek-chat';
 
 export interface NovelKnowledgeGraph {
   metadata: {
