@@ -55,6 +55,10 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 - 시간/장소가 바뀌면 새 장면
 - 각 장면에 순서 번호 부여 (이 청크 내에서 1, 2, 3...)
 - **장면이 어느 장에 속하는지 chapter 필드에 반드시 기록** (예: chapter: 1, chapter: 2)
+- **time_elapsed**: 이전 장면으로부터 얼마나 시간이 흘렀는지 표현
+  - 예: "5분 후", "30분 후", "2시간 후", "다음 날", "며칠 후", "1주일 후", "한 달 후"
+  - 시간 변화가 없거나 연속이면 null
+  - 첫 번째 장면은 항상 null
 - 모든 엔티티와 관계에 어떤 장면에서 등장했는지 기록
 
 ## JSON 형식
@@ -63,7 +67,7 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
     {"id": 1, "title": "제1장 춘향의 탄생", "summary": "요약(선택)"}
   ],
   "scenes": [
-    {"id": 1, "chapter": 1, "time": "시간표현(있으면)", "location": "장소명", "summary": "요약"}
+    {"id": 1, "chapter": 1, "time": "시간표현(있으면)", "location": "장소명", "summary": "요약", "time_elapsed": "이전 장면으로부터 경과 시간 (예: 2시간 후, 다음 날) 또는 null"}
   ],
   "entities": [
     {
@@ -247,14 +251,18 @@ export async function extractKnowledgeGraph(
   for (let i = startChunk; i < chunks.length; i++) {
     const msg = `AI 분석 중... (${i + 1}/${totalChunks})`;
     console.log(msg);
+    console.log(`[청크 ${i + 1}] 현재까지 알려진 인물: ${knownCharacters.length}명 - ${knownCharacters.map(c => c.name).join(', ')}`);
     onProgress?.(msg);
 
     try {
-      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimKnownCharacters(knownCharacters));
+      const trimmedCharacters = trimKnownCharacters(knownCharacters);
+      console.log(`[청크 ${i + 1}] 프롬프트에 전달할 인물: ${trimmedCharacters.length}명`);
+      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimmedCharacters);
       if (extracted) {
         allExtracted.push(extracted);
 
         // 이 청크에서 발견된 인물들을 다음 청크를 위해 저장
+        const newCharacters: string[] = [];
         for (const entity of (extracted.entities || [])) {
           if (entity.category === 'character') {
             const existing = knownCharacters.find(c =>
@@ -277,9 +285,13 @@ export async function extractKnowledgeGraph(
                 description: (entity.description || '').slice(0, 100),
                 aliases: entity.aliases || []
               });
+              newCharacters.push(entity.name);
             }
           }
         }
+        console.log(`[청크 ${i + 1}] 추출된 인물: ${(extracted.entities || []).filter((e: any) => e.category === 'character').map((e: any) => e.name).join(', ')}`);
+        console.log(`[청크 ${i + 1}] 새로 발견된 인물: ${newCharacters.join(', ') || '없음'}`);
+        console.log(`[청크 ${i + 1}] 누적 인물 수: ${knownCharacters.length}명`);
 
         // 매 청크 후 진행상황 저장
         saveProgress({
@@ -465,8 +477,11 @@ function mergeExtractions(extractions: any[]): any {
 
   let globalSceneOffset = 0;
 
+  console.log(`[병합] 총 ${extractions.length}개 청크 결과 병합 시작`);
+
   for (let chunkIdx = 0; chunkIdx < extractions.length; chunkIdx++) {
     const ext = extractions[chunkIdx];
+    console.log(`[병합] 청크 ${chunkIdx + 1}: entities=${(ext.entities || []).length}, relationships=${(ext.relationships || []).length}, scenes=${(ext.scenes || []).length}`);
 
     // 장(chapter) 병합 (중복 제거)
     for (const chapter of (ext.chapters || [])) {
@@ -562,6 +577,8 @@ function mergeExtractions(extractions: any[]): any {
     }
   }
 
+  console.log(`[병합 완료] 최종 entities=${entities.length}, relationships=${relationships.length}, scenes=${scenes.length}, chapters=${chapters.length}`);
+  console.log(`[병합 완료] 인물 목록: ${entities.filter(e => e.category === 'character').map(e => e.name).join(', ')}`);
   return { entities, relationships, scenes, chapters };
 }
 
@@ -1037,6 +1054,7 @@ function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph
       chapter: chapterId,
       chapterNumber: s.chapter || null,
       time: s.time || `장면 ${s.id}`,
+      timeElapsed: s.time_elapsed || null,  // 이전 장면으로부터 경과 시간
       location: s.location,
       summary: s.summary,
       events: s.events || [],

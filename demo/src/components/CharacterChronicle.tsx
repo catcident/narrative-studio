@@ -160,6 +160,7 @@ interface SceneInfo {
   sceneLabel: string;
   time: string;
   location: string;
+  timeElapsed?: string | null;  // 이전 장면으로부터 경과 시간
 }
 
 export function CharacterChronicle() {
@@ -263,6 +264,7 @@ export function CharacterChronicle() {
           sceneLabel: `장면 ${sceneNum}`,
           time,
           location,
+          timeElapsed: snapshot?.timeElapsed || null,
         };
       });
   }, [knowledgeGraph]);
@@ -462,26 +464,20 @@ export function CharacterChronicle() {
 
           {/* 각 장면 행 */}
           {allScenes.map((scene, sceneIndex) => {
-            // 이전 장면과의 시간 경과 계산
-            const prevScene = sceneIndex > 0 ? allScenes[sceneIndex - 1] : null;
-            const timeChange = (() => {
-              if (!prevScene) return null;
-              // 현재 장면의 시간이 이전과 다르면 표시
-              if (scene.time && prevScene.time && scene.time !== prevScene.time) {
-                return { from: prevScene.time, to: scene.time };
-              }
-              // 이전에 시간 정보가 없다가 새로 나타난 경우
-              if (scene.time && !prevScene.time) {
-                return { from: null, to: scene.time };
-              }
-              return null;
-            })();
-
-            // 시간 경과 텍스트 생성
+            // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
             const getTimeElapsedText = () => {
-              if (!timeChange) return null;
-              if (timeChange.from && timeChange.to) {
-                return `${timeChange.from} → ${timeChange.to}`;
+              // 첫 장면은 시간 경과 표시 안함
+              if (sceneIndex === 0) return null;
+
+              // 1. 지식그래프에서 추출한 timeElapsed 사용 (우선)
+              if (scene.timeElapsed) {
+                return scene.timeElapsed;
+              }
+
+              // 2. fallback: 이전 장면과 시간이 다르면 표시
+              const prevScene = allScenes[sceneIndex - 1];
+              if (scene.time && prevScene.time && scene.time !== prevScene.time) {
+                return `${prevScene.time} → ${scene.time}`;
               }
               return null;
             };
