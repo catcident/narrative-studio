@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 
-// 목록 조회
-export async function GET() {
+// 목록 조회 (userId로 필터링 가능)
+export async function GET(request: NextRequest) {
   try {
     const db = await connectMongo();
-    const items = await db.collection('knowledgeGraphs').find({}).sort({ updatedAt: -1 }).toArray();
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    const query = userId ? { userId } : {};
+    const items = await db.collection('knowledgeGraphs').find(query).sort({ updatedAt: -1 }).toArray();
 
     return NextResponse.json(items.map(item => ({
       id: item._id.toString(),
@@ -16,18 +20,25 @@ export async function GET() {
       entityCount: item.entityCount || 0,
       edgeCount: item.edgeCount || 0,
       sceneCount: item.sceneCount || 0,
+      userId: item.userId || null,
+      hasOriginalText: !!item.originalText,
     })));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 
-// 저장
+// 저장 (원본 텍스트 + 사용자 ID 포함)
 export async function POST(request: NextRequest) {
   try {
     const db = await connectMongo();
     const collection = db.collection('knowledgeGraphs');
-    const data = await request.json();
+    const body = await request.json();
+
+    // body 구조: { knowledgeGraph, originalText?, userId? }
+    const data = body.knowledgeGraph || body;
+    const originalText = body.originalText || null;
+    const userId = body.userId || null;
 
     if (!data?.metadata) {
       return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
@@ -39,13 +50,26 @@ export async function POST(request: NextRequest) {
     const edgeCount = Object.keys(data.hyperedges || {}).length;
     const sceneCount = Object.keys(data.snapshots || {}).length;
 
-    const existing = await collection.findOne({ title });
+    // userId + title 조합으로 찾기 (사용자별 분리)
+    const query = userId ? { title, userId } : { title, userId: null };
+    const existing = await collection.findOne(query);
 
     if (existing) {
       const newVersion = (existing.version || 1) + 1;
-      await collection.updateOne({ _id: existing._id }, {
-        $set: { data, version: newVersion, updatedAt: now, entityCount, edgeCount, sceneCount }
-      });
+      const updateData: any = {
+        data,
+        version: newVersion,
+        updatedAt: now,
+        entityCount,
+        edgeCount,
+        sceneCount
+      };
+      // 원본 텍스트가 있으면 업데이트
+      if (originalText) {
+        updateData.originalText = originalText;
+      }
+
+      await collection.updateOne({ _id: existing._id }, { $set: updateData });
       return NextResponse.json({
         id: existing._id.toString(),
         title,
@@ -54,11 +78,22 @@ export async function POST(request: NextRequest) {
         version: newVersion,
         entityCount,
         edgeCount,
-        sceneCount
+        sceneCount,
+        userId,
+        hasOriginalText: !!(originalText || existing.originalText),
       });
     } else {
       const result = await collection.insertOne({
-        title, data, version: 1, createdAt: now, updatedAt: now, entityCount, edgeCount, sceneCount
+        title,
+        data,
+        originalText,
+        userId,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+        entityCount,
+        edgeCount,
+        sceneCount
       });
       return NextResponse.json({
         id: result.insertedId.toString(),
@@ -68,7 +103,9 @@ export async function POST(request: NextRequest) {
         version: 1,
         entityCount,
         edgeCount,
-        sceneCount
+        sceneCount,
+        userId,
+        hasOriginalText: !!originalText,
       });
     }
   } catch (err) {
