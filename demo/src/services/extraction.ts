@@ -82,6 +82,7 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
       "to": "B",
       "type": "관계타입",
       "description": "관계 설명",
+      "quote": "해당 관계가 드러나는 원문 인용 (1~2문장)",
       "sentiment": "positive/negative/neutral",
       "strength": 5,
       "scenes": [1]
@@ -902,6 +903,7 @@ function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph
       subtype: r.subtype,
       entities: [fromId, toId],
       statement: r.description,
+      quote: r.quote,  // 원문 인용
       timeline: {
         start: r.start_time,
         chapter: 1,

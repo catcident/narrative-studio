@@ -98,9 +98,19 @@ function RelationshipItemWithTooltip({
       </button>
 
       {/* 확장된 상세 내용 */}
-      {isExpanded && edge.statement && (
+      {isExpanded && (
         <div className="mt-1 p-2 bg-blue-50 rounded border border-blue-100 ml-2">
-          <p className="text-xs text-gray-700 leading-relaxed">{edge.statement}</p>
+          {/* 원문 인용 (있으면 먼저 표시) */}
+          {edge.quote && (
+            <div className="mb-2 p-2 bg-amber-50 border-l-2 border-amber-400 rounded-r">
+              <p className="text-xs text-amber-900 leading-relaxed italic">"{edge.quote}"</p>
+              <span className="text-[10px] text-amber-600 mt-1 block">원문</span>
+            </div>
+          )}
+          {/* 설명 */}
+          {edge.statement && (
+            <p className="text-xs text-gray-700 leading-relaxed">{edge.statement}</p>
+          )}
           {edge.strength && (
             <div className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-400">
               <span>강도:</span>
@@ -121,9 +131,14 @@ function RelationshipItemWithTooltip({
       )}
 
       {/* 호버 툴팁 (확장 안 됐을 때만) */}
-      {isHovered && !isExpanded && edge.statement && (
+      {isHovered && !isExpanded && (edge.statement || edge.quote) && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 p-2 bg-gray-800 text-white text-[10px] rounded-lg shadow-lg">
-          <p className="leading-relaxed">{edge.statement}</p>
+          {edge.quote && (
+            <p className="leading-relaxed italic text-amber-200 mb-1">"{edge.quote}"</p>
+          )}
+          {edge.statement && (
+            <p className="leading-relaxed">{edge.statement}</p>
+          )}
           {edge.strength && (
             <div className="mt-1 text-gray-300">강도: {edge.strength}/10</div>
           )}

@@ -75,6 +75,7 @@ export interface HyperEdge {
   type: RelationType | string;  // 한글 타입도 허용
   entities: string[];
   statement: string;
+  quote?: string;  // 원문 인용
   timeline?: {
     start?: string;
     end?: string;
