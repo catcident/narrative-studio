@@ -1240,6 +1240,30 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     };
   });
 
+  // 장이 없고 파일명이 있으면 파일명에서 장 정보 추출
+  if (Object.keys(chapters).length === 0 && fileName) {
+    // 파일명에서 숫자 추출 (01화, 1화, 제1장, Chapter 1 등)
+    const chapterMatch = fileName.match(/(\d+)\s*[화장편회]|[제]?(\d+)\s*[화장편회]|chapter\s*(\d+)|ep\.?\s*(\d+)/i);
+    const chapterNum = chapterMatch
+      ? parseInt(chapterMatch[1] || chapterMatch[2] || chapterMatch[3] || chapterMatch[4], 10)
+      : 1;
+
+    // 파일명에서 확장자 제거한 것을 제목으로 사용
+    const chapterTitle = fileName.replace(/\.[^/.]+$/, '');
+    const chapterId = `C${String(chapterNum).padStart(4, '0')}`;
+    chapters[chapterId] = {
+      id: chapterId,
+      number: chapterNum,
+      title: chapterTitle,
+      summary: '',
+    };
+
+    // 모든 장면에 이 장 번호 할당
+    (extracted.scenes || []).forEach((s: any) => {
+      s.chapter = chapterNum;
+    });
+  }
+
   // 장면(Scene)을 snapshots로
   const snapshots: Record<string, any> = {};
   (extracted.scenes || []).forEach((s: any) => {
