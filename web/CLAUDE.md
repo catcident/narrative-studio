@@ -19,7 +19,7 @@ docker run -p 3000:3000 --env-file .env character-chart
 ## 앱 구조
 
 ```
-demo/
+web/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/

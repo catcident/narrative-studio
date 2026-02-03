@@ -62,7 +62,7 @@ https://catcident.com/admin/oauth2_provider/application/
 ### 3.1 서버에서 `.env.local` 생성
 
 ```bash
-cd /path/to/Character-Relationship-Chart/demo
+cd /path/to/Character-Relationship-Chart/web
 nano .env.local
 ```
 
@@ -162,7 +162,7 @@ docker network create caddy
 ### 5.1 코드 가져오기
 
 ```bash
-cd /path/to/Character-Relationship-Chart/demo
+cd /path/to/Character-Relationship-Chart/web
 git fetch origin
 git checkout production
 git pull origin production
