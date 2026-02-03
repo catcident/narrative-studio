@@ -1,4 +1,3 @@
-# Railway Nixpacks configuration
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
@@ -9,4 +8,4 @@ cmds = ["npm install"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm run start"
+cmd = "npx serve dist -s -l 3000"
