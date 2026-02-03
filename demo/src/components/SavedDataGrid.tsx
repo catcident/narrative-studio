@@ -149,8 +149,8 @@ export function SavedDataGrid({ onLoad }: Props) {
         </label>
       </div>
 
-      {/* 카드 그리드 - 3열, 최대 높이 제한 + 스크롤 */}
-      <div className="grid grid-cols-3 gap-4 max-h-96 overflow-y-auto pr-1">
+      {/* 카드 그리드 - 4열, 최대 높이 제한 + 스크롤 */}
+      <div className="grid grid-cols-4 gap-4 max-h-96 overflow-y-auto pr-1">
         {savedList.map((item) => (
           <div
             key={item.id}

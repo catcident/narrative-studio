@@ -136,8 +136,8 @@ function App() {
           </div>
         </div>
 
-        {/* 하단: 저장된 데이터 그리드 (더 넓게) */}
-        <div className="w-full max-w-4xl">
+        {/* 하단: 저장된 데이터 그리드 (4열 - 가운데 2개가 위 박스와 같은 너비) */}
+        <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
           <SavedDataGrid onLoad={handleLoadOntology} />
         </div>
       </div>
