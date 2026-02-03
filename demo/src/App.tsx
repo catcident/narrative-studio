@@ -15,9 +15,9 @@ import { DetailPanel } from './components/DetailPanel';
 import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
-import { saveOntology } from './services/storage';
-import { extractOntology, mergeOntologies } from './services/extraction';
-import type { NovelOntology } from './types';
+import { saveKnowledgeGraph } from './services/storage';
+import { extractKnowledgeGraph, mergeKnowledgeGraphs } from './services/extraction';
+import type { NovelKnowledgeGraph } from './types';
 
 type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world';
 
@@ -30,7 +30,7 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
 
 function App() {
   const {
-    ontology, viewMode, setViewMode, reset, setOntology, error,
+    knowledgeGraph, viewMode, setViewMode, reset, setKnowledgeGraph, error,
     selectedSceneId, selectScene,
     sceneRangeStart, sceneRangeEnd, selectSceneRange
   } = useStore();
@@ -39,11 +39,11 @@ function App() {
   const [isAddingFile, setIsAddingFile] = useState(false);
   const [addProgress, setAddProgress] = useState('');
 
-  // 온톨로지가 변경되면 자동 저장
+  // 지식 그래프가 변경되면 자동 저장
   useEffect(() => {
-    if (ontology) {
+    if (knowledgeGraph) {
       setSaveStatus('saving');
-      const saved = saveOntology(ontology);
+      const saved = saveKnowledgeGraph(knowledgeGraph);
       console.log('자동 저장 완료:', saved.title, 'v' + saved.version);
       setSaveStatus('saved');
 
@@ -51,18 +51,18 @@ function App() {
       const timer = setTimeout(() => setSaveStatus('idle'), 2000);
       return () => clearTimeout(timer);
     }
-  }, [ontology]);
+  }, [knowledgeGraph]);
 
   // 데이터 관리자에서 불러오기
-  const handleLoadOntology = (loaded: NovelOntology) => {
-    setOntology(loaded);
+  const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph) => {
+    setKnowledgeGraph(loaded);
     setShowDataManager(false);
   };
 
   // 파일 추가 (기존 결과에 병합)
   const handleAddFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !ontology) return;
+    if (!file || !knowledgeGraph) return;
 
     setIsAddingFile(true);
     setAddProgress('파일 읽는 중...');
@@ -90,13 +90,13 @@ function App() {
       if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
 
       const title = file.name.replace(/\.[^/.]+$/, '');
-      const newOntology = await extractOntology(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setAddProgress(msg);
       });
 
       setAddProgress('병합 중...');
-      const merged = mergeOntologies(ontology, newOntology);
-      setOntology(merged);
+      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
+      setKnowledgeGraph(merged);
       setAddProgress('');
     } catch (err: any) {
       console.error('파일 추가 오류:', err);
@@ -108,7 +108,7 @@ function App() {
   };
 
   // 업로드 화면
-  if (!ontology) {
+  if (!knowledgeGraph) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6">
         {/* 상단: 업로드 영역 */}
@@ -138,18 +138,18 @@ function App() {
 
         {/* 하단: 저장된 데이터 그리드 (4열 - 가운데 2개가 위 박스와 같은 너비) */}
         <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
-          <SavedDataGrid onLoad={handleLoadOntology} />
+          <SavedDataGrid onLoad={handleLoadKnowledgeGraph} />
         </div>
       </div>
     );
   }
 
-  const entities = Object.values(ontology.entities);
-  const allEdges = Object.values(ontology.hyperedges);
-  const scenes = Object.entries(ontology.snapshots || {}).sort(([a], [b]) => a.localeCompare(b));
+  const entities = Object.values(knowledgeGraph.entities);
+  const allEdges = Object.values(knowledgeGraph.hyperedges);
+  const scenes = Object.entries(knowledgeGraph.snapshots || {}).sort(([a], [b]) => a.localeCompare(b));
 
   // 선택된 장면에 따른 필터링
-  const currentScene = selectedSceneId ? ontology.snapshots[selectedSceneId] : null;
+  const currentScene = selectedSceneId ? knowledgeGraph.snapshots[selectedSceneId] : null;
   const selectedSceneIndex = selectedSceneId ? scenes.findIndex(([id]) => id === selectedSceneId) : -1;
 
   // 범위 내 장면 ID 목록 계산
@@ -196,7 +196,7 @@ function App() {
         if (e.scenes && e.scenes.some(s => scenesInRange.includes(s))) return true;
         // snapshots의 charactersPresent 확인
         for (const sceneId of scenesInRange) {
-          const snapshot = ontology.snapshots?.[sceneId];
+          const snapshot = knowledgeGraph.snapshots?.[sceneId];
           if (snapshot?.charactersPresent?.includes(e.id)) return true;
         }
         return false;
@@ -207,7 +207,7 @@ function App() {
           if (e.scenes && e.scenes.some(s => scenesUpTo.includes(s))) return true;
           // snapshots의 charactersPresent 확인
           for (const sceneId of scenesUpTo) {
-            const snapshot = ontology.snapshots?.[sceneId];
+            const snapshot = knowledgeGraph.snapshots?.[sceneId];
             if (snapshot?.charactersPresent?.includes(e.id)) return true;
           }
           return false;
@@ -220,7 +220,7 @@ function App() {
         if (e.scenes && e.scenes.some(s => scenesInRange.includes(s))) return true;
         // snapshots의 activeEdges 확인
         for (const sceneId of scenesInRange) {
-          const snapshot = ontology.snapshots?.[sceneId];
+          const snapshot = knowledgeGraph.snapshots?.[sceneId];
           if (snapshot?.activeEdges?.includes(e.id)) return true;
         }
         return false;
@@ -231,7 +231,7 @@ function App() {
           if (e.scenes && e.scenes.some(s => scenesUpTo.includes(s))) return true;
           // snapshots의 activeEdges 확인
           for (const sceneId of scenesUpTo) {
-            const snapshot = ontology.snapshots?.[sceneId];
+            const snapshot = knowledgeGraph.snapshots?.[sceneId];
             if (snapshot?.activeEdges?.includes(e.id)) return true;
           }
           return false;
@@ -260,15 +260,15 @@ function App() {
               <h1 className="font-bold text-gray-800">인물 관계도</h1>
             </div>
             <span className="text-sm text-gray-500">
-              {ontology.metadata.title}
+              {knowledgeGraph.metadata.title}
             </span>
           </div>
 
           <div className="flex items-center gap-4">
             {/* 통계 */}
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>엔티티 {ontology.stats.totalEntities}</span>
-              <span>관계 {ontology.stats.totalEdges}</span>
+              <span>엔티티 {knowledgeGraph.stats.totalEntities}</span>
+              <span>관계 {knowledgeGraph.stats.totalEdges}</span>
               {scenes.length > 0 && <span>장면 {scenes.length}</span>}
             </div>
 
@@ -353,7 +353,7 @@ function App() {
       {viewMode === 'graph' && scenes.length > 0 && (
         <SceneTimeline
           scenes={scenes}
-          chapters={ontology.chapters}
+          chapters={knowledgeGraph.chapters}
           selectedSceneId={selectedSceneId}
           sceneRangeStart={sceneRangeStart}
           sceneRangeEnd={sceneRangeEnd}
@@ -397,7 +397,7 @@ function App() {
       {showDataManager && (
         <DataManager
           onClose={() => setShowDataManager(false)}
-          onLoad={handleLoadOntology}
+          onLoad={handleLoadKnowledgeGraph}
         />
       )}
     </div>

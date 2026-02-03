@@ -1,5 +1,5 @@
 /**
- * 저장된 온톨로지 데이터 그리드 컴포넌트
+ * 저장된 지식 그래프 데이터 그리드 컴포넌트
  * 카드 형태로 저장된 데이터를 보여줌
  */
 
@@ -17,30 +17,30 @@ import {
   Upload,
 } from 'lucide-react';
 import {
-  getSavedOntologyList,
-  loadOntology,
-  deleteOntology,
-  exportOntology,
-  importOntology,
+  getSavedKnowledgeGraphList,
+  loadKnowledgeGraph,
+  deleteKnowledgeGraph,
+  exportKnowledgeGraph,
+  importKnowledgeGraph,
   getVersionHistory,
   restoreVersion,
-  type SavedOntologyMeta,
+  type SavedKnowledgeGraphMeta,
 } from '../services/storage';
-import type { NovelOntology } from '../types';
+import type { NovelKnowledgeGraph } from '../types';
 
 interface Props {
-  onLoad: (ontology: NovelOntology) => void;
+  onLoad: (data: NovelKnowledgeGraph) => void;
 }
 
 export function SavedDataGrid({ onLoad }: Props) {
-  const [savedList, setSavedList] = useState<SavedOntologyMeta[]>([]);
+  const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // 목록 새로고침
   const refreshList = () => {
-    setSavedList(getSavedOntologyList());
+    setSavedList(getSavedKnowledgeGraphList());
   };
 
   useEffect(() => {
@@ -59,36 +59,36 @@ export function SavedDataGrid({ onLoad }: Props) {
     }
   };
 
-  // 온톨로지 불러오기
+  // 데이터 불러오기
   const handleLoad = (id: string) => {
-    const loaded = loadOntology(id);
+    const loaded = loadKnowledgeGraph(id);
     if (loaded) {
       onLoad(loaded);
     }
   };
 
-  // 온톨로지 삭제
+  // 데이터 삭제
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (deleteOntology(id)) {
+    if (deleteKnowledgeGraph(id)) {
       refreshList();
       setConfirmDelete(null);
     }
   };
 
-  // 온톨로지 내보내기
+  // 데이터 내보내기
   const handleExport = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const loaded = loadOntology(id);
+    const loaded = loadKnowledgeGraph(id);
     if (loaded) {
-      exportOntology(loaded);
+      exportKnowledgeGraph(loaded);
     }
   };
 
   // 버전 복원
-  const handleRestoreVersion = (ontologyId: string, version: number, e: React.MouseEvent) => {
+  const handleRestoreVersion = (dataId: string, version: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const restored = restoreVersion(ontologyId, version);
+    const restored = restoreVersion(dataId, version);
     if (restored) {
       onLoad(restored);
     }
@@ -100,7 +100,7 @@ export function SavedDataGrid({ onLoad }: Props) {
     if (!file) return;
 
     try {
-      const imported = await importOntology(file);
+      const imported = await importKnowledgeGraph(file);
       onLoad(imported);
     } catch (err: any) {
       alert(err.message || '파일 가져오기 실패');

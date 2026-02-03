@@ -103,14 +103,14 @@ const RELATION_LABELS: Record<string, string> = {
 };
 
 export function DetailPanel() {
-  const { ontology, selectEntity, selectedSceneId } = useStore();
+  const { knowledgeGraph, selectEntity, selectedSceneId } = useStore();
   const entity = useSelectedEntity();
   const allEdges = useEntityEdges(entity?.id || null);
 
   // 현재 장면 정보
-  const currentScene = selectedSceneId && ontology?.snapshots ? ontology.snapshots[selectedSceneId] : null;
-  const sceneIndex = selectedSceneId && ontology?.snapshots
-    ? Object.keys(ontology.snapshots).sort().indexOf(selectedSceneId) + 1
+  const currentScene = selectedSceneId && knowledgeGraph?.snapshots ? knowledgeGraph.snapshots[selectedSceneId] : null;
+  const sceneIndex = selectedSceneId && knowledgeGraph?.snapshots
+    ? Object.keys(knowledgeGraph.snapshots).sort().indexOf(selectedSceneId) + 1
     : 0;
 
   // 현재 장면에서의 관계만 필터링
@@ -165,7 +165,7 @@ export function DetailPanel() {
   const renderEdge = (edge: HyperEdge) => {
     const otherEntityIds = edge.entities.filter((id) => id !== entity.id);
     const otherEntities = otherEntityIds
-      .map((id) => ontology?.entities[id])
+      .map((id) => knowledgeGraph?.entities[id])
       .filter(Boolean);
 
     // from/to 방향 확인
@@ -243,13 +243,13 @@ export function DetailPanel() {
         )}
 
         {/* 등장 장면 정보 - 스크롤 가능한 목록 */}
-        {edge.scenes && edge.scenes.length > 0 && ontology?.snapshots && (
+        {edge.scenes && edge.scenes.length > 0 && knowledgeGraph?.snapshots && (
           <div className="mt-3">
             <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {[...edge.scenes].sort().map((sceneId) => {
-                const scene = ontology.snapshots[sceneId];
-                const sceneIdx = Object.keys(ontology.snapshots).sort().indexOf(sceneId) + 1;
+                const scene = knowledgeGraph.snapshots[sceneId];
+                const sceneIdx = Object.keys(knowledgeGraph.snapshots).sort().indexOf(sceneId) + 1;
                 if (!scene) return null;
 
                 return (
@@ -349,7 +349,7 @@ export function DetailPanel() {
         )}
 
         {/* 등장 장면 */}
-        {entity.scenes && entity.scenes.length > 0 && ontology?.snapshots && (
+        {entity.scenes && entity.scenes.length > 0 && knowledgeGraph?.snapshots && (
           <div className="p-4 border-b border-gray-100">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
               등장 장면 ({entity.scenes.length}개)
@@ -359,8 +359,8 @@ export function DetailPanel() {
             {(() => {
               const sortedScenes = [...entity.scenes].sort();
               const firstSceneId = sortedScenes[0];
-              const firstScene = ontology.snapshots[firstSceneId];
-              const firstSceneIndex = Object.keys(ontology.snapshots).sort().indexOf(firstSceneId) + 1;
+              const firstScene = knowledgeGraph.snapshots[firstSceneId];
+              const firstSceneIndex = Object.keys(knowledgeGraph.snapshots).sort().indexOf(firstSceneId) + 1;
 
               return (
                 <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -389,8 +389,8 @@ export function DetailPanel() {
             {/* 모든 등장 장면 목록 */}
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {[...entity.scenes].sort().map((sceneId) => {
-                const scene = ontology.snapshots[sceneId];
-                const sceneIdx = Object.keys(ontology.snapshots).sort().indexOf(sceneId) + 1;
+                const scene = knowledgeGraph.snapshots[sceneId];
+                const sceneIdx = Object.keys(knowledgeGraph.snapshots).sort().indexOf(sceneId) + 1;
                 if (!scene) return null;
 
                 return (

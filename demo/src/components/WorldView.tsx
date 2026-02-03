@@ -25,16 +25,16 @@ interface TreeNode {
 }
 
 export function WorldView() {
-  const { ontology, selectEntity, selectedEntityId } = useStore();
+  const { knowledgeGraph, selectEntity, selectedEntityId } = useStore();
   const [activeTab, setActiveTab] = useState<WorldTab>('locations');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [minImportance, setMinImportance] = useState<number>(1);
 
   // 카테고리별 엔티티 분류 (중요도 필터 적용)
   const categorizedEntities = useMemo(() => {
-    if (!ontology) return { locations: [], organizations: [], concepts: [], items: [] };
+    if (!knowledgeGraph) return { locations: [], organizations: [], concepts: [], items: [] };
 
-    const entities = Object.values(ontology.entities);
+    const entities = Object.values(knowledgeGraph.entities);
     const filterByImportance = (e: Entity) =>
       minImportance <= 1 || (e.importance || 5) >= minImportance;
 
@@ -44,26 +44,26 @@ export function WorldView() {
       concepts: entities.filter(e => e.category === 'concept' && filterByImportance(e)),
       items: entities.filter(e => e.category === 'item' && filterByImportance(e)),
     };
-  }, [ontology, minImportance]);
+  }, [knowledgeGraph, minImportance]);
 
   // 전체 카운트 (필터 전)
   const totalCounts = useMemo(() => {
-    if (!ontology) return { locations: 0, organizations: 0, concepts: 0, items: 0 };
-    const entities = Object.values(ontology.entities);
+    if (!knowledgeGraph) return { locations: 0, organizations: 0, concepts: 0, items: 0 };
+    const entities = Object.values(knowledgeGraph.entities);
     return {
       locations: entities.filter(e => e.category === 'location').length,
       organizations: entities.filter(e => e.category === 'organization').length,
       concepts: entities.filter(e => e.category === 'concept').length,
       items: entities.filter(e => e.category === 'item').length,
     };
-  }, [ontology]);
+  }, [knowledgeGraph]);
 
   // 장소 계층 구조 생성
   const locationTree = useMemo(() => {
-    if (!ontology) return [];
+    if (!knowledgeGraph) return [];
 
     const locations = categorizedEntities.locations;
-    const edges = Object.values(ontology.hyperedges);
+    const edges = Object.values(knowledgeGraph.hyperedges);
 
     const parentChildMap = new Map<string, string[]>();
     const childParentMap = new Map<string, string>();
@@ -86,14 +86,14 @@ export function WorldView() {
       edges.forEach(edge => {
         if (edge.entities.includes(entityId)) {
           edge.entities.forEach(id => {
-            const entity = ontology.entities[id];
+            const entity = knowledgeGraph.entities[id];
             if (entity && entity.category === 'character') {
               relatedIds.add(id);
             }
           });
         }
       });
-      return Array.from(relatedIds).map(id => ontology.entities[id]).filter(Boolean);
+      return Array.from(relatedIds).map(id => knowledgeGraph.entities[id]).filter(Boolean);
     };
 
     const getRelatedEdges = (entityId: string): HyperEdge[] => {
@@ -103,7 +103,7 @@ export function WorldView() {
     const buildNode = (entity: Entity): TreeNode => {
       const childIds = parentChildMap.get(entity.id) || [];
       const children = childIds
-        .map(id => ontology.entities[id])
+        .map(id => knowledgeGraph.entities[id])
         .filter(Boolean)
         .filter(e => e.category === 'location')
         .map(child => buildNode(child));
@@ -118,27 +118,27 @@ export function WorldView() {
 
     const rootLocations = locations.filter(loc => !childParentMap.has(loc.id));
     return rootLocations.map(buildNode);
-  }, [ontology, categorizedEntities.locations]);
+  }, [knowledgeGraph, categorizedEntities.locations]);
 
   // 조직 계층 구조 생성
   const organizationTree = useMemo(() => {
-    if (!ontology) return [];
+    if (!knowledgeGraph) return [];
 
     const organizations = categorizedEntities.organizations;
-    const edges = Object.values(ontology.hyperedges);
+    const edges = Object.values(knowledgeGraph.hyperedges);
     const orgMembers = new Map<string, Entity[]>();
 
     edges.forEach(edge => {
       if (edge.type === '소속' || edge.type === 'belongs_to') {
         edge.entities.forEach(entityId => {
-          const entity = ontology.entities[entityId];
+          const entity = knowledgeGraph.entities[entityId];
           if (entity?.category === 'organization') {
             if (!orgMembers.has(entityId)) {
               orgMembers.set(entityId, []);
             }
             edge.entities.forEach(memberId => {
               if (memberId !== entityId) {
-                const member = ontology.entities[memberId];
+                const member = knowledgeGraph.entities[memberId];
                 if (member) {
                   orgMembers.get(entityId)!.push(member);
                 }
@@ -155,14 +155,14 @@ export function WorldView() {
       relatedCharacters: orgMembers.get(org.id) || [],
       relatedEdges: edges.filter(e => e.entities.includes(org.id)),
     }));
-  }, [ontology, categorizedEntities.organizations]);
+  }, [knowledgeGraph, categorizedEntities.organizations]);
 
   // 아이템 목록
   const itemsList = useMemo(() => {
-    if (!ontology) return [];
+    if (!knowledgeGraph) return [];
 
     const items = categorizedEntities.items;
-    const edges = Object.values(ontology.hyperedges);
+    const edges = Object.values(knowledgeGraph.hyperedges);
 
     return items.map(item => {
       const ownerEdges = edges.filter(e =>
@@ -174,7 +174,7 @@ export function WorldView() {
       ownerEdges.forEach(edge => {
         edge.entities.forEach(id => {
           if (id !== item.id) {
-            const entity = ontology.entities[id];
+            const entity = knowledgeGraph.entities[id];
             if (entity) owners.push(entity);
           }
         });
@@ -187,14 +187,14 @@ export function WorldView() {
         relatedEdges: edges.filter(e => e.entities.includes(item.id)),
       };
     });
-  }, [ontology, categorizedEntities.items]);
+  }, [knowledgeGraph, categorizedEntities.items]);
 
   // 개념 목록
   const conceptsList = useMemo(() => {
-    if (!ontology) return [];
+    if (!knowledgeGraph) return [];
 
     const concepts = categorizedEntities.concepts;
-    const edges = Object.values(ontology.hyperedges);
+    const edges = Object.values(knowledgeGraph.hyperedges);
 
     return concepts.map(concept => ({
       entity: concept,
@@ -202,7 +202,7 @@ export function WorldView() {
       relatedCharacters: [],
       relatedEdges: edges.filter(e => e.entities.includes(concept.id)),
     }));
-  }, [ontology, categorizedEntities.concepts]);
+  }, [knowledgeGraph, categorizedEntities.concepts]);
 
   const toggleExpand = (id: string) => {
     const newExpanded = new Set(expandedIds);
@@ -214,7 +214,7 @@ export function WorldView() {
     setExpandedIds(newExpanded);
   };
 
-  if (!ontology) {
+  if (!knowledgeGraph) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
         <div className="text-center text-gray-400">

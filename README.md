@@ -126,14 +126,14 @@ Character-Relationship-Chart/
 │   └── package.json
 ├── docs/                    # 문서
 │   ├── FEATURES.md          # 기능 상세 설명
-│   └── ONTOLOGY.md          # 온톨로지 구조 설명
+│   └── KNOWLEDGE_GRAPH.md   # 지식 그래프 구조 설명
 └── README.md
 ```
 
 ## 문서
 
 - [기능 상세 설명](docs/FEATURES.md)
-- [온톨로지 구조](docs/ONTOLOGY.md)
+- [지식 그래프 구조](docs/KNOWLEDGE_GRAPH.md)
 
 ## 라이선스
 

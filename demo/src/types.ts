@@ -1,5 +1,5 @@
 /**
- * 온톨로지 타입 정의
+ * 지식 그래프 타입 정의
  */
 
 export type EntityCategory =
@@ -103,7 +103,7 @@ export interface Chapter {
   summary?: string;
 }
 
-export interface NovelOntology {
+export interface NovelKnowledgeGraph {
   metadata: {
     title: string;
     author?: string;

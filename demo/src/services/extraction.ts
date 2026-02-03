@@ -1,9 +1,9 @@
 /**
- * 온톨로지 추출 서비스 (개선된 버전)
+ * 지식 그래프 추출 서비스 (개선된 버전)
  * 더 세부적인 정보 추출 + 시점별 관계
  */
 
-import type { NovelOntology } from '../types';
+import type { NovelKnowledgeGraph } from '../types';
 
 const API_KEY = import.meta.env.OPENROUTER_API_KEY || '';
 const MODEL = 'google/gemini-2.0-flash-lite-001';
@@ -210,12 +210,12 @@ function trimKnownCharacters(
   return characters.slice(-MAX_KNOWN_CHARACTERS);
 }
 
-export async function extractOntology(
+export async function extractKnowledgeGraph(
   text: string,
   title: string,
   onProgress?: (msg: string) => void,
   resumeFrom?: ExtractionProgress
-): Promise<NovelOntology> {
+): Promise<NovelKnowledgeGraph> {
   // 텍스트를 청크로 분할 (5000자씩)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
@@ -320,7 +320,7 @@ export async function extractOntology(
   onProgress?.('관계 검증 및 보완 중...');
   const validated = inferMissingRelationships(merged);
 
-  return buildOntology(validated, title);
+  return buildKnowledgeGraph(validated, title);
 }
 
 async function extractFromChunk(
@@ -750,7 +750,7 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
   );
 }
 
-function buildOntology(extracted: any, title: string): NovelOntology {
+function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph {
   const now = new Date().toISOString();
   const entities: Record<string, any> = {};
   const hyperedges: Record<string, any> = {};
@@ -1022,12 +1022,12 @@ function buildOntology(extracted: any, title: string): NovelOntology {
 }
 
 /**
- * 두 온톨로지를 병합 (기존 결과에 새 분석 결과 추가)
+ * 두 지식 그래프를 병합 (기존 결과에 새 분석 결과 추가)
  */
-export function mergeOntologies(
-  existing: NovelOntology,
-  newOntology: NovelOntology
-): NovelOntology {
+export function mergeKnowledgeGraphs(
+  existing: NovelKnowledgeGraph,
+  newData: NovelKnowledgeGraph
+): NovelKnowledgeGraph {
   // 엔티티 이름 -> ID 매핑 (기존)
   const existingNameToId: Record<string, string> = {};
   Object.values(existing.entities).forEach((e: any) => {
@@ -1042,7 +1042,7 @@ export function mergeOntologies(
   const mergedEntities = { ...existing.entities };
 
   let entityCounter = Object.keys(existing.entities).length;
-  Object.values(newOntology.entities).forEach((e: any) => {
+  Object.values(newData.entities).forEach((e: any) => {
     // 이름이나 별칭으로 기존 엔티티 찾기
     const existingId = existingNameToId[e.name] ||
       (e.aliases || []).find((a: string) => existingNameToId[a]);
@@ -1073,7 +1073,7 @@ export function mergeOntologies(
   const mergedEdges = { ...existing.hyperedges };
   let edgeCounter = Object.keys(existing.hyperedges).length;
 
-  Object.values(newOntology.hyperedges).forEach((edge: any) => {
+  Object.values(newData.hyperedges).forEach((edge: any) => {
     // 엔티티 ID 변환
     const mappedEntities = edge.entities.map((id: string) => newIdMapping[id] || id);
 
@@ -1095,7 +1095,7 @@ export function mergeOntologies(
   const mergedSnapshots = { ...existing.snapshots };
   let snapshotCounter = Object.keys(existing.snapshots || {}).length;
 
-  Object.values(newOntology.snapshots || {}).forEach((snap: any) => {
+  Object.values(newData.snapshots || {}).forEach((snap: any) => {
     snapshotCounter++;
     const newId = `S${String(snapshotCounter).padStart(4, '0')}`;
     const mappedCharacters = (snap.charactersPresent || []).map((id: string) => newIdMapping[id] || id);
@@ -1111,7 +1111,7 @@ export function mergeOntologies(
   const mergedChapters = { ...existing.chapters };
   let chapterCounter = Object.keys(existing.chapters || {}).length;
 
-  Object.values(newOntology.chapters || {}).forEach((ch: any) => {
+  Object.values(newData.chapters || {}).forEach((ch: any) => {
     chapterCounter++;
     const newId = `C${String(chapterCounter).padStart(4, '0')}`;
     mergedChapters[newId] = { ...ch, id: newId, number: chapterCounter };
@@ -1132,13 +1132,13 @@ export function mergeOntologies(
   return {
     metadata: {
       ...existing.metadata,
-      title: `${existing.metadata.title} + ${newOntology.metadata.title}`,
+      title: `${existing.metadata.title} + ${newData.metadata.title}`,
       updatedAt: new Date().toISOString(),
     },
     entities: mergedEntities,
     hyperedges: mergedEdges,
     chapters: mergedChapters,
-    timeline: [...(existing.timeline || []), ...(newOntology.timeline || [])],
+    timeline: [...(existing.timeline || []), ...(newData.timeline || [])],
     snapshots: mergedSnapshots,
     stats: {
       totalEntities: Object.keys(mergedEntities).length,

@@ -1,13 +1,13 @@
-# 온톨로지 구조 (Ontology Structure)
+# 지식 그래프 구조 (Knowledge Graph Structure)
 
-이 문서는 소설 분석 결과로 생성되는 온톨로지의 데이터 구조를 설명합니다.
+이 문서는 소설 분석 결과로 생성되는 지식 그래프의 데이터 구조를 설명합니다.
 
 ## 전체 구조
 
 ```typescript
-interface NovelOntology {
-  meta: OntologyMeta;           // 메타데이터
-  entities: Record<string, Entity>;      // 엔티티 (인물, 장소 등)
+interface NovelKnowledgeGraph {
+  meta: KnowledgeGraphMeta;            // 메타데이터
+  entities: Record<string, Entity>;     // 엔티티 (인물, 장소 등)
   hyperedges: Record<string, HyperEdge>; // 관계
   snapshots: Record<string, Snapshot>;   // 장면 스냅샷
   chapters: Record<string, Chapter>;     // 장(Chapter) 정보
@@ -19,7 +19,7 @@ interface NovelOntology {
 ## 1. 메타데이터 (Meta)
 
 ```typescript
-interface OntologyMeta {
+interface KnowledgeGraphMeta {
   title: string;        // 작품 제목
   author?: string;      // 작가
   createdAt: string;    // 생성 시간 (ISO 8601)
@@ -266,7 +266,7 @@ interface Chapter {
 
 ## 7. 병합 (Merge)
 
-파일 추가 분석 시 기존 온톨로지와 새 온톨로지를 병합합니다.
+파일 추가 분석 시 기존 데이터와 새 데이터를 병합합니다.
 
 ### 엔티티 병합 규칙
 1. 이름 또는 별칭이 일치하면 같은 엔티티로 판단

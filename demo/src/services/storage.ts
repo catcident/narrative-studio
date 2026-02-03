@@ -1,34 +1,34 @@
 /**
- * 온톨로지 데이터 로컬 저장소 관리
+ * 지식 그래프 데이터 로컬 저장소 관리
  * localStorage를 사용해 분석 결과를 저장/관리
  */
 
-import type { NovelOntology } from '../types';
+import type { NovelKnowledgeGraph } from '../types';
 
-const STORAGE_KEY = 'character-relationship-ontologies';
+const STORAGE_KEY = 'character-relationship-data';
 const VERSION_KEY = 'character-relationship-versions';
 
-export interface SavedOntology {
+export interface SavedKnowledgeGraph {
   id: string;
   title: string;
   savedAt: string;
   updatedAt: string;
   version: number;
-  ontology: NovelOntology;
+  data: NovelKnowledgeGraph;
   // 메타데이터
   entityCount: number;
   edgeCount: number;
   sceneCount: number;
 }
 
-export interface OntologyVersion {
+export interface KnowledgeGraphVersion {
   version: number;
   savedAt: string;
   note?: string;
-  ontology: NovelOntology;
+  data: NovelKnowledgeGraph;
 }
 
-export interface SavedOntologyMeta {
+export interface SavedKnowledgeGraphMeta {
   id: string;
   title: string;
   savedAt: string;
@@ -40,15 +40,15 @@ export interface SavedOntologyMeta {
 }
 
 /**
- * 저장된 모든 온톨로지 목록 가져오기 (메타데이터만)
+ * 저장된 모든 지식 그래프 목록 가져오기 (메타데이터만)
  */
-export function getSavedOntologyList(): SavedOntologyMeta[] {
+export function getSavedKnowledgeGraphList(): SavedKnowledgeGraphMeta[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return [];
 
-    const ontologies: SavedOntology[] = JSON.parse(data);
-    return ontologies.map(o => ({
+    const items: SavedKnowledgeGraph[] = JSON.parse(data);
+    return items.map(o => ({
       id: o.id,
       title: o.title,
       savedAt: o.savedAt,
@@ -59,66 +59,66 @@ export function getSavedOntologyList(): SavedOntologyMeta[] {
       sceneCount: o.sceneCount,
     }));
   } catch (err) {
-    console.error('저장된 온톨로지 목록 로드 실패:', err);
+    console.error('저장된 데이터 목록 로드 실패:', err);
     return [];
   }
 }
 
 /**
- * 특정 온톨로지 불러오기
+ * 특정 지식 그래프 불러오기
  */
-export function loadOntology(id: string): NovelOntology | null {
+export function loadKnowledgeGraph(id: string): NovelKnowledgeGraph | null {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return null;
 
-    const ontologies: SavedOntology[] = JSON.parse(data);
-    const found = ontologies.find(o => o.id === id);
-    return found?.ontology || null;
+    const items: SavedKnowledgeGraph[] = JSON.parse(data);
+    const found = items.find(o => o.id === id);
+    return found?.data || null;
   } catch (err) {
-    console.error('온톨로지 로드 실패:', err);
+    console.error('데이터 로드 실패:', err);
     return null;
   }
 }
 
 /**
- * 온톨로지 저장 (신규 또는 업데이트)
+ * 지식 그래프 저장 (신규 또는 업데이트)
  * 같은 제목이 있으면 업데이트, 없으면 신규 생성
  */
-export function saveOntology(ontology: NovelOntology, options?: {
+export function saveKnowledgeGraph(knowledgeGraph: NovelKnowledgeGraph, options?: {
   forceNew?: boolean;
   versionNote?: string;
-}): SavedOntologyMeta {
+}): SavedKnowledgeGraphMeta {
   const data = localStorage.getItem(STORAGE_KEY);
-  const ontologies: SavedOntology[] = data ? JSON.parse(data) : [];
+  const items: SavedKnowledgeGraph[] = data ? JSON.parse(data) : [];
 
   const now = new Date().toISOString();
-  const title = ontology.metadata.title;
+  const title = knowledgeGraph.metadata.title;
 
   // 기존 데이터 찾기 (제목으로)
   const existingIndex = options?.forceNew
     ? -1
-    : ontologies.findIndex(o => o.title === title);
+    : items.findIndex(o => o.title === title);
 
-  const entityCount = Object.keys(ontology.entities).length;
-  const edgeCount = Object.keys(ontology.hyperedges).length;
-  const sceneCount = Object.keys(ontology.snapshots || {}).length;
+  const entityCount = Object.keys(knowledgeGraph.entities).length;
+  const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
+  const sceneCount = Object.keys(knowledgeGraph.snapshots || {}).length;
 
   if (existingIndex >= 0) {
     // 기존 데이터 업데이트
-    const existing = ontologies[existingIndex];
+    const existing = items[existingIndex];
 
     // 버전 히스토리 저장
-    saveVersion(existing.id, existing.version, existing.ontology, options?.versionNote);
+    saveVersion(existing.id, existing.version, existing.data, options?.versionNote);
 
     existing.updatedAt = now;
     existing.version += 1;
-    existing.ontology = ontology;
+    existing.data = knowledgeGraph;
     existing.entityCount = entityCount;
     existing.edgeCount = edgeCount;
     existing.sceneCount = sceneCount;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ontologies));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 
     return {
       id: existing.id,
@@ -132,20 +132,20 @@ export function saveOntology(ontology: NovelOntology, options?: {
     };
   } else {
     // 신규 생성
-    const newItem: SavedOntology = {
-      id: `ont_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    const newItem: SavedKnowledgeGraph = {
+      id: `kg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       title,
       savedAt: now,
       updatedAt: now,
       version: 1,
-      ontology,
+      data: knowledgeGraph,
       entityCount,
       edgeCount,
       sceneCount,
     };
 
-    ontologies.push(newItem);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ontologies));
+    items.push(newItem);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 
     return {
       id: newItem.id,
@@ -161,17 +161,17 @@ export function saveOntology(ontology: NovelOntology, options?: {
 }
 
 /**
- * 온톨로지 삭제
+ * 지식 그래프 삭제
  */
-export function deleteOntology(id: string): boolean {
+export function deleteKnowledgeGraph(id: string): boolean {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return false;
 
-    const ontologies: SavedOntology[] = JSON.parse(data);
-    const filtered = ontologies.filter(o => o.id !== id);
+    const items: SavedKnowledgeGraph[] = JSON.parse(data);
+    const filtered = items.filter(o => o.id !== id);
 
-    if (filtered.length === ontologies.length) return false;
+    if (filtered.length === items.length) return false;
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 
@@ -180,7 +180,7 @@ export function deleteOntology(id: string): boolean {
 
     return true;
   } catch (err) {
-    console.error('온톨로지 삭제 실패:', err);
+    console.error('데이터 삭제 실패:', err);
     return false;
   }
 }
@@ -188,25 +188,25 @@ export function deleteOntology(id: string): boolean {
 /**
  * 버전 히스토리 저장
  */
-function saveVersion(ontologyId: string, version: number, ontology: NovelOntology, note?: string): void {
+function saveVersion(dataId: string, version: number, data: NovelKnowledgeGraph, note?: string): void {
   try {
-    const data = localStorage.getItem(VERSION_KEY);
-    const allVersions: Record<string, OntologyVersion[]> = data ? JSON.parse(data) : {};
+    const stored = localStorage.getItem(VERSION_KEY);
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = stored ? JSON.parse(stored) : {};
 
-    if (!allVersions[ontologyId]) {
-      allVersions[ontologyId] = [];
+    if (!allVersions[dataId]) {
+      allVersions[dataId] = [];
     }
 
     // 최대 10개 버전만 유지
-    if (allVersions[ontologyId].length >= 10) {
-      allVersions[ontologyId].shift();
+    if (allVersions[dataId].length >= 10) {
+      allVersions[dataId].shift();
     }
 
-    allVersions[ontologyId].push({
+    allVersions[dataId].push({
       version,
       savedAt: new Date().toISOString(),
       note,
-      ontology,
+      data,
     });
 
     localStorage.setItem(VERSION_KEY, JSON.stringify(allVersions));
@@ -218,13 +218,13 @@ function saveVersion(ontologyId: string, version: number, ontology: NovelOntolog
 /**
  * 버전 히스토리 가져오기
  */
-export function getVersionHistory(ontologyId: string): Omit<OntologyVersion, 'ontology'>[] {
+export function getVersionHistory(dataId: string): Omit<KnowledgeGraphVersion, 'data'>[] {
   try {
-    const data = localStorage.getItem(VERSION_KEY);
-    if (!data) return [];
+    const stored = localStorage.getItem(VERSION_KEY);
+    if (!stored) return [];
 
-    const allVersions: Record<string, OntologyVersion[]> = JSON.parse(data);
-    const versions = allVersions[ontologyId] || [];
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = JSON.parse(stored);
+    const versions = allVersions[dataId] || [];
 
     return versions.map(v => ({
       version: v.version,
@@ -240,16 +240,16 @@ export function getVersionHistory(ontologyId: string): Omit<OntologyVersion, 'on
 /**
  * 특정 버전 복원
  */
-export function restoreVersion(ontologyId: string, version: number): NovelOntology | null {
+export function restoreVersion(dataId: string, version: number): NovelKnowledgeGraph | null {
   try {
-    const data = localStorage.getItem(VERSION_KEY);
-    if (!data) return null;
+    const stored = localStorage.getItem(VERSION_KEY);
+    if (!stored) return null;
 
-    const allVersions: Record<string, OntologyVersion[]> = JSON.parse(data);
-    const versions = allVersions[ontologyId] || [];
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = JSON.parse(stored);
+    const versions = allVersions[dataId] || [];
 
     const found = versions.find(v => v.version === version);
-    return found?.ontology || null;
+    return found?.data || null;
   } catch (err) {
     console.error('버전 복원 실패:', err);
     return null;
@@ -259,13 +259,13 @@ export function restoreVersion(ontologyId: string, version: number): NovelOntolo
 /**
  * 버전 히스토리 삭제
  */
-function deleteVersionHistory(ontologyId: string): void {
+function deleteVersionHistory(dataId: string): void {
   try {
-    const data = localStorage.getItem(VERSION_KEY);
-    if (!data) return;
+    const stored = localStorage.getItem(VERSION_KEY);
+    if (!stored) return;
 
-    const allVersions: Record<string, OntologyVersion[]> = JSON.parse(data);
-    delete allVersions[ontologyId];
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = JSON.parse(stored);
+    delete allVersions[dataId];
 
     localStorage.setItem(VERSION_KEY, JSON.stringify(allVersions));
   } catch (err) {
@@ -274,34 +274,34 @@ function deleteVersionHistory(ontologyId: string): void {
 }
 
 /**
- * 온톨로지 내보내기 (JSON 파일로)
+ * 지식 그래프 내보내기 (JSON 파일로)
  */
-export function exportOntology(ontology: NovelOntology): void {
-  const json = JSON.stringify(ontology, null, 2);
+export function exportKnowledgeGraph(data: NovelKnowledgeGraph): void {
+  const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${ontology.metadata.title}_ontology.json`;
+  a.download = `${data.metadata.title}_knowledge_graph.json`;
   a.click();
 
   URL.revokeObjectURL(url);
 }
 
 /**
- * 온톨로지 가져오기 (JSON 파일에서)
+ * 지식 그래프 가져오기 (JSON 파일에서)
  */
-export async function importOntology(file: File): Promise<NovelOntology> {
+export async function importKnowledgeGraph(file: File): Promise<NovelKnowledgeGraph> {
   const text = await file.text();
-  const ontology = JSON.parse(text) as NovelOntology;
+  const data = JSON.parse(text) as NovelKnowledgeGraph;
 
   // 기본 검증
-  if (!ontology.metadata || !ontology.entities || !ontology.hyperedges) {
-    throw new Error('유효하지 않은 온톨로지 파일입니다.');
+  if (!data.metadata || !data.entities || !data.hyperedges) {
+    throw new Error('유효하지 않은 데이터 파일입니다.');
   }
 
-  return ontology;
+  return data;
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * 저장된 온톨로지 데이터 관리 컴포넌트
+ * 저장된 지식 그래프 데이터 관리 컴포넌트
  */
 
 import { useState, useEffect } from 'react';
@@ -17,33 +17,33 @@ import {
   X,
 } from 'lucide-react';
 import {
-  getSavedOntologyList,
-  loadOntology,
-  deleteOntology,
-  exportOntology,
-  importOntology,
+  getSavedKnowledgeGraphList,
+  loadKnowledgeGraph,
+  deleteKnowledgeGraph,
+  exportKnowledgeGraph,
+  importKnowledgeGraph,
   getVersionHistory,
   restoreVersion,
-  type SavedOntologyMeta,
+  type SavedKnowledgeGraphMeta,
 } from '../services/storage';
 import { useStore } from '../store';
-import type { NovelOntology } from '../types';
+import type { NovelKnowledgeGraph } from '../types';
 
 interface Props {
   onClose: () => void;
-  onLoad: (ontology: NovelOntology) => void;
+  onLoad: (data: NovelKnowledgeGraph) => void;
 }
 
 export function DataManager({ onClose, onLoad }: Props) {
-  const { ontology } = useStore();
-  const [savedList, setSavedList] = useState<SavedOntologyMeta[]>([]);
+  const { knowledgeGraph } = useStore();
+  const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // 목록 새로고침
   const refreshList = () => {
-    setSavedList(getSavedOntologyList());
+    setSavedList(getSavedKnowledgeGraphList());
   };
 
   useEffect(() => {
@@ -61,34 +61,34 @@ export function DataManager({ onClose, onLoad }: Props) {
     }
   };
 
-  // 온톨로지 불러오기
+  // 데이터 불러오기
   const handleLoad = (id: string) => {
-    const loaded = loadOntology(id);
+    const loaded = loadKnowledgeGraph(id);
     if (loaded) {
       onLoad(loaded);
       onClose();
     }
   };
 
-  // 온톨로지 삭제
+  // 데이터 삭제
   const handleDelete = (id: string) => {
-    if (deleteOntology(id)) {
+    if (deleteKnowledgeGraph(id)) {
       refreshList();
       setConfirmDelete(null);
     }
   };
 
-  // 온톨로지 내보내기
+  // 데이터 내보내기
   const handleExport = (id: string) => {
-    const loaded = loadOntology(id);
+    const loaded = loadKnowledgeGraph(id);
     if (loaded) {
-      exportOntology(loaded);
+      exportKnowledgeGraph(loaded);
     }
   };
 
   // 버전 복원
-  const handleRestoreVersion = (ontologyId: string, version: number) => {
-    const restored = restoreVersion(ontologyId, version);
+  const handleRestoreVersion = (dataId: string, version: number) => {
+    const restored = restoreVersion(dataId, version);
     if (restored) {
       onLoad(restored);
       onClose();
@@ -101,7 +101,7 @@ export function DataManager({ onClose, onLoad }: Props) {
     if (!file) return;
 
     try {
-      const imported = await importOntology(file);
+      const imported = await importKnowledgeGraph(file);
       onLoad(imported);
       onClose();
     } catch (err: any) {
@@ -112,10 +112,10 @@ export function DataManager({ onClose, onLoad }: Props) {
     e.target.value = '';
   };
 
-  // 현재 온톨로지 내보내기
+  // 현재 데이터 내보내기
   const handleExportCurrent = () => {
-    if (ontology) {
-      exportOntology(ontology);
+    if (knowledgeGraph) {
+      exportKnowledgeGraph(knowledgeGraph);
     }
   };
 
@@ -160,7 +160,7 @@ export function DataManager({ onClose, onLoad }: Props) {
             />
           </label>
 
-          {ontology && (
+          {knowledgeGraph && (
             <button
               onClick={handleExportCurrent}
               className="flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"

@@ -3,11 +3,11 @@
  */
 
 import { create } from 'zustand';
-import type { NovelOntology, Entity, HyperEdge } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge } from './types';
 
 interface AppState {
   // 데이터
-  ontology: NovelOntology | null;
+  knowledgeGraph: NovelKnowledgeGraph | null;
   isLoading: boolean;
   error: string | null;
 
@@ -20,7 +20,7 @@ interface AppState {
   viewMode: 'graph' | 'timeline' | 'chronicle' | 'world';
 
   // 액션
-  setOntology: (ontology: NovelOntology) => void;
+  setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   selectEntity: (id: string | null) => void;
@@ -32,7 +32,7 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  ontology: null,
+  knowledgeGraph: null,
   isLoading: false,
   error: null,
   selectedEntityId: null,
@@ -42,7 +42,7 @@ export const useStore = create<AppState>((set) => ({
   sceneRangeEnd: null,
   viewMode: 'graph',
 
-  setOntology: (ontology) => set({ ontology, error: null }),
+  setKnowledgeGraph: (knowledgeGraph) => set({ knowledgeGraph, error: null }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   selectEntity: (selectedEntityId) => set({ selectedEntityId }),
@@ -51,7 +51,7 @@ export const useStore = create<AppState>((set) => ({
   selectSceneRange: (sceneRangeStart, sceneRangeEnd) => set({ sceneRangeStart, sceneRangeEnd, selectedSceneId: null }),
   setViewMode: (viewMode) => set({ viewMode }),
   reset: () => set({
-    ontology: null,
+    knowledgeGraph: null,
     selectedEntityId: null,
     selectedTimePoint: null,
     selectedSceneId: null,
@@ -63,23 +63,23 @@ export const useStore = create<AppState>((set) => ({
 
 // 셀렉터 헬퍼
 export const useSelectedEntity = (): Entity | null => {
-  const { ontology, selectedEntityId } = useStore();
-  if (!ontology || !selectedEntityId) return null;
-  return ontology.entities[selectedEntityId] || null;
+  const { knowledgeGraph, selectedEntityId } = useStore();
+  if (!knowledgeGraph || !selectedEntityId) return null;
+  return knowledgeGraph.entities[selectedEntityId] || null;
 };
 
 export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
-  const { ontology } = useStore();
-  if (!ontology || !entityId) return [];
-  return Object.values(ontology.hyperedges).filter(
+  const { knowledgeGraph } = useStore();
+  if (!knowledgeGraph || !entityId) return [];
+  return Object.values(knowledgeGraph.hyperedges).filter(
     (edge) => edge.entities.includes(entityId)
   );
 };
 
 export const useCharacters = (): Entity[] => {
-  const { ontology } = useStore();
-  if (!ontology) return [];
-  return Object.values(ontology.entities).filter(
+  const { knowledgeGraph } = useStore();
+  if (!knowledgeGraph) return [];
+  return Object.values(knowledgeGraph.entities).filter(
     (e) => e.category === 'character'
   );
 };

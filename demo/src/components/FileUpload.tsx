@@ -5,10 +5,10 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus } from 'lucide-react';
 import { useStore } from '../store';
-import { extractOntology, mergeOntologies, hasProgress, clearProgress, type ExtractionProgress } from '../services/extraction';
+import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, type ExtractionProgress } from '../services/extraction';
 
 export function FileUpload() {
-  const { ontology, setOntology, setLoading, setError, error } = useStore();
+  const { knowledgeGraph, setKnowledgeGraph, setLoading, setError, error } = useStore();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -30,11 +30,11 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
-      const ontology = await extractOntology('', savedProgress.title, (msg) => {
+      const knowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg) => {
         setProgress(msg);
       }, savedProgress);
 
-      setOntology(ontology);
+      setKnowledgeGraph(knowledgeGraph);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -47,7 +47,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [savedProgress, setOntology, setLoading, setError]);
+  }, [savedProgress, setKnowledgeGraph, setLoading, setError]);
 
   // 저장된 진행상황 삭제
   const handleClearProgress = useCallback(() => {
@@ -108,11 +108,11 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      const ontology = await extractOntology(combinedText, combinedTitle, (msg) => {
+      const knowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
         setProgress(msg);
       });
 
-      setOntology(ontology);
+      setKnowledgeGraph(knowledgeGraph);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -124,7 +124,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setOntology, setLoading, setError]);
+  }, [setKnowledgeGraph, setLoading, setError]);
 
   const handleFile = useCallback(async (file: File) => {
     console.log('파일 업로드 시작:', file.name);
@@ -163,23 +163,23 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      console.log('Extracting ontology from text:', text.slice(0, 200) + '...');
+      console.log('Extracting knowledgeGraph from text:', text.slice(0, 200) + '...');
 
       const title = file.name.replace(/\.[^/.]+$/, '');
-      const ontology = await extractOntology(text, title, (msg) => {
+      const knowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(msg);
       });
 
-      console.log('Extracted ontology:', ontology);
-      console.log('Entities:', Object.keys(ontology.entities).length);
-      console.log('Edges:', Object.keys(ontology.hyperedges).length);
-      console.log('Scenes:', Object.keys(ontology.snapshots || {}).length);
+      console.log('Extracted knowledgeGraph:', knowledgeGraph);
+      console.log('Entities:', Object.keys(knowledgeGraph.entities).length);
+      console.log('Edges:', Object.keys(knowledgeGraph.hyperedges).length);
+      console.log('Scenes:', Object.keys(knowledgeGraph.snapshots || {}).length);
 
-      if (Object.keys(ontology.entities).length === 0) {
+      if (Object.keys(knowledgeGraph.entities).length === 0) {
         throw new Error('추출된 엔티티가 없습니다. 소설 내용을 확인해주세요.');
       }
 
-      setOntology(ontology);
+      setKnowledgeGraph(knowledgeGraph);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -192,7 +192,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setOntology, setLoading, setError]);
+  }, [setKnowledgeGraph, setLoading, setError]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -219,7 +219,7 @@ export function FileUpload() {
 
   // 추가 분석 (기존 결과에 새 파일 병합)
   const handleAddFile = useCallback(async (file: File) => {
-    if (!ontology) return;
+    if (!knowledgeGraph) return;
 
     console.log('추가 분석 시작:', file.name);
     setLocalLoading(true);
@@ -257,19 +257,19 @@ export function FileUpload() {
 
       const title = file.name.replace(/\.[^/.]+$/, '');
       setProgress('추가 분석 중...');
-      const newOntology = await extractOntology(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(`추가: ${msg}`);
       });
 
       // 기존 결과와 병합
       setProgress('기존 결과와 병합 중...');
-      const merged = mergeOntologies(ontology, newOntology);
+      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
 
       console.log('병합 완료:', merged.metadata.title);
       console.log('총 엔티티:', Object.keys(merged.entities).length);
       console.log('총 관계:', Object.keys(merged.hyperedges).length);
 
-      setOntology(merged);
+      setKnowledgeGraph(merged);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -281,7 +281,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [ontology, setOntology, setLoading, setError]);
+  }, [knowledgeGraph, setKnowledgeGraph, setLoading, setError]);
 
   const handleAddChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -355,14 +355,14 @@ export function FileUpload() {
       </div>
 
       {/* 추가 분석 버튼 (기존 결과가 있을 때만) */}
-      {ontology && !localLoading && (
+      {knowledgeGraph && !localLoading && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <div className="flex items-start gap-3">
             <Plus className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium text-blue-800">추가 분석</p>
               <p className="text-sm text-blue-700 mt-1">
-                현재 "{ontology.metadata.title}"에 새 파일을 추가할 수 있습니다
+                현재 "{knowledgeGraph.metadata.title}"에 새 파일을 추가할 수 있습니다
               </p>
               <div className="flex gap-2 mt-3">
                 <label className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">

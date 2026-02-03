@@ -46,16 +46,16 @@ interface TimelineEvent {
 }
 
 export function TimelineView() {
-  const { ontology, selectEntity, selectedEntityId } = useStore();
+  const { knowledgeGraph, selectEntity, selectedEntityId } = useStore();
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
   // 시간순 이벤트 그룹화
   const events = useMemo(() => {
-    if (!ontology) return [];
+    if (!knowledgeGraph) return [];
 
     const timeGroups: Record<string, HyperEdge[]> = {};
 
-    Object.values(ontology.hyperedges).forEach((edge) => {
+    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
       const time = edge.timeline?.start || '시점 미상';
       if (!timeGroups[time]) timeGroups[time] = [];
       timeGroups[time].push(edge);
@@ -78,7 +78,7 @@ export function TimelineView() {
       edges.forEach((e) => e.entities.forEach((id) => entityIds.add(id)));
 
       const entities = Array.from(entityIds)
-        .map((id) => ontology.entities[id])
+        .map((id) => knowledgeGraph.entities[id])
         .filter(Boolean);
 
       return {
@@ -89,7 +89,7 @@ export function TimelineView() {
         entities,
       } as TimelineEvent;
     });
-  }, [ontology]);
+  }, [knowledgeGraph]);
 
   const toggleExpand = (id: string) => {
     const newExpanded = new Set(expandedEvents);
@@ -101,7 +101,7 @@ export function TimelineView() {
     setExpandedEvents(newExpanded);
   };
 
-  if (!ontology) {
+  if (!knowledgeGraph) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
         <div className="text-center text-gray-400">
@@ -142,13 +142,13 @@ export function TimelineView() {
           <div className="flex items-center gap-4">
             <div className="text-center">
               <div className="text-lg font-bold text-blue-600">
-                {Object.keys(ontology.hyperedges).length}
+                {Object.keys(knowledgeGraph.hyperedges).length}
               </div>
               <div className="text-[10px] text-gray-400">관계</div>
             </div>
             <div className="text-center">
               <div className="text-lg font-bold text-green-600">
-                {Object.values(ontology.entities).filter(e => e.category === 'character').length}
+                {Object.values(knowledgeGraph.entities).filter(e => e.category === 'character').length}
               </div>
               <div className="text-[10px] text-gray-400">인물</div>
             </div>
@@ -316,7 +316,7 @@ export function TimelineView() {
                                     {/* 관련 엔티티 */}
                                     <div className="mt-3 flex flex-wrap gap-1.5">
                                       {edge.entities.map((entityId) => {
-                                        const entity = ontology.entities[entityId];
+                                        const entity = knowledgeGraph.entities[entityId];
                                         if (!entity) return null;
                                         const isChar = entity.category === 'character';
                                         return (

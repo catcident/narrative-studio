@@ -31,7 +31,7 @@ interface SceneInfo {
 }
 
 export function CharacterChronicle() {
-  const { ontology, selectEntity } = useStore();
+  const { knowledgeGraph, selectEntity } = useStore();
   const characters = useCharacters();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -80,10 +80,10 @@ export function CharacterChronicle() {
 
   // 모든 장면 목록 (정렬됨)
   const allScenes = useMemo(() => {
-    if (!ontology) return [];
+    if (!knowledgeGraph) return [];
 
     const sceneSet = new Set<string>();
-    Object.values(ontology.hyperedges).forEach((edge) => {
+    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
       const scenes = edge.scenes || ['unknown'];
       scenes.forEach((s) => sceneSet.add(s));
     });
@@ -95,14 +95,14 @@ export function CharacterChronicle() {
         return a.localeCompare(b);
       })
       .map((sceneId): SceneInfo => {
-        const snapshot = ontology.snapshots?.[sceneId];
+        const snapshot = knowledgeGraph.snapshots?.[sceneId];
         const sceneNum = sceneId.replace('S', '').replace(/^0+/, '') || '?';
 
         // 시간 정보 찾기
         let time = snapshot?.time || '';
         if (!time) {
           // 해당 장면의 엣지에서 시간 정보 찾기
-          const edge = Object.values(ontology.hyperedges).find(
+          const edge = Object.values(knowledgeGraph.hyperedges).find(
             (e) => e.scenes?.includes(sceneId) && e.timeline?.start
           );
           if (edge?.timeline?.start) {
@@ -120,18 +120,18 @@ export function CharacterChronicle() {
           location,
         };
       });
-  }, [ontology]);
+  }, [knowledgeGraph]);
 
   // 캐릭터별, 장면별 이벤트 매핑
   const characterSceneEvents = useMemo(() => {
-    if (!ontology) return new Map<string, Map<string, HyperEdge[]>>();
+    if (!knowledgeGraph) return new Map<string, Map<string, HyperEdge[]>>();
 
     const map = new Map<string, Map<string, HyperEdge[]>>();
 
     characters.forEach((char) => {
       const sceneMap = new Map<string, HyperEdge[]>();
 
-      Object.values(ontology.hyperedges).forEach((edge) => {
+      Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
         if (!edge.entities.includes(char.id)) return;
 
         const scenes = edge.scenes || ['unknown'];
@@ -147,7 +147,7 @@ export function CharacterChronicle() {
     });
 
     return map;
-  }, [ontology, characters]);
+  }, [knowledgeGraph, characters]);
 
   // 선택된 캐릭터로 스크롤
   useEffect(() => {
@@ -159,7 +159,7 @@ export function CharacterChronicle() {
     }
   }, [selectedCharId]);
 
-  if (!ontology || characters.length === 0) {
+  if (!knowledgeGraph || characters.length === 0) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 text-gray-400">
         <div className="text-center">
@@ -388,7 +388,7 @@ export function CharacterChronicle() {
                             // 관계 상대방 이름 추출 (현재 캐릭터 제외)
                             const partnerNames = edge.entities
                               .filter(id => id !== char.id)
-                              .map(id => ontology.entities[id]?.name || id)
+                              .map(id => knowledgeGraph.entities[id]?.name || id)
                               .join(', ');
 
                             return (
