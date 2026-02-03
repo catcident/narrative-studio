@@ -469,7 +469,7 @@ export function FileUpload() {
         <input
           id="file-input"
           type="file"
-          accept=".txt,.pdf"
+          accept=".txt,.pdf,.md"
           onChange={handleChange}
           className="hidden"
           disabled={localLoading}
@@ -498,7 +498,7 @@ export function FileUpload() {
                   소설 파일을 업로드하세요
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  .txt 또는 .pdf 파일 지원
+                  .txt, .pdf, .md 파일 지원
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -530,7 +530,7 @@ export function FileUpload() {
                   파일 추가
                   <input
                     type="file"
-                    accept=".txt,.pdf"
+                    accept=".txt,.pdf,.md"
                     onChange={handleAddChange}
                     className="hidden"
                   />

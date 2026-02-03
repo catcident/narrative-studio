@@ -124,8 +124,12 @@ function App() {
 
       setAddProgress('병합 중...');
       const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
-      // 기존 데이터 ID 유지하여 업데이트 (새 데이터로 저장 방지)
-      setKnowledgeGraph(merged, undefined, currentDataId || undefined);
+
+      // DB에 저장 (기존 ID 사용하여 업데이트)
+      setAddProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
+
+      setKnowledgeGraph(merged, undefined, saved.id);
       setAddProgress('');
     } catch (err: any) {
       console.error('파일 추가 오류:', err);
@@ -161,7 +165,7 @@ function App() {
           )}
 
           <div className="mt-6 text-center text-xs text-gray-400">
-            지원 형식: .txt, .pdf
+            지원 형식: .txt, .pdf, .md
           </div>
         </div>
 
@@ -359,7 +363,7 @@ function App() {
               )}
               <input
                 type="file"
-                accept=".txt,.pdf"
+                accept=".txt,.pdf,.md"
                 onChange={handleAddFile}
                 className="hidden"
                 disabled={isAddingFile}

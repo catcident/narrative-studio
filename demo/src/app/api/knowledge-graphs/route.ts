@@ -57,6 +57,17 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       const newVersion = (existing.version || 1) + 1;
+
+      // 이전 버전을 히스토리에 저장
+      const versionsCollection = db.collection('knowledgeGraphVersions');
+      await versionsCollection.insertOne({
+        dataId: existing._id.toString(),
+        version: existing.version || 1,
+        savedAt: existing.updatedAt || existing.createdAt || now,
+        note: `v${existing.version || 1}: ${existing.title}`,
+        data: existing.data,
+      });
+
       await collection.updateOne({ _id: existing._id }, {
         $set: {
           data,
