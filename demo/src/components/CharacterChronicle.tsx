@@ -36,6 +36,47 @@ export function CharacterChronicle() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedColumnRef = useRef<HTMLDivElement>(null);
 
+  // 드래그 스크롤 상태
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [scrollStart, setScrollStart] = useState({ x: 0, y: 0 });
+
+  // 드래그 스크롤 핸들러
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setScrollStart({
+      x: scrollContainerRef.current.scrollLeft,
+      y: scrollContainerRef.current.scrollTop,
+    });
+    scrollContainerRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    scrollContainerRef.current.scrollLeft = scrollStart.x - dx;
+    scrollContainerRef.current.scrollTop = scrollStart.y - dy;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.style.cursor = 'grab';
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.style.cursor = 'grab';
+      }
+    }
+  };
+
   // 모든 장면 목록 (정렬됨)
   const allScenes = useMemo(() => {
     if (!ontology) return [];
@@ -181,10 +222,14 @@ export function CharacterChronicle() {
         )}
       </div>
 
-      {/* 그리드 영역 */}
+      {/* 그리드 영역 - 드래그로 스크롤 가능 */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-auto"
+        className="flex-1 overflow-auto cursor-grab select-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         <div
           className="grid gap-0"
