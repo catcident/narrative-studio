@@ -128,6 +128,15 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
 
 export const DEFAULT_MODEL = 'deepseek/deepseek-chat';
 
+// 업로드된 소스 파일 정보
+export interface SourceFile {
+  id: string;
+  fileName: string;  // 원본 파일명
+  uploadedAt: string;
+  text: string;  // 원본 텍스트
+  charCount: number;  // 글자 수
+}
+
 export interface NovelKnowledgeGraph {
   metadata: {
     title: string;
@@ -136,6 +145,7 @@ export interface NovelKnowledgeGraph {
     updatedAt: string;
     version: string;
     model?: string;  // 분석에 사용된 모델 ID
+    sourceFiles?: SourceFile[];  // 업로드된 파일 목록
   };
   entities: Record<string, Entity>;
   hyperedges: Record<string, HyperEdge>;

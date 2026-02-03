@@ -100,6 +100,7 @@ export function FileUpload() {
     try {
       const textParts: string[] = [];
       const titles: string[] = [];
+      const fileInfos: { fileName: string; text: string }[] = [];
 
       for (let i = 0; i < sortedFiles.length; i++) {
         const file = sortedFiles[i];
@@ -127,6 +128,7 @@ export function FileUpload() {
 
         textParts.push(text);
         titles.push(file.name.replace(/\.[^/.]+$/, ''));
+        fileInfos.push({ fileName: file.name, text });
       }
 
       const combinedText = textParts.join('\n\n--- 파일 구분 ---\n\n');
@@ -138,9 +140,22 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
+      // 첫 번째 파일명으로 extractKnowledgeGraph 호출
       const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
         setProgress(msg);
-      }, undefined, currentModel);
+      }, undefined, currentModel, sortedFiles[0].name);
+
+      // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
+      if (sortedFiles.length > 1) {
+        const now = new Date().toISOString();
+        newKnowledgeGraph.metadata.sourceFiles = fileInfos.map((f, i) => ({
+          id: `F${String(i + 1).padStart(4, '0')}`,
+          fileName: f.fileName,
+          uploadedAt: now,
+          text: f.text,
+          charCount: f.text.length,
+        }));
+      }
 
       // 저장하고 ID 받기
       setProgress('저장 중...');
@@ -203,7 +218,7 @@ export function FileUpload() {
       const title = file.name.replace(/\.[^/.]+$/, '');
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(msg);
-      }, undefined, currentModel);
+      }, undefined, currentModel, file.name);  // 원본 파일명 전달
 
       console.log('Extracted knowledgeGraph:', newKnowledgeGraph);
       console.log('Entities:', Object.keys(newKnowledgeGraph.entities).length);
@@ -300,7 +315,7 @@ export function FileUpload() {
       // 추가 분석은 기존 문서의 모델을 사용 (lockedModel)
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(`추가: ${msg}`);
-      }, undefined, currentModel);
+      }, undefined, currentModel, file.name);  // 원본 파일명 전달
 
       // 기존 결과와 병합
       setProgress('기존 결과와 병합 중...');

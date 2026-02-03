@@ -230,7 +230,8 @@ export async function extractKnowledgeGraph(
   title: string,
   onProgress?: (msg: string) => void,
   resumeFrom?: ExtractionProgress,
-  model?: string  // 사용할 모델 ID
+  model?: string,  // 사용할 모델 ID
+  fileName?: string  // 원본 파일명
 ): Promise<NovelKnowledgeGraph> {
   // 텍스트를 청크로 분할 (5000자씩)
   const CHUNK_SIZE = 5000;
@@ -376,7 +377,7 @@ export async function extractKnowledgeGraph(
   onProgress?.('관계 검증 및 보완 중...');
   const validated = inferMissingRelationships(merged);
 
-  return buildKnowledgeGraph(validated, title, useModel);
+  return buildKnowledgeGraph(validated, title, useModel, fileName, text);
 }
 
 // 클라이언트 측 fetch with timeout
@@ -962,7 +963,7 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
   );
 }
 
-function buildKnowledgeGraph(extracted: any, title: string, model?: string): NovelKnowledgeGraph {
+function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileName?: string, originalText?: string): NovelKnowledgeGraph {
   const now = new Date().toISOString();
   const entities: Record<string, any> = {};
   const hyperedges: Record<string, any> = {};
@@ -1283,6 +1284,15 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string): Nov
     edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
   });
 
+  // 소스 파일 정보 생성
+  const sourceFile = (fileName && originalText) ? {
+    id: `F${String(1).padStart(4, '0')}`,
+    fileName,
+    uploadedAt: now,
+    text: originalText,
+    charCount: originalText.length,
+  } : null;
+
   return {
     metadata: {
       title,
@@ -1290,6 +1300,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string): Nov
       updatedAt: now,
       version: '1.0.0',
       model,  // 분석에 사용된 모델 저장
+      sourceFiles: sourceFile ? [sourceFile] : [],
     },
     entities,
     hyperedges,
@@ -1480,11 +1491,24 @@ export function mergeKnowledgeGraphs(
     edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
   });
 
+  // 소스 파일 병합 (기존 + 새 파일)
+  const existingSourceFiles = existing.metadata.sourceFiles || [];
+  const newSourceFiles = newData.metadata.sourceFiles || [];
+  const nextFileId = existingSourceFiles.length + 1;
+  const mergedSourceFiles = [
+    ...existingSourceFiles,
+    ...newSourceFiles.map((f, i) => ({
+      ...f,
+      id: `F${String(nextFileId + i).padStart(4, '0')}`,
+    })),
+  ];
+
   return {
     metadata: {
       ...existing.metadata,
       // 기존 제목 유지 (파일 추가해도 제목 변경 안함)
       updatedAt: new Date().toISOString(),
+      sourceFiles: mergedSourceFiles,
     },
     entities: mergedEntities,
     hyperedges: mergedEdges,

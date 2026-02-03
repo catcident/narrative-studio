@@ -38,7 +38,7 @@ export function DataManager({ onClose, onLoad }: Props) {
   const { knowledgeGraph } = useStore();
   const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
+  const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string; addedFiles?: string | null }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // 목록 새로고침
@@ -281,20 +281,27 @@ export function DataManager({ onClose, onLoad }: Props) {
                               key={v.version}
                               className="flex items-center justify-between py-2 px-3 bg-white rounded-lg text-sm"
                             >
-                              <div>
-                                <span className="font-medium">v{v.version}</span>
-                                <span className="text-gray-400 ml-2">
-                                  {formatDate(v.savedAt)}
-                                </span>
-                                {v.note && (
-                                  <span className="text-gray-500 ml-2">
-                                    - {v.note}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">v{v.version}</span>
+                                  <span className="text-gray-400 text-xs">
+                                    {formatDate(v.savedAt)}
                                   </span>
+                                </div>
+                                {v.addedFiles && (
+                                  <div className="text-xs text-green-600 mt-0.5 truncate">
+                                    + {v.addedFiles}
+                                  </div>
+                                )}
+                                {v.note && !v.addedFiles && (
+                                  <div className="text-xs text-gray-500 mt-0.5 truncate">
+                                    {v.note}
+                                  </div>
                                 )}
                               </div>
                               <button
                                 onClick={() => handleRestoreVersion(item.id, v.version)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors flex-shrink-0"
                               >
                                 <RotateCcw className="w-3 h-3" />
                                 복원

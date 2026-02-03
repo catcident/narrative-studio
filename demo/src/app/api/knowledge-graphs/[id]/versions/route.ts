@@ -20,6 +20,7 @@ export async function GET(
       version: v.version,
       savedAt: v.savedAt?.toISOString?.() || v.savedAt,
       note: v.note,
+      addedFiles: v.addedFiles || null,  // 추가된 파일명
     })));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

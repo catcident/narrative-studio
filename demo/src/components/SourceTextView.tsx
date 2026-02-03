@@ -1,0 +1,195 @@
+/**
+ * 원본 텍스트 보기 컴포넌트
+ * 업로드된 소스 파일들의 원문을 볼 수 있음
+ */
+
+import { useState, useMemo } from 'react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check } from 'lucide-react';
+import { useStore } from '../store';
+
+export function SourceTextView() {
+  const { knowledgeGraph } = useStore();
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const sourceFiles = useMemo(() => {
+    return knowledgeGraph?.metadata.sourceFiles || [];
+  }, [knowledgeGraph]);
+
+  // 검색 결과 하이라이트
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+
+    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase()
+        ? <mark key={i} className="bg-yellow-200 px-0.5 rounded">{part}</mark>
+        : part
+    );
+  };
+
+  // 파일 토글
+  const toggleFile = (fileId: string) => {
+    setExpandedFiles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId);
+      } else {
+        newSet.add(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  // 모두 펼치기/접기
+  const toggleAll = () => {
+    if (expandedFiles.size === sourceFiles.length) {
+      setExpandedFiles(new Set());
+    } else {
+      setExpandedFiles(new Set(sourceFiles.map(f => f.id)));
+    }
+  };
+
+  // 텍스트 복사
+  const copyText = async (fileId: string, text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedId(fileId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // 검색어가 포함된 파일 필터링
+  const filteredFiles = useMemo(() => {
+    if (!searchQuery.trim()) return sourceFiles;
+    const query = searchQuery.toLowerCase();
+    return sourceFiles.filter(f =>
+      f.fileName.toLowerCase().includes(query) ||
+      f.text.toLowerCase().includes(query)
+    );
+  }, [sourceFiles, searchQuery]);
+
+  if (sourceFiles.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 text-gray-400">
+        <div className="text-center">
+          <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>업로드된 파일이 없습니다</p>
+          <p className="text-sm mt-1">파일을 업로드하면 원본 텍스트를 볼 수 있습니다</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      {/* 헤더 */}
+      <div className="flex-shrink-0 p-4 border-b bg-gray-50">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            원본 텍스트
+            <span className="text-sm font-normal text-gray-500">
+              ({sourceFiles.length}개 파일)
+            </span>
+          </h2>
+          <button
+            onClick={toggleAll}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            {expandedFiles.size === sourceFiles.length ? '모두 접기' : '모두 펼치기'}
+          </button>
+        </div>
+
+        {/* 검색 */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="텍스트 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* 파일 목록 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {filteredFiles.map((file, index) => {
+          const isExpanded = expandedFiles.has(file.id);
+          const isCopied = copiedId === file.id;
+
+          return (
+            <div
+              key={file.id}
+              className="border rounded-lg overflow-hidden bg-white shadow-sm"
+            >
+              {/* 파일 헤더 */}
+              <button
+                onClick={() => toggleFile(file.id)}
+                className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
+                      #{index + 1}
+                    </span>
+                    <span className="font-medium text-gray-800 truncate">
+                      {file.fileName}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {file.charCount.toLocaleString()}자 ·
+                    {new Date(file.uploadedAt).toLocaleString('ko-KR', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+
+                {/* 복사 버튼 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyText(file.id, file.text);
+                  }}
+                  className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+                  title="텍스트 복사"
+                >
+                  {isCopied ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+              </button>
+
+              {/* 파일 내용 */}
+              {isExpanded && (
+                <div className="border-t bg-gray-50">
+                  <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
+                    {searchQuery ? highlightText(file.text, searchQuery) : file.text}
+                  </pre>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {filteredFiles.length === 0 && searchQuery && (
+          <div className="text-center text-gray-500 py-8">
+            "{searchQuery}"에 대한 검색 결과가 없습니다
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

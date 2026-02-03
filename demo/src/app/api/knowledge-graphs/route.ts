@@ -72,14 +72,21 @@ export async function POST(request: NextRequest) {
     if (existing) {
       const newVersion = (existing.version || 1) + 1;
 
+      // 새로 추가된 파일명 추출 (기존 소스 파일 수와 비교)
+      const existingFileCount = existing.data?.metadata?.sourceFiles?.length || 0;
+      const newSourceFiles = data.metadata?.sourceFiles || [];
+      const addedFiles = newSourceFiles.slice(existingFileCount);
+      const addedFileNames = addedFiles.map((f: any) => f.fileName).join(', ');
+
       // 이전 버전을 히스토리에 저장
       const versionsCollection = db.collection('knowledgeGraphVersions');
       await versionsCollection.insertOne({
         dataId: existing._id.toString(),
         version: existing.version || 1,
         savedAt: existing.updatedAt || existing.createdAt || now,
-        note: `v${existing.version || 1}: ${existing.title}`,
+        note: addedFileNames ? `+${addedFileNames}` : `v${existing.version || 1}: ${existing.title}`,
         data: existing.data,
+        addedFiles: addedFileNames || null,  // 추가된 파일명 별도 저장
       });
 
       await collection.updateOne({ _id: existing._id }, {
