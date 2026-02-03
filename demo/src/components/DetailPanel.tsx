@@ -242,15 +242,40 @@ export function DetailPanel() {
           </div>
         )}
 
-        {/* 등장 장면 정보 */}
-        {edge.scenes && edge.scenes.length > 0 && (
-          <div className="mt-2 flex items-center gap-1 flex-wrap">
-            <span className="text-xs text-gray-400">등장 장면:</span>
-            {edge.scenes.map((sceneId, i) => (
-              <span key={i} className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">
-                {sceneId.replace('S', '장면 ').replace(/^0+/, '')}
-              </span>
-            ))}
+        {/* 등장 장면 정보 - 스크롤 가능한 목록 */}
+        {edge.scenes && edge.scenes.length > 0 && ontology?.snapshots && (
+          <div className="mt-3">
+            <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {[...edge.scenes].sort().map((sceneId) => {
+                const scene = ontology.snapshots[sceneId];
+                const sceneIdx = Object.keys(ontology.snapshots).sort().indexOf(sceneId) + 1;
+                if (!scene) return null;
+
+                return (
+                  <div
+                    key={sceneId}
+                    className="p-2 bg-white rounded border border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-blue-600">장면 {sceneIdx}</span>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        {scene.time && <span>{scene.time}</span>}
+                        {scene.location && (
+                          <span className="flex items-center gap-0.5">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {scene.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {scene.summary && (
+                      <p className="mt-1 text-[10px] text-gray-500 line-clamp-2">{scene.summary}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
