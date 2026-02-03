@@ -27,6 +27,7 @@ interface SceneInfo {
   sceneId: string;
   sceneLabel: string;
   time: string;
+  location: string;
 }
 
 export function CharacterChronicle() {
@@ -98,8 +99,8 @@ export function CharacterChronicle() {
         const sceneNum = sceneId.replace('S', '').replace(/^0+/, '') || '?';
 
         // 시간 정보 찾기
-        let time = snapshot?.time || '시점 미상';
-        if (time === '시점 미상') {
+        let time = snapshot?.time || '';
+        if (!time) {
           // 해당 장면의 엣지에서 시간 정보 찾기
           const edge = Object.values(ontology.hyperedges).find(
             (e) => e.scenes?.includes(sceneId) && e.timeline?.start
@@ -109,10 +110,14 @@ export function CharacterChronicle() {
           }
         }
 
+        // 장소 정보
+        const location = snapshot?.location || '';
+
         return {
           sceneId,
           sceneLabel: `장면 ${sceneNum}`,
           time,
+          location,
         };
       });
   }, [ontology]);
@@ -338,7 +343,7 @@ export function CharacterChronicle() {
                           border: `2px solid ${colors.border}`,
                         }}
                       >
-                        {/* 헤더: 장면 / 시점 */}
+                        {/* 헤더: 장면 번호 + 장소/시간 */}
                         <div
                           className="px-3 py-2 flex-shrink-0"
                           style={{ backgroundColor: colors.bg }}
@@ -353,7 +358,7 @@ export function CharacterChronicle() {
                             className="text-xs opacity-80"
                             style={{ color: colors.text }}
                           >
-                            {scene.time}
+                            {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
                           </div>
                         </div>
                         {/* 관계 목록 - 전체 표시 */}
