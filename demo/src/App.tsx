@@ -116,9 +116,11 @@ function App() {
       if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
 
       const title = file.name.replace(/\.[^/.]+$/, '');
+      // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
+      const existingModel = knowledgeGraph.metadata.model;
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setAddProgress(msg);
-      });
+      }, undefined, existingModel);
 
       setAddProgress('병합 중...');
       const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);

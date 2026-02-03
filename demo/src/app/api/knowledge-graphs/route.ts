@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       sceneCount: item.sceneCount || 0,
       userId: item.userId || null,
       novelId: item.novelId || null,
+      model: item.data?.metadata?.model || null,  // 분석에 사용된 모델
     })));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
         sceneCount,
         userId,
         novelId: novelId || existing.novelId,
+        model: data.metadata?.model || null,
       });
     } else {
       const result = await collection.insertOne({
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
         sceneCount,
         userId,
         novelId,
+        model: data.metadata?.model || null,
       });
     }
   } catch (err) {
