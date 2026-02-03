@@ -394,6 +394,8 @@ function App() {
                 <RelationshipGraph
                   entities={entitiesWithOpacity}
                   edges={edgesWithOpacity}
+                  selectedScene={currentScene ? { sceneId: selectedSceneId!, ...currentScene } : null}
+                  sceneIndex={selectedSceneIndex + 1}
                 />
               </div>
             </>

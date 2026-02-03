@@ -121,10 +121,23 @@ interface EdgeWithOpacity extends HyperEdge {
   isPastScene?: boolean;
 }
 
+interface Scene {
+  sceneId: string;
+  time?: string;
+  location?: string;
+  summary?: string;
+  mood?: string;
+  events?: string[];
+  charactersPresent?: string[];
+  activeEdges?: string[];
+}
+
 interface Props {
   entities: EntityWithOpacity[];
   edges: EdgeWithOpacity[];
   onNodeClick?: (entity: Entity) => void;
+  selectedScene?: Scene | null;
+  sceneIndex?: number;
 }
 
 // 작은 원 + 밑에 라벨 커스텀 노드
@@ -166,6 +179,195 @@ function SmallDotNode({ data }: NodeProps) {
 const nodeTypes = {
   smallDot: SmallDotNode,
 };
+
+// 관계 항목 (호버/클릭 시 상세 보기)
+function RelationshipItem({
+  edge,
+  entities,
+  isExpanded,
+  onToggle,
+}: {
+  edge: HyperEdge;
+  entities: Entity[];
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const relationLabel = RELATION_LABELS[edge.type] || edge.type;
+  const color = RELATION_COLORS[edge.type] || '#9ca3af';
+
+  // 대상 엔티티 이름
+  const targetNames = edge.entities
+    .map(id => entities.find(e => e.id === id)?.name || id)
+    .join(', ');
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 클릭 가능한 관계 항목 */}
+      <button
+        onClick={onToggle}
+        className={`w-full text-left px-2 py-1.5 rounded-lg transition-all text-xs ${
+          isExpanded
+            ? 'bg-white shadow-sm border border-gray-200'
+            : 'hover:bg-white/60'
+        }`}
+      >
+        <div className="flex items-center gap-1.5">
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
+            style={{ backgroundColor: color }}
+          >
+            {relationLabel}
+          </span>
+          <span className="text-gray-500">→</span>
+          <span className="text-gray-700 font-medium truncate">{targetNames}</span>
+        </div>
+
+        {/* 설명 미리보기 */}
+        {edge.statement && !isExpanded && (
+          <p className="mt-0.5 text-[10px] text-gray-400 truncate pl-1">
+            {edge.statement}
+          </p>
+        )}
+      </button>
+
+      {/* 확장된 상세 내용 */}
+      {isExpanded && edge.statement && (
+        <div className="mt-1 mx-1 p-2 bg-blue-50 rounded-lg border border-blue-100">
+          <p className="text-xs text-gray-700 leading-relaxed">{edge.statement}</p>
+          {edge.strength && (
+            <div className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-400">
+              <span>강도:</span>
+              <div className="flex gap-0.5">
+                {[...Array(10)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-1 h-1.5 rounded-sm ${
+                      i < edge.strength! ? 'bg-blue-400' : 'bg-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 호버 시 툴팁 (확장 안 된 상태에서만) */}
+      {isHovered && !isExpanded && edge.statement && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 p-2 bg-gray-800 text-white text-[10px] rounded-lg shadow-lg max-w-xs">
+          <p className="leading-relaxed">{edge.statement}</p>
+          <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-800 rotate-45" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 장면 정보 팝업 (관계 목록 포함)
+function SceneInfoPopup({
+  scene,
+  sceneIndex,
+  edges,
+  entities,
+  onClose,
+}: {
+  scene: Scene;
+  sceneIndex: number;
+  edges: HyperEdge[];
+  entities: Entity[];
+  onClose: () => void;
+}) {
+  const [expandedEdgeId, setExpandedEdgeId] = useState<string | null>(null);
+
+  // 이 장면의 관계만 필터링
+  const sceneEdges = edges.filter(e =>
+    e.scenes?.includes(scene.sceneId) ||
+    scene.activeEdges?.includes(e.id)
+  );
+
+  return (
+    <div className="absolute top-3 right-3 z-50 w-72 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+      {/* 헤더 */}
+      <div className="px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-bold">장면 {sceneIndex}</div>
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-100">
+              {scene.location && <span>{scene.location}</span>}
+              {scene.time && scene.location && <span>·</span>}
+              {scene.time && <span>{scene.time}</span>}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 장면 요약 */}
+      {scene.summary && (
+        <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+          <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
+            {scene.summary}
+          </p>
+        </div>
+      )}
+
+      {/* 관계 목록 */}
+      <div className="px-3 py-2 max-h-64 overflow-y-auto">
+        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+          이 장면의 관계 ({sceneEdges.length})
+        </div>
+
+        {sceneEdges.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">
+            이 장면에 관계 정보가 없습니다
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {sceneEdges.map((edge) => (
+              <RelationshipItem
+                key={edge.id}
+                edge={edge}
+                entities={entities}
+                isExpanded={expandedEdgeId === edge.id}
+                onToggle={() => setExpandedEdgeId(
+                  expandedEdgeId === edge.id ? null : edge.id
+                )}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 분위기/이벤트 */}
+      {(scene.mood || (scene.events && scene.events.length > 0)) && (
+        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+          <div className="flex flex-wrap gap-1">
+            {scene.mood && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded">
+                {scene.mood}
+              </span>
+            )}
+            {scene.events?.map((event, i) => (
+              <span key={i} className="px-2 py-0.5 bg-gray-200 text-gray-600 text-[10px] rounded">
+                {event}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // 선택된 관계 정보를 표시하는 팝업
 function EdgeDetailPopup({
@@ -248,7 +450,7 @@ function EdgeDetailPopup({
   );
 }
 
-export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
+export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene, sceneIndex }: Props) {
   const { selectedEntityId, selectEntity } = useStore();
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
@@ -890,6 +1092,17 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           edge={selectedEdge}
           entities={entities}
           onClose={() => setSelectedEdge(null)}
+        />
+      )}
+
+      {/* 장면 정보 팝업 */}
+      {selectedScene && sceneIndex && (
+        <SceneInfoPopup
+          scene={selectedScene}
+          sceneIndex={sceneIndex}
+          edges={edges}
+          entities={entities}
+          onClose={() => {}}
         />
       )}
     </div>
