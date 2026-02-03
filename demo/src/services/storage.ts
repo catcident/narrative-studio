@@ -6,8 +6,8 @@
 
 import type { NovelKnowledgeGraph } from '../types';
 
-// API 서버 URL
-const API_BASE = '/api';
+// IndexedDB만 사용 (서버 없음)
+const API_BASE = '';
 
 export interface SavedKnowledgeGraph {
   id: string;
