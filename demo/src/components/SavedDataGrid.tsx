@@ -39,8 +39,9 @@ export function SavedDataGrid({ onLoad }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // 목록 새로고침
-  const refreshList = () => {
-    setSavedList(getSavedKnowledgeGraphList());
+  const refreshList = async () => {
+    const list = await getSavedKnowledgeGraphList();
+    setSavedList(list);
   };
 
   useEffect(() => {
@@ -48,47 +49,49 @@ export function SavedDataGrid({ onLoad }: Props) {
   }, []);
 
   // 버전 히스토리 토글
-  const toggleVersions = (id: string, e: React.MouseEvent) => {
+  const toggleVersions = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (expandedId === id) {
       setExpandedId(null);
       setVersions([]);
     } else {
       setExpandedId(id);
-      setVersions(getVersionHistory(id));
+      const history = await getVersionHistory(id);
+      setVersions(history);
     }
   };
 
   // 데이터 불러오기
-  const handleLoad = (id: string) => {
-    const loaded = loadKnowledgeGraph(id);
+  const handleLoad = async (id: string) => {
+    const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
       onLoad(loaded);
     }
   };
 
   // 데이터 삭제
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (deleteKnowledgeGraph(id)) {
-      refreshList();
+    const deleted = await deleteKnowledgeGraph(id);
+    if (deleted) {
+      await refreshList();
       setConfirmDelete(null);
     }
   };
 
   // 데이터 내보내기
-  const handleExport = (id: string, e: React.MouseEvent) => {
+  const handleExport = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const loaded = loadKnowledgeGraph(id);
+    const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
       exportKnowledgeGraph(loaded);
     }
   };
 
   // 버전 복원
-  const handleRestoreVersion = (dataId: string, version: number, e: React.MouseEvent) => {
+  const handleRestoreVersion = async (dataId: string, version: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const restored = restoreVersion(dataId, version);
+    const restored = await restoreVersion(dataId, version);
     if (restored) {
       onLoad(restored);
     }
