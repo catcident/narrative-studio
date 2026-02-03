@@ -8,7 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { MongoClient, Db, ObjectId } from 'mongodb';
+import { MongoClient, type Db, ObjectId } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,9 +67,9 @@ app.get('/api/knowledge-graphs', async (req, res) => {
     }));
 
     res.json(list);
-  } catch (err: any) {
+  } catch (err) {
     console.error('목록 조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -85,9 +85,9 @@ app.get('/api/knowledge-graphs/:id', async (req, res) => {
     }
 
     res.json(item.data);
-  } catch (err: any) {
+  } catch (err) {
     console.error('조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -184,9 +184,9 @@ app.post('/api/knowledge-graphs', async (req, res) => {
         sceneCount,
       });
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('저장 실패:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -205,9 +205,9 @@ app.delete('/api/knowledge-graphs/:id', async (req, res) => {
     const result = await collection.deleteOne({ _id: objectId });
 
     res.json({ success: result.deletedCount > 0 });
-  } catch (err: any) {
+  } catch (err) {
     console.error('삭제 실패:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -228,9 +228,9 @@ app.get('/api/knowledge-graphs/:id/versions', async (req, res) => {
       savedAt: v.createdAt?.toISOString() || new Date().toISOString(),
       note: v.note,
     })));
-  } catch (err: any) {
+  } catch (err) {
     console.error('버전 히스토리 조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -280,15 +280,17 @@ app.post('/api/knowledge-graphs/:id/restore/:version', async (req, res) => {
     );
 
     res.json(versionDoc.data);
-  } catch (err: any) {
+  } catch (err) {
     console.error('버전 복원 실패:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
 // ==================== 정적 파일 서빙 (프로덕션) ====================
 
 // dist 폴더의 정적 파일 서빙
+// 개발: server/index.ts -> ../dist
+// 프로덕션: dist-server/index.js -> ../dist
 const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
 
