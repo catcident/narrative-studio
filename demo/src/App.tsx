@@ -110,7 +110,8 @@ function App() {
   // 업로드 화면
   if (!ontology) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6">
+        {/* 상단: 업로드 영역 */}
         <div className="w-full max-w-xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
@@ -133,8 +134,10 @@ function App() {
           <div className="mt-6 text-center text-xs text-gray-400">
             지원 형식: .txt, .pdf
           </div>
+        </div>
 
-          {/* 저장된 데이터 그리드 */}
+        {/* 하단: 저장된 데이터 그리드 (더 넓게) */}
+        <div className="w-full max-w-4xl">
           <SavedDataGrid onLoad={handleLoadOntology} />
         </div>
       </div>
