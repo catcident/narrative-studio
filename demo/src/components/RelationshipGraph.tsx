@@ -78,8 +78,10 @@ const RELATION_LABELS: Record<string, string> = {
   subordinate: '부하',
   belongs_to: '소속',
   owns: '소유',
+  ownership: '소유',
   rules: '지배',
   located_at: '위치',
+  location: '위치',
   occurred_at: '발생',
   during: '기간',
   participates: '참여',
@@ -88,6 +90,20 @@ const RELATION_LABELS: Record<string, string> = {
   knows: '아는 사이',
   has_status: '상태',
   related_to: '관련',
+  related: '관련',
+  trust: '신뢰',
+  knows_about: '인지',
+  // 한글은 그대로
+  '가족': '가족',
+  '연인': '연인',
+  '친구': '친구',
+  '적대': '적대',
+  '동료': '동료',
+  '주인': '주인',
+  '위치': '위치',
+  '소유': '소유',
+  '관련': '관련',
+  '소속': '소속',
 };
 
 const SENTIMENT_STYLES = {
@@ -236,7 +252,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
   const { selectedEntityId, selectEntity } = useStore();
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
-  const [focusedCharId, setFocusedCharId] = useState<string | null>(null);
+  const [focusedCharIds, setFocusedCharIds] = useState<string[]>([]);
   const [minImportance, setMinImportance] = useState<number>(1);  // 최소 중요도 필터
 
   // 인물 목록 추출
@@ -260,17 +276,19 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     return edges.filter(e => e.entities.every(id => entityIds.has(id)));
   }, [edges, importanceFilteredEntities, minImportance]);
 
-  // 인물 중심 모드: 해당 인물이 직접 연결된 것만 표시
+  // 인물 중심 모드: 선택된 인물들이 직접 연결된 것만 표시
   const { filteredEntities, filteredEdges } = useMemo(() => {
-    if (viewMode !== 'focused' || !focusedCharId) {
+    if (viewMode !== 'focused' || focusedCharIds.length === 0) {
       return { filteredEntities: importanceFilteredEntities, filteredEdges: importanceFilteredEdges };
     }
 
-    // 포커스된 인물이 직접 연결된 관계만 필터링
-    const fEdges = importanceFilteredEdges.filter(e => e.entities.includes(focusedCharId));
+    // 포커스된 인물들이 직접 연결된 관계만 필터링
+    const fEdges = importanceFilteredEdges.filter(e =>
+      focusedCharIds.some(charId => e.entities.includes(charId))
+    );
 
-    // 해당 관계에 포함된 엔티티만 표시 (포커스된 인물 + 직접 연결된 엔티티들)
-    const relatedEntityIds = new Set<string>([focusedCharId]);
+    // 해당 관계에 포함된 엔티티만 표시 (포커스된 인물들 + 직접 연결된 엔티티들)
+    const relatedEntityIds = new Set<string>(focusedCharIds);
     fEdges.forEach(edge => {
       edge.entities.forEach(id => relatedEntityIds.add(id));
     });
@@ -278,7 +296,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const fEntities = importanceFilteredEntities.filter(e => relatedEntityIds.has(e.id));
 
     return { filteredEntities: fEntities, filteredEdges: fEdges };
-  }, [importanceFilteredEntities, importanceFilteredEdges, viewMode, focusedCharId]);
+  }, [importanceFilteredEntities, importanceFilteredEdges, viewMode, focusedCharIds]);
 
   // 간소화 모드: 인물만 표시
   const displayEntities = useMemo(() => {
@@ -316,9 +334,9 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     const centerX = 400;
     const centerY = 350;
 
-    // 인물 중심 모드: 선택한 인물이 중앙에 위치
-    const isFocusedMode = viewMode === 'focused' && focusedCharId;
-    const focusedEntity = isFocusedMode ? displayEntities.find(e => e.id === focusedCharId) : null;
+    // 인물 중심 모드: 선택한 인물들이 중앙에 위치
+    const isFocusedMode = viewMode === 'focused' && focusedCharIds.length > 0;
+    const focusedEntities = isFocusedMode ? displayEntities.filter(e => focusedCharIds.includes(e.id)) : [];
 
     // 원 크기 계산: 최대 반지름 제한으로 전체가 보이도록
     const getRadius = (count: number, nodeSize: number, minCount: number) => {
@@ -330,11 +348,14 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     };
 
     // 인물 중심 모드일 때도 동일한 구조: 중앙 → 인물 → 장소 → 기타
-    if (isFocusedMode && focusedEntity) {
-      const relatedChars = chars.filter(e => e.id !== focusedCharId);
+    if (isFocusedMode && focusedEntities.length > 0) {
+      const relatedChars = chars.filter(e => !focusedCharIds.includes(e.id));
+
+      // 중앙 영역 반지름 (선택된 인물 수에 따라 조정)
+      const centerRadius = focusedEntities.length > 1 ? Math.min(80, 30 + focusedEntities.length * 20) : 0;
 
       // 각 레이어별 반지름
-      const charRadius = getRadius(relatedChars.length, 50, 4);
+      const charRadius = getRadius(relatedChars.length, 50, 4) + centerRadius;
       const locationRadius = charRadius + 60;
       const otherRadius = locationRadius + 50;
 
@@ -376,30 +397,41 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         });
       });
 
-      // 중앙 노드 (포커스된 인물)
-      const focusedNode: Node = {
-        id: focusedEntity.id,
-        type: 'default',
-        position: { x: centerX, y: centerY },
-        data: { label: focusedEntity.name, entity: focusedEntity },
-        style: {
-          background: CATEGORY_COLORS[focusedEntity.category],
-          color: 'white',
-          border: '3px solid #fbbf24',
-          borderRadius: '50%',
-          width: 60,
-          height: 60,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '11px',
-          fontWeight: 600,
-          boxShadow: '0 0 20px rgba(251, 191, 36, 0.5)',
-        },
-      };
+      // 중앙 노드들 (포커스된 인물들)
+      const nodes: Node[] = [];
+      focusedEntities.forEach((focusedEntity, i) => {
+        // 여러 명이면 중앙에 원형 배치, 1명이면 정중앙
+        const angle = focusedEntities.length > 1
+          ? (2 * Math.PI * i) / focusedEntities.length - Math.PI / 2
+          : 0;
+        const x = focusedEntities.length > 1
+          ? centerX + centerRadius * Math.cos(angle)
+          : centerX;
+        const y = focusedEntities.length > 1
+          ? centerY + centerRadius * Math.sin(angle)
+          : centerY;
 
-      // 노드 생성
-      const nodes: Node[] = [focusedNode];
+        nodes.push({
+          id: focusedEntity.id,
+          type: 'default',
+          position: { x, y },
+          data: { label: focusedEntity.name, entity: focusedEntity },
+          style: {
+            background: CATEGORY_COLORS[focusedEntity.category],
+            color: 'white',
+            border: '3px solid #fbbf24',
+            borderRadius: '50%',
+            width: 60,
+            height: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '11px',
+            fontWeight: 600,
+            boxShadow: '0 0 20px rgba(251, 191, 36, 0.5)',
+          },
+        });
+      });
 
       relatedChars.forEach((entity) => {
         const pos = allPositions.find(p => p.id === entity.id)!;
@@ -578,7 +610,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
     });
 
     return [...charNodes, ...locationNodes, ...otherNodes];
-  }, [displayEntities, selectedEntityId, viewMode, focusedCharId]);
+  }, [displayEntities, selectedEntityId, viewMode, focusedCharIds]);
 
   // 엣지 ID -> 원본 HyperEdge 매핑
   const edgeMap = useMemo(() => {
@@ -642,21 +674,22 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
   // 엔티티/뷰모드 변경 시에만 노드 위치 재설정 (선택 상태 변경 시 제외)
   const prevDisplayEntitiesRef = useRef<string>('');
   const prevViewModeRef = useRef<string>('');
-  const prevFocusedCharIdRef = useRef<string | null>(null);
+  const prevFocusedCharIdsRef = useRef<string>('');
 
   useEffect(() => {
     const entitiesKey = displayEntities.map(e => e.id).sort().join(',');
+    const focusedKey = focusedCharIds.sort().join(',');
     const shouldResetPositions =
       entitiesKey !== prevDisplayEntitiesRef.current ||
       viewMode !== prevViewModeRef.current ||
-      focusedCharId !== prevFocusedCharIdRef.current;
+      focusedKey !== prevFocusedCharIdsRef.current;
 
     if (shouldResetPositions) {
       // 엔티티 구성이나 뷰모드가 변경됨 → 위치 초기화
       setNodes(initialNodes);
       prevDisplayEntitiesRef.current = entitiesKey;
       prevViewModeRef.current = viewMode;
-      prevFocusedCharIdRef.current = focusedCharId;
+      prevFocusedCharIdsRef.current = focusedKey;
     } else {
       // 선택 상태만 변경됨 → 스타일만 업데이트 (위치 유지)
       setNodes(currentNodes =>
@@ -673,7 +706,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
         })
       );
     }
-  }, [initialNodes, setNodes, displayEntities, viewMode, focusedCharId]);
+  }, [initialNodes, setNodes, displayEntities, viewMode, focusedCharIds]);
 
   useEffect(() => {
     setEdges(initialEdges);
@@ -712,7 +745,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
       <div className="absolute top-3 left-3 z-10 bg-white rounded-lg shadow-lg p-2">
         <div className="flex items-center gap-1 mb-2">
           <button
-            onClick={() => { setViewMode('full'); setFocusedCharId(null); }}
+            onClick={() => { setViewMode('full'); setFocusedCharIds([]); }}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
               viewMode === 'full'
                 ? 'bg-blue-100 text-blue-700 font-medium'
@@ -724,7 +757,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
             전체
           </button>
           <button
-            onClick={() => { setViewMode('simple'); setFocusedCharId(null); }}
+            onClick={() => { setViewMode('simple'); setFocusedCharIds([]); }}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
               viewMode === 'simple'
                 ? 'bg-green-100 text-green-700 font-medium'
@@ -749,26 +782,50 @@ export function RelationshipGraph({ entities, edges, onNodeClick }: Props) {
           </button>
         </div>
 
-        {/* 인물 중심 모드: 인물 선택 */}
+        {/* 인물 중심 모드: 인물 다중 선택 */}
         {viewMode === 'focused' && (
           <div className="border-t border-gray-100 pt-2">
-            <div className="text-[10px] text-gray-400 mb-1">관점 인물 선택:</div>
-            <div className="flex flex-wrap gap-1 max-w-[200px]">
-              {characters.map((char, i) => (
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] text-gray-400">관점 인물 선택 (다중):</div>
+              {focusedCharIds.length > 0 && (
                 <button
-                  key={char.id}
-                  onClick={() => setFocusedCharId(focusedCharId === char.id ? null : char.id)}
-                  className={`px-1.5 py-0.5 text-[10px] rounded transition-all ${
-                    focusedCharId === char.id
-                      ? 'text-white shadow'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  style={focusedCharId === char.id ? { backgroundColor: getCharColor(i) } : undefined}
+                  onClick={() => setFocusedCharIds([])}
+                  className="text-[9px] text-gray-400 hover:text-red-500"
                 >
-                  {char.name}
+                  초기화
                 </button>
-              ))}
+              )}
             </div>
+            <div className="flex flex-wrap gap-1 max-w-[200px]">
+              {characters.map((char, i) => {
+                const isSelected = focusedCharIds.includes(char.id);
+                return (
+                  <button
+                    key={char.id}
+                    onClick={() => {
+                      if (isSelected) {
+                        setFocusedCharIds(focusedCharIds.filter(id => id !== char.id));
+                      } else {
+                        setFocusedCharIds([...focusedCharIds, char.id]);
+                      }
+                    }}
+                    className={`px-1.5 py-0.5 text-[10px] rounded transition-all ${
+                      isSelected
+                        ? 'text-white shadow'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    style={isSelected ? { backgroundColor: getCharColor(i) } : undefined}
+                  >
+                    {char.name}
+                  </button>
+                );
+              })}
+            </div>
+            {focusedCharIds.length > 0 && (
+              <div className="text-[9px] text-blue-500 mt-1">
+                {focusedCharIds.length}명 선택됨
+              </div>
+            )}
           </div>
         )}
 
