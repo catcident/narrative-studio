@@ -84,8 +84,23 @@ export function TimelineView() {
         .map((id) => knowledgeGraph.entities[id])
         .filter(Boolean);
 
-      // 챕터 정보
-      const chapterInfo = scene.chapter ? chapters[scene.chapter] : null;
+      // 챕터 정보 - scene.chapter가 "C0001" 형식 또는 숫자일 수 있음
+      let chapterInfo = null;
+      if (scene.chapter) {
+        // scene.chapter가 이미 "C0001" 형식이면 그대로 사용
+        if (typeof scene.chapter === 'string' && scene.chapter.startsWith('C')) {
+          chapterInfo = chapters[scene.chapter];
+        } else {
+          // 숫자면 "C0001" 형식으로 변환
+          const chapterId = `C${String(scene.chapter).padStart(4, '0')}`;
+          chapterInfo = chapters[chapterId];
+        }
+      }
+      // chapterNumber로도 시도
+      if (!chapterInfo && scene.chapterNumber) {
+        const chapterId = `C${String(scene.chapterNumber).padStart(4, '0')}`;
+        chapterInfo = chapters[chapterId];
+      }
 
       return {
         id: sceneId,
@@ -95,7 +110,7 @@ export function TimelineView() {
         timeElapsed: scene.timeElapsed,
         location: scene.location,
         summary: scene.summary,
-        chapter: scene.chapterNumber,
+        chapter: scene.chapterNumber || (chapterInfo?.number),
         chapterTitle: chapterInfo?.title,
         edges,
         entities,

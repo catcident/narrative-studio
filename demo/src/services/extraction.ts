@@ -795,6 +795,7 @@ function normalizeAllRelationTypes(extracted: any): any {
 /**
  * 후처리: 엔티티 설명에서 누락된 관계 자동 생성
  * "화자가 피우는 담배" 같은 설명에서 소유 관계를 추출
+ * "화자가 걷는 길" 같은 설명에서 위치 관계를 추출
  */
 function inferMissingRelationships(extracted: any): any {
   // 먼저 관계 타입 정규화
@@ -802,11 +803,21 @@ function inferMissingRelationships(extracted: any): any {
   const { entities, relationships } = normalized;
   const newRelationships: any[] = [];
 
-  // 소유자/사용자 패턴
+  // 엔티티 이름 목록 (인물만)
+  const characterNames = entities
+    .filter((e: any) => e.category === 'character')
+    .map((e: any) => e.name);
+
+  // 소유자/사용자 패턴 (소유 관계)
   const ownerPatterns = [
     /^(.+?)(?:가|이|의)\s*(?:피우는|먹는|마시는|쓰는|타는|가진|입는|쓰던|읽는|보는|사용하는|운전하는|타고\s*다니는|가지고\s*있는)/,
-    /^(.+?)(?:가|이)\s*(?:사는|있는|거주하는|다니는|일하는|근무하는)\s*/,
     /^(.+?)의\s+/,  // "~의 물건" 패턴
+  ];
+
+  // 위치 패턴 (위치 관계) - location 엔티티용
+  const locationPatterns = [
+    /^(.+?)(?:가|이)\s*(?:걷는|걸어가는|지나가는|다니는|있는|가는|오는|서\s*있는|앉아\s*있는|누워\s*있는)/,
+    /^(.+?)(?:가|이)\s*(?:사는|거주하는|일하는|근무하는|다니는)/,
   ];
 
   for (const entity of entities) {
@@ -814,6 +825,7 @@ function inferMissingRelationships(extracted: any): any {
 
     const desc = entity.description || '';
     const attrOwner = entity.attributes?.owner;
+    const isLocation = entity.category === 'location';
 
     // attributes.owner가 있으면 관계 생성
     if (attrOwner) {
@@ -823,13 +835,43 @@ function inferMissingRelationships(extracted: any): any {
         newRelationships.push({
           from: ownerName,
           to: entity.name,
-          type: '소유',
+          type: isLocation ? '위치' : '소유',
           description: `${ownerName}의 ${entity.name}`,
           sentiment: 'neutral',
           strength: 5,
           scenes: entity.scenes || []
         });
       }
+    }
+
+    // location 엔티티면 위치 패턴 먼저 시도
+    if (isLocation) {
+      let foundMatch = false;
+      for (const pattern of locationPatterns) {
+        const match = desc.match(pattern);
+        if (match) {
+          let personName = match[1].trim();
+          personName = normalizeOwnerName(personName);
+
+          // 이미 관계가 있는지 확인
+          if (!hasRelationship(relationships, personName, entity.name) &&
+              !hasRelationship(newRelationships, personName, entity.name)) {
+            newRelationships.push({
+              from: personName,
+              to: entity.name,
+              type: '위치',
+              description: desc,
+              sentiment: 'neutral',
+              strength: 5,
+              scenes: entity.scenes || []
+            });
+            console.log(`위치 관계 추론: "${personName}" -> "${entity.name}" (${desc})`);
+          }
+          foundMatch = true;
+          break;
+        }
+      }
+      if (foundMatch) continue;
     }
 
     // 설명에서 소유자 패턴 찾기
@@ -845,7 +887,7 @@ function inferMissingRelationships(extracted: any): any {
           newRelationships.push({
             from: ownerName,
             to: entity.name,
-            type: '소유',
+            type: isLocation ? '위치' : '소유',
             description: desc,
             sentiment: 'neutral',
             strength: 5,
@@ -853,6 +895,25 @@ function inferMissingRelationships(extracted: any): any {
           });
         }
         break; // 첫 번째 매칭만 사용
+      }
+    }
+
+    // 설명에서 인물 이름이 직접 언급되어 있으면 관계 생성
+    for (const charName of characterNames) {
+      if (desc.includes(charName)) {
+        if (!hasRelationship(relationships, charName, entity.name) &&
+            !hasRelationship(newRelationships, charName, entity.name)) {
+          newRelationships.push({
+            from: charName,
+            to: entity.name,
+            type: isLocation ? '위치' : '관련',
+            description: desc,
+            sentiment: 'neutral',
+            strength: 4,
+            scenes: entity.scenes || []
+          });
+          console.log(`설명 기반 관계 추론: "${charName}" -> "${entity.name}"`);
+        }
       }
     }
   }
