@@ -363,7 +363,7 @@ function App() {
               )}
               <input
                 type="file"
-                accept=".txt,.pdf,.md"
+                accept=".txt,.pdf,.md,text/plain,text/markdown,application/pdf"
                 onChange={handleAddFile}
                 className="hidden"
                 disabled={isAddingFile}

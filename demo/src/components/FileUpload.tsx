@@ -469,7 +469,7 @@ export function FileUpload() {
         <input
           id="file-input"
           type="file"
-          accept=".txt,.pdf,.md"
+          accept=".txt,.pdf,.md,text/plain,text/markdown,application/pdf"
           onChange={handleChange}
           className="hidden"
           disabled={localLoading}
@@ -530,7 +530,7 @@ export function FileUpload() {
                   파일 추가
                   <input
                     type="file"
-                    accept=".txt,.pdf,.md"
+                    accept=".txt,.pdf,.md,text/plain,text/markdown,application/pdf"
                     onChange={handleAddChange}
                     className="hidden"
                   />

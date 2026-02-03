@@ -1411,7 +1411,7 @@ export function mergeKnowledgeGraphs(
   return {
     metadata: {
       ...existing.metadata,
-      title: `${existing.metadata.title} + ${newData.metadata.title}`,
+      // 기존 제목 유지 (파일 추가해도 제목 변경 안함)
       updatedAt: new Date().toISOString(),
     },
     entities: mergedEntities,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 
 // 목록 조회 (userId로 필터링 가능)
@@ -36,10 +37,11 @@ export async function POST(request: NextRequest) {
     const collection = db.collection('knowledgeGraphs');
     const body = await request.json();
 
-    // body 구조: { knowledgeGraph, userId?, novelId? }
+    // body 구조: { knowledgeGraph, userId?, novelId?, existingId? }
     const data = body.knowledgeGraph || body;
     const userId = body.userId || null;
     const novelId = body.novelId || null;
+    const existingId = body.existingId || null;
 
     if (!data?.metadata) {
       return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
@@ -51,9 +53,21 @@ export async function POST(request: NextRequest) {
     const edgeCount = Object.keys(data.hyperedges || {}).length;
     const sceneCount = Object.keys(data.snapshots || {}).length;
 
-    // userId + title 조합으로 찾기 (사용자별 분리)
-    const query = userId ? { title, userId } : { title, userId: null };
-    const existing = await collection.findOne(query);
+    // 1. existingId로 먼저 찾기 (파일 추가 시)
+    let existing = null;
+    if (existingId) {
+      try {
+        existing = await collection.findOne({ _id: new ObjectId(existingId) });
+      } catch {
+        // ObjectId 변환 실패 시 무시
+      }
+    }
+
+    // 2. existingId로 못 찾으면 userId + title 조합으로 찾기
+    if (!existing) {
+      const query = userId ? { title, userId } : { title, userId: null };
+      existing = await collection.findOne(query);
+    }
 
     if (existing) {
       const newVersion = (existing.version || 1) + 1;
@@ -70,6 +84,7 @@ export async function POST(request: NextRequest) {
 
       await collection.updateOne({ _id: existing._id }, {
         $set: {
+          title,  // 제목도 업데이트 (01화 -> 01화 + 02화)
           data,
           version: newVersion,
           updatedAt: now,
