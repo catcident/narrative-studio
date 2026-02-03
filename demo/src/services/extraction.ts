@@ -1320,23 +1320,38 @@ export function mergeKnowledgeGraphs(
   const newIdMapping: Record<string, string> = {};
   const mergedEntities = { ...existing.entities };
 
+  // 장면 ID 매핑 (나중에 채워짐)
+  const sceneIdMapping: Record<string, string> = {};
+
+  // 먼저 장면 ID 매핑 생성
+  let snapshotCounterForMapping = Object.keys(existing.snapshots || {}).length;
+  Object.keys(newData.snapshots || {}).forEach((oldId) => {
+    snapshotCounterForMapping++;
+    sceneIdMapping[oldId] = `S${String(snapshotCounterForMapping).padStart(4, '0')}`;
+  });
+
   let entityCounter = Object.keys(existing.entities).length;
   Object.values(newData.entities).forEach((e: any) => {
     // 이름이나 별칭으로 기존 엔티티 찾기
     const existingId = existingNameToId[e.name] ||
       (e.aliases || []).find((a: string) => existingNameToId[a]);
 
+    // 장면 ID 변환
+    const mappedScenes = (e.scenes || []).map((s: string) => sceneIdMapping[s] || s);
+
     if (existingId) {
       // 기존 엔티티에 정보 추가
       newIdMapping[e.id] = existingNameToId[e.name] || existingId;
-      const existing = mergedEntities[newIdMapping[e.id]];
-      if (existing) {
+      const existingEntity = mergedEntities[newIdMapping[e.id]];
+      if (existingEntity) {
         // 별칭 병합
-        existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
+        existingEntity.aliases = [...new Set([...(existingEntity.aliases || []), ...(e.aliases || [])])];
         // 설명 추가 (중복 아닐 때만)
-        if (e.description && !existing.description?.includes(e.description)) {
-          existing.description = (existing.description + ' ' + e.description).slice(0, 500);
+        if (e.description && !existingEntity.description?.includes(e.description)) {
+          existingEntity.description = (existingEntity.description + ' ' + e.description).slice(0, 500);
         }
+        // 장면 병합
+        existingEntity.scenes = [...new Set([...(existingEntity.scenes || []), ...mappedScenes])];
       }
     } else {
       // 새 엔티티 추가
@@ -1344,7 +1359,7 @@ export function mergeKnowledgeGraphs(
       const newId = `E${String(entityCounter).padStart(4, '0')}`;
       newIdMapping[e.id] = newId;
       existingNameToId[e.name] = newId;
-      mergedEntities[newId] = { ...e, id: newId };
+      mergedEntities[newId] = { ...e, id: newId, scenes: mappedScenes };
     }
   });
 
@@ -1352,9 +1367,14 @@ export function mergeKnowledgeGraphs(
   const mergedEdges = { ...existing.hyperedges };
   let edgeCounter = Object.keys(existing.hyperedges).length;
 
+  // 엣지 ID 매핑 (activeEdges 변환용)
+  const edgeIdMapping: Record<string, string> = {};
+
   Object.values(newData.hyperedges).forEach((edge: any) => {
     // 엔티티 ID 변환
     const mappedEntities = edge.entities.map((id: string) => newIdMapping[id] || id);
+    // 장면 ID 변환
+    const mappedScenes = (edge.scenes || []).map((s: string) => sceneIdMapping[s] || s);
 
     // 동일한 관계가 이미 있는지 확인
     const isDuplicate = Object.values(mergedEdges).some((e: any) =>
@@ -1366,11 +1386,23 @@ export function mergeKnowledgeGraphs(
     if (!isDuplicate) {
       edgeCounter++;
       const newId = `H${String(edgeCounter).padStart(4, '0')}`;
-      mergedEdges[newId] = { ...edge, id: newId, entities: mappedEntities };
+      edgeIdMapping[edge.id] = newId;
+      mergedEdges[newId] = { ...edge, id: newId, entities: mappedEntities, scenes: mappedScenes };
+    } else {
+      // 중복이어도 장면 추가
+      const existingEdge = Object.values(mergedEdges).find((e: any) =>
+        e.type === edge.type &&
+        e.entities.length === mappedEntities.length &&
+        e.entities.every((id: string) => mappedEntities.includes(id))
+      ) as any;
+      if (existingEdge) {
+        existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...mappedScenes])];
+        edgeIdMapping[edge.id] = existingEdge.id;
+      }
     }
   });
 
-  // 장면 병합
+  // 장면 병합 - 이미 생성된 sceneIdMapping 사용
   const mergedSnapshots = { ...existing.snapshots };
   let snapshotCounter = Object.keys(existing.snapshots || {}).length;
 
@@ -1378,12 +1410,23 @@ export function mergeKnowledgeGraphs(
     snapshotCounter++;
     const newId = `S${String(snapshotCounter).padStart(4, '0')}`;
     const mappedCharacters = (snap.charactersPresent || []).map((id: string) => newIdMapping[id] || id);
+    // activeEdges는 엣지 병합 후에 매핑해야 하므로 일단 저장
     mergedSnapshots[newId] = {
       ...snap,
+      sceneId: newId,
       id: newId,
       order: snapshotCounter,
-      charactersPresent: mappedCharacters
+      charactersPresent: mappedCharacters,
+      _oldActiveEdges: snap.activeEdges || [],  // 임시 저장
     };
+  });
+
+  // 장면의 activeEdges 매핑 (엣지 병합 후 처리)
+  Object.values(mergedSnapshots).forEach((snap: any) => {
+    if (snap._oldActiveEdges) {
+      snap.activeEdges = snap._oldActiveEdges.map((id: string) => edgeIdMapping[id] || id);
+      delete snap._oldActiveEdges;
+    }
   });
 
   // 챕터 병합
