@@ -292,7 +292,19 @@ export function CharacterChronicle() {
           })}
 
           {/* 각 장면 행 */}
-          {allScenes.map((scene, sceneIndex) => (
+          {allScenes.map((scene, sceneIndex) => {
+            // 이전 장면과의 시간 경과 계산
+            const prevScene = sceneIndex > 0 ? allScenes[sceneIndex - 1] : null;
+            const timeElapsed = (() => {
+              if (!prevScene) return null;
+              // 현재 장면의 시간이 이전과 다르면 표시
+              if (scene.time && scene.time !== prevScene.time) {
+                return scene.time;
+              }
+              return null;
+            })();
+
+            return (
             <>
               {/* 장면 라벨 (고정) */}
               <div
@@ -300,7 +312,16 @@ export function CharacterChronicle() {
                 className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 px-3 py-4 flex flex-col justify-center"
               >
                 <div className="text-sm font-bold text-blue-600">{scene.sceneLabel}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{scene.time}</div>
+                {/* 장소/시간 정보 */}
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
+                </div>
+                {/* 시간 경과 표시 */}
+                {timeElapsed && sceneIndex > 0 && (
+                  <div className="mt-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded inline-block">
+                    ⏱ {timeElapsed}
+                  </div>
+                )}
               </div>
 
               {/* 각 캐릭터의 해당 장면 셀 */}
@@ -409,7 +430,8 @@ export function CharacterChronicle() {
                 );
               })}
             </>
-          ))}
+          );
+          })}
         </div>
       </div>
 
