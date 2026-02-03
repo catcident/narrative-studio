@@ -4,13 +4,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "vite --port 3002",
-    "dev:server": "tsx watch server/index.ts",
-    "build": "tsc -b && vite build && tsc -p tsconfig.server.json",
+    "dev": "vite --port 3002",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node dist-server/index.js"
+    "start": "npx serve dist -s -l tcp://0.0.0.0:$PORT"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -18,28 +16,21 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "@xyflow/react": "^12.10.0",
-    "cors": "^2.8.5",
-    "express": "^4.21.0",
     "lucide-react": "^0.563.0",
-    "mongodb": "^7.0.0",
     "pdfjs-dist": "^5.4.624",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "reactflow": "^11.11.4",
     "serve": "^14.2.4",
-    "tsx": "^4.19.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.24",
-    "concurrently": "^8.2.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

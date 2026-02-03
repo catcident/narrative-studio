@@ -5,13 +5,9 @@
  */
 
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { User, Clock, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { User, Clock, X } from 'lucide-react';
 import { useStore, useCharacters } from '../store';
 import type { HyperEdge } from '../types';
-
-// 줌 레벨 설정
-const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
-const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -40,19 +36,6 @@ export function CharacterChronicle() {
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedColumnRef = useRef<HTMLDivElement>(null);
-
-  // 줌 상태
-  const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
-  const zoomLevel = ZOOM_LEVELS[zoomIndex];
-
-  // 줌 핸들러
-  const handleZoomIn = () => {
-    setZoomIndex((prev) => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
-  };
-
-  const handleZoomOut = () => {
-    setZoomIndex((prev) => Math.max(prev - 1, 0));
-  };
 
   // 드래그 스크롤 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -233,39 +216,15 @@ export function CharacterChronicle() {
             {characters.length}명 · {allScenes.length}개 장면
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {/* 줌 컨트롤 */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
-            <button
-              onClick={handleZoomOut}
-              disabled={zoomIndex === 0}
-              className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="축소"
-            >
-              <ZoomOut className="w-4 h-4 text-gray-600" />
-            </button>
-            <span className="text-xs text-gray-600 min-w-[40px] text-center">
-              {Math.round(zoomLevel * 100)}%
-            </span>
-            <button
-              onClick={handleZoomIn}
-              disabled={zoomIndex === ZOOM_LEVELS.length - 1}
-              className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="확대"
-            >
-              <ZoomIn className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-          {selectedCharId && (
-            <button
-              onClick={() => setSelectedCharId(null)}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-            >
-              <X className="w-3 h-3" />
-              선택 해제
-            </button>
-          )}
-        </div>
+        {selectedCharId && (
+          <button
+            onClick={() => setSelectedCharId(null)}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+          >
+            <X className="w-3 h-3" />
+            선택 해제
+          </button>
+        )}
       </div>
 
       {/* 그리드 영역 - 드래그로 스크롤 가능 */}
@@ -278,10 +237,10 @@ export function CharacterChronicle() {
         onMouseLeave={handleMouseLeave}
       >
         <div
-          className="grid gap-0 origin-top-left transition-transform duration-200"
+          className="grid gap-0"
           style={{
-            gridTemplateColumns: `${100 * zoomLevel}px repeat(${characters.length}, ${260 * zoomLevel}px)`,
-            gridTemplateRows: `${80 * zoomLevel}px repeat(${allScenes.length}, auto)`,
+            gridTemplateColumns: `100px repeat(${characters.length}, 260px)`,
+            gridTemplateRows: `80px repeat(${allScenes.length}, auto)`,
           }}
         >
           {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
@@ -336,15 +295,11 @@ export function CharacterChronicle() {
           {allScenes.map((scene, sceneIndex) => {
             // 이전 장면과의 시간 경과 계산
             const prevScene = sceneIndex > 0 ? allScenes[sceneIndex - 1] : null;
-            const timeChange = (() => {
+            const timeElapsed = (() => {
               if (!prevScene) return null;
               // 현재 장면의 시간이 이전과 다르면 표시
-              if (scene.time && prevScene.time && scene.time !== prevScene.time) {
-                return { from: prevScene.time, to: scene.time };
-              }
-              // 이전에 시간 정보가 없다가 새로 나타난 경우
-              if (scene.time && !prevScene.time) {
-                return { from: null, to: scene.time };
+              if (scene.time && scene.time !== prevScene.time) {
+                return scene.time;
               }
               return null;
             })();
@@ -354,33 +309,17 @@ export function CharacterChronicle() {
               {/* 장면 라벨 (고정) */}
               <div
                 key={`label-${scene.sceneId}`}
-                className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 flex flex-col justify-center"
-                style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px` }}
+                className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 px-3 py-4 flex flex-col justify-center"
               >
-                <div
-                  className="font-bold text-blue-600"
-                  style={{ fontSize: `${14 * zoomLevel}px` }}
-                >
-                  {scene.sceneLabel}
-                </div>
+                <div className="text-sm font-bold text-blue-600">{scene.sceneLabel}</div>
                 {/* 장소/시간 정보 */}
-                <div
-                  className="text-gray-500"
-                  style={{ fontSize: `${12 * zoomLevel}px`, marginTop: `${2 * zoomLevel}px` }}
-                >
+                <div className="text-xs text-gray-500 mt-0.5">
                   {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
                 </div>
-                {/* 시간 경과 표시 - 이전→현재 형태 */}
-                {timeChange && sceneIndex > 0 && (
-                  <div
-                    className="text-amber-600 bg-amber-50 rounded inline-block"
-                    style={{
-                      fontSize: `${10 * zoomLevel}px`,
-                      marginTop: `${4 * zoomLevel}px`,
-                      padding: `${2 * zoomLevel}px ${6 * zoomLevel}px`
-                    }}
-                  >
-                    ⏱ {timeChange.from ? `${timeChange.from} → ${timeChange.to}` : `→ ${timeChange.to}`}
+                {/* 시간 경과 표시 */}
+                {timeElapsed && sceneIndex > 0 && (
+                  <div className="mt-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded inline-block">
+                    ⏱ {timeElapsed}
                   </div>
                 )}
               </div>
@@ -405,10 +344,10 @@ export function CharacterChronicle() {
                 return (
                   <div
                     key={`cell-${scene.sceneId}-${char.id}`}
-                    className={`border-b border-gray-100 flex items-stretch justify-center relative transition-opacity duration-300 ${
+                    className={`border-b border-gray-100 p-3 flex items-stretch justify-center relative transition-opacity duration-300 ${
                       isOtherSelected ? 'opacity-30' : 'opacity-100'
                     }`}
-                    style={{ minHeight: `${120 * zoomLevel}px`, padding: `${12 * zoomLevel}px` }}
+                    style={{ minHeight: '120px' }}
                   >
                     {/* 연속 세로선 */}
                     {inRange && (

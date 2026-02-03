@@ -43,13 +43,9 @@ function App() {
   useEffect(() => {
     if (knowledgeGraph) {
       setSaveStatus('saving');
-      saveKnowledgeGraph(knowledgeGraph).then(saved => {
-        console.log('자동 저장 완료:', saved.title, 'v' + saved.version);
-        setSaveStatus('saved');
-      }).catch(err => {
-        console.error('자동 저장 실패:', err);
-        setSaveStatus('idle');
-      });
+      const saved = saveKnowledgeGraph(knowledgeGraph);
+      console.log('자동 저장 완료:', saved.title, 'v' + saved.version);
+      setSaveStatus('saved');
 
       // 2초 후 상태 초기화
       const timer = setTimeout(() => setSaveStatus('idle'), 2000);

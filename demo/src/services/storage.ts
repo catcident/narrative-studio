@@ -1,13 +1,12 @@
 /**
- * 지식 그래프 데이터 저장소 관리
- * - 서버 API를 통해 MongoDB에 저장
- * - API 실패 시 로컬 IndexedDB 폴백
+ * 지식 그래프 데이터 로컬 저장소 관리
+ * localStorage를 사용해 분석 결과를 저장/관리
  */
 
 import type { NovelKnowledgeGraph } from '../types';
 
-// API 베이스 URL (같은 도메인의 /api 사용)
-const API_BASE = '/api';
+const STORAGE_KEY = 'character-relationship-data';
+const VERSION_KEY = 'character-relationship-versions';
 
 export interface SavedKnowledgeGraph {
   id: string;
@@ -16,6 +15,7 @@ export interface SavedKnowledgeGraph {
   updatedAt: string;
   version: number;
   data: NovelKnowledgeGraph;
+  // 메타데이터
   entityCount: number;
   edgeCount: number;
   sceneCount: number;
@@ -39,128 +39,99 @@ export interface SavedKnowledgeGraphMeta {
   sceneCount: number;
 }
 
-// ==================== 로컬 IndexedDB (폴백용) ====================
-
-const DB_NAME = 'character-relationship-db';
-const STORE_NAME = 'knowledgeGraphs';
-const VERSION_STORE_NAME = 'versions';
-
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-
-      if (!db.objectStoreNames.contains(VERSION_STORE_NAME)) {
-        const versionStore = db.createObjectStore(VERSION_STORE_NAME, { keyPath: ['dataId', 'version'] });
-        versionStore.createIndex('dataId', 'dataId', { unique: false });
-      }
-    };
-  });
-}
-
-async function getLocalList(): Promise<SavedKnowledgeGraphMeta[]> {
+/**
+ * 저장된 모든 지식 그래프 목록 가져오기 (메타데이터만)
+ */
+export function getSavedKnowledgeGraphList(): SavedKnowledgeGraphMeta[] {
   try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
 
-    return new Promise((resolve, reject) => {
-      const request = store.getAll();
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const items: SavedKnowledgeGraph[] = request.result;
-        resolve(items.map(o => ({
-          id: o.id,
-          title: o.title,
-          savedAt: o.savedAt,
-          updatedAt: o.updatedAt,
-          version: o.version,
-          entityCount: o.entityCount,
-          edgeCount: o.edgeCount,
-          sceneCount: o.sceneCount,
-        })).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
-      };
-    });
+    const items: SavedKnowledgeGraph[] = JSON.parse(data);
+    return items.map(o => ({
+      id: o.id,
+      title: o.title,
+      savedAt: o.savedAt,
+      updatedAt: o.updatedAt,
+      version: o.version,
+      entityCount: o.entityCount,
+      edgeCount: o.edgeCount,
+      sceneCount: o.sceneCount,
+    }));
   } catch (err) {
-    console.error('로컬 목록 로드 실패:', err);
+    console.error('저장된 데이터 목록 로드 실패:', err);
     return [];
   }
 }
 
-async function loadLocal(id: string): Promise<NovelKnowledgeGraph | null> {
+/**
+ * 특정 지식 그래프 불러오기
+ */
+export function loadKnowledgeGraph(id: string): NovelKnowledgeGraph | null {
   try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return null;
 
-    return new Promise((resolve, reject) => {
-      const request = store.get(id);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const item: SavedKnowledgeGraph | undefined = request.result;
-        resolve(item?.data || null);
-      };
-    });
+    const items: SavedKnowledgeGraph[] = JSON.parse(data);
+    const found = items.find(o => o.id === id);
+    return found?.data || null;
   } catch (err) {
-    console.error('로컬 로드 실패:', err);
+    console.error('데이터 로드 실패:', err);
     return null;
   }
 }
 
-async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnowledgeGraphMeta> {
-  const dbConn = await openDB();
+/**
+ * 지식 그래프 저장 (신규 또는 업데이트)
+ * 같은 제목이 있으면 업데이트, 없으면 신규 생성
+ */
+export function saveKnowledgeGraph(knowledgeGraph: NovelKnowledgeGraph, options?: {
+  forceNew?: boolean;
+  versionNote?: string;
+}): SavedKnowledgeGraphMeta {
+  const data = localStorage.getItem(STORAGE_KEY);
+  const items: SavedKnowledgeGraph[] = data ? JSON.parse(data) : [];
+
   const now = new Date().toISOString();
   const title = knowledgeGraph.metadata.title;
+
+  // 기존 데이터 찾기 (제목으로)
+  const existingIndex = options?.forceNew
+    ? -1
+    : items.findIndex(o => o.title === title);
 
   const entityCount = Object.keys(knowledgeGraph.entities).length;
   const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
   const sceneCount = Object.keys(knowledgeGraph.snapshots || {}).length;
 
-  // 기존 데이터 찾기
-  const existingList = await getLocalList();
-  const existing = existingList.find(o => o.title === title);
+  if (existingIndex >= 0) {
+    // 기존 데이터 업데이트
+    const existing = items[existingIndex];
 
-  if (existing) {
-    const updatedItem: SavedKnowledgeGraph = {
-      id: existing.id,
-      title,
-      savedAt: existing.savedAt,
-      updatedAt: now,
-      version: existing.version + 1,
-      data: knowledgeGraph,
-      entityCount,
-      edgeCount,
-      sceneCount,
-    };
+    // 버전 히스토리 저장
+    saveVersion(existing.id, existing.version, existing.data, options?.versionNote);
 
-    const tx = dbConn.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    await new Promise<void>((resolve, reject) => {
-      const request = store.put(updatedItem);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    existing.updatedAt = now;
+    existing.version += 1;
+    existing.data = knowledgeGraph;
+    existing.entityCount = entityCount;
+    existing.edgeCount = edgeCount;
+    existing.sceneCount = sceneCount;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 
     return {
-      id: updatedItem.id,
-      title: updatedItem.title,
-      savedAt: updatedItem.savedAt,
-      updatedAt: updatedItem.updatedAt,
-      version: updatedItem.version,
+      id: existing.id,
+      title: existing.title,
+      savedAt: existing.savedAt,
+      updatedAt: existing.updatedAt,
+      version: existing.version,
       entityCount,
       edgeCount,
       sceneCount,
     };
   } else {
+    // 신규 생성
     const newItem: SavedKnowledgeGraph = {
       id: `kg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       title,
@@ -173,13 +144,8 @@ async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnow
       sceneCount,
     };
 
-    const tx = dbConn.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    await new Promise<void>((resolve, reject) => {
-      const request = store.add(newItem);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    items.push(newItem);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 
     return {
       id: newItem.id,
@@ -194,193 +160,121 @@ async function saveLocal(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnow
   }
 }
 
-async function deleteLocal(id: string): Promise<boolean> {
+/**
+ * 지식 그래프 삭제
+ */
+export function deleteKnowledgeGraph(id: string): boolean {
   try {
-    const dbConn = await openDB();
-    const tx = dbConn.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return false;
 
-    await new Promise<void>((resolve, reject) => {
-      const request = store.delete(id);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    const items: SavedKnowledgeGraph[] = JSON.parse(data);
+    const filtered = items.filter(o => o.id !== id);
+
+    if (filtered.length === items.length) return false;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+
+    // 버전 히스토리도 삭제
+    deleteVersionHistory(id);
 
     return true;
   } catch (err) {
-    console.error('로컬 삭제 실패:', err);
+    console.error('데이터 삭제 실패:', err);
     return false;
   }
 }
 
-async function getLocalVersionHistory(dataId: string): Promise<Omit<KnowledgeGraphVersion, 'data'>[]> {
+/**
+ * 버전 히스토리 저장
+ */
+function saveVersion(dataId: string, version: number, data: NovelKnowledgeGraph, note?: string): void {
   try {
-    const dbConn = await openDB();
-    const tx = dbConn.transaction(VERSION_STORE_NAME, 'readonly');
-    const store = tx.objectStore(VERSION_STORE_NAME);
-    const index = store.index('dataId');
+    const stored = localStorage.getItem(VERSION_KEY);
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = stored ? JSON.parse(stored) : {};
 
-    const versions = await new Promise<any[]>((resolve, reject) => {
-      const request = index.getAll(dataId);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
+    if (!allVersions[dataId]) {
+      allVersions[dataId] = [];
+    }
+
+    // 최대 10개 버전만 유지
+    if (allVersions[dataId].length >= 10) {
+      allVersions[dataId].shift();
+    }
+
+    allVersions[dataId].push({
+      version,
+      savedAt: new Date().toISOString(),
+      note,
+      data,
     });
 
-    return versions.map(v => ({
-      version: v.version,
-      savedAt: v.savedAt,
-      note: v.note,
-    })).sort((a, b) => b.version - a.version);
+    localStorage.setItem(VERSION_KEY, JSON.stringify(allVersions));
   } catch (err) {
-    console.error('로컬 버전 히스토리 로드 실패:', err);
-    return [];
-  }
-}
-
-async function restoreLocalVersion(dataId: string, version: number): Promise<NovelKnowledgeGraph | null> {
-  try {
-    const dbConn = await openDB();
-    const tx = dbConn.transaction(VERSION_STORE_NAME, 'readonly');
-    const store = tx.objectStore(VERSION_STORE_NAME);
-
-    const versionData = await new Promise<any>((resolve, reject) => {
-      const request = store.get([dataId, version]);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-    });
-
-    return versionData?.data || null;
-  } catch (err) {
-    console.error('로컬 버전 복원 실패:', err);
-    return null;
-  }
-}
-
-// ==================== 통합 API ====================
-
-/**
- * 저장된 모든 지식 그래프 목록 가져오기
- */
-export async function getSavedKnowledgeGraphList(): Promise<SavedKnowledgeGraphMeta[]> {
-  try {
-    const response = await fetch(`${API_BASE}/knowledge-graphs`);
-    if (!response.ok) throw new Error('API 응답 오류');
-
-    const serverList = await response.json();
-    return serverList;
-  } catch (err) {
-    console.warn('서버 목록 조회 실패, 로컬 사용:', err);
-    return getLocalList();
-  }
-}
-
-/**
- * 특정 지식 그래프 불러오기
- */
-export async function loadKnowledgeGraph(id: string): Promise<NovelKnowledgeGraph | null> {
-  // 로컬 ID 형식인 경우 로컬에서 로드
-  if (id.startsWith('kg_')) {
-    return loadLocal(id);
-  }
-
-  try {
-    const response = await fetch(`${API_BASE}/knowledge-graphs/${id}`);
-    if (!response.ok) throw new Error('API 응답 오류');
-
-    return await response.json();
-  } catch (err) {
-    console.warn('서버 로드 실패, 로컬 시도:', err);
-    return loadLocal(id);
-  }
-}
-
-/**
- * 지식 그래프 저장
- */
-export async function saveKnowledgeGraph(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnowledgeGraphMeta> {
-  try {
-    const response = await fetch(`${API_BASE}/knowledge-graphs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(knowledgeGraph),
-    });
-
-    if (!response.ok) throw new Error('API 응답 오류');
-
-    return await response.json();
-  } catch (err) {
-    console.warn('서버 저장 실패, 로컬 저장:', err);
-    return saveLocal(knowledgeGraph);
-  }
-}
-
-/**
- * 지식 그래프 삭제
- */
-export async function deleteKnowledgeGraph(id: string): Promise<boolean> {
-  // 로컬 ID인 경우
-  if (id.startsWith('kg_')) {
-    return deleteLocal(id);
-  }
-
-  try {
-    const response = await fetch(`${API_BASE}/knowledge-graphs/${id}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) throw new Error('API 응답 오류');
-
-    const result = await response.json();
-    return result.success;
-  } catch (err) {
-    console.warn('서버 삭제 실패:', err);
-    return deleteLocal(id);
+    console.error('버전 저장 실패:', err);
   }
 }
 
 /**
  * 버전 히스토리 가져오기
  */
-export async function getVersionHistory(dataId: string): Promise<Omit<KnowledgeGraphVersion, 'data'>[]> {
-  if (dataId.startsWith('kg_')) {
-    return getLocalVersionHistory(dataId);
-  }
-
+export function getVersionHistory(dataId: string): Omit<KnowledgeGraphVersion, 'data'>[] {
   try {
-    const response = await fetch(`${API_BASE}/knowledge-graphs/${dataId}/versions`);
-    if (!response.ok) throw new Error('API 응답 오류');
+    const stored = localStorage.getItem(VERSION_KEY);
+    if (!stored) return [];
 
-    return await response.json();
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = JSON.parse(stored);
+    const versions = allVersions[dataId] || [];
+
+    return versions.map(v => ({
+      version: v.version,
+      savedAt: v.savedAt,
+      note: v.note,
+    }));
   } catch (err) {
-    console.warn('버전 히스토리 조회 실패:', err);
-    return getLocalVersionHistory(dataId);
+    console.error('버전 히스토리 로드 실패:', err);
+    return [];
   }
 }
 
 /**
  * 특정 버전 복원
  */
-export async function restoreVersion(dataId: string, version: number): Promise<NovelKnowledgeGraph | null> {
-  if (dataId.startsWith('kg_')) {
-    return restoreLocalVersion(dataId, version);
-  }
-
+export function restoreVersion(dataId: string, version: number): NovelKnowledgeGraph | null {
   try {
-    const response = await fetch(`${API_BASE}/knowledge-graphs/${dataId}/restore/${version}`, {
-      method: 'POST',
-    });
+    const stored = localStorage.getItem(VERSION_KEY);
+    if (!stored) return null;
 
-    if (!response.ok) throw new Error('API 응답 오류');
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = JSON.parse(stored);
+    const versions = allVersions[dataId] || [];
 
-    return await response.json();
+    const found = versions.find(v => v.version === version);
+    return found?.data || null;
   } catch (err) {
-    console.warn('버전 복원 실패:', err);
-    return restoreLocalVersion(dataId, version);
+    console.error('버전 복원 실패:', err);
+    return null;
   }
 }
 
 /**
- * 지식 그래프 내보내기 (JSON 파일로 다운로드)
+ * 버전 히스토리 삭제
+ */
+function deleteVersionHistory(dataId: string): void {
+  try {
+    const stored = localStorage.getItem(VERSION_KEY);
+    if (!stored) return;
+
+    const allVersions: Record<string, KnowledgeGraphVersion[]> = JSON.parse(stored);
+    delete allVersions[dataId];
+
+    localStorage.setItem(VERSION_KEY, JSON.stringify(allVersions));
+  } catch (err) {
+    console.error('버전 히스토리 삭제 실패:', err);
+  }
+}
+
+/**
+ * 지식 그래프 내보내기 (JSON 파일로)
  */
 export function exportKnowledgeGraph(data: NovelKnowledgeGraph): void {
   const json = JSON.stringify(data, null, 2);
@@ -402,6 +296,7 @@ export async function importKnowledgeGraph(file: File): Promise<NovelKnowledgeGr
   const text = await file.text();
   const data = JSON.parse(text) as NovelKnowledgeGraph;
 
+  // 기본 검증
   if (!data.metadata || !data.entities || !data.hyperedges) {
     throw new Error('유효하지 않은 데이터 파일입니다.');
   }
@@ -412,16 +307,7 @@ export async function importKnowledgeGraph(file: File): Promise<NovelKnowledgeGr
 /**
  * 저장소 전체 초기화 (주의!)
  */
-export async function clearAllStorage(): Promise<void> {
-  try {
-    const dbConn = await openDB();
-
-    const tx1 = dbConn.transaction(STORE_NAME, 'readwrite');
-    tx1.objectStore(STORE_NAME).clear();
-
-    const tx2 = dbConn.transaction(VERSION_STORE_NAME, 'readwrite');
-    tx2.objectStore(VERSION_STORE_NAME).clear();
-  } catch (err) {
-    console.error('저장소 초기화 실패:', err);
-  }
+export function clearAllStorage(): void {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(VERSION_KEY);
 }
