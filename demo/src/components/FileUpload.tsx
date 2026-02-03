@@ -3,9 +3,9 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key } from 'lucide-react';
 import { useStore } from '../store';
-import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, type ExtractionProgress } from '../services/extraction';
+import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 
 export function FileUpload() {
   const { knowledgeGraph, setKnowledgeGraph, setLoading, setError, error } = useStore();
@@ -13,12 +13,23 @@ export function FileUpload() {
   const [progress, setProgress] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [hasKey, setHasKey] = useState(false);
 
-  // 저장된 진행상황 확인
+  // API 키 및 저장된 진행상황 확인
   useEffect(() => {
+    setHasKey(hasApiKey());
     const saved = hasProgress();
     setSavedProgress(saved);
   }, []);
+
+  const handleSaveApiKey = () => {
+    if (apiKeyInput.trim()) {
+      setApiKey(apiKeyInput.trim());
+      setHasKey(true);
+      setApiKeyInput('');
+    }
+  };
 
   // 이어하기
   const handleResume = useCallback(async () => {
@@ -291,6 +302,39 @@ export function FileUpload() {
 
   return (
     <div className="space-y-4">
+      {/* API 키 입력 */}
+      {!hasKey && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <Key className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-800">OpenRouter API 키 필요</p>
+              <p className="text-sm text-yellow-700 mt-1">
+                소설 분석을 위해 OpenRouter API 키가 필요합니다.
+                <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" className="underline ml-1">
+                  여기서 발급받기
+                </a>
+              </p>
+              <div className="flex gap-2 mt-3">
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="sk-or-..."
+                  className="flex-1 px-3 py-1.5 border border-yellow-300 rounded-lg text-sm"
+                />
+                <button
+                  onClick={handleSaveApiKey}
+                  className="px-3 py-1.5 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         className={`
           relative border-2 border-dashed rounded-xl p-12

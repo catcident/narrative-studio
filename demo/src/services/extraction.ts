@@ -5,24 +5,20 @@
 
 import type { NovelKnowledgeGraph } from '../types';
 
-const API_KEY = typeof window !== 'undefined'
-  ? (localStorage.getItem('OPENROUTER_API_KEY') || '')
-  : '';
-const MODEL = 'google/gemini-2.0-flash-lite-001';
+function getApiKey(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('OPENROUTER_API_KEY') || '';
+}
 
-const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍스트에서 인물, 장소, 물건, 세계관, 배경 정보를 빠짐없이 추출하여 "설정집"을 만듭니다.
+export function setApiKey(key: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('OPENROUTER_API_KEY', key);
+  }
+}
 
-규칙:
-1. 텍스트에 명시된 정보만 추출 (추측 금지)
-2. 인물의 모든 특성을 기록 (성별, 나이, 직업, 성격, 외모, 말투 등)
-3. 인물 간 관계를 구체적으로 분석 (감정, 갈등, 신뢰 등)
-4. 1인칭 화자("나")도 인물로 취급
-5. 장소/건물/지역은 반드시 location 카테고리로 추출
-   예: 학교, 집, 카페, 거리, 공원, 사무실, 병원 등
-6. 물건/아이템은 반드시 item 카테고리로 추출하고, 소유자/사용자 관계 필수
-   예: "화자가 피우는 담배" → "나"와 "담배" 사이에 "소유" 관계
-7. 세계관/시대배경/사회적 맥락은 concept 카테고리로 추출
-8. JSON만 출력 (설명 없이)`;
+export function hasApiKey(): boolean {
+  return !!getApiKey();
+}
 
 const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정집을 만드세요.
 
@@ -348,21 +344,13 @@ ${knownCharacters.map(c => {
     .replace('{{text}}', chunkText)
     .replace('{{previousCharacters}}', previousCharactersText);
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  // 서버 API route 사용 (환경변수에서 API 키 가져옴)
+  const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`,
     },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 16000,
-    }),
+    body: JSON.stringify({ prompt }),
   });
 
   if (!response.ok) {
@@ -372,6 +360,10 @@ ${knownCharacters.map(c => {
   }
 
   const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
   console.log('API 응답 데이터:', data);
 
   const content = data.choices?.[0]?.message?.content;
