@@ -1412,16 +1412,39 @@ export function mergeKnowledgeGraphs(
   const mergedSnapshots = { ...existing.snapshots };
   let snapshotCounter = Object.keys(existing.snapshots || {}).length;
 
+  // "장면 X" 형식의 텍스트를 새 장면 번호로 변환하는 헬퍼 함수
+  const convertSceneTextReferences = (text: string | null | undefined): string | null | undefined => {
+    if (!text) return text;
+    // "장면 1", "장면 2" 등의 패턴을 찾아서 새 장면 번호로 변환
+    return text.replace(/장면\s*(\d+)/g, (match, num) => {
+      const oldSceneId = `S${String(parseInt(num)).padStart(4, '0')}`;
+      const newSceneId = sceneIdMapping[oldSceneId];
+      if (newSceneId) {
+        const newNum = parseInt(newSceneId.replace('S', '').replace(/^0+/, '')) || num;
+        return `장면 ${newNum}`;
+      }
+      return match;
+    });
+  };
+
   Object.values(newData.snapshots || {}).forEach((snap: any) => {
     snapshotCounter++;
     const newId = `S${String(snapshotCounter).padStart(4, '0')}`;
     const mappedCharacters = (snap.charactersPresent || []).map((id: string) => newIdMapping[id] || id);
+
+    // time 필드가 "장면 X" 형식이면 새 장면 번호로 변환
+    const mappedTime = convertSceneTextReferences(snap.time);
+    // timeElapsed 필드에서도 장면 참조 변환
+    const mappedTimeElapsed = convertSceneTextReferences(snap.timeElapsed);
+
     // activeEdges는 엣지 병합 후에 매핑해야 하므로 일단 저장
     mergedSnapshots[newId] = {
       ...snap,
       sceneId: newId,
       id: newId,
       order: snapshotCounter,
+      time: mappedTime,
+      timeElapsed: mappedTimeElapsed,
       charactersPresent: mappedCharacters,
       _oldActiveEdges: snap.activeEdges || [],  // 임시 저장
     };
