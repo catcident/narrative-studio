@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User } from 'lucide-react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
@@ -20,6 +20,12 @@ export function FileUpload() {
   const [hasEnvKey, setHasEnvKey] = useState(true); // 기본으로 있다고 가정
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [duplicateFileName, setDuplicateFileName] = useState<string | null>(null);
+  const [newFileName, setNewFileName] = useState('');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFileText, setPendingFileText] = useState<string>('');
+  const [bookTitle, setBookTitle] = useState('');
+  const [bookAuthor, setBookAuthor] = useState('');
 
   // 기존 지식그래프가 있으면 해당 모델로 고정
   const lockedModel = knowledgeGraph?.metadata?.model;
@@ -132,9 +138,12 @@ export function FileUpload() {
       }
 
       const combinedText = textParts.join('\n\n--- 파일 구분 ---\n\n');
-      const combinedTitle = sortedFiles.length === 1
-        ? titles[0]
-        : `${titles[0]} 외 ${sortedFiles.length - 1}개`;
+      // 사용자가 제목을 입력했으면 그것을 사용, 아니면 파일명 기반
+      const combinedTitle = bookTitle.trim()
+        ? bookTitle.trim()
+        : (sortedFiles.length === 1
+          ? titles[0]
+          : `${titles[0]} 외 ${sortedFiles.length - 1}개`);
 
       if (!combinedText.trim()) {
         throw new Error('파일 내용이 비어있습니다.');
@@ -157,9 +166,18 @@ export function FileUpload() {
         }));
       }
 
+      // 작가 정보 추가
+      if (bookAuthor.trim()) {
+        newKnowledgeGraph.metadata.author = bookAuthor.trim();
+      }
+
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 입력 필드 초기화
+      setBookTitle('');
+      setBookAuthor('');
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
@@ -215,10 +233,16 @@ export function FileUpload() {
 
       console.log('Extracting knowledgeGraph from text:', text.slice(0, 200) + '...');
 
-      const title = file.name.replace(/\.[^/.]+$/, '');
+      // 사용자가 제목을 입력했으면 그것을 사용
+      const title = bookTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(msg);
       }, undefined, currentModel, file.name);  // 원본 파일명 전달
+
+      // 작가 정보 추가
+      if (bookAuthor.trim()) {
+        newKnowledgeGraph.metadata.author = bookAuthor.trim();
+      }
 
       console.log('Extracted knowledgeGraph:', newKnowledgeGraph);
       console.log('Entities:', Object.keys(newKnowledgeGraph.entities).length);
@@ -232,6 +256,10 @@ export function FileUpload() {
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 입력 필드 초기화
+      setBookTitle('');
+      setBookAuthor('');
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
@@ -272,13 +300,53 @@ export function FileUpload() {
     }
   }, [handleFile, handleFiles]);
 
+  // 추가 분석 실행 (파일명 확정 후)
+  const executeAddFile = useCallback(async (file: File, text: string, finalFileName: string) => {
+    if (!knowledgeGraph) return;
+
+    setLocalLoading(true);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const title = finalFileName.replace(/\.[^/.]+$/, '');
+      setProgress('추가 분석 중...');
+      // 추가 분석은 기존 문서의 모델을 사용 (lockedModel)
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
+        setProgress(`추가: ${msg}`);
+      }, undefined, currentModel, finalFileName);
+
+      // 기존 결과와 병합
+      setProgress('기존 결과와 병합 중...');
+      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
+
+      console.log('병합 완료:', merged.metadata.title);
+      console.log('총 엔티티:', Object.keys(merged.entities).length);
+      console.log('총 관계:', Object.keys(merged.hyperedges).length);
+
+      // 기존 ID를 사용하여 저장 (버전 업데이트)
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
+
+      setKnowledgeGraph(merged, undefined, saved.id);
+      setProgress('');
+      setSavedProgress(null);
+    } catch (err: any) {
+      console.error('추가 분석 오류:', err);
+      setError(err.message || '추가 분석 중 오류가 발생했습니다.');
+      setProgress('');
+      setSavedProgress(hasProgress());
+    } finally {
+      setLocalLoading(false);
+      setLoading(false);
+    }
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel]);
+
   // 추가 분석 (기존 결과에 새 파일 병합)
   const handleAddFile = useCallback(async (file: File) => {
     if (!knowledgeGraph) return;
 
     console.log('추가 분석 시작:', file.name);
-    setLocalLoading(true);
-    setLoading(true);
     setError(null);
     setProgress('파일 읽는 중...');
 
@@ -310,38 +378,53 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      const title = file.name.replace(/\.[^/.]+$/, '');
-      setProgress('추가 분석 중...');
-      // 추가 분석은 기존 문서의 모델을 사용 (lockedModel)
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
-        setProgress(`추가: ${msg}`);
-      }, undefined, currentModel, file.name);  // 원본 파일명 전달
+      // 중복 파일명 체크
+      const existingFileNames = (knowledgeGraph.metadata.sourceFiles || []).map(f => f.fileName);
+      if (existingFileNames.includes(file.name)) {
+        // 중복됨 - 새 파일명 입력 요청
+        setDuplicateFileName(file.name);
+        setNewFileName(file.name);
+        setPendingFile(file);
+        setPendingFileText(text);
+        setProgress('');
+        return;
+      }
 
-      // 기존 결과와 병합
-      setProgress('기존 결과와 병합 중...');
-      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
-
-      console.log('병합 완료:', merged.metadata.title);
-      console.log('총 엔티티:', Object.keys(merged.entities).length);
-      console.log('총 관계:', Object.keys(merged.hyperedges).length);
-
-      // 기존 ID를 사용하여 저장 (버전 업데이트)
-      setProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
-
-      setKnowledgeGraph(merged, undefined, saved.id);
-      setProgress('');
-      setSavedProgress(null);
+      // 중복 없음 - 바로 실행
+      await executeAddFile(file, text, file.name);
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
       setProgress('');
       setSavedProgress(hasProgress());
-    } finally {
-      setLocalLoading(false);
-      setLoading(false);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel]);
+  }, [knowledgeGraph, executeAddFile]);
+
+  // 새 파일명으로 추가 분석 계속
+  const handleConfirmNewFileName = useCallback(async () => {
+    if (!pendingFile || !pendingFileText || !newFileName.trim()) return;
+
+    // 새 파일명도 중복 체크
+    const existingFileNames = (knowledgeGraph?.metadata.sourceFiles || []).map(f => f.fileName);
+    if (existingFileNames.includes(newFileName.trim())) {
+      setError('이 파일명도 이미 존재합니다. 다른 이름을 입력해주세요.');
+      return;
+    }
+
+    setDuplicateFileName(null);
+    await executeAddFile(pendingFile, pendingFileText, newFileName.trim());
+    setPendingFile(null);
+    setPendingFileText('');
+    setNewFileName('');
+  }, [pendingFile, pendingFileText, newFileName, knowledgeGraph, executeAddFile]);
+
+  // 중복 파일명 대화상자 취소
+  const handleCancelDuplicate = useCallback(() => {
+    setDuplicateFileName(null);
+    setPendingFile(null);
+    setPendingFileText('');
+    setNewFileName('');
+  }, []);
 
   const handleAddChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -466,6 +549,48 @@ export function FileUpload() {
         </div>
       </div>
 
+      {/* 제목/작가 입력 (새 분석 시에만 표시) */}
+      {!knowledgeGraph && (
+        <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <BookOpen className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-emerald-800 mb-3">작품 정보 (선택사항)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-emerald-700 mb-1 block">제목</label>
+                  <div className="relative">
+                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={bookTitle}
+                      onChange={(e) => setBookTitle(e.target.value)}
+                      placeholder="작품 제목 (미입력시 파일명 사용)"
+                      className="w-full pl-9 pr-3 py-2 border border-emerald-300 rounded-lg text-sm bg-white"
+                      disabled={localLoading}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-emerald-700 mb-1 block">작가</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={bookAuthor}
+                      onChange={(e) => setBookAuthor(e.target.value)}
+                      placeholder="작가 이름"
+                      className="w-full pl-9 pr-3 py-2 border border-emerald-300 rounded-lg text-sm bg-white"
+                      disabled={localLoading}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         className={`
           relative border-2 border-dashed rounded-xl p-12
@@ -587,8 +712,58 @@ export function FileUpload() {
         </div>
       )}
 
+      {/* 중복 파일명 경고 모달 */}
+      {duplicateFileName && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertCircle className="w-6 h-6 text-amber-500 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-gray-900">중복 파일명</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  "{duplicateFileName}" 파일이 이미 존재합니다.
+                </p>
+                <p className="text-sm text-gray-600">
+                  새로운 파일명을 입력해주세요.
+                </p>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="새 파일명 입력"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-4"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleConfirmNewFileName();
+                if (e.key === 'Escape') handleCancelDuplicate();
+              }}
+            />
+            {error && (
+              <p className="text-sm text-red-600 mb-3">{error}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={handleCancelDuplicate}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmNewFileName}
+                disabled={!newFileName.trim()}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 에러 메시지 */}
-      {error && (
+      {error && !duplicateFileName && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
