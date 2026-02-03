@@ -323,6 +323,78 @@ export function DetailPanel() {
           </div>
         )}
 
+        {/* 등장 장면 */}
+        {entity.scenes && entity.scenes.length > 0 && ontology?.snapshots && (
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              등장 장면 ({entity.scenes.length}개)
+            </h3>
+
+            {/* 첫 등장 */}
+            {(() => {
+              const sortedScenes = [...entity.scenes].sort();
+              const firstSceneId = sortedScenes[0];
+              const firstScene = ontology.snapshots[firstSceneId];
+              const firstSceneIndex = Object.keys(ontology.snapshots).sort().indexOf(firstSceneId) + 1;
+
+              return (
+                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-amber-700 px-2 py-0.5 bg-amber-200 rounded">첫 등장</span>
+                    <span className="text-sm font-medium text-amber-800">장면 {firstSceneIndex}</span>
+                  </div>
+                  {firstScene && (
+                    <div className="mt-2 text-sm text-gray-700">
+                      {firstScene.time && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                          <Clock className="w-3 h-3" />
+                          {firstScene.time}
+                          {firstScene.location && <span> · {firstScene.location}</span>}
+                        </div>
+                      )}
+                      {firstScene.summary && (
+                        <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{firstScene.summary}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 모든 등장 장면 목록 */}
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {[...entity.scenes].sort().map((sceneId) => {
+                const scene = ontology.snapshots[sceneId];
+                const sceneIdx = Object.keys(ontology.snapshots).sort().indexOf(sceneId) + 1;
+                if (!scene) return null;
+
+                return (
+                  <div
+                    key={sceneId}
+                    className="p-2 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-700">장면 {sceneIdx}</span>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        {scene.time && <span>{scene.time}</span>}
+                        {scene.location && (
+                          <span className="flex items-center gap-0.5">
+                            <MapPin className="w-3 h-3" />
+                            {scene.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {scene.summary && (
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-1">{scene.summary}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ─────────────────────────────────────────── */}
         {/* 현재 장면에서의 정보 */}
         {selectedSceneId && currentScene && (
