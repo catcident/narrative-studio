@@ -158,7 +158,16 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 - **8-9**: 주요 조연, 중요 장소 (집, 학교 등 반복 등장)
 - **6-7**: 일반 조연, 주요 아이템 (스토리에 영향을 주는 물건)
 - **4-5**: 배경 인물, 일반 장소
-- **1-3**: 단순 언급, 일회성 소품 (커피, 담배 등 디테일용)`;
+- **1-3**: 단순 언급, 일회성 소품 (커피, 담배 등 디테일용)
+
+### 6. ⚠️ 동일 장면 등장 인물 간 관계 추출 필수!
+- **같은 장면에 2명 이상의 인물이 등장하면, 그들 사이의 관계를 반드시 추출하세요**
+- 대화하거나, 마주치거나, 같은 공간에 있으면 관계가 있는 것
+- 관계가 명확하지 않아도 "관련" 타입으로 추출 (예: "같은 장면에서 마주침")
+- 예: 장면에 "나", "아내", "낯선 남자"가 있으면:
+  - "나" ↔ "아내": 가족 관계
+  - "나" ↔ "낯선 남자": 관련 관계 (마주침)
+  - "아내" ↔ "낯선 남자": 관련 관계 (친구 또는 관련)`;
 
 // 중간 저장용 타입
 export interface ExtractionProgress {
@@ -1163,9 +1172,53 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     });
   });
 
+  // 같은 장면에 등장하는 캐릭터-캐릭터 간 자동 관계 생성 (2번 후처리)
+  // LLM이 관계를 추출하지 못한 경우, 같은 장면에 등장하면 "관련" 관계 자동 생성
+  const characterEntities = Object.values(entities).filter((e: any) => e.category === 'character');
+
+  for (let i = 0; i < characterEntities.length; i++) {
+    const char1 = characterEntities[i] as any;
+    if (!char1.scenes || char1.scenes.length === 0) continue;
+
+    for (let j = i + 1; j < characterEntities.length; j++) {
+      const char2 = characterEntities[j] as any;
+      if (!char2.scenes || char2.scenes.length === 0) continue;
+
+      // 공통 장면 찾기
+      const commonScenes = char1.scenes.filter((s: string) => char2.scenes.includes(s));
+      if (commonScenes.length === 0) continue;
+
+      // 이미 관계가 존재하는지 확인
+      const existingEdge = Object.values(hyperedges).find((edge: any) =>
+        edge.entities.includes(char1.id) && edge.entities.includes(char2.id)
+      );
+
+      if (existingEdge) continue; // 이미 관계 있음
+
+      // 새 관계 생성
+      autoRelationIndex++;
+      const id = `H${String(autoRelationIndex).padStart(4, '0')}`;
+
+      hyperedges[id] = {
+        id,
+        type: '관련',
+        subtype: undefined,
+        entities: [char1.id, char2.id],
+        statement: `${char1.name}과(와) ${char2.name}이(가) 동일 장면에 등장 (장면 ${commonScenes.map((s: string) => s.replace('S', '').replace(/^0+/, '')).join(', ')})`,
+        timeline: { start: undefined, chapter: 1 },
+        sentiment: 'neutral',
+        strength: 3,
+        bidirectional: true,
+        scenes: commonScenes,
+        sourceRef: { chapter: 1 },
+      };
+
+      console.log(`캐릭터 동시 등장 관계 생성: ${char1.name} ↔ ${char2.name} (장면: ${commonScenes.join(', ')})`);
+    }
+  }
+
   // 같은 장면에 등장하는 캐릭터-비캐릭터 엔티티 간 자동 관계 생성
   // 예: "콘크리트"와 "나"가 둘 다 장면 2에 등장하면 위치 관계 생성
-  const characterEntities = Object.values(entities).filter((e: any) => e.category === 'character');
   const nonCharacterEntities = Object.values(entities).filter((e: any) => e.category !== 'character');
 
   nonCharacterEntities.forEach((entity: any) => {
