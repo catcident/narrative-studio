@@ -42,8 +42,9 @@ export function DataManager({ onClose, onLoad }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // 목록 새로고침
-  const refreshList = () => {
-    setSavedList(getSavedKnowledgeGraphList());
+  const refreshList = async () => {
+    const list = await getSavedKnowledgeGraphList();
+    setSavedList(list);
   };
 
   useEffect(() => {
@@ -51,19 +52,20 @@ export function DataManager({ onClose, onLoad }: Props) {
   }, []);
 
   // 버전 히스토리 토글
-  const toggleVersions = (id: string) => {
+  const toggleVersions = async (id: string) => {
     if (expandedId === id) {
       setExpandedId(null);
       setVersions([]);
     } else {
       setExpandedId(id);
-      setVersions(getVersionHistory(id));
+      const history = await getVersionHistory(id);
+      setVersions(history);
     }
   };
 
   // 데이터 불러오기
-  const handleLoad = (id: string) => {
-    const loaded = loadKnowledgeGraph(id);
+  const handleLoad = async (id: string) => {
+    const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
       onLoad(loaded);
       onClose();
@@ -71,24 +73,25 @@ export function DataManager({ onClose, onLoad }: Props) {
   };
 
   // 데이터 삭제
-  const handleDelete = (id: string) => {
-    if (deleteKnowledgeGraph(id)) {
-      refreshList();
+  const handleDelete = async (id: string) => {
+    const deleted = await deleteKnowledgeGraph(id);
+    if (deleted) {
+      await refreshList();
       setConfirmDelete(null);
     }
   };
 
   // 데이터 내보내기
-  const handleExport = (id: string) => {
-    const loaded = loadKnowledgeGraph(id);
+  const handleExport = async (id: string) => {
+    const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
       exportKnowledgeGraph(loaded);
     }
   };
 
   // 버전 복원
-  const handleRestoreVersion = (dataId: string, version: number) => {
-    const restored = restoreVersion(dataId, version);
+  const handleRestoreVersion = async (dataId: string, version: number) => {
+    const restored = await restoreVersion(dataId, version);
     if (restored) {
       onLoad(restored);
       onClose();
