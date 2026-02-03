@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
+import { requireAuth } from '@/lib/auth';
 
-// 목록 조회 (userId로 필터링 가능)
+// 목록 조회 (세션 userId로 필터링)
 export async function GET(request: NextRequest) {
   try {
-    const db = await connectMongo();
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const authResult = await requireAuth();
+    if ('error' in authResult) return authResult.error;
+    const { userId } = authResult;
 
-    const query = userId ? { userId } : {};
+    const db = await connectMongo();
+    const query = { userId };
     const items = await db.collection('knowledgeGraphs').find(query).sort({ updatedAt: -1 }).toArray();
 
     return NextResponse.json(items.map(item => ({
@@ -23,23 +25,26 @@ export async function GET(request: NextRequest) {
       sceneCount: item.sceneCount || 0,
       userId: item.userId || null,
       novelId: item.novelId || null,
-      model: item.data?.metadata?.model || null,  // 분석에 사용된 모델
+      model: item.data?.metadata?.model || null,
     })));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 
-// 지식 그래프 저장 (novelId로 소설 텍스트 연결)
+// 지식 그래프 저장 (novelId로 소설 텍스트 연결, 세션 인증)
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireAuth();
+    if ('error' in authResult) return authResult.error;
+    const { userId } = authResult;
+
     const db = await connectMongo();
     const collection = db.collection('knowledgeGraphs');
     const body = await request.json();
 
-    // body 구조: { knowledgeGraph, userId?, novelId?, existingId? }
+    // body 구조: { knowledgeGraph, novelId?, existingId? }
     const data = body.knowledgeGraph || body;
-    const userId = body.userId || null;
     const novelId = body.novelId || null;
     const existingId = body.existingId || null;
 
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
     let existing = null;
     if (existingId) {
       try {
-        existing = await collection.findOne({ _id: new ObjectId(existingId) });
+        existing = await collection.findOne({ _id: new ObjectId(existingId), userId });
       } catch {
         // ObjectId 변환 실패 시 무시
       }
@@ -65,8 +70,7 @@ export async function POST(request: NextRequest) {
 
     // 2. existingId로 못 찾으면 userId + title 조합으로 찾기
     if (!existing) {
-      const query = userId ? { title, userId } : { title, userId: null };
-      existing = await collection.findOne(query);
+      existing = await collection.findOne({ title, userId });
     }
 
     if (existing) {
@@ -86,12 +90,12 @@ export async function POST(request: NextRequest) {
         savedAt: existing.updatedAt || existing.createdAt || now,
         note: addedFileNames ? `+${addedFileNames}` : `v${existing.version || 1}: ${existing.title}`,
         data: existing.data,
-        addedFiles: addedFileNames || null,  // 추가된 파일명 별도 저장
+        addedFiles: addedFileNames || null,
       });
 
       await collection.updateOne({ _id: existing._id }, {
         $set: {
-          title,  // 제목도 업데이트 (01화 -> 01화 + 02화)
+          title,
           data,
           version: newVersion,
           updatedAt: now,

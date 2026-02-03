@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
+import { requireAuth } from '@/lib/auth';
 
-// 단일 조회 (원본 텍스트 포함 옵션)
+// 단일 조회 (원본 텍스트 포함 옵션, 사용자 소유권 확인)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAuth();
+    if ('error' in authResult) return authResult.error;
+    const { userId } = authResult;
+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const includeText = searchParams.get('includeText') === 'true';
 
     const db = await connectMongo();
-    const item = await db.collection('knowledgeGraphs').findOne({ _id: new ObjectId(id) });
+    const item = await db.collection('knowledgeGraphs').findOne({
+      _id: new ObjectId(id),
+      userId,
+    });
 
     if (!item) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -64,15 +72,22 @@ export async function GET(
   }
 }
 
-// 삭제
+// 삭제 (사용자 소유권 확인)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAuth();
+    if ('error' in authResult) return authResult.error;
+    const { userId } = authResult;
+
     const { id } = await params;
     const db = await connectMongo();
-    const result = await db.collection('knowledgeGraphs').deleteOne({ _id: new ObjectId(id) });
+    const result = await db.collection('knowledgeGraphs').deleteOne({
+      _id: new ObjectId(id),
+      userId,
+    });
 
     return NextResponse.json({ success: result.deletedCount > 0 });
   } catch (err) {
