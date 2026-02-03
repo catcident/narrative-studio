@@ -876,6 +876,62 @@ function buildOntology(extracted: any, title: string): NovelOntology {
     };
   });
 
+  // description에서 다른 엔티티 언급을 찾아 자동 관계 생성
+  let autoRelationIndex = Object.keys(hyperedges).length;
+  Object.values(entities).forEach((entity: any) => {
+    if (!entity.description) return;
+
+    const descLower = entity.description.toLowerCase();
+
+    // 다른 모든 엔티티를 검사해서 description에 언급되어 있는지 확인
+    Object.values(entities).forEach((otherEntity: any) => {
+      if (entity.id === otherEntity.id) return;
+
+      // 이름이나 별칭이 description에 포함되어 있는지 확인
+      const namesToCheck = [otherEntity.name, ...(otherEntity.aliases || [])];
+      const isMentioned = namesToCheck.some((name: string) =>
+        descLower.includes(name.toLowerCase())
+      );
+
+      if (!isMentioned) return;
+
+      // 이미 관계가 존재하는지 확인
+      const existingEdge = Object.values(hyperedges).find((edge: any) =>
+        (edge.entities.includes(entity.id) && edge.entities.includes(otherEntity.id))
+      );
+
+      if (existingEdge) return; // 이미 관계 있음
+
+      // 새 관계 생성
+      autoRelationIndex++;
+      const id = `H${String(autoRelationIndex).padStart(4, '0')}`;
+
+      // 관계 타입 추정
+      let relationType = 'related';
+      if (entity.category === 'location' || otherEntity.category === 'location') {
+        relationType = 'location';
+      } else if (entity.category === 'object' || otherEntity.category === 'object') {
+        relationType = 'ownership';
+      }
+
+      hyperedges[id] = {
+        id,
+        type: relationType,
+        subtype: undefined,
+        entities: [entity.id, otherEntity.id],
+        statement: `${entity.name}의 설명에 ${otherEntity.name}이(가) 언급됨`,
+        timeline: { start: undefined, chapter: 1 },
+        sentiment: 'neutral',
+        strength: 3,
+        bidirectional: true,
+        scenes: entity.scenes || [],
+        sourceRef: { chapter: 1 },
+      };
+
+      console.log(`자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반)`);
+    });
+  });
+
   // 타임라인 등록
   const timeline = (extracted.timeline || []).map((t: any) => ({
     id: t.time_id,
