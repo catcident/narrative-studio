@@ -39,8 +39,14 @@ const SENTIMENT_STYLES = {
 
 interface TimelineEvent {
   id: string;
+  sceneId: string;
+  sceneNum: number;
   time: string;
+  timeElapsed?: string | null;
+  location?: string;
+  summary?: string;
   chapter?: number;
+  chapterTitle?: string;
   edges: HyperEdge[];
   entities: Entity[];
 }
@@ -49,42 +55,48 @@ export function TimelineView() {
   const { knowledgeGraph, selectEntity, selectedEntityId } = useStore();
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
-  // 시간순 이벤트 그룹화
+  // 장면(snapshot) 기반 타임라인
   const events = useMemo(() => {
     if (!knowledgeGraph) return [];
 
-    const timeGroups: Record<string, HyperEdge[]> = {};
+    const snapshots = knowledgeGraph.snapshots || {};
+    const chapters = knowledgeGraph.chapters || {};
 
-    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
-      const time = edge.timeline?.start || '시점 미상';
-      if (!timeGroups[time]) timeGroups[time] = [];
-      timeGroups[time].push(edge);
-    });
+    // 장면들을 순서대로 정렬
+    const sortedScenes = Object.values(snapshots)
+      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
-    const sortedTimes = Object.keys(timeGroups).sort((a, b) => {
-      const numA = parseInt(a.match(/\d+/)?.[0] || '9999');
-      const numB = parseInt(b.match(/\d+/)?.[0] || '9999');
-      if (numA !== numB) return numA - numB;
-      if (a.includes('과거')) return -1;
-      if (b.includes('과거')) return 1;
-      if (a.includes('현재')) return 1;
-      if (b.includes('현재')) return -1;
-      return a.localeCompare(b);
-    });
+    return sortedScenes.map((scene: any) => {
+      const sceneId = scene.sceneId;
+      const sceneNum = parseInt(sceneId.replace('S', '').replace(/^0+/, '') || '0');
 
-    return sortedTimes.map((time) => {
-      const edges = timeGroups[time];
+      // 이 장면의 관계들
+      const edges = Object.values(knowledgeGraph.hyperedges)
+        .filter((edge: any) => edge.scenes?.includes(sceneId)) as HyperEdge[];
+
+      // 관련 엔티티들
       const entityIds = new Set<string>();
       edges.forEach((e) => e.entities.forEach((id) => entityIds.add(id)));
+      // 장면에 등장하는 캐릭터도 추가
+      (scene.charactersPresent || []).forEach((id: string) => entityIds.add(id));
 
       const entities = Array.from(entityIds)
         .map((id) => knowledgeGraph.entities[id])
         .filter(Boolean);
 
+      // 챕터 정보
+      const chapterInfo = scene.chapter ? chapters[scene.chapter] : null;
+
       return {
-        id: time,
-        time,
-        chapter: edges[0]?.timeline?.chapter,
+        id: sceneId,
+        sceneId,
+        sceneNum,
+        time: scene.time || `장면 ${sceneNum}`,
+        timeElapsed: scene.timeElapsed,
+        location: scene.location,
+        summary: scene.summary,
+        chapter: scene.chapterNumber,
+        chapterTitle: chapterInfo?.title,
         edges,
         entities,
       } as TimelineEvent;
@@ -134,7 +146,7 @@ export function TimelineView() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-800">스토리 타임라인</h2>
-              <p className="text-xs text-gray-500">{events.length}개의 시점</p>
+              <p className="text-xs text-gray-500">{events.length}개의 장면</p>
             </div>
           </div>
 
@@ -171,14 +183,17 @@ export function TimelineView() {
                 const mainSentiment = event.edges[0]?.sentiment || 'neutral';
                 const style = SENTIMENT_STYLES[mainSentiment];
 
-                // 이전 이벤트와의 시간 경과 계산
+                // 시간 경과 표시 (timeElapsed 우선, 없으면 시간 변화 비교)
                 const prevEvent = eventIndex > 0 ? events[eventIndex - 1] : null;
-                const hasTimeChange = prevEvent && event.time && prevEvent.time && event.time !== prevEvent.time;
+                const timeElapsedText = event.timeElapsed ||
+                  (prevEvent && event.time && prevEvent.time && event.time !== prevEvent.time
+                    ? `${prevEvent.time} → ${event.time}`
+                    : null);
 
                 return (
                   <div key={event.id}>
                     {/* 시간 경과 표시 (장면 사이) */}
-                    {hasTimeChange && (
+                    {timeElapsedText && eventIndex > 0 && (
                       <div className="relative pl-16 mb-4">
                         {/* 점선 연결 */}
                         <div className="absolute left-[1.4rem] top-0 bottom-0 w-0 border-l-2 border-dashed border-amber-400" />
@@ -192,7 +207,7 @@ export function TimelineView() {
                             <div>
                               <div className="text-xs text-amber-600 font-medium">시간 경과</div>
                               <div className="text-sm text-amber-800 font-bold">
-                                {prevEvent.time} → {event.time}
+                                {timeElapsedText}
                               </div>
                             </div>
                           </div>
@@ -227,14 +242,26 @@ export function TimelineView() {
                       >
                         <div className="flex items-center gap-4">
                           <div className="flex flex-col items-start">
-                            <span className="text-base font-bold text-gray-800">
-                              {event.time}
-                            </span>
-                            {event.chapter && (
-                              <span className="text-xs text-gray-500 mt-0.5">
-                                제 {event.chapter}장
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded">
+                                장면 {event.sceneNum}
                               </span>
-                            )}
+                              <span className="text-base font-bold text-gray-800">
+                                {event.time}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {event.chapter && (
+                                <span className="text-xs text-gray-500">
+                                  {event.chapterTitle || `제 ${event.chapter}장`}
+                                </span>
+                              )}
+                              {event.location && (
+                                <span className="text-xs text-green-600">
+                                  📍 {event.location}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* 관계 타입 뱃지들 */}
@@ -293,7 +320,20 @@ export function TimelineView() {
                       {/* 확장된 내용 */}
                       {isExpanded && (
                         <div className="px-5 pb-4 space-y-3 border-t border-white/50">
-                          {event.edges.map((edge) => {
+                          {/* 장면 요약 */}
+                          {event.summary && (
+                            <div className="mt-3 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                📖 {event.summary}
+                              </p>
+                            </div>
+                          )}
+
+                          {event.edges.length === 0 ? (
+                            <div className="mt-3 py-6 text-center text-gray-400 text-sm">
+                              이 장면에 추출된 관계가 없습니다
+                            </div>
+                          ) : event.edges.map((edge) => {
                             const config = RELATION_CONFIG[edge.type] || { label: edge.type, icon: MessageCircle, color: '#64748b' };
                             const Icon = config.icon;
 
@@ -376,6 +416,11 @@ export function TimelineView() {
                   </div>
                 );
               })}
+              {events.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  장면 데이터가 없습니다
+                </div>
+              )}
             </div>
           </div>
         </div>
