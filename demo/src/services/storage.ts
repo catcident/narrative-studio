@@ -6,8 +6,8 @@
 
 import type { NovelKnowledgeGraph } from '../types';
 
-// API 서버 URL (Railway 서버 서비스)
-const API_BASE = '';
+// API 서버 URL
+const API_BASE = '/api';
 
 export interface SavedKnowledgeGraph {
   id: string;

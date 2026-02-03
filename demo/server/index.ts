@@ -1,6 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { MongoClient, type Db, ObjectId } from 'mongodb';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -92,6 +97,16 @@ app.delete('/api/knowledge-graphs/:id', async (req, res) => {
     res.json({ success: result.deletedCount > 0 });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// 정적 파일 서빙
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(distPath, 'index.html'));
   }
 });
 
