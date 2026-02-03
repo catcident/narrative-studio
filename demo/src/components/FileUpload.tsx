@@ -3,9 +3,10 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu } from 'lucide-react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
+import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
 export function FileUpload() {
   const { knowledgeGraph, setKnowledgeGraph, setLoading, setError, error } = useStore();
@@ -17,6 +18,11 @@ export function FileUpload() {
   const [hasLocalKey, setHasLocalKey] = useState(false);
   const [hasEnvKey, setHasEnvKey] = useState(true); // 기본으로 있다고 가정
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+
+  // 기존 지식그래프가 있으면 해당 모델로 고정
+  const lockedModel = knowledgeGraph?.metadata?.model;
+  const currentModel = lockedModel || selectedModel;
 
   // 환경변수 API 키 및 저장된 진행상황 확인
   useEffect(() => {
@@ -129,7 +135,7 @@ export function FileUpload() {
 
       const knowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
         setProgress(msg);
-      });
+      }, undefined, currentModel);
 
       // 원본 텍스트와 함께 저장
       setKnowledgeGraph(knowledgeGraph, combinedText);
@@ -144,7 +150,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setKnowledgeGraph, setLoading, setError]);
+  }, [setKnowledgeGraph, setLoading, setError, currentModel]);
 
   const handleFile = useCallback(async (file: File) => {
     console.log('파일 업로드 시작:', file.name);
@@ -188,7 +194,7 @@ export function FileUpload() {
       const title = file.name.replace(/\.[^/.]+$/, '');
       const knowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(msg);
-      });
+      }, undefined, currentModel);
 
       console.log('Extracted knowledgeGraph:', knowledgeGraph);
       console.log('Entities:', Object.keys(knowledgeGraph.entities).length);
@@ -213,7 +219,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setKnowledgeGraph, setLoading, setError]);
+  }, [setKnowledgeGraph, setLoading, setError, currentModel]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -278,9 +284,10 @@ export function FileUpload() {
 
       const title = file.name.replace(/\.[^/.]+$/, '');
       setProgress('추가 분석 중...');
+      // 추가 분석은 기존 문서의 모델을 사용 (lockedModel)
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
         setProgress(`추가: ${msg}`);
-      });
+      }, undefined, currentModel);
 
       // 기존 결과와 병합
       setProgress('기존 결과와 병합 중...');
@@ -302,7 +309,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [knowledgeGraph, setKnowledgeGraph, setLoading, setError]);
+  }, [knowledgeGraph, setKnowledgeGraph, setLoading, setError, currentModel]);
 
   const handleAddChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -383,6 +390,49 @@ export function FileUpload() {
           </div>
         </div>
       )}
+
+      {/* 모델 선택 */}
+      <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl">
+        <div className="flex items-start gap-3">
+          <Cpu className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-purple-800">AI 모델 선택</p>
+              {lockedModel && (
+                <span className="text-xs px-2 py-0.5 bg-purple-200 text-purple-700 rounded-full">
+                  🔒 고정됨
+                </span>
+              )}
+            </div>
+            <select
+              value={currentModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              disabled={!!lockedModel || localLoading}
+              className={`mt-2 w-full px-3 py-2 border rounded-lg text-sm ${
+                lockedModel
+                  ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-white border-purple-300 text-gray-800'
+              }`}
+            >
+              {AVAILABLE_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                </option>
+              ))}
+            </select>
+            {lockedModel && (
+              <p className="text-xs text-purple-600 mt-1">
+                이 문서는 {AVAILABLE_MODELS.find(m => m.id === lockedModel)?.name || lockedModel}로 분석되었습니다. 추가 분석도 같은 모델을 사용합니다.
+              </p>
+            )}
+            {!lockedModel && (
+              <p className="text-xs text-gray-500 mt-1">
+                비용: Input/Output (1M 토큰당 USD). 고품질 모델은 더 정확하지만 비용이 높습니다.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div
         className={`

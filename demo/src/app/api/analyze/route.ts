@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
-const MODEL = 'google/gemini-2.0-flash-001';
+const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
 
 const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍스트에서 인물, 장소, 물건, 세계관, 배경 정보를 빠짐없이 추출하여 "설정집"을 만듭니다.
 
@@ -33,17 +33,19 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, apiKey: userApiKey } = await request.json();
+    const { prompt, apiKey: userApiKey, model: userModel } = await request.json();
 
     // 사용자가 제공한 키 우선, 없으면 환경변수 키 사용
     const apiKey = userApiKey || ENV_API_KEY;
+    // 사용자가 지정한 모델 사용, 없으면 기본 모델
+    const model = userModel || DEFAULT_MODEL;
 
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
     }
 
     // 프롬프트 크기 로깅
-    console.log(`[analyze] 프롬프트 크기: ${prompt.length}자`);
+    console.log(`[analyze] 모델: ${model}, 프롬프트 크기: ${prompt.length}자`);
 
     const response = await fetchWithTimeout(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: MODEL,
+          model: model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: prompt },

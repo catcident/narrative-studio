@@ -4,6 +4,7 @@
  */
 
 import type { NovelKnowledgeGraph } from '../types';
+import { DEFAULT_MODEL } from '../types';
 
 function getApiKey(): string {
   if (typeof window === 'undefined') return '';
@@ -162,6 +163,7 @@ export interface ExtractionProgress {
   knownCharacters: { name: string; description: string; aliases?: string[] }[];
   chunks: string[];
   timestamp: number;
+  model?: string;  // 사용된 모델
 }
 
 // localStorage 키
@@ -221,7 +223,8 @@ export async function extractKnowledgeGraph(
   text: string,
   title: string,
   onProgress?: (msg: string) => void,
-  resumeFrom?: ExtractionProgress
+  resumeFrom?: ExtractionProgress,
+  model?: string  // 사용할 모델 ID
 ): Promise<NovelKnowledgeGraph> {
   // 텍스트를 청크로 분할 (5000자씩)
   const CHUNK_SIZE = 5000;
@@ -230,19 +233,23 @@ export async function extractKnowledgeGraph(
   let knownCharacters: { name: string; description: string; aliases?: string[] }[] = [];
   let startChunk = 0;
 
+  // 사용할 모델 결정: 이어하기면 저장된 모델, 아니면 파라미터 또는 기본값
+  const useModel = resumeFrom?.model || model || DEFAULT_MODEL;
+
   // 이어하기인 경우
   if (resumeFrom) {
     chunks = resumeFrom.chunks;
     allExtracted = resumeFrom.allExtracted;
     knownCharacters = resumeFrom.knownCharacters;
     startChunk = resumeFrom.processedChunks;
-    console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개`);
+    console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
   } else {
     // 새로 시작
     for (let i = 0; i < text.length; i += CHUNK_SIZE) {
       chunks.push(text.slice(i, i + CHUNK_SIZE));
     }
+    console.log(`분석 시작 (모델: ${useModel})`);
   }
 
   const totalChunks = chunks.length;
@@ -261,7 +268,7 @@ export async function extractKnowledgeGraph(
     try {
       const trimmedCharacters = trimKnownCharacters(knownCharacters);
       console.log(`[청크 ${i + 1}] 프롬프트에 전달할 인물: ${trimmedCharacters.length}명`);
-      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimmedCharacters);
+      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimmedCharacters, useModel);
       if (extracted) {
         allExtracted.push(extracted);
 
@@ -306,6 +313,7 @@ export async function extractKnowledgeGraph(
           knownCharacters,
           chunks,
           timestamp: Date.now(),
+          model: useModel,
         });
       }
     } catch (error: any) {
@@ -331,6 +339,7 @@ export async function extractKnowledgeGraph(
           knownCharacters,
           chunks,
           timestamp: Date.now(),
+          model: useModel,
         });
         continue; // 다음 청크로 계속
       }
@@ -344,6 +353,7 @@ export async function extractKnowledgeGraph(
         knownCharacters,
         chunks,
         timestamp: Date.now(),
+        model: useModel,
       });
       throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${error.message}. 이어하기로 재시도할 수 있습니다.`);
     }
@@ -360,7 +370,7 @@ export async function extractKnowledgeGraph(
   onProgress?.('관계 검증 및 보완 중...');
   const validated = inferMissingRelationships(merged);
 
-  return buildKnowledgeGraph(validated, title);
+  return buildKnowledgeGraph(validated, title, useModel);
 }
 
 // 클라이언트 측 fetch with timeout
@@ -383,7 +393,8 @@ async function extractFromChunk(
   chunkText: string,
   title: string,
   chunkNum: number,
-  knownCharacters: { name: string; description: string; aliases?: string[] }[] = []
+  knownCharacters: { name: string; description: string; aliases?: string[] }[] = [],
+  model?: string  // 사용할 모델
 ): Promise<any> {
   // 이전에 발견된 인물 정보를 프롬프트에 추가 (최대 30명으로 더 제한)
   let previousCharactersText = '';
@@ -413,7 +424,7 @@ ${limitedCharacters.map(c => {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined }),
+    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model }),
   }, 150000); // 2.5분 타임아웃
 
   if (!response.ok) {
@@ -945,7 +956,7 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
   );
 }
 
-function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph {
+function buildKnowledgeGraph(extracted: any, title: string, model?: string): NovelKnowledgeGraph {
   const now = new Date().toISOString();
   const entities: Record<string, any> = {};
   const hyperedges: Record<string, any> = {};
@@ -1272,6 +1283,7 @@ function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph
       createdAt: now,
       updatedAt: now,
       version: '1.0.0',
+      model,  // 분석에 사용된 모델 저장
     },
     entities,
     hyperedges,
