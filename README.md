@@ -1,122 +1,140 @@
-# Character Relationship Chart
+# 소설 인물 관계도 (Character Relationship Chart)
 
-소설 인물 관계도를 하이퍼그래프 기반 온톨로지로 구축하는 도구입니다.
-Story-Forge 프로젝트의 기능 모듈로 사용됩니다.
+AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 애플리케이션입니다.
 
-## 특징
+![인물 관계도 미리보기](docs/preview.png)
 
-- **하이퍼그래프 구조**: 하나의 관계가 2개 이상의 엔티티를 연결 가능
-- **시간축 관리**: 타임라인과 스냅샷으로 시점별 관계 상태 추적
-- **설정 일관성 검사**: 새 내용과 기존 설정 간 충돌 감지
-- **저렴한 LLM 사용**: Gemini Flash Lite 등 저비용 모델 지원
+## 주요 기능
 
-## 설치
+### 1. AI 기반 자동 분석
+- 소설 텍스트(.txt) 또는 PDF 파일 업로드
+- Google Gemini API를 사용한 자동 분석
+- 인물, 장소, 조직, 아이템 등 엔티티 추출
+- 관계(가족, 연인, 친구, 적대 등) 자동 감지
+
+### 2. 인터랙티브 관계도
+- 드래그로 노드 이동 가능
+- 노드 클릭 시 상세 정보 패널 표시
+- 인물 중심 모드 (다중 선택 지원)
+- 중요도 필터링
+- 간소화 모드 (인물만 표시)
+
+### 3. 연대기 뷰
+- 장면별 캐릭터 이벤트 타임라인
+- 드래그로 스크롤
+- 시간 경과 표시
+- 감정별 색상 구분 (긍정/부정/중립)
+
+### 4. 데이터 관리
+- 로컬 스토리지 자동 저장
+- 버전 히스토리 (이전 버전 복원)
+- JSON 내보내기/가져오기
+- 파일 추가 분석 (기존 데이터와 병합)
+
+## 설치 및 실행
+
+### 요구 사항
+- Node.js 18+
+- Google AI API 키 (Gemini)
+
+### 설치
 
 ```bash
+# 저장소 클론
+git clone https://github.com/Catcident/Character-Relationship-Chart.git
+cd Character-Relationship-Chart
+
+# 의존성 설치
+cd demo
 npm install
 ```
 
-## 환경 설정
+### 환경 설정
 
 ```bash
+# .env 파일 생성
 cp .env.example .env
-# .env 파일에 API 키 설정
+
+# .env 파일 편집
+VITE_GEMINI_API_KEY=your_api_key_here
 ```
 
-## 사용법
-
-### 1. 하이퍼그래프 모델 테스트 (API 키 불필요)
+### 실행
 
 ```bash
-npm test
+# 개발 서버
+npm run dev
+
+# 프로덕션 빌드
+npm run build
+npm run preview
 ```
 
-### 2. 텍스트에서 온톨로지 추출
+## 사용 방법
 
-```bash
-# 환경변수 설정 후
-npm run extract example/sample-novel.txt --title "마법사의 여정" --chapter 1
+### 1. 소설 분석
+1. 웹 페이지에서 "소설 파일을 업로드하세요" 영역 클릭
+2. .txt 또는 .pdf 파일 선택
+3. AI가 자동으로 분석 (긴 소설은 청크 단위로 처리)
+4. 분석 완료 후 관계도 표시
+
+### 2. 관계도 탐색
+- **노드 클릭**: 상세 정보 패널 열기
+- **노드 드래그**: 위치 이동
+- **뷰 모드**:
+  - 전체: 모든 엔티티 표시
+  - 간소화: 인물만 표시
+  - 인물 중심: 선택한 인물 중심으로 필터링 (다중 선택 가능)
+
+### 3. 연대기 보기
+- 상단 탭에서 "연대기" 선택
+- 마우스 드래그로 상하좌우 스크롤
+- 장면별 관계 변화 확인
+
+### 4. 데이터 관리
+- **파일 추가**: 헤더의 "파일 추가" 버튼으로 추가 분석
+- **저장**: 자동 저장 (버전 관리됨)
+- **내보내기**: 저장된 데이터 카드 호버 → 다운로드 아이콘
+- **가져오기**: "JSON 가져오기" 버튼
+
+## 기술 스택
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: Tailwind CSS, Lucide Icons
+- **그래프**: @xyflow/react (React Flow)
+- **AI**: Google Gemini API
+- **PDF**: pdf.js
+- **상태 관리**: Zustand
+
+## 프로젝트 구조
+
+```
+Character-Relationship-Chart/
+├── demo/                    # 웹 애플리케이션
+│   ├── src/
+│   │   ├── components/      # React 컴포넌트
+│   │   │   ├── RelationshipGraph.tsx   # 관계도 그래프
+│   │   │   ├── DetailPanel.tsx         # 상세 정보 패널
+│   │   │   ├── CharacterChronicle.tsx  # 연대기 뷰
+│   │   │   ├── FileUpload.tsx          # 파일 업로드
+│   │   │   └── SavedDataGrid.tsx       # 저장 데이터 그리드
+│   │   ├── services/
+│   │   │   ├── extraction.ts           # AI 분석 서비스
+│   │   │   └── storage.ts              # 로컬 스토리지
+│   │   ├── store.ts                    # Zustand 상태 관리
+│   │   └── types.ts                    # TypeScript 타입 정의
+│   └── package.json
+├── docs/                    # 문서
+│   ├── FEATURES.md          # 기능 상세 설명
+│   └── ONTOLOGY.md          # 온톨로지 구조 설명
+└── README.md
 ```
 
-### 3. 코드에서 사용
+## 문서
 
-```typescript
-import { HyperGraph, ExtractionService, createLLMClient } from 'character-relationship-chart';
-
-// 그래프 생성
-const graph = new HyperGraph('나의 소설', '작가명');
-
-// LLM 클라이언트 생성
-const llm = createLLMClient();
-
-// 추출 서비스 생성
-const extractor = new ExtractionService(graph, llm);
-
-// 텍스트에서 추출
-const result = await extractor.extractAndRegister(novelText, {
-  title: '나의 소설',
-  chapter: 1,
-});
-
-// 결과 확인
-console.log(result.entities);  // 추출된 엔티티
-console.log(result.edges);     // 추출된 관계
-
-// JSON으로 저장
-const ontology = graph.toJSON();
-fs.writeFileSync('ontology.json', JSON.stringify(ontology, null, 2));
-```
-
-## 엔티티 카테고리
-
-| 카테고리 | 설명 |
-|---------|------|
-| character | 인물 (주인공, 조연, 악역 등) |
-| location | 장소 (왕국, 도시, 던전 등) |
-| organization | 조직 (길드, 국가, 가문 등) |
-| item | 아이템 (무기, 도구, 보물 등) |
-| creature | 생물 (동물, 몬스터, 정령 등) |
-| event | 사건 (전쟁, 축제, 재해 등) |
-| concept | 개념 (마법 체계, 규칙 등) |
-| time_period | 시간 (시대, 날짜, 기간 등) |
-| status | 상태/직위 |
-
-## 관계 유형
-
-### 인물 관계
-- `family`: 가족 관계
-- `romantic`: 연인/부부
-- `friendship`: 친구/동료
-- `rivalry`: 라이벌/적대
-- `mentor`: 스승-제자
-- `subordinate`: 상하 관계
-
-### 소속/소유
-- `belongs_to`: 소속
-- `owns`: 소유
-- `rules`: 통치/지배
-
-### 위치/시간
-- `located_at`: 위치
-- `occurred_at`: 발생 장소/시간
-- `during`: 기간 동안
-
-### 행위/상태
-- `participates`: 참여
-- `causes`: 야기
-- `transforms`: 변화
-- `knows`: 인지
-- `has_status`: 상태 보유
-
-## 지원 모델
-
-| 모델 키 | 모델 ID | 비고 |
-|--------|---------|------|
-| gemini-2.0-flash-lite | google/gemini-2.0-flash-lite-001 | 기본값, 가장 저렴 |
-| gemini-flash | google/gemini-2.0-flash-001 | |
-| gpt-4o-mini | openai/gpt-4o-mini | |
-| claude-haiku | anthropic/claude-3-haiku | |
+- [기능 상세 설명](docs/FEATURES.md)
+- [온톨로지 구조](docs/ONTOLOGY.md)
 
 ## 라이선스
 
-MIT
+MIT License
