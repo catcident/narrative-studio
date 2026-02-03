@@ -45,7 +45,7 @@ git clone https://github.com/Catcident/Character-Relationship-Chart.git
 cd Character-Relationship-Chart
 
 # 의존성 설치
-cd demo
+cd web
 npm install
 ```
 
@@ -110,7 +110,7 @@ npm run preview
 
 ```
 Character-Relationship-Chart/
-├── demo/                    # 웹 애플리케이션
+├── web/                     # 웹 애플리케이션
 │   ├── src/
 │   │   ├── components/      # React 컴포넌트
 │   │   │   ├── RelationshipGraph.tsx   # 관계도 그래프
