@@ -102,17 +102,21 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석하여 설정�
 - **event**: 사건/행사 (축제, 사고, 모임 등)
 - **concept**: 추상적 개념/세계관 설정 (시대, 규칙, 전통, 감정 등)
 
-## 관계 타입 (한글로 작성)
-- 가족: 부모, 자녀, 형제, 친척 등
-- 연인: 연애, 짝사랑, 전 연인 등
-- 친구: 친한 친구, 아는 사람 등
-- 적대: 적, 라이벌, 갈등 관계 등
-- 동료: 직장동료, 학교친구, 팀원 등
-- 소속: 인물이 조직/장소에 소속됨 (예: 학생-학교)
-- 위치: 인물/물건이 장소에 있음
-- 소유: 인물이 물건을 가지고 있음/사용함
-- 포함: 장소가 다른 장소를 포함 (예: 학교-교실)
-- 관련: 기타 연관 관계
+## 관계 타입 (⚠️ 반드시 아래 10가지 중 하나만 사용!)
+**허용된 타입**: 가족, 연인, 친구, 적대, 동료, 소속, 위치, 소유, 포함, 관련
+
+- **가족**: 부모, 자녀, 형제, 친척 등
+- **연인**: 연애, 짝사랑, 전 연인 등
+- **친구**: 친한 친구, 아는 사람, 지인 등
+- **적대**: 적, 라이벌, 갈등, 싸움 관계 등
+- **동료**: 직장동료, 학교친구, 팀원 등
+- **소속**: 인물이 조직/장소에 소속됨 (예: 학생-학교)
+- **위치**: 인물/물건이 장소에 있음
+- **소유**: 인물이 물건을 가지고 있음/사용함
+- **포함**: 장소가 다른 장소를 포함 (예: 학교-교실)
+- **관련**: 위 카테고리에 해당하지 않는 기타 연관 관계
+
+⚠️ 다른 타입 사용 금지! "아는 사이"→"친구", "원수"→"적대" 등으로 변환
 
 ## ⚠️ 중요: 관계의 from/to는 반드시 entities의 name과 정확히 일치해야 함
 - relationships의 from, to 값은 entities에 등록된 name과 **동일한 문자열**이어야 함
@@ -718,12 +722,84 @@ function tryFixJson(content: string): any {
   }
 }
 
+// 허용된 관계 타입
+const VALID_RELATION_TYPES = ['가족', '연인', '친구', '적대', '동료', '소속', '위치', '소유', '포함', '관련'];
+
+// 잘못된 관계 타입을 올바른 타입으로 매핑
+const RELATION_TYPE_MAPPING: Record<string, string> = {
+  // 가족 관련
+  '부모': '가족', '자녀': '가족', '형제': '가족', '자매': '가족', '친척': '가족',
+  '아버지': '가족', '어머니': '가족', '아들': '가족', '딸': '가족', '할머니': '가족', '할아버지': '가족',
+  // 연인 관련
+  '사랑': '연인', '짝사랑': '연인', '애인': '연인', '전연인': '연인', '결혼': '연인',
+  // 친구 관련
+  '지인': '친구', '아는사이': '친구', '친한사이': '친구', '우정': '친구',
+  '아친구이': '친구', // 잘못 생성된 예시
+  // 적대 관련
+  '원수': '적대', '라이벌': '적대', '갈등': '적대', '경쟁': '적대', '싸움': '적대',
+  // 동료 관련
+  '직장동료': '동료', '팀원': '동료', '동기': '동료', '선배': '동료', '후배': '동료',
+  // 영어 타입 (하위호환)
+  'family': '가족', 'romantic': '연인', 'friendship': '친구', 'rivalry': '적대',
+  'mentor': '동료', 'subordinate': '동료', 'belongs_to': '소속', 'owns': '소유',
+  'located_at': '위치', 'related_to': '관련', 'related': '관련',
+};
+
+/**
+ * 관계 타입 정규화 - 잘못된 타입을 올바른 타입으로 변환
+ */
+function normalizeRelationType(type: string): string {
+  if (!type) return '관련';
+
+  const trimmed = type.trim();
+
+  // 이미 유효한 타입이면 그대로 반환
+  if (VALID_RELATION_TYPES.includes(trimmed)) {
+    return trimmed;
+  }
+
+  // 매핑에서 찾기
+  const mapped = RELATION_TYPE_MAPPING[trimmed] || RELATION_TYPE_MAPPING[trimmed.toLowerCase()];
+  if (mapped) {
+    console.log(`관계 타입 정규화: "${trimmed}" → "${mapped}"`);
+    return mapped;
+  }
+
+  // 부분 매칭 시도
+  for (const [key, value] of Object.entries(RELATION_TYPE_MAPPING)) {
+    if (trimmed.includes(key) || key.includes(trimmed)) {
+      console.log(`관계 타입 정규화 (부분매칭): "${trimmed}" → "${value}"`);
+      return value;
+    }
+  }
+
+  // 매핑 실패 시 기본값
+  console.log(`관계 타입 정규화 실패: "${trimmed}" → "관련"`);
+  return '관련';
+}
+
+/**
+ * 모든 관계의 타입을 정규화
+ */
+function normalizeAllRelationTypes(extracted: any): any {
+  const { relationships, ...rest } = extracted;
+
+  const normalizedRelationships = (relationships || []).map((rel: any) => ({
+    ...rel,
+    type: normalizeRelationType(rel.type)
+  }));
+
+  return { ...rest, relationships: normalizedRelationships };
+}
+
 /**
  * 후처리: 엔티티 설명에서 누락된 관계 자동 생성
  * "화자가 피우는 담배" 같은 설명에서 소유 관계를 추출
  */
 function inferMissingRelationships(extracted: any): any {
-  const { entities, relationships } = extracted;
+  // 먼저 관계 타입 정규화
+  const normalized = normalizeAllRelationTypes(extracted);
+  const { entities, relationships } = normalized;
   const newRelationships: any[] = [];
 
   // 소유자/사용자 패턴
@@ -784,7 +860,7 @@ function inferMissingRelationships(extracted: any): any {
   console.log(`후처리: ${newRelationships.length}개의 누락된 관계 추가됨`);
 
   return {
-    ...extracted,
+    ...normalized,
     relationships: [...relationships, ...newRelationships]
   };
 }
