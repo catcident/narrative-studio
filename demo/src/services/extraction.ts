@@ -954,12 +954,29 @@ function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph
         relationType = 'ownership';
       }
 
+      // statement에 실제 description 내용을 포함
+      // description에서 해당 인물/엔티티가 언급된 부분을 추출
+      let statementText = entity.description;
+      // description이 너무 길면 축약
+      if (statementText && statementText.length > 200) {
+        // 다른 엔티티 이름이 포함된 문장만 추출 시도
+        const sentences = statementText.split(/[.!?。]/).filter((s: string) => s.trim());
+        const relevantSentences = sentences.filter((s: string) =>
+          namesToCheck.some((name: string) => s.toLowerCase().includes(name.toLowerCase()))
+        );
+        if (relevantSentences.length > 0) {
+          statementText = relevantSentences.join('. ').trim();
+        } else {
+          statementText = statementText.slice(0, 200) + '...';
+        }
+      }
+
       hyperedges[id] = {
         id,
         type: relationType,
         subtype: undefined,
         entities: [entity.id, otherEntity.id],
-        statement: `${entity.name}의 설명에 ${otherEntity.name}이(가) 언급됨`,
+        statement: statementText || `${entity.name}의 설명에 ${otherEntity.name}이(가) 언급됨`,
         timeline: { start: undefined, chapter: 1 },
         sentiment: 'neutral',
         strength: 3,
