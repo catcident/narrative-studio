@@ -14,11 +14,18 @@ export function FileUpload() {
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [hasKey, setHasKey] = useState(false);
+  const [hasLocalKey, setHasLocalKey] = useState(false);
+  const [hasEnvKey, setHasEnvKey] = useState(true); // 기본으로 있다고 가정
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
-  // API 키 및 저장된 진행상황 확인
+  // 환경변수 API 키 및 저장된 진행상황 확인
   useEffect(() => {
-    setHasKey(hasApiKey());
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => setHasEnvKey(data.hasEnvKey))
+      .catch(() => setHasEnvKey(false));
+
+    setHasLocalKey(hasApiKey());
     const saved = hasProgress();
     setSavedProgress(saved);
   }, []);
@@ -26,8 +33,9 @@ export function FileUpload() {
   const handleSaveApiKey = () => {
     if (apiKeyInput.trim()) {
       setApiKey(apiKeyInput.trim());
-      setHasKey(true);
+      setHasLocalKey(true);
       setApiKeyInput('');
+      setShowApiKeyInput(false);
     }
   };
 
@@ -302,15 +310,15 @@ export function FileUpload() {
 
   return (
     <div className="space-y-4">
-      {/* API 키 입력 */}
-      {!hasKey && (
+      {/* API 키 입력 - 환경변수 없을 때만 경고, 또는 사용자가 직접 입력 원할 때 */}
+      {!hasEnvKey && !hasLocalKey && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
           <div className="flex items-start gap-3">
             <Key className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium text-yellow-800">OpenRouter API 키 필요</p>
               <p className="text-sm text-yellow-700 mt-1">
-                소설 분석을 위해 OpenRouter API 키가 필요합니다.
+                소설 분석을 위해 API 키가 필요합니다.
                 <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" className="underline ml-1">
                   여기서 발급받기
                 </a>
@@ -331,6 +339,45 @@ export function FileUpload() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 자신의 API 키 사용 옵션 */}
+      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && (
+        <div className="text-center">
+          <button
+            onClick={() => setShowApiKeyInput(true)}
+            className="text-xs text-gray-400 hover:text-gray-600"
+          >
+            <Key className="w-3 h-3 inline mr-1" />
+            {hasLocalKey ? '내 API 키 변경' : '내 API 키 사용하기'}
+          </button>
+        </div>
+      )}
+
+      {showApiKeyInput && (
+        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              placeholder={hasLocalKey ? '••••••••' : 'sk-or-...'}
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            />
+            <button
+              onClick={handleSaveApiKey}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+            >
+              저장
+            </button>
+            <button
+              onClick={() => setShowApiKeyInput(false)}
+              className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+            >
+              취소
+            </button>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_KEY = process.env.OPENROUTER_API_KEY || '';
+const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const MODEL = 'google/gemini-2.0-flash-lite-001';
 
 const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍스트에서 인물, 장소, 물건, 세계관, 배경 정보를 빠짐없이 추출하여 "설정집"을 만듭니다.
@@ -17,17 +17,20 @@ const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍
 
 export async function POST(request: NextRequest) {
   try {
-    if (!API_KEY) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
-    }
+    const { prompt, apiKey: userApiKey } = await request.json();
 
-    const { prompt } = await request.json();
+    // 사용자가 제공한 키 우선, 없으면 환경변수 키 사용
+    const apiKey = userApiKey || ENV_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
+    }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: MODEL,

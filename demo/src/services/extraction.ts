@@ -344,13 +344,14 @@ ${knownCharacters.map(c => {
     .replace('{{text}}', chunkText)
     .replace('{{previousCharacters}}', previousCharactersText);
 
-  // 서버 API route 사용 (환경변수에서 API 키 가져옴)
+  // 서버 API route 사용 (환경변수 우선, 없으면 사용자 키 사용)
+  const userApiKey = getApiKey();
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined }),
   });
 
   if (!response.ok) {
