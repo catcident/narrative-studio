@@ -6,8 +6,8 @@
 
 import type { NovelKnowledgeGraph } from '../types';
 
-// API 베이스 URL (같은 도메인의 /api 사용)
-const API_BASE = '/api';
+// API 베이스 URL (환경변수 또는 빈 문자열 = 로컬만 사용)
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export interface SavedKnowledgeGraph {
   id: string;
