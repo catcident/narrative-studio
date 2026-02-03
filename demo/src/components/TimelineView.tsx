@@ -165,28 +165,56 @@ export function TimelineView() {
 
             {/* 이벤트 목록 */}
             <div className="space-y-4">
-              {events.map((event) => {
+              {events.map((event, eventIndex) => {
                 const isExpanded = expandedEvents.has(event.id);
                 const characters = event.entities.filter(e => e.category === 'character');
                 const mainSentiment = event.edges[0]?.sentiment || 'neutral';
                 const style = SENTIMENT_STYLES[mainSentiment];
 
-                return (
-                  <div key={event.id} className="relative pl-16">
-                    {/* 타임라인 노드 */}
-                    <div
-                      className="absolute left-4 w-5 h-5 rounded-full border-4 border-white shadow-lg z-10"
-                      style={{
-                        background: `linear-gradient(135deg, ${style.accent}, ${style.accent}dd)`,
-                        top: '1.25rem'
-                      }}
-                    />
+                // 이전 이벤트와의 시간 경과 계산
+                const prevEvent = eventIndex > 0 ? events[eventIndex - 1] : null;
+                const hasTimeChange = prevEvent && event.time && prevEvent.time && event.time !== prevEvent.time;
 
-                    {/* 연결선 */}
-                    <div
-                      className="absolute left-[1.65rem] w-8 h-0.5 top-[1.5rem]"
-                      style={{ background: style.accent + '40' }}
-                    />
+                return (
+                  <div key={event.id}>
+                    {/* 시간 경과 표시 (장면 사이) */}
+                    {hasTimeChange && (
+                      <div className="relative pl-16 mb-4">
+                        {/* 점선 연결 */}
+                        <div className="absolute left-[1.4rem] top-0 bottom-0 w-0 border-l-2 border-dashed border-amber-400" />
+
+                        {/* 시간 경과 라벨 */}
+                        <div className="py-3 px-5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-dashed border-amber-300 rounded-xl shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                              <span className="text-lg">⏱</span>
+                            </div>
+                            <div>
+                              <div className="text-xs text-amber-600 font-medium">시간 경과</div>
+                              <div className="text-sm text-amber-800 font-bold">
+                                {prevEvent.time} → {event.time}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="relative pl-16">
+                      {/* 타임라인 노드 */}
+                      <div
+                        className="absolute left-4 w-5 h-5 rounded-full border-4 border-white shadow-lg z-10"
+                        style={{
+                          background: `linear-gradient(135deg, ${style.accent}, ${style.accent}dd)`,
+                          top: '1.25rem'
+                        }}
+                      />
+
+                      {/* 연결선 */}
+                      <div
+                        className="absolute left-[1.65rem] w-8 h-0.5 top-[1.5rem]"
+                        style={{ background: style.accent + '40' }}
+                      />
 
                     {/* 이벤트 카드 */}
                     <div
@@ -343,6 +371,7 @@ export function TimelineView() {
                           })}
                         </div>
                       )}
+                    </div>
                     </div>
                   </div>
                 );

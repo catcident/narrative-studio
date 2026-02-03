@@ -15,6 +15,22 @@ const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍
 7. 세계관/시대배경/사회적 맥락은 concept 카테고리로 추출
 8. JSON만 출력 (설명 없이)`;
 
+// 타임아웃 유틸리티
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 120000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { prompt, apiKey: userApiKey } = await request.json();
@@ -26,31 +42,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
     }
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+    // 프롬프트 크기 로깅
+    console.log(`[analyze] 프롬프트 크기: ${prompt.length}자`);
+
+    const response = await fetchWithTimeout(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 16000,
+        }),
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 16000,
-      }),
-    });
+      120000  // 2분 타임아웃
+    );
 
     if (!response.ok) {
       const error = await response.text();
+      console.error(`[analyze] API 오류: ${response.status} - ${error.slice(0, 500)}`);
       return NextResponse.json({ error: `API error: ${response.status} - ${error}` }, { status: response.status });
     }
 
     const data = await response.json();
+    console.log(`[analyze] 응답 성공`);
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    const error = err as Error;
+    if (error.name === 'AbortError') {
+      console.error(`[analyze] 타임아웃 (2분 초과)`);
+      return NextResponse.json({ error: 'API request timed out (2 minutes). Try with a smaller text.' }, { status: 504 });
+    }
+    console.error(`[analyze] 오류: ${error.message}`);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

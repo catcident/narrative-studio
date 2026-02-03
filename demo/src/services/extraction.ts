@@ -293,7 +293,32 @@ export async function extractKnowledgeGraph(
       }
     } catch (error: any) {
       console.error(`청크 ${i + 1} 처리 실패:`, error);
-      // 진행상황 저장 후 에러 전파
+
+      // 타임아웃이나 API 오류는 스킵하고 계속 진행
+      const isTimeout = error.message?.includes('timeout') || error.message?.includes('AbortError') || error.name === 'AbortError';
+      const isApiError = error.message?.includes('API');
+
+      if (isTimeout || isApiError) {
+        console.warn(`청크 ${i + 1} 스킵 (타임아웃/API 오류), 계속 진행...`);
+        onProgress?.(`청크 ${i + 1} 스킵 (오류), 계속 진행...`);
+
+        // 빈 결과로 추가 (장면 번호 유지를 위해)
+        allExtracted.push({ chapters: [], scenes: [], entities: [], relationships: [] });
+
+        // 진행상황 저장 (실패한 청크도 처리됨으로 표시)
+        saveProgress({
+          title,
+          totalChunks,
+          processedChunks: i + 1,
+          allExtracted,
+          knownCharacters,
+          chunks,
+          timestamp: Date.now(),
+        });
+        continue; // 다음 청크로 계속
+      }
+
+      // 다른 종류의 에러는 진행상황 저장 후 중단
       saveProgress({
         title,
         totalChunks,
@@ -321,19 +346,37 @@ export async function extractKnowledgeGraph(
   return buildKnowledgeGraph(validated, title);
 }
 
+// 클라이언트 측 fetch with timeout
+async function fetchWithClientTimeout(url: string, options: RequestInit, timeoutMs: number = 150000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function extractFromChunk(
   chunkText: string,
   title: string,
   chunkNum: number,
   knownCharacters: { name: string; description: string; aliases?: string[] }[] = []
 ): Promise<any> {
-  // 이전에 발견된 인물 정보를 프롬프트에 추가
+  // 이전에 발견된 인물 정보를 프롬프트에 추가 (최대 30명으로 더 제한)
   let previousCharactersText = '';
-  if (knownCharacters.length > 0) {
+  const limitedCharacters = knownCharacters.slice(-30); // 최근 30명만
+  if (limitedCharacters.length > 0) {
     previousCharactersText = `## 이전 청크에서 발견된 인물들 (동일 인물이면 같은 이름 사용)
-${knownCharacters.map(c => {
-  const aliasText = c.aliases?.length ? ` (별칭: ${c.aliases.join(', ')})` : '';
-  return `- ${c.name}${aliasText}: ${c.description}`;
+${limitedCharacters.map(c => {
+  const aliasText = c.aliases?.length ? ` (별칭: ${c.aliases.slice(0, 3).join(', ')})` : ''; // 별칭도 3개까지만
+  const shortDesc = (c.description || '').slice(0, 50); // 설명도 50자까지만
+  return `- ${c.name}${aliasText}: ${shortDesc}`;
 }).join('\n')}
 `;
   }
@@ -344,15 +387,17 @@ ${knownCharacters.map(c => {
     .replace('{{text}}', chunkText)
     .replace('{{previousCharacters}}', previousCharactersText);
 
+  console.log(`청크 ${chunkNum} 프롬프트 크기: ${prompt.length}자`);
+
   // 서버 API route 사용 (환경변수 우선, 없으면 사용자 키 사용)
   const userApiKey = getApiKey();
-  const response = await fetch('/api/analyze', {
+  const response = await fetchWithClientTimeout('/api/analyze', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ prompt, apiKey: userApiKey || undefined }),
-  });
+  }, 150000); // 2.5분 타임아웃
 
   if (!response.ok) {
     const err = await response.text();
