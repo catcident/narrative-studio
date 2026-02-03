@@ -1145,6 +1145,59 @@ function buildKnowledgeGraph(extracted: any, title: string): NovelKnowledgeGraph
     });
   });
 
+  // 같은 장면에 등장하는 캐릭터-비캐릭터 엔티티 간 자동 관계 생성
+  // 예: "콘크리트"와 "나"가 둘 다 장면 2에 등장하면 위치 관계 생성
+  const characterEntities = Object.values(entities).filter((e: any) => e.category === 'character');
+  const nonCharacterEntities = Object.values(entities).filter((e: any) => e.category !== 'character');
+
+  nonCharacterEntities.forEach((entity: any) => {
+    if (!entity.scenes || entity.scenes.length === 0) return;
+
+    // 이 엔티티와 같은 장면에 등장하는 캐릭터들 찾기
+    characterEntities.forEach((char: any) => {
+      if (!char.scenes || char.scenes.length === 0) return;
+
+      // 공통 장면이 있는지 확인
+      const commonScenes = entity.scenes.filter((s: string) => char.scenes.includes(s));
+      if (commonScenes.length === 0) return;
+
+      // 이미 관계가 존재하는지 확인
+      const existingEdge = Object.values(hyperedges).find((edge: any) =>
+        edge.entities.includes(entity.id) && edge.entities.includes(char.id)
+      );
+
+      if (existingEdge) return; // 이미 관계 있음
+
+      // 새 관계 생성
+      autoRelationIndex++;
+      const id = `H${String(autoRelationIndex).padStart(4, '0')}`;
+
+      // 관계 타입 추정
+      let relationType = '관련';
+      if (entity.category === 'location') {
+        relationType = '위치';
+      } else if (entity.category === 'item' || entity.category === 'object') {
+        relationType = '소유';
+      }
+
+      hyperedges[id] = {
+        id,
+        type: relationType,
+        subtype: undefined,
+        entities: [char.id, entity.id],
+        statement: `${char.name}이(가) ${entity.name}에서/과 함께 등장 (장면 ${commonScenes.map((s: string) => s.replace('S', '').replace(/^0+/, '')).join(', ')})`,
+        timeline: { start: undefined, chapter: 1 },
+        sentiment: 'neutral',
+        strength: 3,
+        bidirectional: false,
+        scenes: commonScenes,
+        sourceRef: { chapter: 1 },
+      };
+
+      console.log(`장면 공동 등장 관계 생성: ${char.name} -> ${entity.name} (${relationType}, 장면: ${commonScenes.join(', ')})`);
+    });
+  });
+
   // 타임라인 등록
   const timeline = (extracted.timeline || []).map((t: any) => ({
     id: t.time_id,
