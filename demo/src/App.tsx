@@ -124,7 +124,8 @@ function App() {
 
       setAddProgress('병합 중...');
       const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
-      setKnowledgeGraph(merged);
+      // 기존 데이터 ID 유지하여 업데이트 (새 데이터로 저장 방지)
+      setKnowledgeGraph(merged, undefined, currentDataId || undefined);
       setAddProgress('');
     } catch (err: any) {
       console.error('파일 추가 오류:', err);
