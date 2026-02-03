@@ -11,6 +11,7 @@ node_modules
 dist
 dist-server
 dist-ssr
+.next
 *.local
 
 # Environment variables (보안)

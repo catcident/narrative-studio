@@ -6,8 +6,8 @@
 
 import type { NovelKnowledgeGraph } from '../types';
 
-// IndexedDB만 사용 (서버 없음)
-const API_BASE = '';
+// Next.js API 사용
+const API_BASE = '/api';
 
 export interface SavedKnowledgeGraph {
   id: string;
