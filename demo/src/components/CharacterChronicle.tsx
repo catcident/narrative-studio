@@ -477,8 +477,50 @@ export function CharacterChronicle() {
               return null;
             })();
 
+            // 시간 경과 텍스트 생성
+            const getTimeElapsedText = () => {
+              if (!timeChange) return null;
+              if (timeChange.from && timeChange.to) {
+                return `${timeChange.from} → ${timeChange.to}`;
+              }
+              return null;
+            };
+            const timeElapsedText = getTimeElapsedText();
+
             return (
             <>
+              {/* 시간 경과 행 (장면 사이에 표시) */}
+              {timeElapsedText && sceneIndex > 0 && (
+                <>
+                  {/* 시간 경과 라벨 셀 */}
+                  <div
+                    key={`time-label-${scene.sceneId}`}
+                    className="sticky left-0 z-20 bg-amber-50 border-b border-r border-amber-200 flex items-center justify-center"
+                    style={{ padding: `${8 * zoomLevel}px ${12 * zoomLevel}px` }}
+                  >
+                    <div
+                      className="text-amber-700 font-medium flex items-center gap-1"
+                      style={{ fontSize: `${11 * zoomLevel}px` }}
+                    >
+                      <span>⏱</span>
+                      <span>{timeElapsedText}</span>
+                    </div>
+                  </div>
+                  {/* 각 캐릭터 열에 시간 경과 표시 */}
+                  {characters.map((char) => (
+                    <div
+                      key={`time-${scene.sceneId}-${char.id}`}
+                      className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
+                      style={{ padding: `${8 * zoomLevel}px` }}
+                    >
+                      <div
+                        className="w-full border-t-2 border-dashed border-amber-300"
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+
               {/* 장면 라벨 (고정) */}
               <div
                 key={`label-${scene.sceneId}`}
@@ -498,19 +540,6 @@ export function CharacterChronicle() {
                 >
                   {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
                 </div>
-                {/* 시간 경과 표시 - 이전→현재 형태 */}
-                {timeChange && sceneIndex > 0 && (
-                  <div
-                    className="text-amber-600 bg-amber-50 rounded inline-block"
-                    style={{
-                      fontSize: `${10 * zoomLevel}px`,
-                      marginTop: `${4 * zoomLevel}px`,
-                      padding: `${2 * zoomLevel}px ${6 * zoomLevel}px`
-                    }}
-                  >
-                    ⏱ {timeChange.from ? `${timeChange.from} → ${timeChange.to}` : `→ ${timeChange.to}`}
-                  </div>
-                )}
               </div>
 
               {/* 각 캐릭터의 해당 장면 셀 */}
