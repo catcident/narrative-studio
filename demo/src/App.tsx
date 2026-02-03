@@ -15,7 +15,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
-import { saveKnowledgeGraph } from './services/storage';
+import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph, mergeKnowledgeGraphs } from './services/extraction';
 import type { NovelKnowledgeGraph } from './types';
 
@@ -39,17 +39,32 @@ function App() {
   const [isAddingFile, setIsAddingFile] = useState(false);
   const [addProgress, setAddProgress] = useState('');
 
-  // 지식 그래프가 변경되면 자동 저장 (원본 텍스트 포함)
+  // 지식 그래프가 변경되면 자동 저장
   useEffect(() => {
     if (knowledgeGraph) {
       setSaveStatus('saving');
-      saveKnowledgeGraph(knowledgeGraph, originalText || undefined).then(saved => {
-        console.log('자동 저장 완료:', saved.title, 'v' + saved.version, originalText ? '(원본 텍스트 포함)' : '');
-        setSaveStatus('saved');
-      }).catch(err => {
-        console.error('자동 저장 실패:', err);
-        setSaveStatus('idle');
-      });
+
+      const saveData = async () => {
+        try {
+          // 1. 원본 텍스트가 있으면 novels 컬렉션에 먼저 저장
+          let novelId: string | undefined;
+          if (originalText) {
+            const novelSaved = await saveNovelText(knowledgeGraph.metadata.title, originalText);
+            novelId = novelSaved.id;
+            console.log('소설 텍스트 저장 완료:', novelSaved.title, `(${originalText.length}자)`);
+          }
+
+          // 2. 지식 그래프 저장 (novelId 연결)
+          const saved = await saveKnowledgeGraph(knowledgeGraph, novelId);
+          console.log('지식그래프 저장 완료:', saved.title, 'v' + saved.version);
+          setSaveStatus('saved');
+        } catch (err) {
+          console.error('자동 저장 실패:', err);
+          setSaveStatus('idle');
+        }
+      };
+
+      saveData();
 
       // 2초 후 상태 초기화
       const timer = setTimeout(() => setSaveStatus('idle'), 2000);

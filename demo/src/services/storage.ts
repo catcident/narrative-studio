@@ -295,11 +295,11 @@ export async function loadKnowledgeGraph(id: string): Promise<NovelKnowledgeGrap
 }
 
 /**
- * 지식 그래프 저장 (원본 텍스트 포함 가능)
+ * 지식 그래프 저장
  */
 export async function saveKnowledgeGraph(
   knowledgeGraph: NovelKnowledgeGraph,
-  originalText?: string,
+  novelId?: string,
   userId?: string
 ): Promise<SavedKnowledgeGraphMeta> {
   try {
@@ -308,7 +308,7 @@ export async function saveKnowledgeGraph(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         knowledgeGraph,
-        originalText: originalText || null,
+        novelId: novelId || null,
         userId: userId || null,
       }),
     });
@@ -319,6 +319,62 @@ export async function saveKnowledgeGraph(
   } catch (err) {
     console.warn('서버 저장 실패, 로컬 저장:', err);
     return saveLocal(knowledgeGraph);
+  }
+}
+
+/**
+ * 소설 원본 텍스트 저장
+ */
+export async function saveNovelText(
+  title: string,
+  text: string,
+  knowledgeGraphId?: string,
+  userId?: string
+): Promise<{ id: string; title: string }> {
+  const response = await fetch(`${API_BASE}/novels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title,
+      text,
+      knowledgeGraphId: knowledgeGraphId || null,
+      userId: userId || null,
+    }),
+  });
+
+  if (!response.ok) throw new Error('소설 저장 실패');
+  return await response.json();
+}
+
+/**
+ * 소설 원본 텍스트 불러오기
+ */
+export async function loadNovelText(id: string): Promise<{ title: string; text: string } | null> {
+  try {
+    const response = await fetch(`${API_BASE}/novels/${id}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 소설 목록 조회
+ */
+export async function getNovelList(): Promise<Array<{
+  id: string;
+  title: string;
+  textLength: number;
+  savedAt: string;
+  knowledgeGraphId?: string;
+}>> {
+  try {
+    const response = await fetch(`${API_BASE}/novels`);
+    if (!response.ok) return [];
+    return await response.json();
+  } catch {
+    return [];
   }
 }
 

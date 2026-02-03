@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 
-// 목록 조회 (userId로 필터링 가능)
+// 소설 원본 텍스트 목록 조회
 export async function GET(request: NextRequest) {
   try {
     const db = await connectMongo();
@@ -9,62 +9,47 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
 
     const query = userId ? { userId } : {};
-    const items = await db.collection('knowledgeGraphs').find(query).sort({ updatedAt: -1 }).toArray();
+    const items = await db.collection('novels').find(query).sort({ updatedAt: -1 }).toArray();
 
     return NextResponse.json(items.map(item => ({
       id: item._id.toString(),
-      title: item.title || item.data?.metadata?.title || '제목 없음',
+      title: item.title,
       savedAt: item.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: item.updatedAt?.toISOString() || new Date().toISOString(),
-      version: item.version || 1,
-      entityCount: item.entityCount || 0,
-      edgeCount: item.edgeCount || 0,
-      sceneCount: item.sceneCount || 0,
+      textLength: item.text?.length || 0,
       userId: item.userId || null,
-      novelId: item.novelId || null,
+      knowledgeGraphId: item.knowledgeGraphId || null,
     })));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 
-// 지식 그래프 저장 (novelId로 소설 텍스트 연결)
+// 소설 원본 텍스트 저장
 export async function POST(request: NextRequest) {
   try {
     const db = await connectMongo();
-    const collection = db.collection('knowledgeGraphs');
+    const collection = db.collection('novels');
     const body = await request.json();
 
-    // body 구조: { knowledgeGraph, userId?, novelId? }
-    const data = body.knowledgeGraph || body;
-    const userId = body.userId || null;
-    const novelId = body.novelId || null;
+    const { title, text, userId, knowledgeGraphId } = body;
 
-    if (!data?.metadata) {
-      return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+    if (!title || !text) {
+      return NextResponse.json({ error: 'title and text are required' }, { status: 400 });
     }
 
-    const title = data.metadata.title;
     const now = new Date();
-    const entityCount = Object.keys(data.entities || {}).length;
-    const edgeCount = Object.keys(data.hyperedges || {}).length;
-    const sceneCount = Object.keys(data.snapshots || {}).length;
 
-    // userId + title 조합으로 찾기 (사용자별 분리)
+    // userId + title 조합으로 찾기
     const query = userId ? { title, userId } : { title, userId: null };
     const existing = await collection.findOne(query);
 
     if (existing) {
-      const newVersion = (existing.version || 1) + 1;
       await collection.updateOne({ _id: existing._id }, {
         $set: {
-          data,
-          version: newVersion,
+          text,
           updatedAt: now,
-          entityCount,
-          edgeCount,
-          sceneCount,
-          novelId: novelId || existing.novelId,
+          knowledgeGraphId: knowledgeGraphId || existing.knowledgeGraphId,
         }
       });
       return NextResponse.json({
@@ -72,37 +57,27 @@ export async function POST(request: NextRequest) {
         title,
         savedAt: existing.createdAt?.toISOString(),
         updatedAt: now.toISOString(),
-        version: newVersion,
-        entityCount,
-        edgeCount,
-        sceneCount,
+        textLength: text.length,
         userId,
-        novelId: novelId || existing.novelId,
+        knowledgeGraphId: knowledgeGraphId || existing.knowledgeGraphId,
       });
     } else {
       const result = await collection.insertOne({
         title,
-        data,
-        userId,
-        novelId,
-        version: 1,
+        text,
+        userId: userId || null,
+        knowledgeGraphId: knowledgeGraphId || null,
         createdAt: now,
         updatedAt: now,
-        entityCount,
-        edgeCount,
-        sceneCount
       });
       return NextResponse.json({
         id: result.insertedId.toString(),
         title,
         savedAt: now.toISOString(),
         updatedAt: now.toISOString(),
-        version: 1,
-        entityCount,
-        edgeCount,
-        sceneCount,
+        textLength: text.length,
         userId,
-        novelId,
+        knowledgeGraphId,
       });
     }
   } catch (err) {
