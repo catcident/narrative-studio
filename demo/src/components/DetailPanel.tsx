@@ -3,6 +3,7 @@
  * 선택한 엔티티의 상세 정보 + 관계의 방향/시점 표시
  */
 
+import { useState } from 'react';
 import { X, User, MapPin, Building, Sword, Clock, Zap, Info, ArrowRight, Heart, Swords, Users, Film } from 'lucide-react';
 import { useStore, useSelectedEntity, useEntityEdges } from '../store';
 import type { EntityCategory, HyperEdge, Entity } from '../types';
@@ -106,6 +107,7 @@ export function DetailPanel() {
   const { knowledgeGraph, selectEntity, selectedSceneId } = useStore();
   const entity = useSelectedEntity();
   const allEdges = useEntityEdges(entity?.id || null);
+  const [expandedEdgeId, setExpandedEdgeId] = useState<string | null>(null);
 
   // 현재 장면 정보
   const currentScene = selectedSceneId && knowledgeGraph?.snapshots ? knowledgeGraph.snapshots[selectedSceneId] : null;
@@ -171,119 +173,152 @@ export function DetailPanel() {
     // from/to 방향 확인
     const isFrom = edge.entities[0] === entity.id;
     const perspective = isFrom ? (edge as any).fromPerspective : (edge as any).toPerspective;
+    const isExpanded = expandedEdgeId === edge.id;
 
     return (
       <div
         key={edge.id}
-        className={`p-3 rounded-lg border ${
+        className={`rounded-lg border transition-all duration-200 ${
           edge.sentiment === 'positive' ? 'bg-green-50 border-green-200' :
           edge.sentiment === 'negative' ? 'bg-red-50 border-red-200' :
           'bg-gray-50 border-gray-200'
-        }`}
+        } ${isExpanded ? 'ring-2 ring-blue-300' : ''}`}
       >
-        {/* 헤더 */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-              edge.sentiment === 'positive' ? 'bg-green-200 text-green-800' :
-              edge.sentiment === 'negative' ? 'bg-red-200 text-red-800' :
-              'bg-gray-200 text-gray-700'
-            }`}>
-              {RELATION_LABELS[edge.type] || edge.type}
-              {(edge as any).subtype && ` · ${(edge as any).subtype}`}
-            </span>
-            {(edge as any).bidirectional && (
-              <span className="text-xs text-gray-400">쌍방향</span>
-            )}
-          </div>
-          {edge.strength && (
-            <div className="flex gap-0.5">
-              {[...Array(10)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1 h-2 rounded-sm ${
-                    i < edge.strength!
-                      ? edge.sentiment === 'positive' ? 'bg-green-400' :
-                        edge.sentiment === 'negative' ? 'bg-red-400' : 'bg-gray-400'
-                      : 'bg-gray-200'
-                  }`}
-                />
+        {/* 클릭 가능한 헤더 (요약) */}
+        <button
+          onClick={() => setExpandedEdgeId(isExpanded ? null : edge.id)}
+          className="w-full p-3 text-left hover:bg-white/50 transition-colors rounded-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                edge.sentiment === 'positive' ? 'bg-green-200 text-green-800' :
+                edge.sentiment === 'negative' ? 'bg-red-200 text-red-800' :
+                'bg-gray-200 text-gray-700'
+              }`}>
+                {RELATION_LABELS[edge.type] || edge.type}
+              </span>
+              <ArrowRight className="w-3 h-3 text-gray-400" />
+              {otherEntities.map((e) => (
+                <span key={e!.id} className="text-sm font-medium text-gray-700">
+                  {e!.name}
+                </span>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* 관계 대상 */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm font-medium text-gray-700">{entity.name}</span>
-          <ArrowRight className="w-4 h-4 text-gray-400" />
-          {otherEntities.map((e) => (
-            <button
-              key={e!.id}
-              onClick={() => selectEntity(e!.id)}
-              className="text-sm font-medium px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-            >
-              {e!.name}
-            </button>
-          ))}
-        </div>
-
-        {/* 관계 설명 - 더 눈에 띄게 */}
-        {edge.statement && (
-          <div className="p-2 bg-white rounded border border-gray-100 mb-2">
-            <p className="text-sm text-gray-800 leading-relaxed">{edge.statement}</p>
-          </div>
-        )}
-
-        {/* 시점에서의 관점 */}
-        {perspective && (
-          <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700 italic">
-            💭 "{perspective}"
-          </div>
-        )}
-
-        {/* 등장 장면 정보 - 스크롤 가능한 목록 */}
-        {edge.scenes && edge.scenes.length > 0 && knowledgeGraph?.snapshots && (
-          <div className="mt-3">
-            <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
-            <div className="space-y-1.5 max-h-32 overflow-y-auto">
-              {[...edge.scenes].sort().map((sceneId) => {
-                const scene = knowledgeGraph.snapshots[sceneId];
-                const sceneIdx = Object.keys(knowledgeGraph.snapshots).sort().indexOf(sceneId) + 1;
-                if (!scene) return null;
-
-                return (
-                  <div
-                    key={sceneId}
-                    className="p-2 bg-white rounded border border-gray-100 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-blue-600">장면 {sceneIdx}</span>
-                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                        {scene.time && <span>{scene.time}</span>}
-                        {scene.location && (
-                          <span className="flex items-center gap-0.5">
-                            <MapPin className="w-2.5 h-2.5" />
-                            {scene.location}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {scene.summary && (
-                      <p className="mt-1 text-[10px] text-gray-500 line-clamp-2">{scene.summary}</p>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              {edge.strength && (
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-1 h-2 rounded-sm ${
+                        i < Math.ceil(edge.strength! / 2)
+                          ? edge.sentiment === 'positive' ? 'bg-green-400' :
+                            edge.sentiment === 'negative' ? 'bg-red-400' : 'bg-gray-400'
+                          : 'bg-gray-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+              <span className={`text-xs transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
             </div>
           </div>
-        )}
 
-        {/* 시간 정보 */}
-        {edge.timeline?.start && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
-            <Clock className="w-3 h-3" />
-            {edge.timeline.start}
+          {/* 설명 미리보기 (한 줄) */}
+          {edge.statement && !isExpanded && (
+            <p className="mt-1.5 text-xs text-gray-500 truncate">{edge.statement}</p>
+          )}
+        </button>
+
+        {/* 펼쳐진 상세 내용 */}
+        {isExpanded && (
+          <div className="px-3 pb-3 border-t border-white/50">
+            {/* 관계 설명 - 더 눈에 띄게 */}
+            {edge.statement && (
+              <div className="mt-3 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
+                <p className="text-sm text-gray-800 leading-relaxed">{edge.statement}</p>
+              </div>
+            )}
+
+            {/* 관계 대상 (클릭 가능) */}
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-500">관련:</span>
+              {otherEntities.map((e) => (
+                <button
+                  key={e!.id}
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    selectEntity(e!.id);
+                  }}
+                  className="text-sm font-medium px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  {e!.name}
+                </button>
+              ))}
+            </div>
+
+            {/* 시점에서의 관점 */}
+            {perspective && (
+              <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-blue-700 italic">
+                💭 "{perspective}"
+              </div>
+            )}
+
+            {/* 등장 장면 정보 */}
+            {edge.scenes && edge.scenes.length > 0 && knowledgeGraph?.snapshots && (
+              <div className="mt-3">
+                <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {[...edge.scenes].sort().map((sceneId) => {
+                    const scene = knowledgeGraph.snapshots[sceneId];
+                    const sceneIdx = Object.keys(knowledgeGraph.snapshots).sort().indexOf(sceneId) + 1;
+                    if (!scene) return null;
+
+                    return (
+                      <div
+                        key={sceneId}
+                        className="p-2 bg-white rounded border border-gray-100 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-blue-600">장면 {sceneIdx}</span>
+                          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                            {scene.time && <span>{scene.time}</span>}
+                            {scene.location && (
+                              <span className="flex items-center gap-0.5">
+                                <MapPin className="w-2.5 h-2.5" />
+                                {scene.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {scene.summary && (
+                          <p className="mt-1 text-[10px] text-gray-500 line-clamp-2">{scene.summary}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 시간 정보 */}
+            {edge.timeline?.start && (
+              <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
+                <Clock className="w-3 h-3" />
+                {edge.timeline.start}
+              </div>
+            )}
+
+            {/* 양방향/강도 정보 */}
+            <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
+              {(edge as any).bidirectional && (
+                <span className="px-2 py-0.5 bg-gray-100 rounded">쌍방향</span>
+              )}
+              {edge.strength && (
+                <span>강도: {edge.strength}/10</span>
+              )}
+            </div>
           </div>
         )}
       </div>
