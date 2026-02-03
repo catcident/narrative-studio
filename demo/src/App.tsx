@@ -30,7 +30,7 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
 
 function App() {
   const {
-    knowledgeGraph, viewMode, setViewMode, reset, setKnowledgeGraph, error,
+    knowledgeGraph, originalText, viewMode, setViewMode, reset, setKnowledgeGraph, error,
     selectedSceneId, selectScene,
     sceneRangeStart, sceneRangeEnd, selectSceneRange
   } = useStore();
@@ -39,12 +39,12 @@ function App() {
   const [isAddingFile, setIsAddingFile] = useState(false);
   const [addProgress, setAddProgress] = useState('');
 
-  // 지식 그래프가 변경되면 자동 저장
+  // 지식 그래프가 변경되면 자동 저장 (원본 텍스트 포함)
   useEffect(() => {
     if (knowledgeGraph) {
       setSaveStatus('saving');
-      saveKnowledgeGraph(knowledgeGraph).then(saved => {
-        console.log('자동 저장 완료:', saved.title, 'v' + saved.version);
+      saveKnowledgeGraph(knowledgeGraph, originalText || undefined).then(saved => {
+        console.log('자동 저장 완료:', saved.title, 'v' + saved.version, originalText ? '(원본 텍스트 포함)' : '');
         setSaveStatus('saved');
       }).catch(err => {
         console.error('자동 저장 실패:', err);
@@ -55,7 +55,7 @@ function App() {
       const timer = setTimeout(() => setSaveStatus('idle'), 2000);
       return () => clearTimeout(timer);
     }
-  }, [knowledgeGraph]);
+  }, [knowledgeGraph, originalText]);
 
   // 데이터 관리자에서 불러오기
   const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph) => {

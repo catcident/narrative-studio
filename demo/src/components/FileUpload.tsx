@@ -131,7 +131,8 @@ export function FileUpload() {
         setProgress(msg);
       });
 
-      setKnowledgeGraph(knowledgeGraph);
+      // 원본 텍스트와 함께 저장
+      setKnowledgeGraph(knowledgeGraph, combinedText);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {
@@ -198,7 +199,8 @@ export function FileUpload() {
         throw new Error('추출된 엔티티가 없습니다. 소설 내용을 확인해주세요.');
       }
 
-      setKnowledgeGraph(knowledgeGraph);
+      // 원본 텍스트와 함께 저장
+      setKnowledgeGraph(knowledgeGraph, text);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {

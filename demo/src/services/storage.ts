@@ -295,14 +295,22 @@ export async function loadKnowledgeGraph(id: string): Promise<NovelKnowledgeGrap
 }
 
 /**
- * 지식 그래프 저장
+ * 지식 그래프 저장 (원본 텍스트 포함 가능)
  */
-export async function saveKnowledgeGraph(knowledgeGraph: NovelKnowledgeGraph): Promise<SavedKnowledgeGraphMeta> {
+export async function saveKnowledgeGraph(
+  knowledgeGraph: NovelKnowledgeGraph,
+  originalText?: string,
+  userId?: string
+): Promise<SavedKnowledgeGraphMeta> {
   try {
     const response = await fetch(`${API_BASE}/knowledge-graphs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(knowledgeGraph),
+      body: JSON.stringify({
+        knowledgeGraph,
+        originalText: originalText || null,
+        userId: userId || null,
+      }),
     });
 
     if (!response.ok) throw new Error('API 응답 오류');

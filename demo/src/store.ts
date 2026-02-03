@@ -8,6 +8,7 @@ import type { NovelKnowledgeGraph, Entity, HyperEdge } from './types';
 interface AppState {
   // 데이터
   knowledgeGraph: NovelKnowledgeGraph | null;
+  originalText: string | null;  // 원본 소설 텍스트
   isLoading: boolean;
   error: string | null;
 
@@ -20,7 +21,7 @@ interface AppState {
   viewMode: 'graph' | 'timeline' | 'chronicle' | 'world';
 
   // 액션
-  setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph) => void;
+  setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   selectEntity: (id: string | null) => void;
@@ -33,6 +34,7 @@ interface AppState {
 
 export const useStore = create<AppState>((set) => ({
   knowledgeGraph: null,
+  originalText: null,
   isLoading: false,
   error: null,
   selectedEntityId: null,
@@ -42,7 +44,7 @@ export const useStore = create<AppState>((set) => ({
   sceneRangeEnd: null,
   viewMode: 'graph',
 
-  setKnowledgeGraph: (knowledgeGraph) => set({ knowledgeGraph, error: null }),
+  setKnowledgeGraph: (knowledgeGraph, originalText) => set({ knowledgeGraph, originalText: originalText || null, error: null }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   selectEntity: (selectedEntityId) => set({ selectedEntityId }),
@@ -52,6 +54,7 @@ export const useStore = create<AppState>((set) => ({
   setViewMode: (viewMode) => set({ viewMode }),
   reset: () => set({
     knowledgeGraph: null,
+    originalText: null,
     selectedEntityId: null,
     selectedTimePoint: null,
     selectedSceneId: null,
