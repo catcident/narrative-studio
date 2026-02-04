@@ -1166,7 +1166,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
           nodesDraggable={true}
           nodesConnectable={false}
           edgesFocusable={false}
-          panOnScroll={true}
+          panOnScroll={false}
           zoomOnScroll={true}
           style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
         >
