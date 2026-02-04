@@ -229,6 +229,14 @@ interface KnownEntity {
   aliases?: string[];
 }
 
+// 엔티티 요약 정보 (관계 포함)
+interface EntitySummary {
+  name: string;
+  category: string;
+  description: string;
+  relations: string[];  // "타입 → 상대: 설명" 형태
+}
+
 // knownEntities 크기 제한 (카테고리별로 관리)
 const MAX_KNOWN_ENTITIES = 100;  // 전체 최대
 const MAX_PER_CATEGORY = 30;     // 카테고리별 최대
@@ -255,6 +263,205 @@ function trimKnownEntities(entities: KnownEntity[]): KnownEntity[] {
   }
 
   return result.slice(-MAX_KNOWN_ENTITIES);
+}
+
+/**
+ * 지식그래프에서 엔티티 요약 목록 생성
+ * 각 노드의 이름, 카테고리, 설명, 연결된 관계들을 한 줄씩 요약
+ */
+function buildEntitySummaries(graph: NovelKnowledgeGraph): EntitySummary[] {
+  const summaries: EntitySummary[] = [];
+
+  for (const entity of Object.values(graph.entities) as any[]) {
+    // 이 엔티티와 연결된 관계들 찾기
+    const relations: string[] = [];
+    for (const edge of Object.values(graph.hyperedges) as any[]) {
+      if (!edge.entities?.includes(entity.id)) continue;
+
+      const otherId = edge.entities.find((id: string) => id !== entity.id);
+      const other = graph.entities[otherId] as any;
+      if (!other) continue;
+
+      // 관계 방향 결정 (from이 현재 엔티티인지)
+      const isFrom = edge.entities[0] === entity.id;
+      const arrow = isFrom ? '→' : '←';
+      const desc = (edge.statement || '').slice(0, 30);
+
+      relations.push(`${edge.type} ${arrow} ${other.name}: ${desc}`);
+    }
+
+    summaries.push({
+      name: entity.name,
+      category: entity.category || 'character',
+      description: (entity.description || '').slice(0, 50),
+      relations: relations.slice(0, 5),  // 관계는 최대 5개
+    });
+  }
+
+  return summaries;
+}
+
+/**
+ * 엔티티 요약을 텍스트로 변환 (LLM 선별용)
+ */
+function formatEntitySummariesForSelection(summaries: EntitySummary[]): string {
+  const categoryNames: Record<string, string> = {
+    character: '인물',
+    location: '장소',
+    item: '물건',
+    organization: '조직',
+    event: '사건',
+    concept: '개념'
+  };
+
+  return summaries.map(s => {
+    const catName = categoryNames[s.category] || s.category;
+    const header = `${s.name} (${catName})${s.description ? ' - ' + s.description : ''}`;
+    if (s.relations.length === 0) {
+      return header;
+    }
+    return header + '\n  ' + s.relations.join('\n  ');
+  }).join('\n\n');
+}
+
+// 엔티티 선별용 프롬프트
+const ENTITY_SELECTION_PROMPT = `다음 텍스트를 분석할 예정입니다. 아래 텍스트 미리보기를 읽고, 기존 엔티티 목록에서 이 텍스트와 **관련 있는 것만** 선택하세요.
+
+## 텍스트 미리보기 (앞부분 1000자)
+{{textPreview}}
+
+---
+
+## 기존 엔티티 목록
+각 엔티티의 이름, 카테고리, 설명, 연결된 관계가 표시됩니다.
+이 중에서 위 텍스트에 직접 언급되거나, 맥락상 관련 있는 엔티티만 선택하세요.
+
+{{entitySummaries}}
+
+---
+
+## 지시사항
+1. 텍스트에 직접 이름이 언급된 엔티티 선택
+2. 텍스트 내용과 관련된 엔티티 선택 (예: "집에서" → "집" 선택)
+3. 선택된 엔티티와 밀접하게 연결된 것도 고려 (소유자, 가족 등)
+4. 무관한 엔티티는 제외
+
+관련 있는 엔티티의 이름만 JSON 배열로 반환하세요.
+예: ["나", "박스", "집"]
+
+⚠️ JSON 배열만 반환. 설명 없이 이름 목록만.`;
+
+/**
+ * LLM을 사용하여 청크와 관련된 엔티티 선별
+ */
+async function selectRelevantEntities(
+  chunkText: string,
+  graph: NovelKnowledgeGraph,
+  model?: string
+): Promise<string[]> {
+  // 엔티티가 적으면 선별 없이 전체 반환
+  const entityCount = Object.keys(graph.entities).length;
+  if (entityCount <= 20) {
+    console.log(`[선별] 엔티티 ${entityCount}개 - 선별 스킵, 전체 사용`);
+    return Object.values(graph.entities).map((e: any) => e.name);
+  }
+
+  // 엔티티 요약 생성
+  const summaries = buildEntitySummaries(graph);
+  const summaryText = formatEntitySummariesForSelection(summaries);
+
+  // 텍스트 미리보기 (앞부분 1000자)
+  const textPreview = chunkText.slice(0, 1000);
+
+  const prompt = ENTITY_SELECTION_PROMPT
+    .replace('{{textPreview}}', textPreview)
+    .replace('{{entitySummaries}}', summaryText);
+
+  console.log(`[선별] 프롬프트 크기: ${prompt.length}자, 엔티티 ${entityCount}개`);
+
+  try {
+    // 빠른 모델로 선별 (gemini-flash 사용)
+    const selectionModel = 'google/gemini-2.0-flash-001';
+    const userApiKey = getApiKey();
+
+    const response = await fetchWithClientTimeout('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        apiKey: userApiKey || undefined,
+        model: selectionModel
+      }),
+    }, 30000);  // 30초 타임아웃 (빠른 작업)
+
+    if (!response.ok) {
+      console.warn('[선별] API 오류, 전체 엔티티 사용');
+      return Object.values(graph.entities).map((e: any) => e.name);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    // JSON 배열 파싱
+    let selectedNames: string[] = [];
+    try {
+      // 마크다운 코드블록 제거
+      let jsonContent = content.trim();
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.slice(7);
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.slice(3);
+      }
+      if (jsonContent.endsWith('```')) {
+        jsonContent = jsonContent.slice(0, -3);
+      }
+      jsonContent = jsonContent.trim();
+
+      selectedNames = JSON.parse(jsonContent);
+      if (!Array.isArray(selectedNames)) {
+        throw new Error('배열이 아님');
+      }
+    } catch {
+      console.warn('[선별] JSON 파싱 실패, 전체 엔티티 사용');
+      return Object.values(graph.entities).map((e: any) => e.name);
+    }
+
+    console.log(`[선별] ${entityCount}개 중 ${selectedNames.length}개 선택: ${selectedNames.slice(0, 10).join(', ')}${selectedNames.length > 10 ? '...' : ''}`);
+    return selectedNames;
+
+  } catch (error) {
+    console.warn('[선별] 오류 발생, 전체 엔티티 사용:', error);
+    return Object.values(graph.entities).map((e: any) => e.name);
+  }
+}
+
+/**
+ * 선택된 엔티티 이름으로 KnownEntity 목록 필터링
+ */
+function filterEntitiesByNames(
+  graph: NovelKnowledgeGraph,
+  selectedNames: string[]
+): KnownEntity[] {
+  const selectedSet = new Set(selectedNames.map(n => n.toLowerCase()));
+  const result: KnownEntity[] = [];
+
+  for (const entity of Object.values(graph.entities) as any[]) {
+    const nameLower = entity.name.toLowerCase();
+    const aliasMatch = (entity.aliases || []).some((a: string) =>
+      selectedSet.has(a.toLowerCase())
+    );
+
+    if (selectedSet.has(nameLower) || aliasMatch) {
+      result.push({
+        name: entity.name,
+        description: (entity.description || '').slice(0, 100),
+        category: entity.category || 'character',
+        aliases: entity.aliases || []
+      });
+    }
+  }
+
+  return result;
 }
 
 export async function extractKnowledgeGraph(
@@ -294,21 +501,11 @@ export async function extractKnowledgeGraph(
       chunks.push(text.slice(i, i + CHUNK_SIZE));
     }
 
-    // 기존 지식그래프가 있으면 모든 엔티티 정보 초기화
+    // 기존 지식그래프가 있으면 LLM 선별 방식 사용 예정
+    // knownEntities는 비워두고, 각 청크 처리 시 선별하여 전달
     if (existingGraph) {
-      Object.values(existingGraph.entities).forEach((e: any) => {
-        knownEntities.push({
-          name: e.name,
-          description: (e.description || '').slice(0, 100),
-          category: e.category || 'character',
-          aliases: e.aliases || []
-        });
-      });
-      const categoryCounts = knownEntities.reduce((acc, e) => {
-        acc[e.category] = (acc[e.category] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log(`기존 엔티티 ${knownEntities.length}개 로드됨:`, categoryCounts);
+      const entityCount = Object.keys(existingGraph.entities).length;
+      console.log(`기존 지식그래프 감지: ${entityCount}개 엔티티 (청크별 LLM 선별 사용)`);
     }
 
     console.log(`분석 시작 (모델: ${useModel})`);
@@ -329,9 +526,25 @@ export async function extractKnowledgeGraph(
     onProgress?.(msg);
 
     try {
-      const trimmedEntities = trimKnownEntities(knownEntities);
-      console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${trimmedEntities.length}개`);
-      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimmedEntities, useModel);
+      // 기존 지식그래프가 있으면 LLM으로 관련 엔티티 선별
+      let entitiesToUse: KnownEntity[] = [];
+      if (existingGraph && !resumeFrom) {
+        onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`);
+        const selectedNames = await selectRelevantEntities(chunks[i], existingGraph, useModel);
+        const selectedFromGraph = filterEntitiesByNames(existingGraph, selectedNames);
+
+        // 기존 그래프에서 선별된 것 + 이 세션에서 새로 발견된 것 병합
+        const selectedSet = new Set(selectedFromGraph.map(e => e.name.toLowerCase()));
+        const newInSession = knownEntities.filter(e => !selectedSet.has(e.name.toLowerCase()));
+        entitiesToUse = [...selectedFromGraph, ...newInSession];
+
+        console.log(`[청크 ${i + 1}] LLM 선별: ${selectedFromGraph.length}개 + 세션 ${newInSession.length}개 = ${entitiesToUse.length}개`);
+      } else {
+        entitiesToUse = trimKnownEntities(knownEntities);
+      }
+
+      console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
+      const extracted = await extractFromChunk(chunks[i], title, i + 1, entitiesToUse, useModel);
       if (extracted) {
         allExtracted.push(extracted);
 
