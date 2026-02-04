@@ -5,11 +5,12 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  chart:
+  storygraph:
     build:
       context: .
       dockerfile: Dockerfile
     env_file:
+      - .env
       - .env.local
     environment:
       - NODE_ENV=production

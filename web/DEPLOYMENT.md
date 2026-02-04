@@ -6,7 +6,7 @@
 
 - **인증**: catcident-backend OAuth 2.0 / OIDC 연동
 - **인프라**: Docker Compose + Caddy 리버스 프록시
-- **도메인**: chart.catcident.com
+- **도메인**: storygraph.catcident.com
 
 ---
 
@@ -21,7 +21,7 @@
 ### 1.2 DNS 설정
 
 ```
-chart.catcident.com → Oracle Cloud 서버 IP
+storygraph.catcident.com → Oracle Cloud 서버 IP
 ```
 
 DNS 전파에 최대 24시간이 소요될 수 있으므로 미리 설정하세요.
@@ -46,7 +46,7 @@ https://catcident.com/admin/oauth2_provider/application/
 | **Name** | Character Relationship Chart |
 | **Client type** | Public |
 | **Authorization grant type** | Authorization code |
-| **Redirect uris** | `https://chart.catcident.com/api/auth/callback/catcident` |
+| **Redirect uris** | `https://storygraph.catcident.com/api/auth/callback/catcident` |
 | **Skip authorization** | ❌ (체크 해제) |
 | **Algorithm** | RS256 |
 
@@ -86,7 +86,7 @@ OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # ==========================================
 # AUTH_SECRET 생성 방법: openssl rand -base64 32
 AUTH_SECRET=생성된_32바이트_랜덤_문자열
-AUTH_URL=https://chart.catcident.com
+AUTH_URL=https://storygraph.catcident.com
 
 # ==========================================
 # CatCident OAuth Provider
@@ -123,8 +123,8 @@ openssl rand -base64 24
 `/path/to/caddy/Caddyfile`에 아래 블록이 추가되어 있는지 확인:
 
 ```caddyfile
-chart.catcident.com {
-    reverse_proxy chart-chart-1:3000 {
+storygraph.catcident.com {
+    reverse_proxy web-storygraph-1:3000 {
         header_up Host {host}
         header_up X-Real-IP {remote}
         header_up X-Forwarded-For {remote}
@@ -189,7 +189,7 @@ docker compose logs -f
 ```
 
 정상 시작 확인:
-- `chart` 서비스: `▲ Next.js` 출력 후 `Ready in...` 메시지
+- `storygraph` 서비스: `▲ Next.js` 출력 후 `Ready in...` 메시지
 - `mongodb` 서비스: `Waiting for connections` 메시지
 
 ### 5.5 Caddy 리로드
@@ -206,7 +206,7 @@ docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 ### 6.1 헬스 체크
 
 ```bash
-curl -I https://chart.catcident.com/
+curl -I https://storygraph.catcident.com/
 ```
 
 예상 응답: `HTTP/2 200` 또는 `HTTP/2 302` (로그인 리다이렉트)
@@ -214,18 +214,18 @@ curl -I https://chart.catcident.com/
 ### 6.2 SSL 인증서 확인
 
 ```bash
-curl -vI https://chart.catcident.com/ 2>&1 | grep "SSL certificate"
+curl -vI https://storygraph.catcident.com/ 2>&1 | grep "SSL certificate"
 ```
 
 ### 6.3 로그인 테스트
 
-1. 브라우저에서 `https://chart.catcident.com/` 접속
+1. 브라우저에서 `https://storygraph.catcident.com/` 접속
 2. 로그인 페이지로 리다이렉트 확인
 3. "CatCident 계정으로 로그인" 버튼 클릭
 4. catcident.com으로 리다이렉트 확인
 5. CatCident 계정으로 로그인
 6. 동의 화면 확인 후 승인
-7. chart.catcident.com으로 복귀 확인
+7. storygraph.catcident.com으로 복귀 확인
 
 ### 6.4 기능 테스트
 
@@ -245,7 +245,7 @@ curl -vI https://chart.catcident.com/ 2>&1 | grep "SSL certificate"
 **해결**:
 1. Django Admin에서 Redirect URI 확인
 2. `AUTH_CATCIDENT_ID`가 올바른지 확인
-3. `AUTH_URL`이 `https://chart.catcident.com`인지 확인
+3. `AUTH_URL`이 `https://storygraph.catcident.com`인지 확인
 
 ### 7.2 MongoDB 연결 실패
 
@@ -260,8 +260,8 @@ curl -vI https://chart.catcident.com/ 2>&1 | grep "SSL certificate"
 **증상**: Caddy에서 502 오류
 
 **해결**:
-1. chart 컨테이너 상태 확인: `docker compose ps`
-2. chart 로그 확인: `docker compose logs chart`
+1. storygraph 컨테이너 상태 확인: `docker compose ps`
+2. storygraph 로그 확인: `docker compose logs storygraph`
 3. Caddy 네트워크 연결 확인: `docker network inspect caddy`
 
 ### 7.4 SSL 인증서 오류
@@ -269,7 +269,7 @@ curl -vI https://chart.catcident.com/ 2>&1 | grep "SSL certificate"
 **증상**: 브라우저에서 인증서 경고
 
 **해결**:
-1. DNS 전파 확인: `dig chart.catcident.com`
+1. DNS 전파 확인: `dig storygraph.catcident.com`
 2. Caddy 로그 확인: `docker compose logs caddy`
 3. 필요시 Caddy 재시작: `docker compose restart caddy`
 
@@ -280,13 +280,13 @@ curl -vI https://chart.catcident.com/ 2>&1 | grep "SSL certificate"
 ### 서비스 재시작
 
 ```bash
-docker compose restart chart
+docker compose restart storygraph
 ```
 
 ### 로그 확인
 
 ```bash
-docker compose logs -f --tail=100 chart
+docker compose logs -f --tail=100 storygraph
 ```
 
 ### 서비스 중지
@@ -335,3 +335,57 @@ docker cp $(docker compose ps -q mongodb):/data/backup ./backup_$(date +%Y%m%d)
 docker cp ./backup_YYYYMMDD $(docker compose ps -q mongodb):/data/backup
 docker compose exec mongodb mongorestore /data/backup --authenticationDatabase=admin -u chart_admin -p YOUR_PASSWORD
 ```
+
+---
+
+## 11. 개발 환경 (LAN)
+
+내부 네트워크 개발 환경용 설정입니다.
+
+### 11.1 DNS 설정
+
+```
+storygraph.catcident.lan → 개발 서버 IP
+```
+
+### 11.2 OAuth Application 등록 (개발용)
+
+Django Admin에서 별도 Application 생성 또는 기존 Application에 Redirect URI 추가:
+
+| 필드 | 값 |
+|------|-----|
+| **Redirect uris** | `https://storygraph.catcident.lan/api/auth/callback/catcident` |
+
+> 기존 프로덕션 Application에 Redirect URI를 줄바꿈으로 추가할 수 있습니다.
+
+### 11.3 환경 변수 (개발)
+
+```bash
+AUTH_URL=https://storygraph.catcident.lan
+```
+
+### 11.4 Caddy 설정 (개발)
+
+```caddyfile
+storygraph.catcident.lan {
+    reverse_proxy web-storygraph-1:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    tls internal
+
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    encode zstd gzip
+}
+```
+
+> `tls internal`은 Caddy가 자체 서명 인증서를 생성합니다. 개발 환경에서만 사용하세요.

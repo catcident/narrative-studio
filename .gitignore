@@ -4,21 +4,19 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
-*.local
 
-# Environment variables (보안 - 절대 커밋하지 말것!)
+# Environment variables (보안)
+*.local
 .env
-.env.local
-.env.*.local
-demo/.env
+# web/.env는 공개 가능한 기본값만 포함 (커밋 허용)
+!web/.env
 
 # Output files
 *.ontology.json
 
-# Test data (소설 텍스트 파일)
+# Test data
 txt/
 *.txt
-!.env.example
 
 # OS files
 .DS_Store
@@ -33,8 +31,6 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
-*.swp
-*.swo
 
 # Logs
 *.log

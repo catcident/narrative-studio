@@ -71,7 +71,7 @@ Character-Relationship-Chart/
 |------|------|
 | `AUTH_ENABLED` | `true`: 인증 활성화, `false`: 익명 모드 |
 | `AUTH_SECRET` | NextAuth.js 비밀 키 |
-| `AUTH_URL` | 앱 URL (예: `https://chart.catcident.com`) |
+| `AUTH_URL` | 앱 URL (예: `https://storygraph.catcident.com`) |
 | `AUTH_CATCIDENT_ISSUER` | CatCident OAuth issuer URL |
 | `AUTH_CATCIDENT_ID` | OAuth 클라이언트 ID |
 | `AUTH_CATCIDENT_SECRET` | OAuth 클라이언트 시크릿 |
@@ -115,7 +115,7 @@ Character-Relationship-Chart/
 ### Oracle Cloud (프로덕션)
 - Docker + Caddy 리버스 프록시
 - `AUTH_ENABLED=true` (회원 전용)
-- `chart.catcident.com` 도메인
+- `storygraph.catcident.com` 도메인
 
 ## 앱별 문서
 
