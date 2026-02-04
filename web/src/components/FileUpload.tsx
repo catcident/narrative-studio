@@ -59,6 +59,9 @@ export function FileUpload() {
   const { knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, error } = useStore();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
+  const [progressCurrent, setProgressCurrent] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -130,8 +133,11 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
-      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg, current, total, estMin) => {
         setProgress(msg);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+        if (estMin !== undefined) setEstimatedMinutes(estMin);
       }, savedProgress);
 
       // 저장하고 ID 받기
@@ -139,12 +145,12 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(null);
     } catch (err: any) {
       console.error('Resume error:', err);
       setError(err.message || '이어하기 중 오류가 발생했습니다.');
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       // 진행상황 다시 확인
       setSavedProgress(hasProgress());
     } finally {
@@ -251,8 +257,11 @@ export function FileUpload() {
       }
 
       // 첫 번째 파일명으로 extractKnowledgeGraph 호출
-      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg, current, total, estMin) => {
         setProgress(msg);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+        if (estMin !== undefined) setEstimatedMinutes(estMin);
       }, undefined, currentModel, sortedFiles[0].name);
 
       // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
@@ -282,12 +291,12 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -337,8 +346,11 @@ export function FileUpload() {
 
       // 사용자가 제목을 입력했으면 그것을 사용
       const title = bookTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total, estMin) => {
         setProgress(msg);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+        if (estMin !== undefined) setEstimatedMinutes(estMin);
       }, undefined, currentModel, file.name);  // 원본 파일명 전달
 
       // 작가 정보 추가
@@ -365,12 +377,12 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       // 진행상황 다시 확인
       setSavedProgress(hasProgress());
     } finally {
@@ -455,12 +467,12 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(null);
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -513,7 +525,7 @@ export function FileUpload() {
         setNewFileName(file.name);
         setPendingFile(file);
         setPendingFileText(text);
-        setProgress('');
+        setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
         return;
       }
 
@@ -522,7 +534,7 @@ export function FileUpload() {
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(hasProgress());
     }
   }, [knowledgeGraph, executeAddFile]);
@@ -619,8 +631,11 @@ export function FileUpload() {
       }
 
       setProgress('분석 중...');
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total, estMin) => {
         setProgress(msg);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+        if (estMin !== undefined) setEstimatedMinutes(estMin);
       }, undefined, currentModel, sourceFileName);
 
       // 작가 정보 추가
@@ -653,12 +668,12 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '처리 중 오류가 발생했습니다.');
-      setProgress('');
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedMinutes(null);
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -860,10 +875,21 @@ export function FileUpload() {
               <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
               <div>
                 <p className="text-lg font-medium text-gray-700">분석 중...</p>
-                <p className="text-sm text-blue-600 mt-1">{progress}</p>
+                {progressTotal > 0 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    청크 {progressCurrent} / {progressTotal}
+                    {estimatedMinutes !== null && estimatedMinutes > 0 && (
+                      <span className="ml-2 text-blue-600">(약 {estimatedMinutes}분 남음)</span>
+                    )}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">{progress}</p>
               </div>
               <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div className="h-full bg-blue-500 animate-pulse" style={{ width: '60%' }} />
+                <div
+                  className="h-full bg-blue-500 transition-all duration-300"
+                  style={{ width: progressTotal > 0 ? `${(progressCurrent / progressTotal) * 100}%` : '10%' }}
+                />
               </div>
             </>
           ) : (

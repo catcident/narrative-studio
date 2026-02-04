@@ -606,7 +606,7 @@ function filterKnownEntitiesByNames(
 export async function extractKnowledgeGraph(
   text: string,
   title: string,
-  onProgress?: (msg: string) => void,
+  onProgress?: (msg: string, current?: number, total?: number, estimatedMinutes?: number | null) => void,
   resumeFrom?: ExtractionProgress,
   model?: string,  // 사용할 모델 ID
   fileName?: string,  // 원본 파일명
@@ -655,12 +655,21 @@ export async function extractKnowledgeGraph(
     onProgress?.(`텍스트를 ${totalChunks}개 부분으로 분할...`);
   }
 
+  let chunkTimes: number[] = [];
+  let chunkStartTime = Date.now();
+
   for (let i = startChunk; i < chunks.length; i++) {
-    const msg = `AI 분석 중... (${i + 1}/${totalChunks})`;
+    const remaining = totalChunks - i;
+    const avgTime = chunkTimes.length > 0 ? chunkTimes.reduce((a, b) => a + b, 0) / chunkTimes.length : 0;
+    const estimatedRemaining = avgTime > 0 ? Math.ceil((remaining * avgTime) / 60000) : null;
+    const timeText = estimatedRemaining !== null ? ` (예상 ${estimatedRemaining}분 남음)` : '';
+    const msg = `청크 ${i + 1}/${totalChunks} 분석 중...${timeText}`;
     console.log(msg);
     const characterCount = knownEntities.filter(e => e.category === 'character').length;
     console.log(`[청크 ${i + 1}] 현재까지 알려진 엔티티: ${knownEntities.length}개 (인물 ${characterCount}명)`);
-    onProgress?.(msg);
+    onProgress?.(msg, i + 1, totalChunks, estimatedRemaining);
+
+    chunkStartTime = Date.now();
 
     try {
       // 축적 그래프 생성: existingGraph + 이전 청크 결과 (allExtracted)
@@ -723,6 +732,9 @@ export async function extractKnowledgeGraph(
         console.log(`[청크 ${i + 1}] 추출된 인물: ${extractedCharacters.map((e: any) => e.name).join(', ')}`);
         console.log(`[청크 ${i + 1}] 새로 발견된 엔티티: ${newEntities.join(', ') || '없음'}`);
         console.log(`[청크 ${i + 1}] 누적 엔티티 수: ${knownEntities.length}개`);
+
+        // 청크 처리 시간 측정
+        chunkTimes.push(Date.now() - chunkStartTime);
 
         // 매 청크 후 진행상황 저장 (하위 호환성을 위해 knownCharacters로 저장)
         saveProgress({
