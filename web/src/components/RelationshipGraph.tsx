@@ -1159,12 +1159,15 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
           onEdgeClick={handleEdgeClick}
           onPaneClick={handlePaneClick}
           connectionMode={ConnectionMode.Loose}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-          minZoom={0.2}
-          maxZoom={2}
+          fitView
+          fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.5 }}
+          minZoom={0.1}
+          maxZoom={3}
           nodesDraggable={true}
           nodesConnectable={false}
           edgesFocusable={false}
+          panOnScroll={true}
+          zoomOnScroll={true}
           style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
         >
           <Background color="#e5e7eb" gap={20} />
