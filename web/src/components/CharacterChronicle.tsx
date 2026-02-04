@@ -13,9 +13,8 @@ import type { HyperEdge } from '../types';
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
-// 윈도우 스크롤 설정
+// 윈도우 설정
 const WINDOW_SIZE = 15;  // 한 번에 보여줄 장면 수
-const SCROLL_THRESHOLD = 150; // 스크롤 트리거 거리 (px)
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -353,33 +352,7 @@ export function CharacterChronicle() {
     setWindowStart(newStart);
   }, [allScenes.length]);
 
-  // 스크롤 핸들러 (위/아래 끝에서 윈도우 이동)
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-
-    // 맨 아래 근처 도달
-    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
-      if (windowEnd < allScenes.length) {
-        moveWindow('down');
-      }
-    }
-    // 맨 위 근처 도달
-    if (scrollTop < SCROLL_THRESHOLD) {
-      if (windowStart > 0) {
-        moveWindow('up');
-      }
-    }
-  }, [windowStart, windowEnd, allScenes.length, moveWindow]);
-
-  // 스크롤 이벤트 등록
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  // 스크롤 자동 이동 제거 - 버튼으로만 이동
 
   // 장면 번호로 점프
   const jumpToScene = useCallback((sceneNum: number) => {
