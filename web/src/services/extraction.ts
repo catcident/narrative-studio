@@ -115,6 +115,8 @@ export interface ExtractionProgress {
   chunks: string[];
   timestamp: number;
   model?: string;  // 사용된 모델
+  originalText?: string;  // 원본 텍스트
+  fileName?: string;  // 원본 파일명
 }
 
 // localStorage 키
@@ -746,6 +748,8 @@ export async function extractKnowledgeGraph(
           chunks,
           timestamp: Date.now(),
           model: useModel,
+          originalText: resumeFrom?.originalText || text,
+          fileName: resumeFrom?.fileName || fileName,
         });
       }
     } catch (error: any) {
@@ -772,6 +776,8 @@ export async function extractKnowledgeGraph(
           chunks,
           timestamp: Date.now(),
           model: useModel,
+          originalText: resumeFrom?.originalText || text,
+          fileName: resumeFrom?.fileName || fileName,
         });
         continue; // 다음 청크로 계속
       }
@@ -786,6 +792,8 @@ export async function extractKnowledgeGraph(
         chunks,
         timestamp: Date.now(),
         model: useModel,
+        originalText: resumeFrom?.originalText || text,
+        fileName: resumeFrom?.fileName || fileName,
       });
       throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${error.message}. 이어하기로 재시도할 수 있습니다.`);
     }
@@ -802,7 +810,10 @@ export async function extractKnowledgeGraph(
   onProgress?.('관계 검증 및 보완 중...');
   const validated = inferMissingRelationships(merged);
 
-  return buildKnowledgeGraph(validated, title, useModel, fileName, text, existingGraph);
+  // 이어하기인 경우 저장된 원본 텍스트/파일명 사용
+  const finalText = resumeFrom?.originalText || text;
+  const finalFileName = resumeFrom?.fileName || fileName;
+  return buildKnowledgeGraph(validated, title, useModel, finalFileName, finalText, existingGraph);
 }
 
 // 클라이언트 측 fetch with timeout

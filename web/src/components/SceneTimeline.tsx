@@ -5,7 +5,7 @@
  */
 
 import { useRef, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, Minus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, Minus, Search, X } from 'lucide-react';
 
 interface Scene {
   sceneId: string;
@@ -51,6 +51,8 @@ export function SceneTimeline({
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [isRangeMode, setIsRangeMode] = useState(false);
   const [rangeSelecting, setRangeSelecting] = useState<'start' | 'end' | null>(null);
+  const [showJumpInput, setShowJumpInput] = useState(false);
+  const [jumpValue, setJumpValue] = useState('');
 
   const currentIndex = selectedSceneId
     ? scenes.findIndex(([id]) => id === selectedSceneId)
@@ -139,6 +141,23 @@ export function SceneTimeline({
       onSelectScene(scenes[0][0]);
     }
     setIsPlaying(!isPlaying);
+  };
+
+  // 장면으로 점프
+  const jumpToScene = (index: number) => {
+    if (index >= 0 && index < scenes.length) {
+      onSelectScene(scenes[index][0]);
+    }
+  };
+
+  // 점프 입력 처리
+  const handleJumpSubmit = () => {
+    const num = parseInt(jumpValue);
+    if (!isNaN(num) && num >= 1 && num <= scenes.length) {
+      jumpToScene(num - 1);
+      setShowJumpInput(false);
+      setJumpValue('');
+    }
   };
 
   // 범위 모드 토글
@@ -597,6 +616,56 @@ export function SceneTimeline({
                   : '0%'
               }}
             />
+          )}
+        </div>
+
+        {/* 장면 점프 슬라이더 */}
+        <div className="mt-2 mx-6 flex items-center gap-2">
+          <input
+            type="range"
+            min={0}
+            max={scenes.length - 1}
+            value={currentIndex >= 0 ? currentIndex : 0}
+            onChange={(e) => jumpToScene(parseInt(e.target.value))}
+            className="flex-1 h-1 accent-blue-500 cursor-pointer"
+          />
+          {showJumpInput ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                max={scenes.length}
+                value={jumpValue}
+                onChange={(e) => setJumpValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleJumpSubmit()}
+                placeholder={`1-${scenes.length}`}
+                className="w-16 px-2 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoFocus
+              />
+              <button
+                onClick={handleJumpSubmit}
+                className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                이동
+              </button>
+              <button
+                onClick={() => { setShowJumpInput(false); setJumpValue(''); }}
+                className="p-0.5 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowJumpInput(true)}
+              className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 rounded"
+              title="장면으로 이동"
+            >
+              <Search className="w-3 h-3" />
+              <span className="text-gray-600 font-medium">
+                {currentIndex >= 0 ? currentIndex + 1 : 1} / {scenes.length}
+              </span>
+            </button>
           )}
         </div>
       </div>
