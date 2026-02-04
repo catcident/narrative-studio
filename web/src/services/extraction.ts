@@ -141,12 +141,13 @@ export function hasProgress(): ExtractionProgress | null {
  * - 장/화/절 경계에서 우선 분할
  * - 문장 끝(. ! ? 등)에서 분할
  * - 문장 중간에서 끊기지 않도록 함
+ * - 청크 간 오버랩으로 문맥 연결 보장
  */
-function splitIntoSmartChunks(text: string, targetSize: number = 5000): string[] {
+function splitIntoSmartChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
   const chunks: string[] = [];
 
-  // 장/화/절 구분 패턴 (마크다운 헤딩, 제N장, N화, Chapter 등)
-  const chapterPattern = /(?=\n#{1,3}\s+.+\n)|(?=\n제?\d+[장화편절])|(?=\nChapter\s+\d+)|(?=\nEpisode\s+\d+)|(?=\n---+\n)/gi;
+  // 장/화/절 구분 패턴 (마크다운 헤딩, 제N장, N화, Chapter, ***, --- 등)
+  const chapterPattern = /(?=\n#{1,3}\s+.+\n)|(?=\n제?\d+[장화편절])|(?=\nChapter\s+\d+)|(?=\nEpisode\s+\d+)|(?=\n---+\n)|(?=\n\*\s*\*\s*\*\s*\n)|(?=\n\* \* \*\n)/gi;
 
   // 먼저 장/화 단위로 분할
   const sections = text.split(chapterPattern).filter(s => s.trim());
@@ -217,7 +218,9 @@ function splitIntoSmartChunks(text: string, targetSize: number = 5000): string[]
         }
 
         chunks.push(remaining.slice(0, cutPoint).trim());
-        remaining = remaining.slice(cutPoint).trim();
+        // 오버랩: cutPoint에서 overlapSize만큼 앞에서부터 시작 (문맥 연결)
+        const overlapStart = Math.max(0, cutPoint - overlapSize);
+        remaining = remaining.slice(overlapStart).trim();
       }
     }
   }
