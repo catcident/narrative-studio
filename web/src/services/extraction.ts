@@ -681,7 +681,7 @@ export async function extractKnowledgeGraph(
 
       // 2개 이상의 알려진 엔티티가 있으면 LLM 선별 사용
       if (totalKnownCount > 1) {
-        onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`);
+        onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemaining);
 
         // LLM으로 관련 엔티티 선별
         const selectedNames = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
