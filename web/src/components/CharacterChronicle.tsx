@@ -15,6 +15,7 @@ const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
 // 페이지네이션 설정
 const SCENES_PER_PAGE = 9;
+const SCENES_STEP = 5; // 페이지 이동 시 5개씩 (4개 겹침)
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -277,9 +278,9 @@ export function CharacterChronicle() {
       });
   }, [knowledgeGraph]);
 
-  // 페이지네이션 계산
-  const totalPages = Math.ceil(allScenes.length / SCENES_PER_PAGE);
-  const startIndex = currentPage * SCENES_PER_PAGE;
+  // 페이지네이션 계산 (오버랩 방식)
+  const totalPages = Math.max(1, Math.ceil((allScenes.length - SCENES_PER_PAGE) / SCENES_STEP) + 1);
+  const startIndex = currentPage * SCENES_STEP;
   const endIndex = Math.min(startIndex + SCENES_PER_PAGE, allScenes.length);
   const currentPageScenes = useMemo(() =>
     allScenes.slice(startIndex, endIndex),
@@ -350,7 +351,7 @@ export function CharacterChronicle() {
 
   // 장면 번호로 점프
   const jumpToScene = useCallback((sceneNum: number) => {
-    const targetPage = Math.floor((sceneNum - 1) / SCENES_PER_PAGE);
+    const targetPage = Math.floor((sceneNum - 1) / SCENES_STEP);
     goToPage(targetPage);
   }, [goToPage]);
 
