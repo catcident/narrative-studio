@@ -62,6 +62,7 @@ export function FileUpload() {
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -113,6 +114,18 @@ export function FileUpload() {
       .then(list => setExistingTitles(list.map(item => item.title)))
       .catch(() => setExistingTitles([]));
   }, []);
+
+  // 경과 시간 타이머
+  useEffect(() => {
+    if (!localLoading) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setElapsedSeconds(s => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localLoading]);
 
   const handleSaveApiKey = () => {
     if (apiKeyInput.trim()) {
@@ -871,27 +884,39 @@ export function FileUpload() {
 
         <div className="flex flex-col items-center gap-4 text-center">
           {localLoading ? (
-            <>
-              <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-              <div>
-                <p className="text-lg font-medium text-gray-700">분석 중...</p>
-                {progressTotal > 0 && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    청크 {progressCurrent} / {progressTotal}
-                    {estimatedMinutes !== null && estimatedMinutes > 0 && (
-                      <span className="ml-2 text-blue-600">(약 {estimatedMinutes}분 남음)</span>
+            (() => {
+              const elapsedMin = Math.floor(elapsedSeconds / 60);
+              const elapsedSec = elapsedSeconds % 60;
+              const totalEstimatedSeconds = estimatedMinutes !== null ? elapsedSeconds + estimatedMinutes * 60 : null;
+              const totalMin = totalEstimatedSeconds !== null ? Math.floor(totalEstimatedSeconds / 60) : null;
+              const totalSec = totalEstimatedSeconds !== null ? totalEstimatedSeconds % 60 : null;
+              return (
+                <>
+                  <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                  <div>
+                    <p className="text-lg font-medium text-gray-700">분석 중...</p>
+                    {progressTotal > 0 && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        청크 {progressCurrent} / {progressTotal}
+                      </p>
                     )}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">{progress}</p>
-              </div>
-              <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 transition-all duration-300"
-                  style={{ width: progressTotal > 0 ? `${(progressCurrent / progressTotal) * 100}%` : '10%' }}
-                />
-              </div>
-            </>
+                    <p className="text-sm text-blue-600 mt-1">
+                      {elapsedMin}:{elapsedSec.toString().padStart(2, '0')}
+                      {totalMin !== null && (
+                        <span className="text-gray-500"> / {totalMin}:{totalSec!.toString().padStart(2, '0')}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{progress}</p>
+                  </div>
+                  <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: progressTotal > 0 ? `${(progressCurrent / progressTotal) * 100}%` : '10%' }}
+                    />
+                  </div>
+                </>
+              );
+            })()
           ) : (
             <>
               <div className="p-4 bg-gray-100 rounded-full">
