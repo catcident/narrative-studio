@@ -14,9 +14,10 @@ const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
 // 윈도우 설정
-const WINDOW_SIZE = 15;  // 한 번에 보여줄 장면 수
-const SCROLL_THRESHOLD = 100; // 스크롤 트리거 거리 (px)
-const SCROLL_DEBOUNCE = 300; // 스크롤 디바운스 (ms)
+const VISIBLE_SIZE = 15;  // 화면에 보여줄 장면 수
+const BUFFER_SIZE = 10;   // 앞뒤 버퍼 장면 수 (프리로드)
+const TOTAL_LOAD_SIZE = VISIBLE_SIZE + BUFFER_SIZE * 2; // 총 로드 크기 (35개)
+const SCROLL_THRESHOLD = 300; // 스크롤 트리거 거리 (px)
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -179,11 +180,11 @@ export function CharacterChronicle() {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const zoomLevel = ZOOM_LEVELS[zoomIndex];
 
-  // 윈도우 스크롤 상태 (시작 인덱스)
-  const [windowStart, setWindowStart] = useState(0);
+  // 현재 "논리적" 시작 위치 (사용자가 보고 있다고 생각하는 위치)
+  const [logicalStart, setLogicalStart] = useState(0);
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
-  const isScrollingRef = useRef(false); // 스크롤 디바운스용
+  const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 줌 핸들러
@@ -281,22 +282,26 @@ export function CharacterChronicle() {
       });
   }, [knowledgeGraph]);
 
-  // 윈도우 끝 인덱스
-  const windowEnd = Math.min(windowStart + WINDOW_SIZE, allScenes.length);
+  // 실제 로드 범위 (버퍼 포함)
+  const loadStart = Math.max(0, logicalStart - BUFFER_SIZE);
+  const loadEnd = Math.min(loadStart + TOTAL_LOAD_SIZE, allScenes.length);
 
-  // 현재 윈도우의 장면들
-  const windowScenes = useMemo(() =>
-    allScenes.slice(windowStart, windowEnd),
-    [allScenes, windowStart, windowEnd]
+  // 논리적 범위 (사용자에게 표시되는 범위)
+  const logicalEnd = Math.min(logicalStart + VISIBLE_SIZE, allScenes.length);
+
+  // 로드된 장면들 (버퍼 포함)
+  const loadedScenes = useMemo(() =>
+    allScenes.slice(loadStart, loadEnd),
+    [allScenes, loadStart, loadEnd]
   );
 
-  // 윈도우 장면 ID Set
-  const windowSceneIds = useMemo(() =>
-    new Set(windowScenes.map(s => s.sceneId)),
-    [windowScenes]
+  // 로드된 장면 ID Set
+  const loadedSceneIds = useMemo(() =>
+    new Set(loadedScenes.map(s => s.sceneId)),
+    [loadedScenes]
   );
 
-  // 현재 윈도우에 등장하는 캐릭터들과 이벤트 매핑
+  // 로드된 장면에 등장하는 캐릭터들과 이벤트 매핑
   const { characterSceneEvents, visibleCharacters } = useMemo(() => {
     if (!knowledgeGraph) {
       return {
@@ -308,10 +313,10 @@ export function CharacterChronicle() {
     const map = new Map<string, Map<string, HyperEdge[]>>();
     const charIdsInWindow = new Set<string>();
 
-    // 윈도우 장면에 관련된 엣지만 처리
+    // 로드된 장면에 관련된 엣지 처리
     Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
       const edgeScenes = edge.scenes || ['unknown'];
-      const relevantScenes = edgeScenes.filter(s => windowSceneIds.has(s));
+      const relevantScenes = edgeScenes.filter(s => loadedSceneIds.has(s));
 
       if (relevantScenes.length === 0) return;
 
@@ -335,74 +340,51 @@ export function CharacterChronicle() {
       });
     });
 
-    // 현재 윈도우에 등장하는 캐릭터만
+    // 로드된 범위에 등장하는 캐릭터만
     const visible = characters.filter(c => charIdsInWindow.has(c.id));
 
     return { characterSceneEvents: map, visibleCharacters: visible };
-  }, [knowledgeGraph, characters, windowSceneIds]);
+  }, [knowledgeGraph, characters, loadedSceneIds]);
 
-  // 윈도우 이동
+  // 윈도우 이동 (버튼용)
   const moveWindow = useCallback((direction: 'up' | 'down') => {
-    if (direction === 'down' && windowEnd < allScenes.length) {
-      setWindowStart(prev => Math.min(prev + 5, allScenes.length - WINDOW_SIZE));
-    } else if (direction === 'up' && windowStart > 0) {
-      setWindowStart(prev => Math.max(prev - 5, 0));
+    if (direction === 'down' && logicalEnd < allScenes.length) {
+      setLogicalStart(prev => Math.min(prev + 5, allScenes.length - VISIBLE_SIZE));
+    } else if (direction === 'up' && logicalStart > 0) {
+      setLogicalStart(prev => Math.max(prev - 5, 0));
     }
-  }, [windowStart, windowEnd, allScenes.length]);
+  }, [logicalStart, logicalEnd, allScenes.length]);
 
   // 특정 위치로 점프
   const jumpToPosition = useCallback((position: number) => {
-    const newStart = Math.max(0, Math.min(position, allScenes.length - WINDOW_SIZE));
-    setWindowStart(newStart);
+    const newStart = Math.max(0, Math.min(position, allScenes.length - VISIBLE_SIZE));
+    setLogicalStart(newStart);
   }, [allScenes.length]);
 
-  // 스크롤 핸들러 (디바운스로 중복 방지)
+  // 스크롤 핸들러 - 버퍼 영역 진입 시 논리적 위치만 조정 (화면 점프 없음)
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current || isScrollingRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const scrollBottom = scrollHeight - scrollTop - clientHeight;
 
-    // 맨 아래 근처 도달
-    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
-      if (windowEnd < allScenes.length) {
-        isScrollingRef.current = true;
-        setWindowStart(prev => {
-          const next = Math.min(prev + 5, allScenes.length - WINDOW_SIZE);
-          return next;
-        });
-        // 스크롤 위치 중간으로 리셋
-        setTimeout(() => {
-          if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight / 3;
-          }
-          // 디바운스 해제
-          scrollTimeoutRef.current = setTimeout(() => {
-            isScrollingRef.current = false;
-          }, SCROLL_DEBOUNCE);
-        }, 50);
-      }
+    // 아래쪽 버퍼 영역 진입 - 다음 데이터 프리로드
+    if (scrollBottom < SCROLL_THRESHOLD && logicalEnd < allScenes.length) {
+      isScrollingRef.current = true;
+      setLogicalStart(prev => Math.min(prev + 5, allScenes.length - VISIBLE_SIZE));
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 200);
     }
-    // 맨 위 근처 도달
-    else if (scrollTop < SCROLL_THRESHOLD) {
-      if (windowStart > 0) {
-        isScrollingRef.current = true;
-        setWindowStart(prev => {
-          const next = Math.max(prev - 5, 0);
-          return next;
-        });
-        // 스크롤 위치 중간으로 리셋
-        setTimeout(() => {
-          if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight / 3;
-          }
-          // 디바운스 해제
-          scrollTimeoutRef.current = setTimeout(() => {
-            isScrollingRef.current = false;
-          }, SCROLL_DEBOUNCE);
-        }, 50);
-      }
+    // 위쪽 버퍼 영역 진입 - 이전 데이터 프리로드
+    else if (scrollTop < SCROLL_THRESHOLD && logicalStart > 0) {
+      isScrollingRef.current = true;
+      setLogicalStart(prev => Math.max(prev - 5, 0));
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 200);
     }
-  }, [windowStart, windowEnd, allScenes.length]);
+  }, [logicalStart, logicalEnd, allScenes.length]);
 
   // 스크롤 이벤트 등록
   useEffect(() => {
@@ -510,7 +492,7 @@ export function CharacterChronicle() {
           {/* 현재 위치 */}
           <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
             <span className="text-xs text-gray-600">
-              {windowStart + 1}-{windowEnd} / {allScenes.length}
+              {logicalStart + 1}-{logicalEnd} / {allScenes.length}
             </span>
           </div>
 
@@ -561,7 +543,7 @@ export function CharacterChronicle() {
           className="grid gap-0 origin-top-left transition-transform duration-200"
           style={{
             gridTemplateColumns: `${100 * zoomLevel}px repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
-            gridTemplateRows: `${80 * zoomLevel}px repeat(${windowScenes.length}, auto)`,
+            gridTemplateRows: `${80 * zoomLevel}px repeat(${loadedScenes.length}, auto)`,
           }}
         >
           {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
@@ -613,7 +595,7 @@ export function CharacterChronicle() {
           })}
 
           {/* 각 장면 행 */}
-          {windowScenes.map((scene, localIndex) => {
+          {loadedScenes.map((scene, localIndex) => {
             const sceneNum = parseInt(scene.sceneId.replace('S', '').replace(/^0+/, '') || '0');
             // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
             const getTimeElapsedText = () => {
@@ -626,7 +608,7 @@ export function CharacterChronicle() {
               }
 
               // 2. fallback: 이전 장면과 시간이 다르면 표시
-              const prevScene = windowScenes[localIndex - 1];
+              const prevScene = loadedScenes[localIndex - 1];
               if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
                 return `${prevScene.time} → ${scene.time}`;
               }
@@ -788,8 +770,8 @@ export function CharacterChronicle() {
           <div className="flex items-center gap-2">
             {/* 처음으로 */}
             <button
-              onClick={() => setWindowStart(0)}
-              disabled={windowStart === 0}
+              onClick={() => setLogicalStart(0)}
+              disabled={logicalStart === 0}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="처음으로"
             >
@@ -800,7 +782,7 @@ export function CharacterChronicle() {
             {/* 이전 */}
             <button
               onClick={() => moveWindow('up')}
-              disabled={windowStart === 0}
+              disabled={logicalStart === 0}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
               title="이전"
             >
@@ -815,16 +797,16 @@ export function CharacterChronicle() {
                 <div
                   className="absolute top-0 h-full bg-blue-500 rounded-full transition-all"
                   style={{
-                    left: `${(windowStart / Math.max(1, allScenes.length - WINDOW_SIZE)) * 100}%`,
-                    width: `${(WINDOW_SIZE / allScenes.length) * 100}%`,
+                    left: `${(logicalStart / Math.max(1, allScenes.length - VISIBLE_SIZE)) * 100}%`,
+                    width: `${(VISIBLE_SIZE / allScenes.length) * 100}%`,
                   }}
                 />
               </div>
               <input
                 type="range"
                 min={0}
-                max={Math.max(0, allScenes.length - WINDOW_SIZE)}
-                value={windowStart}
+                max={Math.max(0, allScenes.length - VISIBLE_SIZE)}
+                value={logicalStart}
                 onChange={(e) => jumpToPosition(parseInt(e.target.value))}
                 className="relative w-full h-4 appearance-none bg-transparent cursor-pointer z-10"
                 style={{
@@ -844,7 +826,7 @@ export function CharacterChronicle() {
             {/* 다음 */}
             <button
               onClick={() => moveWindow('down')}
-              disabled={windowEnd >= allScenes.length}
+              disabled={logicalEnd >= allScenes.length}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
               title="다음"
             >
@@ -853,8 +835,8 @@ export function CharacterChronicle() {
 
             {/* 끝으로 */}
             <button
-              onClick={() => setWindowStart(Math.max(0, allScenes.length - WINDOW_SIZE))}
-              disabled={windowEnd >= allScenes.length}
+              onClick={() => setLogicalStart(Math.max(0, allScenes.length - VISIBLE_SIZE))}
+              disabled={logicalEnd >= allScenes.length}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="끝으로"
             >
@@ -864,7 +846,7 @@ export function CharacterChronicle() {
 
             {/* 현재 위치 표시 */}
             <span className="text-xs text-gray-600 min-w-[90px] text-right font-medium">
-              {windowStart + 1}-{windowEnd} / {allScenes.length}
+              {logicalStart + 1}-{logicalEnd} / {allScenes.length}
             </span>
           </div>
         </div>
