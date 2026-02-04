@@ -1030,10 +1030,16 @@ function mergeExtractions(extractions: any[]): any {
       }
     }
 
-    // 장면 병합 (글로벌 번호 부여)
+    // 장면 병합 (글로벌 번호 부여 - 청크 내 순서 기준)
+    // LLM이 준 scene.id는 무시하고, 배열 인덱스(청크 내 순서)를 사용
     const localToGlobal: Record<number, number> = {};
-    for (const scene of (ext.scenes || [])) {
-      const globalId = globalSceneOffset + scene.id;
+    const chunkScenes = ext.scenes || [];
+
+    for (let sceneIdx = 0; sceneIdx < chunkScenes.length; sceneIdx++) {
+      const scene = chunkScenes[sceneIdx];
+      // 글로벌 ID = 이전 청크들의 장면 수 + 현재 청크 내 순서(1부터 시작)
+      const globalId = globalSceneOffset + sceneIdx + 1;
+      // LLM이 준 scene.id를 글로벌 ID로 매핑 (엔티티/관계의 scenes 참조용)
       localToGlobal[scene.id] = globalId;
 
       // 장면의 chapter를 글로벌 chapter id로 변환
@@ -1053,7 +1059,7 @@ function mergeExtractions(extractions: any[]): any {
         chunkNum: chunkIdx + 1
       });
     }
-    globalSceneOffset += (ext.scenes || []).length || 1;
+    globalSceneOffset += chunkScenes.length || 1;
 
     // 엔티티 병합
     for (const entity of (ext.entities || [])) {
