@@ -337,20 +337,34 @@ export function CharacterChronicle() {
   }, [knowledgeGraph, characters, pageSceneIds]);
 
   // 페이지 이동
+  // 특정 장면으로 스크롤 (페이지 내 인덱스 기준)
+  const scrollToSceneIndex = useCallback((localIndex: number) => {
+    // 약간의 딜레이 후 스크롤 (DOM 업데이트 대기)
+    setTimeout(() => {
+      const sceneRow = document.getElementById(`scene-row-local-${localIndex}`);
+      if (sceneRow && scrollContainerRef.current) {
+        sceneRow.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }, 50);
+  }, []);
+
   const goNextPage = useCallback(() => {
     const nextStart = pageStart + PAGE_STEP;
     if (nextStart < allScenes.length) {
       setPageStart(nextStart);
-      // 스크롤 맨 위로
-      scrollContainerRef.current?.scrollTo({ top: 0 });
+      // 겹치는 부분의 첫 장면으로 스크롤 (새 페이지의 10번째 = 이전 페이지 마지막 부분)
+      // 0~20 -> 10~30 이면, 인덱스 10(새 페이지에서는 0번째부터 시작하므로 PAGE_STEP 위치)
+      scrollToSceneIndex(PAGE_SIZE - PAGE_STEP); // 20-10 = 10번째 장면 (인덱스로는 10)
     }
-  }, [pageStart, allScenes.length]);
+  }, [pageStart, allScenes.length, scrollToSceneIndex]);
 
   const goPrevPage = useCallback(() => {
     const prevStart = pageStart - PAGE_STEP;
     setPageStart(Math.max(0, prevStart));
-    scrollContainerRef.current?.scrollTo({ top: 0 });
-  }, [pageStart]);
+    // 겹치는 부분의 첫 장면으로 스크롤 (새 페이지에서 이전에 본 첫 장면 위치)
+    // 30~50 -> 20~40 이면, 장면 30을 보여줘야 함 (새 페이지에서 인덱스 10)
+    scrollToSceneIndex(PAGE_STEP); // 10번째 장면
+  }, [pageStart, scrollToSceneIndex]);
 
   const goFirstPage = useCallback(() => {
     setPageStart(0);
@@ -619,7 +633,7 @@ export function CharacterChronicle() {
 
               {/* 장면 라벨 (고정) */}
               <div
-                id={`scene-row-${sceneNum}`}
+                id={`scene-row-local-${localIndex}`}
                 key={`label-${scene.sceneId}`}
                 className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 flex flex-col justify-center"
                 style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px` }}
