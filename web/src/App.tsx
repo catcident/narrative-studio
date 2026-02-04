@@ -406,10 +406,10 @@ function App() {
         <div className="flex-1 flex flex-col min-w-0">
           {viewMode === 'graph' && (
             <>
-              <div className="p-3">
+              <div className="p-3 flex-shrink-0">
                 <GraphLegend />
               </div>
-              <div className="flex-1 p-3 pt-0">
+              <div className="flex-1 p-3 pt-0 min-h-0">
                 <RelationshipGraph
                   entities={entitiesWithOpacity}
                   edges={edgesWithOpacity}
