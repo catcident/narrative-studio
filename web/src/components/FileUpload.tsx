@@ -62,6 +62,7 @@ export function FileUpload() {
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [estimatedTotalSeconds, setEstimatedTotalSeconds] = useState<number | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -118,6 +119,7 @@ export function FileUpload() {
   useEffect(() => {
     if (!localLoading) {
       setElapsedSeconds(0);
+      setEstimatedTotalSeconds(null);
       return;
     }
     const timer = setInterval(() => {
@@ -125,6 +127,14 @@ export function FileUpload() {
     }, 1000);
     return () => clearInterval(timer);
   }, [localLoading]);
+
+  // 청크가 바뀔 때만 전체 예상 시간 계산
+  useEffect(() => {
+    if (progressCurrent > 0 && progressTotal > 0 && elapsedSeconds > 0) {
+      const estimated = Math.round((elapsedSeconds / progressCurrent) * progressTotal);
+      setEstimatedTotalSeconds(estimated);
+    }
+  }, [progressCurrent, progressTotal]);
 
   const handleSaveApiKey = () => {
     if (apiKeyInput.trim()) {
@@ -870,12 +880,8 @@ export function FileUpload() {
             (() => {
               const elapsedMin = Math.floor(elapsedSeconds / 60);
               const elapsedSec = elapsedSeconds % 60;
-              // 전체 예상 시간 = (경과 시간 / 완료된 청크) × 전체 청크
-              const totalEstimatedSeconds = progressCurrent > 0 && progressTotal > 0
-                ? Math.round((elapsedSeconds / progressCurrent) * progressTotal)
-                : null;
-              const totalMin = totalEstimatedSeconds !== null ? Math.floor(totalEstimatedSeconds / 60) : null;
-              const totalSec = totalEstimatedSeconds !== null ? totalEstimatedSeconds % 60 : null;
+              const totalMin = estimatedTotalSeconds !== null ? Math.floor(estimatedTotalSeconds / 60) : null;
+              const totalSec = estimatedTotalSeconds !== null ? estimatedTotalSeconds % 60 : null;
               return (
                 <>
                   <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
