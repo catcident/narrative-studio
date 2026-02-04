@@ -140,13 +140,11 @@ export interface SourceFile {
 // 장면 스냅샷
 export interface SceneSnapshot {
   sceneId: string;
-  order: number;
+  order: number;  // 서술 순서 (텍스트에 나온 순서, 1화/2화/3화...)
   chapter: string | null;
   chapterNumber: number | null;
   time: string;
-  timeElapsed: string | null;  // 이전 장면으로부터 경과 시간
-  isFlashback: boolean;  // 회상/플래시백 여부
-  flashbackTime: string | null;  // 회상 시점 (예: "10년 전", "어린 시절")
+  timeMarker: string | null;  // 텍스트에 명시된 시간 표현만 (예: "10년 전", "다음 날") - 추측 금지, 없으면 null
   location: string;
   summary: string;
   events: string[];

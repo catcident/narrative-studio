@@ -38,9 +38,7 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석
     "location": "장소",
     "time": "시간(있으면)",
     "summary": "장면 요약",
-    "time_elapsed": "이전 장면으로부터 경과시간 또는 null",
-    "is_flashback": false,
-    "flashback_time": "회상인 경우 실제 시점 (예: '10년 전', '어린 시절')"
+    "time_marker": "텍스트에 명시된 시간 표현만 (예: '10년 전', '다음 날', '회귀 전') - 없으면 null"
   }],
   "entities": [{
     "name": "이름",
@@ -75,13 +73,13 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석
 **주의:** 작가마다 형식이 다릅니다. 위 패턴 중 하나라도 보이면 chapter로 인식하세요.
 
 ### 2. 장면 분할 및 시간 처리
-시간/장소 변경 시 새 장면. time_elapsed에 경과시간 기록 (예: "다음 날", "2시간 후")
+시간/장소 변경 시 새 장면.
 
-**회상/플래시백 처리:**
-- 과거 회상이 나오면 is_flashback: true
-- flashback_time에 실제 시점 기록 (예: "10년 전", "어린 시절", "첫 만남 때")
-- 회상이 끝나고 현재로 돌아오면 is_flashback: false
-- 회상 장면도 순서대로 번호 부여 (텍스트에 나온 순서 유지)
+**시간 기록 원칙 (중요!):**
+- time_marker에는 텍스트에 **명시적으로 적힌 시간 표현만** 기록
+- 예: "10년 전", "다음 날", "그로부터 일주일 후", "회귀 전", "어린 시절"
+- **추측하지 마세요!** 단서가 없으면 null로 두세요
+- 이게 과거인지 현재인지 **판단하려 하지 마세요** - 나중에 후처리로 계산합니다
 
 ### 3. 엔티티 추출 - 전수 추출 원칙
 **모든 것을 추출**합니다. 중요도는 후처리에서 계산합니다.
@@ -1896,13 +1894,11 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
     snapshots[sceneId] = {
       sceneId,
-      order: actualSceneNum,
+      order: actualSceneNum,  // 서술 순서 (텍스트에 나온 순서)
       chapter: chapterId,
       chapterNumber: actualChapterNum,
       time: s.time || `장면 ${actualSceneNum}`,
-      timeElapsed: s.time_elapsed || null,  // 이전 장면으로부터 경과 시간
-      isFlashback: s.is_flashback || false,  // 회상/플래시백 여부
-      flashbackTime: s.flashback_time || null,  // 회상 시점 (예: "10년 전")
+      timeMarker: s.time_marker || null,  // 텍스트에 명시된 시간 표현만 (추측 금지)
       location: s.location,
       summary: s.summary,
       events: s.events || [],

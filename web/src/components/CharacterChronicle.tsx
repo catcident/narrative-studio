@@ -164,7 +164,7 @@ interface SceneInfo {
   sceneLabel: string;
   time: string;
   location: string;
-  timeElapsed?: string | null;  // 이전 장면으로부터 경과 시간
+  timeMarker?: string | null;  // 텍스트에 명시된 시간 표현 (예: "10년 전", "다음 날")
 }
 
 export function CharacterChronicle() {
@@ -273,7 +273,8 @@ export function CharacterChronicle() {
           sceneLabel: `장면 ${sceneNum}`,
           time,
           location,
-          timeElapsed: snapshot?.timeElapsed || null,
+          // 새 필드(timeMarker) 우선, 기존 데이터 호환(timeElapsed)
+          timeMarker: (snapshot as any)?.timeMarker || (snapshot as any)?.timeElapsed || null,
         };
       });
   }, [knowledgeGraph]);
@@ -578,14 +579,14 @@ export function CharacterChronicle() {
           {/* 각 장면 행 */}
           {pageScenes.map((scene, localIndex) => {
             const sceneNum = parseInt(scene.sceneId.replace('S', '').replace(/^0+/, '') || '0');
-            // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
-            const getTimeElapsedText = () => {
-              // 페이지 첫 장면은 시간 경과 표시 안함
+            // 시간 마커 텍스트: 텍스트에 명시된 시간 표현만 표시
+            const getTimeMarkerText = () => {
+              // 페이지 첫 장면은 시간 마커 표시 안함 (이전 장면과의 관계가 없으므로)
               if (localIndex === 0) return null;
 
-              // 1. 지식그래프에서 추출한 timeElapsed 사용 (우선)
-              if (scene.timeElapsed) {
-                return scene.timeElapsed;
+              // 1. 텍스트에 명시된 시간 표현 사용
+              if (scene.timeMarker) {
+                return scene.timeMarker;
               }
 
               // 2. fallback: 이전 장면과 시간이 다르면 표시
@@ -595,12 +596,12 @@ export function CharacterChronicle() {
               }
               return null;
             };
-            const timeElapsedText = getTimeElapsedText();
+            const timeMarkerText = getTimeMarkerText();
 
             return (
             <>
               {/* 시간 경과 행 (장면 사이에 표시) */}
-              {timeElapsedText && localIndex > 0 && (
+              {timeMarkerText && localIndex > 0 && (
                 <>
                   {/* 시간 경과 라벨 셀 */}
                   <div
@@ -613,7 +614,7 @@ export function CharacterChronicle() {
                       style={{ fontSize: `${11 * zoomLevel}px` }}
                     >
                       <span>⏱</span>
-                      <span>{timeElapsedText}</span>
+                      <span>{timeMarkerText}</span>
                     </div>
                   </div>
                   {/* 각 캐릭터 열에 시간 경과 표시 */}
