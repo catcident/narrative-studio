@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 // 환경 변수로 인증 활성화 여부 결정
 export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
 
+// OIDC 설정 (discovery가 /oauth/ 경로에 있으므로 수동 설정)
+const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER;
+
 declare module 'next-auth' {
   interface Session {
     user: {
@@ -33,13 +36,27 @@ export const authConfig: NextAuthConfig = {
       id: 'catcident',
       name: 'CatCident',
       type: 'oidc',
-      issuer: process.env.AUTH_CATCIDENT_ISSUER,
+      // Discovery가 /oauth/ 경로에 있으므로 수동 설정
+      issuer: OIDC_ISSUER,
+      wellKnown: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/.well-known/openid-configuration` : undefined,
       clientId: process.env.AUTH_CATCIDENT_ID,
       clientSecret: process.env.AUTH_CATCIDENT_SECRET || '',
+      // 수동 엔드포인트 설정 (discovery 우회)
       authorization: {
+        url: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/authorize/` : undefined,
         params: {
           scope: 'openid profile email member',
         },
+      },
+      token: {
+        url: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/token/` : undefined,
+      },
+      // Public 클라이언트: token 요청 시 client_secret 없이 client_id만 전송
+      client: {
+        token_endpoint_auth_method: 'none',
+      },
+      userinfo: {
+        url: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/userinfo/` : undefined,
       },
       checks: ['pkce', 'state'],
       profile(profile) {
