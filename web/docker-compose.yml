@@ -6,6 +6,7 @@ x-logging: &default-logging
 
 services:
   storygraph:
+    container_name: storygraph
     build:
       context: .
       dockerfile: Dockerfile

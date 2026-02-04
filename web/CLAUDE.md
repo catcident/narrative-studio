@@ -12,8 +12,8 @@ npm run dev
 npm run build && npm run start
 
 # Docker
-docker build -t character-chart .
-docker run -p 3000:3000 --env-file .env character-chart
+docker build -t storygraph .
+docker run -p 3000:3000 --env-file .env storygraph
 ```
 
 ## 앱 구조

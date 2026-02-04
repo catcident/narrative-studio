@@ -72,8 +72,8 @@ nano .env.local
 # ==========================================
 # MongoDB 설정
 # ==========================================
-MONGO_URL=mongodb://chart_admin:YOUR_SECURE_PASSWORD@mongodb:27017/character_relationship_chart?authSource=admin
-MONGO_USER=chart_admin
+MONGO_URL=mongodb://storygraph_admin:YOUR_SECURE_PASSWORD@mongodb:27017/character_relationship_chart?authSource=admin
+MONGO_USER=storygraph_admin
 MONGO_PASSWORD=YOUR_SECURE_PASSWORD
 
 # ==========================================
@@ -124,7 +124,7 @@ openssl rand -base64 24
 
 ```caddyfile
 storygraph.catcident.com {
-    reverse_proxy web-storygraph-1:3000 {
+    reverse_proxy storygraph:3000 {
         header_up Host {host}
         header_up X-Real-IP {remote}
         header_up X-Forwarded-For {remote}
@@ -325,7 +325,7 @@ docker compose up -d
 ### MongoDB 데이터 백업
 
 ```bash
-docker compose exec mongodb mongodump --out=/data/backup --authenticationDatabase=admin -u chart_admin -p YOUR_PASSWORD
+docker compose exec mongodb mongodump --out=/data/backup --authenticationDatabase=admin -u storygraph_admin -p YOUR_PASSWORD
 docker cp $(docker compose ps -q mongodb):/data/backup ./backup_$(date +%Y%m%d)
 ```
 
@@ -333,7 +333,7 @@ docker cp $(docker compose ps -q mongodb):/data/backup ./backup_$(date +%Y%m%d)
 
 ```bash
 docker cp ./backup_YYYYMMDD $(docker compose ps -q mongodb):/data/backup
-docker compose exec mongodb mongorestore /data/backup --authenticationDatabase=admin -u chart_admin -p YOUR_PASSWORD
+docker compose exec mongodb mongorestore /data/backup --authenticationDatabase=admin -u storygraph_admin -p YOUR_PASSWORD
 ```
 
 ---
@@ -368,7 +368,7 @@ AUTH_URL=https://storygraph.catcident.lan
 
 ```caddyfile
 storygraph.catcident.lan {
-    reverse_proxy web-storygraph-1:3000 {
+    reverse_proxy storygraph:3000 {
         header_up Host {host}
         header_up X-Real-IP {remote}
         header_up X-Forwarded-For {remote}

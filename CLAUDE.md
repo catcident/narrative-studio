@@ -5,21 +5,21 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 ## 빠른 참조
 
 ```bash
-# 개발 서버 (demo 디렉토리에서)
-cd demo && npm run dev
+# 개발 서버 (web 디렉토리에서)
+cd web && npm run dev
 
 # 프로덕션 빌드
-cd demo && npm run build && npm run start
+cd web && npm run build && npm run start
 
 # Docker 빌드 및 실행
-cd demo && docker build -t character-chart . && docker run -p 3000:3000 character-chart
+cd web && docker build -t storygraph . && docker run -p 3000:3000 storygraph
 ```
 
 ## 프로젝트 구조
 
 ```
 Character-Relationship-Chart/
-├── demo/                    # Next.js 웹 애플리케이션 (메인)
+├── web/                     # Next.js 웹 애플리케이션 (메인)
 │   ├── src/
 │   │   ├── app/            # Next.js App Router
 │   │   │   ├── api/        # API 라우트
@@ -31,7 +31,7 @@ Character-Relationship-Chart/
 │   │   ├── store.ts        # Zustand 상태 관리
 │   │   └── types.ts        # TypeScript 타입 정의
 │   ├── Dockerfile          # 프로덕션 Docker 이미지
-│   └── CLAUDE.md           # 데모 앱 상세 문서
+│   └── CLAUDE.md           # 웹 앱 상세 문서
 ├── src/                     # 핵심 라이브러리 (향후 확장용)
 ├── docs/                    # 문서
 │   ├── FEATURES.md         # 기능 상세 설명
@@ -39,7 +39,7 @@ Character-Relationship-Chart/
 └── README.md
 ```
 
-> **참고**: `src/` 디렉토리는 향후 공유 라이브러리용으로 예약됨. 현재 모든 구현은 `demo/` 에 있음.
+> **참고**: `src/` 디렉토리는 향후 공유 라이브러리용으로 예약됨. 현재 모든 구현은 `web/`에 있음.
 
 ## 기술 스택
 
@@ -119,7 +119,7 @@ Character-Relationship-Chart/
 
 ## 앱별 문서
 
-- [demo/CLAUDE.md](demo/CLAUDE.md) - Next.js 데모 앱 상세
-- [demo/src/services/CLAUDE.md](demo/src/services/CLAUDE.md) - 서비스 레이어
-- [demo/src/components/CLAUDE.md](demo/src/components/CLAUDE.md) - UI 컴포넌트
-- [demo/src/lib/CLAUDE.md](demo/src/lib/CLAUDE.md) - 유틸리티 모듈
+- [web/CLAUDE.md](web/CLAUDE.md) - Next.js 웹 앱 상세
+- [web/src/services/CLAUDE.md](web/src/services/CLAUDE.md) - 서비스 레이어
+- [web/src/components/CLAUDE.md](web/src/components/CLAUDE.md) - UI 컴포넌트
+- [web/src/lib/CLAUDE.md](web/src/lib/CLAUDE.md) - 유틸리티 모듈
