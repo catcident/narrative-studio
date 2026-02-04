@@ -184,7 +184,7 @@ function App() {
 
   const entities = Object.values(knowledgeGraph.entities);
   const allEdges = Object.values(knowledgeGraph.hyperedges);
-  const scenes = Object.entries(knowledgeGraph.snapshots || {}).sort(([a], [b]) => a.localeCompare(b));
+  const scenes = Object.entries(knowledgeGraph.snapshots || {}).sort(([, a], [, b]) => (a.order || 0) - (b.order || 0));
 
   // 선택된 장면에 따른 필터링
   const currentScene = selectedSceneId ? knowledgeGraph.snapshots[selectedSceneId] : null;
