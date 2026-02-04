@@ -31,7 +31,7 @@ const USER_PROMPT = `소설 텍스트 청크 {{chunkNum}} 분석
 ## 출력 형식 (JSON)
 \`\`\`json
 {
-  "chapters": [{"id": 1, "title": "1화: 제목"}],
+  "chapters": [{"id": 1, "title": "텍스트에서 찾은 실제 장/화 제목 (예: '3화: 박스')"}],
   "scenes": [{
     "id": 1,
     "chapter": 1,
@@ -63,14 +63,17 @@ const USER_PROMPT = `소설 텍스트 청크 {{chunkNum}} 분석
 텍스트에서 장/화/에피소드 구분을 찾아 chapters에 기록합니다.
 
 **인식해야 할 패턴들:**
+- 마크다운: "# 1화: 아침", "# 3화: 박스", "## 제1장: 시작"
 - 숫자+단위: "1화", "2장", "제3장", "4편", "5절"
 - 콜론/공백 형식: "1화:", "1화 제목", "제1장: 시작"
 - 괄호 형식: "[1화]", "【제1장】", "(Episode 1)"
 - 영문: "Chapter 1", "Episode 1", "Part 1", "Ch.1", "Ep.1"
 - 특수: "프롤로그", "에필로그", "Prologue", "Epilogue", "서장", "종장", "막간"
-- 마크다운: "# 1화", "## 제목"
 
-**주의:** 작가마다 형식이 다릅니다. 위 패턴 중 하나라도 보이면 chapter로 인식하세요.
+**⚠️ 제목은 텍스트에서 그대로 복사하세요!**
+- 텍스트에 "# 3화: 박스"가 있으면 → title: "3화: 박스"
+- 텍스트에 "# 7화: 거꿀"이 있으면 → title: "7화: 거꿀"
+- 예시 형식("1화: 제목")을 그대로 쓰지 마세요. 실제 텍스트의 제목을 사용하세요!
 
 ### 2. 장면 분할 및 시간 처리
 시간/장소 변경 시 새 장면.
@@ -229,10 +232,14 @@ function splitIntoSmartChunks(text: string, targetSize: number = 5000, overlapSi
   const sections = text.split(chapterPattern).filter(s => s.trim());
 
   for (const section of sections) {
+    // 장/화 헤더로 시작하는 섹션인지 확인
+    const hasChapterHeader = /^[\s\n]*#|^[\s\n]*(?:제)?\s*\d+\s*[장화편절]|^[\s\n]*\[|\^[\s\n]*【/.test(section);
+
     if (section.length <= targetSize) {
       // 섹션이 목표 크기 이하면 그대로 추가
-      if (chunks.length > 0 && chunks[chunks.length - 1].length + section.length <= targetSize) {
-        // 이전 청크와 합칠 수 있으면 합침
+      // 단, 장/화 헤더가 있는 섹션은 합치지 않음 (장 구분 유지)
+      if (!hasChapterHeader && chunks.length > 0 && chunks[chunks.length - 1].length + section.length <= targetSize) {
+        // 이전 청크와 합칠 수 있으면 합침 (장/화 헤더 없는 경우만)
         chunks[chunks.length - 1] += section;
       } else {
         chunks.push(section);
