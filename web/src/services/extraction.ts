@@ -136,6 +136,108 @@ export function hasProgress(): ExtractionProgress | null {
   return loadProgress();
 }
 
+/**
+ * 스마트 청크 분할
+ * - 장/화/절 경계에서 우선 분할
+ * - 문장 끝(. ! ? 등)에서 분할
+ * - 문장 중간에서 끊기지 않도록 함
+ */
+function splitIntoSmartChunks(text: string, targetSize: number = 5000): string[] {
+  const chunks: string[] = [];
+
+  // 장/화/절 구분 패턴 (마크다운 헤딩, 제N장, N화, Chapter 등)
+  const chapterPattern = /(?=\n#{1,3}\s+.+\n)|(?=\n제?\d+[장화편절])|(?=\nChapter\s+\d+)|(?=\nEpisode\s+\d+)|(?=\n---+\n)/gi;
+
+  // 먼저 장/화 단위로 분할
+  const sections = text.split(chapterPattern).filter(s => s.trim());
+
+  for (const section of sections) {
+    if (section.length <= targetSize) {
+      // 섹션이 목표 크기 이하면 그대로 추가
+      if (chunks.length > 0 && chunks[chunks.length - 1].length + section.length <= targetSize) {
+        // 이전 청크와 합칠 수 있으면 합침
+        chunks[chunks.length - 1] += section;
+      } else {
+        chunks.push(section);
+      }
+    } else {
+      // 섹션이 너무 크면 문장 단위로 분할
+      let remaining = section;
+
+      while (remaining.length > 0) {
+        if (remaining.length <= targetSize) {
+          if (chunks.length > 0 && chunks[chunks.length - 1].length + remaining.length <= targetSize) {
+            chunks[chunks.length - 1] += remaining;
+          } else {
+            chunks.push(remaining);
+          }
+          break;
+        }
+
+        // targetSize 근처에서 문장 끝 찾기
+        let cutPoint = targetSize;
+
+        // 문장 끝 패턴: 마침표, 물음표, 느낌표 + 공백/줄바꿈
+        // 또는 줄바꿈이 두 번 연속 (단락 구분)
+        const searchStart = Math.max(0, targetSize - 500); // 500자 여유 범위
+        const searchEnd = Math.min(remaining.length, targetSize + 200);
+        const searchRange = remaining.slice(searchStart, searchEnd);
+
+        // 문장 끝 패턴들
+        const sentenceEnds = [
+          /[.!?]\s+/g,      // 마침표/물음표/느낌표 + 공백
+          /[.!?]\n/g,       // 마침표/물음표/느낌표 + 줄바꿈
+          /\n\n/g,          // 빈 줄 (단락 구분)
+          /[.!?]$/g,        // 마침표/물음표/느낌표 (검색 범위 끝)
+        ];
+
+        let bestCut = -1;
+        for (const pattern of sentenceEnds) {
+          let match;
+          while ((match = pattern.exec(searchRange)) !== null) {
+            const absolutePos = searchStart + match.index + match[0].length;
+            // targetSize에 가장 가까운 위치 선택
+            if (absolutePos <= targetSize + 200) {
+              bestCut = absolutePos;
+            }
+          }
+          if (bestCut > searchStart) break; // 적절한 위치를 찾았으면 중단
+        }
+
+        if (bestCut > searchStart) {
+          cutPoint = bestCut;
+        } else {
+          // 문장 끝을 못 찾으면 공백에서 자르기
+          const lastSpace = remaining.lastIndexOf(' ', targetSize);
+          const lastNewline = remaining.lastIndexOf('\n', targetSize);
+          cutPoint = Math.max(lastSpace, lastNewline);
+          if (cutPoint <= searchStart) {
+            cutPoint = targetSize; // 공백도 없으면 그냥 자르기
+          }
+        }
+
+        chunks.push(remaining.slice(0, cutPoint).trim());
+        remaining = remaining.slice(cutPoint).trim();
+      }
+    }
+  }
+
+  // 빈 청크 제거 및 너무 작은 청크 병합
+  const result: string[] = [];
+  for (const chunk of chunks) {
+    if (!chunk.trim()) continue;
+
+    if (result.length > 0 && chunk.length < 500 && result[result.length - 1].length + chunk.length <= targetSize * 1.2) {
+      // 500자 미만의 작은 청크는 이전 청크와 병합 (20% 초과 허용)
+      result[result.length - 1] += '\n' + chunk;
+    } else {
+      result.push(chunk);
+    }
+  }
+
+  return result;
+}
+
 // 엔티티 정보 타입 (모든 카테고리 지원)
 interface KnownEntity {
   name: string;
@@ -486,7 +588,7 @@ export async function extractKnowledgeGraph(
   fileName?: string,  // 원본 파일명
   existingGraph?: NovelKnowledgeGraph  // 기존 지식그래프 (파일 추가 시)
 ): Promise<NovelKnowledgeGraph> {
-  // 텍스트를 청크로 분할 (5000자씩)
+  // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
   let allExtracted: any[] = [];
@@ -509,10 +611,8 @@ export async function extractKnowledgeGraph(
     console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
   } else {
-    // 새로 시작
-    for (let i = 0; i < text.length; i += CHUNK_SIZE) {
-      chunks.push(text.slice(i, i + CHUNK_SIZE));
-    }
+    // 새로 시작: 스마트 청크 분할 사용
+    chunks = splitIntoSmartChunks(text, CHUNK_SIZE);
 
     // 기존 지식그래프가 있으면 LLM 선별 방식 사용 예정
     // knownEntities는 비워두고, 각 청크 처리 시 선별하여 전달
