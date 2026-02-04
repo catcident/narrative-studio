@@ -15,6 +15,8 @@ const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
 // 윈도우 설정
 const WINDOW_SIZE = 15;  // 한 번에 보여줄 장면 수
+const SCROLL_THRESHOLD = 100; // 스크롤 트리거 거리 (px)
+const SCROLL_DEBOUNCE = 300; // 스크롤 디바운스 (ms)
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -181,6 +183,8 @@ export function CharacterChronicle() {
   const [windowStart, setWindowStart] = useState(0);
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
+  const isScrollingRef = useRef(false); // 스크롤 디바운스용
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 줌 핸들러
   const handleZoomIn = () => {
@@ -352,7 +356,67 @@ export function CharacterChronicle() {
     setWindowStart(newStart);
   }, [allScenes.length]);
 
-  // 스크롤 자동 이동 제거 - 버튼으로만 이동
+  // 스크롤 핸들러 (디바운스로 중복 방지)
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || isScrollingRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+
+    // 맨 아래 근처 도달
+    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
+      if (windowEnd < allScenes.length) {
+        isScrollingRef.current = true;
+        setWindowStart(prev => {
+          const next = Math.min(prev + 5, allScenes.length - WINDOW_SIZE);
+          return next;
+        });
+        // 스크롤 위치 중간으로 리셋
+        setTimeout(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight / 3;
+          }
+          // 디바운스 해제
+          scrollTimeoutRef.current = setTimeout(() => {
+            isScrollingRef.current = false;
+          }, SCROLL_DEBOUNCE);
+        }, 50);
+      }
+    }
+    // 맨 위 근처 도달
+    else if (scrollTop < SCROLL_THRESHOLD) {
+      if (windowStart > 0) {
+        isScrollingRef.current = true;
+        setWindowStart(prev => {
+          const next = Math.max(prev - 5, 0);
+          return next;
+        });
+        // 스크롤 위치 중간으로 리셋
+        setTimeout(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight / 3;
+          }
+          // 디바운스 해제
+          scrollTimeoutRef.current = setTimeout(() => {
+            isScrollingRef.current = false;
+          }, SCROLL_DEBOUNCE);
+        }, 50);
+      }
+    }
+  }, [windowStart, windowEnd, allScenes.length]);
+
+  // 스크롤 이벤트 등록
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [handleScroll]);
 
   // 장면 번호로 점프
   const jumpToScene = useCallback((sceneNum: number) => {
