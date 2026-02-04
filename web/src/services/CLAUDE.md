@@ -56,11 +56,8 @@
 ### 주요 함수
 
 ```typescript
-// 메인 추출 함수
-extractKnowledgeGraph(text, title, onProgress?, resumeFrom?, model?, fileName?)
-
-// 두 지식 그래프 병합 (파일 추가 분석 시)
-mergeKnowledgeGraphs(existing, newData)
+// 메인 추출 함수 (파일 추가 시 existingGraph 전달하여 이어서 분석)
+extractKnowledgeGraph(text, title, onProgress?, resumeFrom?, model?, fileName?, existingGraph?)
 
 // 진행상황 관리
 saveProgress(), loadProgress(), clearProgress(), hasProgress()
@@ -68,6 +65,14 @@ saveProgress(), loadProgress(), clearProgress(), hasProgress()
 // API 키 관리
 setApiKey(), hasApiKey(), getApiKey()
 ```
+
+### 파일 추가 분석
+
+기존 지식그래프가 있을 때 파일을 추가하면:
+1. 기존 entities에서 `knownCharacters` 초기화
+2. 새 파일 텍스트만 청크로 분석 (기존 인물 정보 전달)
+3. 엔티티, 관계, 장면, 챕터 번호를 기존 것에 이어서 부여
+4. 결과를 하나의 지식그래프로 반환
 
 ---
 

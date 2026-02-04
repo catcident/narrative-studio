@@ -5,7 +5,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
-import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
+import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
@@ -434,26 +434,27 @@ export function FileUpload() {
     setError(null);
 
     try {
-      const title = finalFileName.replace(/\.[^/.]+$/, '');
       setProgress('추가 분석 중...');
-      // 추가 분석은 기존 문서의 모델을 사용 (lockedModel)
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
-        setProgress(`추가: ${msg}`);
-      }, undefined, currentModel, finalFileName);
+      // 추가 분석: 기존 지식그래프를 전달하여 이어서 분석
+      const updatedKnowledgeGraph = await extractKnowledgeGraph(
+        text,
+        knowledgeGraph.metadata.title,  // 기존 제목 유지
+        (msg) => setProgress(`추가: ${msg}`),
+        undefined,
+        currentModel,
+        finalFileName,
+        knowledgeGraph  // 기존 지식그래프 전달
+      );
 
-      // 기존 결과와 병합
-      setProgress('기존 결과와 병합 중...');
-      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
-
-      console.log('병합 완료:', merged.metadata.title);
-      console.log('총 엔티티:', Object.keys(merged.entities).length);
-      console.log('총 관계:', Object.keys(merged.hyperedges).length);
+      console.log('분석 완료:', updatedKnowledgeGraph.metadata.title);
+      console.log('총 엔티티:', Object.keys(updatedKnowledgeGraph.entities).length);
+      console.log('총 관계:', Object.keys(updatedKnowledgeGraph.hyperedges).length);
 
       // 기존 ID를 사용하여 저장 (버전 업데이트)
       setProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
+      const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
-      setKnowledgeGraph(merged, undefined, saved.id);
+      setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       setProgress('');
       setSavedProgress(null);
     } catch (err: any) {

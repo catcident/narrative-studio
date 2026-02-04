@@ -240,7 +240,8 @@ export async function extractKnowledgeGraph(
   onProgress?: (msg: string) => void,
   resumeFrom?: ExtractionProgress,
   model?: string,  // 사용할 모델 ID
-  fileName?: string  // 원본 파일명
+  fileName?: string,  // 원본 파일명
+  existingGraph?: NovelKnowledgeGraph  // 기존 지식그래프 (파일 추가 시)
 ): Promise<NovelKnowledgeGraph> {
   // 텍스트를 청크로 분할 (5000자씩)
   const CHUNK_SIZE = 5000;
@@ -265,6 +266,21 @@ export async function extractKnowledgeGraph(
     for (let i = 0; i < text.length; i += CHUNK_SIZE) {
       chunks.push(text.slice(i, i + CHUNK_SIZE));
     }
+
+    // 기존 지식그래프가 있으면 인물 정보 초기화
+    if (existingGraph) {
+      Object.values(existingGraph.entities).forEach((e: any) => {
+        if (e.category === 'character') {
+          knownCharacters.push({
+            name: e.name,
+            description: (e.description || '').slice(0, 100),
+            aliases: e.aliases || []
+          });
+        }
+      });
+      console.log(`기존 인물 ${knownCharacters.length}명 로드됨`);
+    }
+
     console.log(`분석 시작 (모델: ${useModel})`);
   }
 
@@ -386,7 +402,7 @@ export async function extractKnowledgeGraph(
   onProgress?.('관계 검증 및 보완 중...');
   const validated = inferMissingRelationships(merged);
 
-  return buildKnowledgeGraph(validated, title, useModel, fileName, text);
+  return buildKnowledgeGraph(validated, title, useModel, fileName, text, existingGraph);
 }
 
 // 클라이언트 측 fetch with timeout
@@ -972,17 +988,54 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
   );
 }
 
-function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileName?: string, originalText?: string): NovelKnowledgeGraph {
+function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileName?: string, originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
-  const entities: Record<string, any> = {};
-  const hyperedges: Record<string, any> = {};
+
+  // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
+  const entities: Record<string, any> = existingGraph ? { ...existingGraph.entities } : {};
+  const hyperedges: Record<string, any> = existingGraph ? { ...existingGraph.hyperedges } : {};
   const nameToId: Record<string, string> = {};
 
+  // 기존 엔티티의 이름 매핑 초기화
+  Object.values(entities).forEach((e: any) => {
+    nameToId[e.name] = e.id;
+    nameToId[e.name.toLowerCase()] = e.id;
+    nameToId[normalizeName(e.name)] = e.id;
+    (e.aliases || []).forEach((alias: string) => {
+      nameToId[alias] = e.id;
+      nameToId[alias.toLowerCase()] = e.id;
+      nameToId[normalizeName(alias)] = e.id;
+    });
+  });
+
+  // 기존 카운터 (기존 데이터가 있으면 이어서)
+  let entityCounter = Object.keys(entities).length;
+  let edgeCounter = Object.keys(hyperedges).length;
+  let chapterCounter = existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0;
+  let sceneCounter = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
+
   // 엔티티 등록
-  (extracted.entities || []).forEach((e: any, i: number) => {
-    const id = `E${String(i + 1).padStart(4, '0')}`;
-    // scenes를 숫자에서 문자열 ID로 변환
-    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
+  (extracted.entities || []).forEach((e: any) => {
+    // 기존에 같은 이름의 엔티티가 있는지 확인
+    const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
+
+    if (existingId && entities[existingId]) {
+      // 기존 엔티티에 정보 추가
+      const existing = entities[existingId];
+      // 별칭 병합
+      existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
+      // 설명 추가
+      if (e.description && !existing.description?.includes(e.description)) {
+        existing.description = (existing.description + ' ' + e.description).slice(0, 500);
+      }
+      // 장면 병합 (새 장면 번호는 나중에 처리)
+      return; // 새 엔티티 생성 안함
+    }
+
+    entityCounter++;
+    const id = `E${String(entityCounter).padStart(4, '0')}`;
+    // scenes를 숫자에서 문자열 ID로 변환 (기존 장면 수에 더해서)
+    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s + sceneCounter).padStart(4, '0')}`);
     entities[id] = {
       id,
       name: e.name,
@@ -1060,7 +1113,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   };
 
   // 관계 등록
-  (extracted.relationships || []).forEach((r: any, i: number) => {
+  (extracted.relationships || []).forEach((r: any) => {
     // 유연한 이름 매칭
     const fromId = findEntityId(r.from);
     const toId = findEntityId(r.to);
@@ -1075,9 +1128,24 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       return;
     }
 
-    const id = `H${String(i + 1).padStart(4, '0')}`;
-    // scenes를 숫자에서 문자열 ID로 변환
-    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
+    // 기존에 같은 관계가 있는지 확인
+    const existingEdge = Object.values(hyperedges).find((e: any) =>
+      e.type === r.type &&
+      e.entities.includes(fromId) &&
+      e.entities.includes(toId)
+    );
+
+    // scenes를 숫자에서 문자열 ID로 변환 (기존 장면 수에 더해서)
+    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s + sceneCounter).padStart(4, '0')}`);
+
+    if (existingEdge) {
+      // 기존 관계에 장면만 추가
+      existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...sceneIds])];
+      return;
+    }
+
+    edgeCounter++;
+    const id = `H${String(edgeCounter).padStart(4, '0')}`;
     hyperedges[id] = {
       id,
       type: r.type,
@@ -1100,7 +1168,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   });
 
   // description에서 다른 엔티티 언급을 찾아 자동 관계 생성
-  let autoRelationIndex = Object.keys(hyperedges).length;
+  // edgeCounter는 이미 위에서 관계 등록 시 업데이트됨
   Object.values(entities).forEach((entity: any) => {
     if (!entity.description) return;
 
@@ -1126,8 +1194,8 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       if (existingEdge) return; // 이미 관계 있음
 
       // 새 관계 생성
-      autoRelationIndex++;
-      const id = `H${String(autoRelationIndex).padStart(4, '0')}`;
+      edgeCounter++;
+      const id = `H${String(edgeCounter).padStart(4, '0')}`;
 
       // 관계 타입 추정
       let relationType = 'related';
@@ -1196,8 +1264,8 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       if (existingEdge) continue; // 이미 관계 있음
 
       // 새 관계 생성
-      autoRelationIndex++;
-      const id = `H${String(autoRelationIndex).padStart(4, '0')}`;
+      edgeCounter++;
+      const id = `H${String(edgeCounter).padStart(4, '0')}`;
 
       hyperedges[id] = {
         id,
@@ -1240,8 +1308,8 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       if (existingEdge) return; // 이미 관계 있음
 
       // 새 관계 생성
-      autoRelationIndex++;
-      const id = `H${String(autoRelationIndex).padStart(4, '0')}`;
+      edgeCounter++;
+      const id = `H${String(edgeCounter).padStart(4, '0')}`;
 
       // 관계 타입 추정
       let relationType = '관련';
@@ -1281,47 +1349,57 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     edges: [],
   })).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
-  // 장(Chapter) 정보 처리
-  const chapters: Record<string, any> = {};
+  // 장(Chapter) 정보 처리 - 기존 그래프가 있으면 포함
+  const chapters: Record<string, any> = existingGraph ? { ...existingGraph.chapters } : {};
+
+  // 새 장 정보 추가 (번호 이어서)
   (extracted.chapters || []).forEach((c: any) => {
-    const chapterId = `C${String(c.id).padStart(4, '0')}`;
+    chapterCounter++;
+    const chapterId = `C${String(chapterCounter).padStart(4, '0')}`;
     chapters[chapterId] = {
       id: chapterId,
-      number: c.id,
-      title: c.title || `제${c.id}장`,
+      number: chapterCounter,
+      title: c.title || `제${chapterCounter}장`,
       summary: c.summary || '',
     };
   });
 
+  // 새 장 정보를 위한 번호 매핑 (extracted의 장 번호 -> 실제 장 번호)
+  let newChapterNumber = chapterCounter;
+
   // 장이 없고 파일명이 있으면 파일명에서 장 정보 추출
-  if (Object.keys(chapters).length === 0 && fileName) {
-    // 파일명에서 숫자 추출 (01화, 1화, 제1장, Chapter 1 등)
-    const chapterMatch = fileName.match(/(\d+)\s*[화장편회]|[제]?(\d+)\s*[화장편회]|chapter\s*(\d+)|ep\.?\s*(\d+)/i);
-    const chapterNum = chapterMatch
-      ? parseInt(chapterMatch[1] || chapterMatch[2] || chapterMatch[3] || chapterMatch[4], 10)
-      : 1;
+  if ((extracted.chapters || []).length === 0 && fileName) {
+    // 새 장 생성 (기존 장 개수 + 1)
+    chapterCounter++;
+    newChapterNumber = chapterCounter;
 
     // 파일명에서 확장자 제거한 것을 제목으로 사용
     const chapterTitle = fileName.replace(/\.[^/.]+$/, '');
-    const chapterId = `C${String(chapterNum).padStart(4, '0')}`;
+    const chapterId = `C${String(chapterCounter).padStart(4, '0')}`;
     chapters[chapterId] = {
       id: chapterId,
-      number: chapterNum,
+      number: chapterCounter,
       title: chapterTitle,
       summary: '',
     };
 
     // 모든 장면에 이 장 번호 할당
     (extracted.scenes || []).forEach((s: any) => {
-      s.chapter = chapterNum;
+      s.chapter = chapterCounter;
     });
   }
 
-  // 장면(Scene)을 snapshots로
-  const snapshots: Record<string, any> = {};
+  // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
+  const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
+
   (extracted.scenes || []).forEach((s: any) => {
-    const sceneId = `S${String(s.id).padStart(4, '0')}`;
-    const chapterId = s.chapter ? `C${String(s.chapter).padStart(4, '0')}` : null;
+    // 장면 번호를 기존 것에 이어서
+    const actualSceneNum = s.id + sceneCounter;
+    const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
+
+    // 장 번호도 기존 것에 이어서
+    const actualChapterNum = s.chapter ? (s.chapter + (existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0)) : newChapterNumber;
+    const chapterId = actualChapterNum ? `C${String(actualChapterNum).padStart(4, '0')}` : null;
 
     // 이 장면에 등장하는 엔티티들 (scenes 배열에 sceneId가 포함된 것)
     const entitiesInScene = Object.values(entities)
@@ -1335,10 +1413,10 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
     snapshots[sceneId] = {
       sceneId,
-      order: s.id,
+      order: actualSceneNum,
       chapter: chapterId,
-      chapterNumber: s.chapter || null,
-      time: s.time || `장면 ${s.id}`,
+      chapterNumber: actualChapterNum,
+      time: s.time || `장면 ${actualSceneNum}`,
       timeElapsed: s.time_elapsed || null,  // 이전 장면으로부터 경과 시간
       location: s.location,
       summary: s.summary,
@@ -1361,28 +1439,35 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
   });
 
-  // 소스 파일 정보 생성
-  const sourceFile = (fileName && originalText) ? {
-    id: `F${String(1).padStart(4, '0')}`,
+  // 소스 파일 정보 생성 - 기존 파일 목록에 추가
+  const existingSourceFiles = existingGraph?.metadata?.sourceFiles || [];
+  const newSourceFile = (fileName && originalText) ? {
+    id: `F${String(existingSourceFiles.length + 1).padStart(4, '0')}`,
     fileName,
     uploadedAt: now,
     text: originalText,
     charCount: originalText.length,
   } : null;
+  const sourceFiles = newSourceFile ? [...existingSourceFiles, newSourceFile] : existingSourceFiles;
+
+  // 기존 타임라인과 병합
+  const mergedTimeline = existingGraph ? [...(existingGraph.timeline || []), ...timeline] : timeline;
 
   return {
     metadata: {
-      title,
-      createdAt: now,
+      // 기존 메타데이터 유지 (제목, 작가 등)
+      ...(existingGraph?.metadata || {}),
+      title: existingGraph?.metadata?.title || title,  // 기존 제목 유지
+      createdAt: existingGraph?.metadata?.createdAt || now,
       updatedAt: now,
       version: '1.0.0',
-      model,  // 분석에 사용된 모델 저장
-      sourceFiles: sourceFile ? [sourceFile] : [],
+      model: existingGraph?.metadata?.model || model,  // 기존 모델 유지
+      sourceFiles,
     },
     entities,
     hyperedges,
     chapters,
-    timeline,
+    timeline: mergedTimeline,
     snapshots,
     stats: {
       totalEntities: Object.keys(entities).length,
@@ -1394,210 +1479,3 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   };
 }
 
-/**
- * 두 지식 그래프를 병합 (기존 결과에 새 분석 결과 추가)
- */
-export function mergeKnowledgeGraphs(
-  existing: NovelKnowledgeGraph,
-  newData: NovelKnowledgeGraph
-): NovelKnowledgeGraph {
-  // 엔티티 이름 -> ID 매핑 (기존)
-  const existingNameToId: Record<string, string> = {};
-  Object.values(existing.entities).forEach((e: any) => {
-    existingNameToId[e.name] = e.id;
-    (e.aliases || []).forEach((alias: string) => {
-      existingNameToId[alias] = e.id;
-    });
-  });
-
-  // 새 엔티티 ID 매핑 (중복 방지)
-  const newIdMapping: Record<string, string> = {};
-  const mergedEntities = { ...existing.entities };
-
-  // 장면 ID 매핑 (나중에 채워짐)
-  const sceneIdMapping: Record<string, string> = {};
-
-  // 먼저 장면 ID 매핑 생성
-  let snapshotCounterForMapping = Object.keys(existing.snapshots || {}).length;
-  Object.keys(newData.snapshots || {}).forEach((oldId) => {
-    snapshotCounterForMapping++;
-    sceneIdMapping[oldId] = `S${String(snapshotCounterForMapping).padStart(4, '0')}`;
-  });
-
-  let entityCounter = Object.keys(existing.entities).length;
-  Object.values(newData.entities).forEach((e: any) => {
-    // 이름이나 별칭으로 기존 엔티티 찾기
-    const existingId = existingNameToId[e.name] ||
-      (e.aliases || []).find((a: string) => existingNameToId[a]);
-
-    // 장면 ID 변환
-    const mappedScenes = (e.scenes || []).map((s: string) => sceneIdMapping[s] || s);
-
-    if (existingId) {
-      // 기존 엔티티에 정보 추가
-      newIdMapping[e.id] = existingNameToId[e.name] || existingId;
-      const existingEntity = mergedEntities[newIdMapping[e.id]];
-      if (existingEntity) {
-        // 별칭 병합
-        existingEntity.aliases = [...new Set([...(existingEntity.aliases || []), ...(e.aliases || [])])];
-        // 설명 추가 (중복 아닐 때만)
-        if (e.description && !existingEntity.description?.includes(e.description)) {
-          existingEntity.description = (existingEntity.description + ' ' + e.description).slice(0, 500);
-        }
-        // 장면 병합
-        existingEntity.scenes = [...new Set([...(existingEntity.scenes || []), ...mappedScenes])];
-      }
-    } else {
-      // 새 엔티티 추가
-      entityCounter++;
-      const newId = `E${String(entityCounter).padStart(4, '0')}`;
-      newIdMapping[e.id] = newId;
-      existingNameToId[e.name] = newId;
-      mergedEntities[newId] = { ...e, id: newId, scenes: mappedScenes };
-    }
-  });
-
-  // 관계 병합
-  const mergedEdges = { ...existing.hyperedges };
-  let edgeCounter = Object.keys(existing.hyperedges).length;
-
-  // 엣지 ID 매핑 (activeEdges 변환용)
-  const edgeIdMapping: Record<string, string> = {};
-
-  Object.values(newData.hyperedges).forEach((edge: any) => {
-    // 엔티티 ID 변환
-    const mappedEntities = edge.entities.map((id: string) => newIdMapping[id] || id);
-    // 장면 ID 변환
-    const mappedScenes = (edge.scenes || []).map((s: string) => sceneIdMapping[s] || s);
-
-    // 동일한 관계가 이미 있는지 확인
-    const isDuplicate = Object.values(mergedEdges).some((e: any) =>
-      e.type === edge.type &&
-      e.entities.length === mappedEntities.length &&
-      e.entities.every((id: string) => mappedEntities.includes(id))
-    );
-
-    if (!isDuplicate) {
-      edgeCounter++;
-      const newId = `H${String(edgeCounter).padStart(4, '0')}`;
-      edgeIdMapping[edge.id] = newId;
-      mergedEdges[newId] = { ...edge, id: newId, entities: mappedEntities, scenes: mappedScenes };
-    } else {
-      // 중복이어도 장면 추가
-      const existingEdge = Object.values(mergedEdges).find((e: any) =>
-        e.type === edge.type &&
-        e.entities.length === mappedEntities.length &&
-        e.entities.every((id: string) => mappedEntities.includes(id))
-      ) as any;
-      if (existingEdge) {
-        existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...mappedScenes])];
-        edgeIdMapping[edge.id] = existingEdge.id;
-      }
-    }
-  });
-
-  // 장면 병합 - 이미 생성된 sceneIdMapping 사용
-  const mergedSnapshots = { ...existing.snapshots };
-  let snapshotCounter = Object.keys(existing.snapshots || {}).length;
-
-  // "장면 X" 형식의 텍스트를 새 장면 번호로 변환하는 헬퍼 함수
-  const convertSceneTextReferences = (text: string | null | undefined): string | null | undefined => {
-    if (!text) return text;
-    // "장면 1", "장면 2" 등의 패턴을 찾아서 새 장면 번호로 변환
-    return text.replace(/장면\s*(\d+)/g, (match, num) => {
-      const oldSceneId = `S${String(parseInt(num)).padStart(4, '0')}`;
-      const newSceneId = sceneIdMapping[oldSceneId];
-      if (newSceneId) {
-        const newNum = parseInt(newSceneId.replace('S', '').replace(/^0+/, '')) || num;
-        return `장면 ${newNum}`;
-      }
-      return match;
-    });
-  };
-
-  Object.values(newData.snapshots || {}).forEach((snap: any) => {
-    snapshotCounter++;
-    const newId = `S${String(snapshotCounter).padStart(4, '0')}`;
-    const mappedCharacters = (snap.charactersPresent || []).map((id: string) => newIdMapping[id] || id);
-
-    // time 필드가 "장면 X" 형식이면 새 장면 번호로 변환
-    const mappedTime = convertSceneTextReferences(snap.time);
-    // timeElapsed 필드에서도 장면 참조 변환
-    const mappedTimeElapsed = convertSceneTextReferences(snap.timeElapsed);
-
-    // activeEdges는 엣지 병합 후에 매핑해야 하므로 일단 저장
-    mergedSnapshots[newId] = {
-      ...snap,
-      sceneId: newId,
-      id: newId,
-      order: snapshotCounter,
-      time: mappedTime,
-      timeElapsed: mappedTimeElapsed,
-      charactersPresent: mappedCharacters,
-      _oldActiveEdges: snap.activeEdges || [],  // 임시 저장
-    };
-  });
-
-  // 장면의 activeEdges 매핑 (엣지 병합 후 처리)
-  Object.values(mergedSnapshots).forEach((snap: any) => {
-    if (snap._oldActiveEdges) {
-      snap.activeEdges = snap._oldActiveEdges.map((id: string) => edgeIdMapping[id] || id);
-      delete snap._oldActiveEdges;
-    }
-  });
-
-  // 챕터 병합
-  const mergedChapters = { ...existing.chapters };
-  let chapterCounter = Object.keys(existing.chapters || {}).length;
-
-  Object.values(newData.chapters || {}).forEach((ch: any) => {
-    chapterCounter++;
-    const newId = `C${String(chapterCounter).padStart(4, '0')}`;
-    mergedChapters[newId] = { ...ch, id: newId, number: chapterCounter };
-  });
-
-  // 통계 재계산
-  const entitiesByCategory: Record<string, number> = {};
-  const edgesByType: Record<string, number> = {};
-
-  Object.values(mergedEntities).forEach((e: any) => {
-    entitiesByCategory[e.category] = (entitiesByCategory[e.category] || 0) + 1;
-  });
-
-  Object.values(mergedEdges).forEach((e: any) => {
-    edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
-  });
-
-  // 소스 파일 병합 (기존 + 새 파일)
-  const existingSourceFiles = existing.metadata.sourceFiles || [];
-  const newSourceFiles = newData.metadata.sourceFiles || [];
-  const nextFileId = existingSourceFiles.length + 1;
-  const mergedSourceFiles = [
-    ...existingSourceFiles,
-    ...newSourceFiles.map((f, i) => ({
-      ...f,
-      id: `F${String(nextFileId + i).padStart(4, '0')}`,
-    })),
-  ];
-
-  return {
-    metadata: {
-      ...existing.metadata,
-      // 기존 제목 유지 (파일 추가해도 제목 변경 안함)
-      updatedAt: new Date().toISOString(),
-      sourceFiles: mergedSourceFiles,
-    },
-    entities: mergedEntities,
-    hyperedges: mergedEdges,
-    chapters: mergedChapters,
-    timeline: [...(existing.timeline || []), ...(newData.timeline || [])],
-    snapshots: mergedSnapshots,
-    stats: {
-      totalEntities: Object.keys(mergedEntities).length,
-      totalEdges: Object.keys(mergedEdges).length,
-      totalChapters: Object.keys(mergedChapters).length,
-      entitiesByCategory: entitiesByCategory as any,
-      edgesByType: edgesByType as any,
-    },
-  };
-}
