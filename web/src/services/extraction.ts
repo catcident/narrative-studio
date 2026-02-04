@@ -1854,27 +1854,9 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 새 장 정보를 위한 번호 매핑 (extracted의 장 번호 -> 실제 장 번호)
   let newChapterNumber = chapterCounter;
 
-  // 장이 없고 파일명이 있으면 파일명에서 장 정보 추출
-  if ((extracted.chapters || []).length === 0 && fileName) {
-    // 새 장 생성 (기존 장 개수 + 1)
-    chapterCounter++;
-    newChapterNumber = chapterCounter;
-
-    // 파일명에서 확장자 제거한 것을 제목으로 사용
-    const chapterTitle = fileName.replace(/\.[^/.]+$/, '');
-    const chapterId = `C${String(chapterCounter).padStart(4, '0')}`;
-    chapters[chapterId] = {
-      id: chapterId,
-      number: chapterCounter,
-      title: chapterTitle,
-      summary: '',
-    };
-
-    // 모든 장면에 이 장 번호 할당
-    (extracted.scenes || []).forEach((s: any) => {
-      s.chapter = chapterCounter;
-    });
-  }
+  // 장이 없으면 장 정보를 생성하지 않음 (파일명을 장 제목으로 쓰지 않음)
+  // LLM이 장/화를 추출하지 못했다면 그냥 장 없이 장면만 표시
+  // (이전에는 파일명을 장 제목으로 사용했으나, 사용자가 입력한 제목이 잘못 표시되는 문제 발생)
 
   // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
