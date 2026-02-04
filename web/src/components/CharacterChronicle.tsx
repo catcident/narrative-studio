@@ -15,8 +15,9 @@ const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
 // 윈도우 설정
 const BUFFER_BEFORE = 5;   // 현재 위치 앞 버퍼
-const BUFFER_AFTER = 10;   // 현재 위치 뒤 버퍼
+const BUFFER_AFTER = 15;   // 현재 위치 뒤 버퍼 (넉넉하게)
 const VISIBLE_SIZE = 15;   // 표시용 (UI에만 사용)
+const POSITION_UPDATE_THRESHOLD = 5; // 스크롤로 위치 업데이트 최소 거리
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -184,6 +185,10 @@ export function CharacterChronicle() {
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
 
+  // 스크롤로 인한 급격한 위치 변경 방지용
+  const isLoadingRef = useRef(false);
+  const lastPositionChangeRef = useRef(0);
+
   // 줌 핸들러
   const handleZoomIn = () => {
     setZoomIndex((prev) => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
@@ -343,38 +348,82 @@ export function CharacterChronicle() {
     return { characterSceneEvents: map, visibleCharacters: visible };
   }, [knowledgeGraph, characters, loadedSceneIds]);
 
-  // 위치 이동 (버튼용)
+  // 위치 이동 (버튼용) - 잠금 적용
   const movePosition = useCallback((direction: 'up' | 'down') => {
+    // 버튼 클릭 시 잠금 설정
+    isLoadingRef.current = true;
+    lastPositionChangeRef.current = Date.now();
+
     if (direction === 'down' && currentPosition < allScenes.length - 1) {
       setCurrentPosition(prev => Math.min(prev + 5, allScenes.length - 1));
     } else if (direction === 'up' && currentPosition > 0) {
       setCurrentPosition(prev => Math.max(prev - 5, 0));
     }
+
+    // 잠금 해제
+    setTimeout(() => {
+      isLoadingRef.current = false;
+    }, 500);
   }, [currentPosition, allScenes.length]);
 
-  // 특정 위치로 점프
+  // 특정 위치로 점프 - 잠금 적용
   const jumpToPosition = useCallback((position: number) => {
+    isLoadingRef.current = true;
+    lastPositionChangeRef.current = Date.now();
+
     const newPos = Math.max(0, Math.min(position, allScenes.length - 1));
     setCurrentPosition(newPos);
+
+    // 잠금 해제 (점프는 더 긴 시간)
+    setTimeout(() => {
+      isLoadingRef.current = false;
+    }, 600);
   }, [allScenes.length]);
 
   // 스크롤 위치에 따라 현재 위치 업데이트
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current || loadedScenes.length === 0) return;
 
+    // 로딩 중이면 스크롤로 인한 위치 변경 무시
+    if (isLoadingRef.current) return;
+
+    // 마지막 위치 변경 후 최소 대기 시간 (300ms)
+    const now = Date.now();
+    if (now - lastPositionChangeRef.current < 300) return;
+
     const container = scrollContainerRef.current;
     const { scrollTop, scrollHeight, clientHeight } = container;
 
+    // 스크롤 가능 영역이 없으면 무시
+    const scrollableHeight = scrollHeight - clientHeight;
+    if (scrollableHeight <= 0) return;
+
     // 스크롤 비율 계산
-    const scrollRatio = scrollTop / (scrollHeight - clientHeight);
+    const scrollRatio = scrollTop / scrollableHeight;
 
     // 현재 보이는 장면 인덱스 추정 (로드된 범위 내에서)
     const visibleIndex = Math.floor(scrollRatio * (loadedScenes.length - 1));
     const newPosition = loadStart + visibleIndex;
 
-    // 위치가 변경되면 업데이트 (버퍼 범위 재계산됨)
-    if (Math.abs(newPosition - currentPosition) >= 3) {
-      setCurrentPosition(Math.max(0, Math.min(newPosition, allScenes.length - 1)));
+    // 위치 변경 임계값 적용: 최소 POSITION_UPDATE_THRESHOLD 만큼 차이나야 변경
+    const positionDiff = Math.abs(newPosition - currentPosition);
+    if (positionDiff >= POSITION_UPDATE_THRESHOLD) {
+      // 로딩 잠금 설정
+      isLoadingRef.current = true;
+      lastPositionChangeRef.current = now;
+
+      // 부드러운 전환을 위해 한 번에 최대 5칸만 이동
+      const maxStep = 5;
+      const direction = newPosition > currentPosition ? 1 : -1;
+      const step = Math.min(positionDiff, maxStep) * direction;
+      const targetPosition = Math.max(0, Math.min(currentPosition + step, allScenes.length - 1));
+
+      setCurrentPosition(targetPosition);
+
+      // 콘텐츠 로딩 시간 확보 후 잠금 해제
+      setTimeout(() => {
+        isLoadingRef.current = false;
+      }, 400);
     }
   }, [loadedScenes.length, loadStart, currentPosition, allScenes.length]);
 
