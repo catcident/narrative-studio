@@ -21,7 +21,7 @@ export function hasApiKey(): boolean {
   return !!getApiKey();
 }
 
-const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석
+const USER_PROMPT = `소설 텍스트 청크 {{chunkNum}} 분석
 
 {{text}}
 
@@ -752,7 +752,7 @@ export async function extractKnowledgeGraph(
       }
 
       console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
-      const extracted = await extractFromChunk(chunks[i], title, i + 1, entitiesToUse, useModel);
+      const extracted = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
       if (extracted) {
         allExtracted.push(extracted);
 
@@ -887,7 +887,6 @@ async function fetchWithClientTimeout(url: string, options: RequestInit, timeout
 
 async function extractFromChunk(
   chunkText: string,
-  title: string,
   chunkNum: number,
   knownEntities: KnownEntity[] = [],
   model?: string  // 사용할 모델
@@ -935,7 +934,6 @@ ${limitedCategoryEntities.map(e => {
   }
 
   const prompt = USER_PROMPT
-    .replace('{{title}}', title)
     .replace('{{chunkNum}}', String(chunkNum))
     .replace('{{text}}', chunkText)
     .replace('{{previousCharacters}}', previousEntitiesText);
