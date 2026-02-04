@@ -1,11 +1,11 @@
 /**
  * 캐릭터 연대기 컴포넌트 (플로우차트 스타일)
  * 같은 장면은 같은 가로 줄에 배치
- * 가상화로 성능 최적화 + 장면 점프 기능
+ * CSS Grid로 행 높이 자동 맞춤
  */
 
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { User, Clock, X, ZoomIn, ZoomOut, Search, ChevronsUpDown } from 'lucide-react';
+import { User, Clock, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Search, ChevronsUpDown } from 'lucide-react';
 import { useStore, useCharacters } from '../store';
 import type { HyperEdge } from '../types';
 
@@ -13,9 +13,8 @@ import type { HyperEdge } from '../types';
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
-// 가상화 설정
-const VISIBLE_BUFFER = 5; // 화면 앞뒤로 미리 렌더링할 장면 수
-const ROW_HEIGHT = 140; // 기본 행 높이 (줌 1배 기준)
+// 페이지네이션 설정
+const SCENES_PER_PAGE = 30;
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -164,7 +163,7 @@ interface SceneInfo {
   sceneLabel: string;
   time: string;
   location: string;
-  timeElapsed?: string | null;
+  timeElapsed?: string | null;  // 이전 장면으로부터 경과 시간
 }
 
 export function CharacterChronicle() {
@@ -178,10 +177,8 @@ export function CharacterChronicle() {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const zoomLevel = ZOOM_LEVELS[zoomIndex];
 
-  // 가상화: 현재 보이는 장면 범위
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
-
-  // 장면 점프 UI
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(0);
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
 
@@ -198,129 +195,6 @@ export function CharacterChronicle() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [scrollStart, setScrollStart] = useState({ x: 0, y: 0 });
-
-  // 모든 장면 목록 (정렬됨)
-  const allScenes = useMemo(() => {
-    if (!knowledgeGraph) return [];
-
-    const sceneSet = new Set<string>();
-    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
-      const scenes = edge.scenes || ['unknown'];
-      scenes.forEach((s) => sceneSet.add(s));
-    });
-
-    return Array.from(sceneSet)
-      .sort((a, b) => {
-        if (a === 'unknown') return 1;
-        if (b === 'unknown') return -1;
-        return a.localeCompare(b);
-      })
-      .map((sceneId): SceneInfo => {
-        const snapshot = knowledgeGraph.snapshots?.[sceneId];
-        const sceneNum = sceneId.replace('S', '').replace(/^0+/, '') || '?';
-
-        let time = snapshot?.time || '';
-        if (!time) {
-          const edge = Object.values(knowledgeGraph.hyperedges).find(
-            (e) => e.scenes?.includes(sceneId) && e.timeline?.start
-          );
-          if (edge?.timeline?.start) {
-            time = edge.timeline.start;
-          }
-        }
-
-        const location = snapshot?.location || '';
-
-        return {
-          sceneId,
-          sceneLabel: `장면 ${sceneNum}`,
-          time,
-          location,
-          timeElapsed: snapshot?.timeElapsed || null,
-        };
-      });
-  }, [knowledgeGraph]);
-
-  // 캐릭터별, 장면별 이벤트 매핑
-  const characterSceneEvents = useMemo(() => {
-    if (!knowledgeGraph) return new Map<string, Map<string, HyperEdge[]>>();
-
-    const map = new Map<string, Map<string, HyperEdge[]>>();
-
-    characters.forEach((char) => {
-      const sceneMap = new Map<string, HyperEdge[]>();
-
-      Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
-        if (!edge.entities.includes(char.id)) return;
-
-        const scenes = edge.scenes || ['unknown'];
-        scenes.forEach((sceneId) => {
-          if (!sceneMap.has(sceneId)) {
-            sceneMap.set(sceneId, []);
-          }
-          sceneMap.get(sceneId)!.push(edge);
-        });
-      });
-
-      map.set(char.id, sceneMap);
-    });
-
-    return map;
-  }, [knowledgeGraph, characters]);
-
-  // 스크롤 이벤트로 가상화 범위 업데이트
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef.current) return;
-
-    const container = scrollContainerRef.current;
-    const scrollTop = container.scrollTop;
-    const viewportHeight = container.clientHeight;
-    const headerHeight = 80 * zoomLevel;
-    const rowHeight = ROW_HEIGHT * zoomLevel;
-
-    const startRow = Math.max(0, Math.floor((scrollTop - headerHeight) / rowHeight) - VISIBLE_BUFFER);
-    const endRow = Math.min(
-      allScenes.length,
-      Math.ceil((scrollTop + viewportHeight - headerHeight) / rowHeight) + VISIBLE_BUFFER
-    );
-
-    setVisibleRange({ start: startRow, end: endRow });
-  }, [zoomLevel, allScenes.length]);
-
-  // 스크롤 이벤트 리스너
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener('scroll', handleScroll);
-    handleScroll(); // 초기화
-
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
-
-  // 장면으로 점프
-  const jumpToScene = useCallback((sceneIndex: number) => {
-    if (!scrollContainerRef.current || sceneIndex < 0 || sceneIndex >= allScenes.length) return;
-
-    const headerHeight = 80 * zoomLevel;
-    const rowHeight = ROW_HEIGHT * zoomLevel;
-    const targetScroll = headerHeight + sceneIndex * rowHeight;
-
-    scrollContainerRef.current.scrollTo({
-      top: targetScroll,
-      behavior: 'smooth'
-    });
-  }, [zoomLevel, allScenes.length]);
-
-  // 점프 입력 처리
-  const handleJumpSubmit = () => {
-    const num = parseInt(jumpValue);
-    if (!isNaN(num) && num >= 1 && num <= allScenes.length) {
-      jumpToScene(num - 1);
-      setShowJumpInput(false);
-      setJumpValue('');
-    }
-  };
 
   // 드래그 스크롤 핸들러
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -358,6 +232,140 @@ export function CharacterChronicle() {
     }
   };
 
+  // 모든 장면 목록 (정렬됨)
+  const allScenes = useMemo(() => {
+    if (!knowledgeGraph) return [];
+
+    const sceneSet = new Set<string>();
+    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
+      const scenes = edge.scenes || ['unknown'];
+      scenes.forEach((s) => sceneSet.add(s));
+    });
+
+    return Array.from(sceneSet)
+      .sort((a, b) => {
+        if (a === 'unknown') return 1;
+        if (b === 'unknown') return -1;
+        return a.localeCompare(b);
+      })
+      .map((sceneId): SceneInfo => {
+        const snapshot = knowledgeGraph.snapshots?.[sceneId];
+        const sceneNum = sceneId.replace('S', '').replace(/^0+/, '') || '?';
+
+        // 시간 정보 찾기
+        let time = snapshot?.time || '';
+        if (!time) {
+          // 해당 장면의 엣지에서 시간 정보 찾기
+          const edge = Object.values(knowledgeGraph.hyperedges).find(
+            (e) => e.scenes?.includes(sceneId) && e.timeline?.start
+          );
+          if (edge?.timeline?.start) {
+            time = edge.timeline.start;
+          }
+        }
+
+        // 장소 정보
+        const location = snapshot?.location || '';
+
+        return {
+          sceneId,
+          sceneLabel: `장면 ${sceneNum}`,
+          time,
+          location,
+          timeElapsed: snapshot?.timeElapsed || null,
+        };
+      });
+  }, [knowledgeGraph]);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(allScenes.length / SCENES_PER_PAGE);
+  const startIndex = currentPage * SCENES_PER_PAGE;
+  const endIndex = Math.min(startIndex + SCENES_PER_PAGE, allScenes.length);
+  const currentPageScenes = allScenes.slice(startIndex, endIndex);
+  const currentPageSceneIds = new Set(currentPageScenes.map(s => s.sceneId));
+
+  // 현재 페이지의 장면에 대해서만 캐릭터별 이벤트 매핑 (성능 최적화)
+  const characterSceneEvents = useMemo(() => {
+    if (!knowledgeGraph) return new Map<string, Map<string, HyperEdge[]>>();
+
+    const map = new Map<string, Map<string, HyperEdge[]>>();
+
+    characters.forEach((char) => {
+      const sceneMap = new Map<string, HyperEdge[]>();
+
+      Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
+        if (!edge.entities.includes(char.id)) return;
+
+        const scenes = edge.scenes || ['unknown'];
+        scenes.forEach((sceneId) => {
+          // 현재 페이지의 장면만 처리
+          if (!currentPageSceneIds.has(sceneId)) return;
+
+          if (!sceneMap.has(sceneId)) {
+            sceneMap.set(sceneId, []);
+          }
+          sceneMap.get(sceneId)!.push(edge);
+        });
+      });
+
+      map.set(char.id, sceneMap);
+    });
+
+    return map;
+  }, [knowledgeGraph, characters, currentPage, currentPageSceneIds]);
+
+  // 캐릭터별 첫/마지막 등장 장면 (전체 기준, 가벼운 계산)
+  const characterAppearances = useMemo(() => {
+    if (!knowledgeGraph) return new Map<string, { first: number; last: number }>();
+
+    const appearances = new Map<string, { first: number; last: number }>();
+
+    characters.forEach((char) => {
+      let first = -1;
+      let last = -1;
+
+      allScenes.forEach((scene, idx) => {
+        const hasEdge = Object.values(knowledgeGraph.hyperedges).some(
+          edge => edge.entities.includes(char.id) && edge.scenes?.includes(scene.sceneId)
+        );
+        if (hasEdge) {
+          if (first === -1) first = idx;
+          last = idx;
+        }
+      });
+
+      appearances.set(char.id, { first, last });
+    });
+
+    return appearances;
+  }, [knowledgeGraph, characters, allScenes]);
+
+  // 페이지 이동
+  const goToPage = useCallback((page: number) => {
+    const validPage = Math.max(0, Math.min(page, totalPages - 1));
+    setCurrentPage(validPage);
+    // 스크롤 맨 위로
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [totalPages]);
+
+  // 장면 번호로 점프
+  const jumpToScene = useCallback((sceneNum: number) => {
+    const targetPage = Math.floor((sceneNum - 1) / SCENES_PER_PAGE);
+    goToPage(targetPage);
+  }, [goToPage]);
+
+  // 점프 입력 처리
+  const handleJumpSubmit = () => {
+    const num = parseInt(jumpValue);
+    if (!isNaN(num) && num >= 1 && num <= allScenes.length) {
+      jumpToScene(num);
+      setShowJumpInput(false);
+      setJumpValue('');
+    }
+  };
+
   // 선택된 캐릭터로 스크롤
   useEffect(() => {
     if (selectedCharId && selectedColumnRef.current && scrollContainerRef.current) {
@@ -381,41 +389,12 @@ export function CharacterChronicle() {
 
   const getCharColor = (index: number) => CHARACTER_COLORS[index % CHARACTER_COLORS.length];
 
-  // 캐릭터의 첫 등장 장면 인덱스
-  const getFirstSceneIndex = (charId: string): number => {
-    const sceneMap = characterSceneEvents.get(charId);
-    if (!sceneMap) return -1;
-
-    for (let i = 0; i < allScenes.length; i++) {
-      if (sceneMap.has(allScenes[i].sceneId)) {
-        return i;
-      }
-    }
-    return -1;
+  // 현재 장면이 캐릭터의 타임라인 범위 안에 있는지 확인 (전체 장면 기준 인덱스 사용)
+  const isInTimelineRange = (charId: string, globalSceneIndex: number): boolean => {
+    const appearance = characterAppearances.get(charId);
+    if (!appearance || appearance.first === -1) return false;
+    return globalSceneIndex >= appearance.first && globalSceneIndex <= appearance.last;
   };
-
-  // 캐릭터의 마지막 등장 장면 인덱스
-  const getLastSceneIndex = (charId: string): number => {
-    const sceneMap = characterSceneEvents.get(charId);
-    if (!sceneMap) return -1;
-
-    for (let i = allScenes.length - 1; i >= 0; i--) {
-      if (sceneMap.has(allScenes[i].sceneId)) {
-        return i;
-      }
-    }
-    return -1;
-  };
-
-  // 현재 장면이 캐릭터의 타임라인 범위 안에 있는지 확인
-  const isInTimelineRange = (charId: string, sceneIndex: number): boolean => {
-    const first = getFirstSceneIndex(charId);
-    const last = getLastSceneIndex(charId);
-    return first !== -1 && sceneIndex >= first && sceneIndex <= last;
-  };
-
-  // 가상화된 장면 목록
-  const visibleScenes = allScenes.slice(visibleRange.start, visibleRange.end);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -467,6 +446,27 @@ export function CharacterChronicle() {
             </button>
           )}
 
+          {/* 페이지 이동 */}
+          <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 0}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-gray-600 min-w-[80px] text-center">
+              {startIndex + 1}-{endIndex} / {allScenes.length}
+            </span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages - 1}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
           {/* 줌 컨트롤 */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
             <button
@@ -501,7 +501,7 @@ export function CharacterChronicle() {
         </div>
       </div>
 
-      {/* 그리드 영역 - 가상화 적용 */}
+      {/* 그리드 영역 - 드래그로 스크롤 가능 */}
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-auto cursor-grab select-none"
@@ -511,239 +511,240 @@ export function CharacterChronicle() {
         onMouseLeave={handleMouseLeave}
       >
         <div
-          className="relative"
+          className="grid gap-0 origin-top-left transition-transform duration-200"
           style={{
-            width: `${100 * zoomLevel + characters.length * 260 * zoomLevel}px`,
-            height: `${80 * zoomLevel + allScenes.length * ROW_HEIGHT * zoomLevel}px`,
+            gridTemplateColumns: `${100 * zoomLevel}px repeat(${characters.length}, ${260 * zoomLevel}px)`,
+            gridTemplateRows: `${80 * zoomLevel}px repeat(${currentPageScenes.length}, auto)`,
           }}
         >
-          {/* 고정 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
-          <div
-            className="sticky top-0 z-30 flex"
-            style={{ height: `${80 * zoomLevel}px` }}
-          >
-            <div
-              className="sticky left-0 z-40 bg-gray-50 border-b border-r border-gray-200 flex items-center justify-center flex-shrink-0"
-              style={{ width: `${100 * zoomLevel}px` }}
-            >
-              <span className="text-xs font-medium text-gray-400">장면</span>
-            </div>
-            {characters.map((char, charIndex) => {
-              const isSelected = selectedCharId === char.id;
-              const isOtherSelected = selectedCharId && !isSelected;
-              const charColor = getCharColor(charIndex);
+          {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
+          <div className="sticky left-0 z-30 bg-gray-50 border-b border-r border-gray-200 flex items-center justify-center">
+            <span className="text-xs font-medium text-gray-400">장면</span>
+          </div>
+          {characters.map((char, charIndex) => {
+            const isSelected = selectedCharId === char.id;
+            const isOtherSelected = selectedCharId && !isSelected;
+            const charColor = getCharColor(charIndex);
 
-              return (
-                <div
-                  key={`header-${char.id}`}
-                  ref={isSelected ? selectedColumnRef : undefined}
-                  className={`border-b border-gray-200 flex items-center justify-center p-2 transition-opacity duration-300 bg-gray-50 flex-shrink-0 ${
-                    isOtherSelected ? 'opacity-30' : 'opacity-100'
+            return (
+              <div
+                key={`header-${char.id}`}
+                ref={isSelected ? selectedColumnRef : undefined}
+                className={`border-b border-gray-200 flex items-center justify-center p-2 transition-opacity duration-300 ${
+                  isOtherSelected ? 'opacity-30' : 'opacity-100'
+                }`}
+              >
+                <button
+                  onClick={() => {
+                    if (selectedCharId === char.id) {
+                      setSelectedCharId(null);
+                    } else {
+                      setSelectedCharId(char.id);
+                      selectEntity(char.id);
+                    }
+                  }}
+                  className={`flex flex-col items-center p-2 rounded-xl transition-all ${
+                    isSelected
+                      ? 'bg-blue-50 ring-2 ring-blue-400 shadow-lg scale-105'
+                      : 'bg-white hover:bg-gray-50 shadow'
                   }`}
-                  style={{ width: `${260 * zoomLevel}px` }}
                 >
-                  <button
-                    onClick={() => {
-                      if (selectedCharId === char.id) {
-                        setSelectedCharId(null);
-                      } else {
-                        setSelectedCharId(char.id);
-                        selectEntity(char.id);
-                      }
-                    }}
-                    className={`flex flex-col items-center p-2 rounded-xl transition-all ${
-                      isSelected
-                        ? 'bg-blue-50 ring-2 ring-blue-400 shadow-lg scale-105'
-                        : 'bg-white hover:bg-gray-50 shadow'
-                    }`}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
+                    style={{ backgroundColor: charColor }}
+                  >
+                    {char.name.charAt(0)}
+                  </div>
+                  <span className={`mt-1 text-xs font-medium truncate max-w-[120px] ${
+                    isSelected ? 'text-blue-700' : 'text-gray-700'
+                  }`}>
+                    {char.name}
+                  </span>
+                </button>
+              </div>
+            );
+          })}
+
+          {/* 각 장면 행 */}
+          {currentPageScenes.map((scene, localIndex) => {
+            // 전체 장면 기준 인덱스 (타임라인 범위 계산용)
+            const globalSceneIndex = startIndex + localIndex;
+            // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
+            const getTimeElapsedText = () => {
+              // 페이지 첫 장면이거나 전체 첫 장면은 시간 경과 표시 안함
+              if (localIndex === 0) return null;
+
+              // 1. 지식그래프에서 추출한 timeElapsed 사용 (우선)
+              if (scene.timeElapsed) {
+                return scene.timeElapsed;
+              }
+
+              // 2. fallback: 이전 장면과 시간이 다르면 표시
+              const prevScene = currentPageScenes[localIndex - 1];
+              if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
+                return `${prevScene.time} → ${scene.time}`;
+              }
+              return null;
+            };
+            const timeElapsedText = getTimeElapsedText();
+
+            return (
+            <>
+              {/* 시간 경과 행 (장면 사이에 표시) */}
+              {timeElapsedText && localIndex > 0 && (
+                <>
+                  {/* 시간 경과 라벨 셀 */}
+                  <div
+                    key={`time-label-${scene.sceneId}`}
+                    className="sticky left-0 z-20 bg-amber-50 border-b border-r border-amber-200 flex items-center justify-center"
+                    style={{ padding: `${8 * zoomLevel}px ${12 * zoomLevel}px` }}
                   >
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
-                      style={{ backgroundColor: charColor }}
+                      className="text-amber-700 font-medium flex items-center gap-1"
+                      style={{ fontSize: `${11 * zoomLevel}px` }}
                     >
-                      {char.name.charAt(0)}
+                      <span>⏱</span>
+                      <span>{timeElapsedText}</span>
                     </div>
-                    <span className={`mt-1 text-xs font-medium truncate max-w-[120px] ${
-                      isSelected ? 'text-blue-700' : 'text-gray-700'
-                    }`}>
-                      {char.name}
-                    </span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 장면 라벨 열 (고정) + 빈 영역 spacer */}
-          <div
-            className="sticky left-0 z-20 absolute"
-            style={{
-              top: `${80 * zoomLevel}px`,
-              width: `${100 * zoomLevel}px`,
-            }}
-          >
-            {/* Spacer for non-visible scenes above */}
-            {visibleRange.start > 0 && (
-              <div style={{ height: `${visibleRange.start * ROW_HEIGHT * zoomLevel}px` }} />
-            )}
-            {visibleScenes.map((scene, idx) => {
-              const sceneIndex = visibleRange.start + idx;
-              return (
-                <div
-                  key={`label-${scene.sceneId}`}
-                  className="bg-white border-b border-r border-gray-200 flex flex-col justify-center"
-                  style={{
-                    height: `${ROW_HEIGHT * zoomLevel}px`,
-                    padding: `${16 * zoomLevel}px ${12 * zoomLevel}px`,
-                  }}
-                >
-                  <div
-                    className="font-bold text-blue-600 cursor-pointer hover:underline"
-                    style={{ fontSize: `${14 * zoomLevel}px` }}
-                    onClick={() => jumpToScene(sceneIndex)}
-                    title="클릭하여 이동"
-                  >
-                    {scene.sceneLabel}
                   </div>
-                  <div
-                    className="text-gray-500"
-                    style={{ fontSize: `${12 * zoomLevel}px`, marginTop: `${2 * zoomLevel}px` }}
-                  >
-                    {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 캐릭터별 셀 영역 */}
-          <div
-            className="absolute"
-            style={{
-              top: `${80 * zoomLevel}px`,
-              left: `${100 * zoomLevel}px`,
-            }}
-          >
-            {/* Spacer for non-visible scenes above */}
-            {visibleRange.start > 0 && (
-              <div style={{ height: `${visibleRange.start * ROW_HEIGHT * zoomLevel}px` }} />
-            )}
-            {visibleScenes.map((scene, idx) => {
-              const sceneIndex = visibleRange.start + idx;
-              return (
-                <div
-                  key={`row-${scene.sceneId}`}
-                  className="flex"
-                  style={{ height: `${ROW_HEIGHT * zoomLevel}px` }}
-                >
-                  {characters.map((char, charIndex) => {
-                    const isSelected = selectedCharId === char.id;
-                    const isOtherSelected = selectedCharId && !isSelected;
-                    const charColor = getCharColor(charIndex);
-                    const sceneMap = characterSceneEvents.get(char.id) || new Map();
-                    const events = sceneMap.get(scene.sceneId) || [];
-                    const hasEvents = events.length > 0;
-                    const inRange = isInTimelineRange(char.id, sceneIndex);
-
-                    // 대표 감정 결정
-                    const sentiments = events.map((e: HyperEdge) => e.sentiment || 'neutral');
-                    const mainSentiment = sentiments.includes('negative') ? 'negative' :
-                      sentiments.includes('positive') ? 'positive' :
-                      sentiments.includes('complex') ? 'complex' : 'neutral';
-                    const colors = SENTIMENT_COLORS[mainSentiment];
-
-                    return (
+                  {/* 각 캐릭터 열에 시간 경과 표시 */}
+                  {characters.map((char) => (
+                    <div
+                      key={`time-${scene.sceneId}-${char.id}`}
+                      className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
+                      style={{ padding: `${8 * zoomLevel}px` }}
+                    >
                       <div
-                        key={`cell-${scene.sceneId}-${char.id}`}
-                        className={`border-b border-gray-100 flex items-stretch justify-center relative transition-opacity duration-300 flex-shrink-0 ${
-                          isOtherSelected ? 'opacity-30' : 'opacity-100'
-                        }`}
+                        className="w-full border-t-2 border-dashed border-amber-300"
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* 장면 라벨 (고정) */}
+              <div
+                key={`label-${scene.sceneId}`}
+                className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 flex flex-col justify-center"
+                style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px` }}
+              >
+                <div
+                  className="font-bold text-blue-600"
+                  style={{ fontSize: `${14 * zoomLevel}px` }}
+                >
+                  {scene.sceneLabel}
+                </div>
+                {/* 장소/시간 정보 */}
+                <div
+                  className="text-gray-500"
+                  style={{ fontSize: `${12 * zoomLevel}px`, marginTop: `${2 * zoomLevel}px` }}
+                >
+                  {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
+                </div>
+              </div>
+
+              {/* 각 캐릭터의 해당 장면 셀 */}
+              {characters.map((char, charIndex) => {
+                const isSelected = selectedCharId === char.id;
+                const isOtherSelected = selectedCharId && !isSelected;
+                const charColor = getCharColor(charIndex);
+                const sceneMap = characterSceneEvents.get(char.id) || new Map();
+                const events = sceneMap.get(scene.sceneId) || [];
+                const hasEvents = events.length > 0;
+                const inRange = isInTimelineRange(char.id, globalSceneIndex);
+
+                // 대표 감정 결정
+                const sentiments = events.map((e: HyperEdge) => e.sentiment || 'neutral');
+                const mainSentiment = sentiments.includes('negative') ? 'negative' :
+                  sentiments.includes('positive') ? 'positive' :
+                  sentiments.includes('complex') ? 'complex' : 'neutral';
+                const colors = SENTIMENT_COLORS[mainSentiment];
+
+                return (
+                  <div
+                    key={`cell-${scene.sceneId}-${char.id}`}
+                    className={`border-b border-gray-100 flex items-stretch justify-center relative transition-opacity duration-300 ${
+                      isOtherSelected ? 'opacity-30' : 'opacity-100'
+                    }`}
+                    style={{ minHeight: `${120 * zoomLevel}px`, padding: `${12 * zoomLevel}px` }}
+                  >
+                    {/* 연속 세로선 */}
+                    {inRange && (
+                      <div
+                        className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
+                        style={{ backgroundColor: charColor, opacity: hasEvents ? 1 : 0.3 }}
+                      />
+                    )}
+
+                    {hasEvents && (
+                      <div
+                        className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
                         style={{
-                          width: `${260 * zoomLevel}px`,
-                          padding: `${12 * zoomLevel}px`,
+                          border: `2px solid ${colors.border}`,
                         }}
                       >
-                        {/* 연속 세로선 */}
-                        {inRange && (
+                        {/* 헤더: 장면 번호 + 장소/시간 */}
+                        <div
+                          className="px-3 py-2 flex-shrink-0"
+                          style={{ backgroundColor: colors.bg }}
+                        >
                           <div
-                            className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
-                            style={{ backgroundColor: charColor, opacity: hasEvents ? 1 : 0.3 }}
-                          />
-                        )}
-
-                        {hasEvents && (
-                          <div
-                            className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
-                            style={{
-                              border: `2px solid ${colors.border}`,
-                            }}
+                            className="text-sm font-bold"
+                            style={{ color: colors.text }}
                           >
-                            {/* 헤더: 장면 번호 + 장소/시간 */}
-                            <div
-                              className="px-3 py-2 flex-shrink-0"
-                              style={{ backgroundColor: colors.bg }}
-                            >
-                              <div
-                                className="text-sm font-bold"
-                                style={{ color: colors.text }}
-                              >
-                                {scene.sceneLabel}
-                              </div>
-                              <div
-                                className="text-xs opacity-80"
-                                style={{ color: colors.text }}
-                              >
-                                {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
-                              </div>
-                            </div>
-                            {/* 관계 목록 - 호버/클릭 가능 */}
-                            <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-24">
-                              {events.slice(0, 3).map((edge: HyperEdge, i: number) => (
-                                <RelationshipItemWithTooltip
-                                  key={`${edge.id}-${i}`}
-                                  edge={edge}
-                                  charId={char.id}
-                                  entities={knowledgeGraph.entities}
-                                  colors={colors}
-                                />
-                              ))}
-                              {events.length > 3 && (
-                                <div className="text-xs text-gray-400 text-center">
-                                  +{events.length - 3}개 더
-                                </div>
-                              )}
-                            </div>
+                            {scene.sceneLabel}
                           </div>
-                        )}
+                          <div
+                            className="text-xs opacity-80"
+                            style={{ color: colors.text }}
+                          >
+                            {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
+                          </div>
+                        </div>
+                        {/* 관계 목록 - 호버/클릭 가능 */}
+                        <div className="p-3 space-y-2 flex-1">
+                          {events.map((edge: HyperEdge, i: number) => (
+                            <RelationshipItemWithTooltip
+                              key={`${edge.id}-${i}`}
+                              edge={edge}
+                              charId={char.id}
+                              entities={knowledgeGraph.entities}
+                              colors={colors}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          );
+          })}
         </div>
       </div>
 
-      {/* 하단 범례 + 장면 스크롤바 */}
+      {/* 하단: 슬라이더 + 범례 */}
       <div className="flex-shrink-0 bg-white border-t border-gray-200">
-        {/* 장면 스크롤바 */}
-        <div className="px-3 py-2 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <ChevronsUpDown className="w-3 h-3 text-gray-400" />
-            <input
-              type="range"
-              min={0}
-              max={allScenes.length - 1}
-              value={Math.min(visibleRange.start, allScenes.length - 1)}
-              onChange={(e) => jumpToScene(parseInt(e.target.value))}
-              className="flex-1 h-1 accent-blue-500 cursor-pointer"
-            />
-            <span className="text-xs text-gray-500 min-w-[60px]">
-              {visibleRange.start + 1} / {allScenes.length}
-            </span>
+        {/* 페이지 슬라이더 */}
+        {totalPages > 1 && (
+          <div className="px-3 py-2 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <ChevronsUpDown className="w-3 h-3 text-gray-400" />
+              <input
+                type="range"
+                min={0}
+                max={totalPages - 1}
+                value={currentPage}
+                onChange={(e) => goToPage(parseInt(e.target.value))}
+                className="flex-1 h-1 accent-blue-500 cursor-pointer"
+              />
+              <span className="text-xs text-gray-500 min-w-[80px]">
+                {startIndex + 1}-{endIndex} / {allScenes.length}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 범례 */}
         <div className="p-2 flex items-center gap-4 text-[10px] text-gray-500">
