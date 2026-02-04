@@ -1020,7 +1020,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
 
         {/* 뷰 모드 컨트롤 */}
         <div className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-lg p-2">
-        <div className="flex items-center gap-1 mb-2">
+          <div className="flex items-center gap-1 mb-2">
           <button
             onClick={() => { setViewMode('full'); setFocusedCharIds([]); }}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
@@ -1057,7 +1057,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             <Focus className="w-3 h-3" />
             인물 중심
           </button>
-        </div>
+          </div>
 
         {/* 인물 중심 모드: 인물 다중 선택 */}
         {viewMode === 'focused' && (
@@ -1129,6 +1129,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             )}
           </div>
         )}
+        </div>
 
         <ReactFlow
           nodes={nodes}
