@@ -5,9 +5,6 @@ import { NextResponse } from 'next/server';
 // 환경 변수로 인증 활성화 여부 결정
 export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
 
-// OIDC 설정 (discovery가 /oauth/ 경로에 있으므로 수동 설정)
-const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER;
-
 declare module 'next-auth' {
   interface Session {
     user: {
@@ -30,33 +27,28 @@ declare module 'next-auth/jwt' {
   }
 }
 
+// OIDC issuer (django-oauth-toolkit은 /oauth/에 마운트되어 있음)
+const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER
+  ? `${process.env.AUTH_CATCIDENT_ISSUER}/oauth`
+  : undefined;
+
 export const authConfig: NextAuthConfig = {
   providers: [
     {
       id: 'catcident',
-      name: 'CatCident',
+      name: 'Catcident',
       type: 'oidc',
-      // Discovery가 /oauth/ 경로에 있으므로 수동 설정
       issuer: OIDC_ISSUER,
-      wellKnown: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/.well-known/openid-configuration` : undefined,
       clientId: process.env.AUTH_CATCIDENT_ID,
       clientSecret: process.env.AUTH_CATCIDENT_SECRET || '',
-      // 수동 엔드포인트 설정 (discovery 우회)
+      // Confidential 클라이언트: token 요청 시 client_secret을 Body에 포함
+      client: {
+        token_endpoint_auth_method: 'client_secret_post',
+      },
       authorization: {
-        url: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/authorize/` : undefined,
         params: {
           scope: 'openid profile email member',
         },
-      },
-      token: {
-        url: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/token/` : undefined,
-      },
-      // Public 클라이언트: token 요청 시 client_secret 없이 client_id만 전송
-      client: {
-        token_endpoint_auth_method: 'none',
-      },
-      userinfo: {
-        url: OIDC_ISSUER ? `${OIDC_ISSUER}/oauth/userinfo/` : undefined,
       },
       checks: ['pkce', 'state'],
       profile(profile) {

@@ -16,6 +16,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
+import { UserMenu } from './components/UserMenu';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
 import type { NovelKnowledgeGraph } from './types';
@@ -148,7 +149,10 @@ function App() {
   // 업로드 화면
   if (!knowledgeGraph) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6 relative">
+        {/* 로그아웃 버튼 (우상단) */}
+        <UserMenu className="absolute top-4 right-4" />
+
         {/* 상단: 업로드 영역 */}
         <div className="w-full max-w-xl">
           <div className="text-center mb-8">
@@ -383,6 +387,9 @@ function App() {
               <RotateCcw className="w-4 h-4" />
               새 파일
             </button>
+
+            {/* 로그아웃 */}
+            <UserMenu className="pl-4 border-l border-gray-200" />
           </div>
         </div>
       </header>

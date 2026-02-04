@@ -39,10 +39,10 @@ NextAuth.js v5 설정 + 헬퍼 함수
 export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
 ```
 
-- `true`: CatCident OAuth 인증 필수
+- `true`: Catcident OAuth 인증 필수
 - `false` 또는 미설정: 익명 모드
 
-### CatCident OAuth Provider
+### Catcident OAuth Provider
 
 ```typescript
 {
@@ -96,8 +96,8 @@ session.user.roles      // 권한 배열
 |----|------|---|-------|------|
 | #9998 | 9:38 PM | 🔵 | Comprehensive demo application exploration completed with detailed architectural findings | ~941 |
 | #9993 | 9:37 PM | 🔵 | MongoDB connection with singleton pattern and default local development fallback | ~543 |
-| #9978 | 9:34 PM | 🔵 | Authentication system integrates CatCident OAuth with conditional enablement via environment variable | ~598 |
-| #9966 | 9:32 PM | 🔵 | NextAuth integration with CatCident OAuth provider and optional authentication mode | ~497 |
+| #9978 | 9:34 PM | 🔵 | Authentication system integrates Catcident OAuth with conditional enablement via environment variable | ~598 |
+| #9966 | 9:32 PM | 🔵 | NextAuth integration with Catcident OAuth provider and optional authentication mode | ~497 |
 | #9961 | " | 🔵 | MongoDB connection module uses singleton pattern with environment-based configuration | ~425 |
 | #9860 | 3:52 PM | 🟣 | MongoDB connection module for persistent knowledge graph storage | ~406 |
 </claude-mem-context>

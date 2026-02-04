@@ -105,6 +105,47 @@ NextAuth.js SessionProvider 래퍼
 
 ---
 
+## 접근성 패턴
+
+### 아이콘 접근성
+
+**규칙**: 모든 장식용 아이콘에 `aria-hidden="true"` 추가
+
+```tsx
+// ✅ lucide-react 아이콘
+<Network className="w-8 h-8 text-white" aria-hidden="true" />
+
+// ✅ 인라인 SVG
+<svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <path d="..." />
+</svg>
+
+// ✅ 리스트 불릿 (장식용)
+<div className="w-1.5 h-1.5 rounded-full bg-blue-500" aria-hidden="true" />
+```
+
+**체크리스트** (새 UI 컴포넌트 작성 시):
+- [ ] lucide-react 아이콘에 `aria-hidden="true"` 추가
+- [ ] 인라인 SVG에 `aria-hidden="true"` 추가
+- [ ] 장식용 요소(불릿, 구분선 등)에 `aria-hidden="true"` 추가
+- [ ] 기능적 아이콘(버튼 없는 독립 아이콘)은 `aria-label` 제공
+
+### 타입 안전성
+
+**규칙**: NextAuth Session 타입 확장을 활용하고 `as any` 타입 단언 지양
+
+```tsx
+// ❌ 타입 단언 지양
+{(session.user as any)?.nickname}
+
+// ✅ 타입 확장 활용 (lib/auth.ts에 선언됨)
+{session.user.nickname}
+```
+
+**참조**: `lib/auth.ts`의 `declare module 'next-auth'` 타입 확장
+
+---
+
 ## 시각화 패턴
 
 ### 노드 크기
