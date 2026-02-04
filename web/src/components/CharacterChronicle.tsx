@@ -13,10 +13,9 @@ import type { HyperEdge } from '../types';
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
-// 무한 스크롤 설정
-const INITIAL_SCENES = 15;  // 초기 로딩 장면 수
-const LOAD_MORE_SCENES = 10; // 추가 로딩 장면 수
-const SCROLL_THRESHOLD = 200; // 스크롤 트리거 거리 (px)
+// 윈도우 스크롤 설정
+const WINDOW_SIZE = 15;  // 한 번에 보여줄 장면 수
+const SCROLL_THRESHOLD = 150; // 스크롤 트리거 거리 (px)
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -179,8 +178,8 @@ export function CharacterChronicle() {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const zoomLevel = ZOOM_LEVELS[zoomIndex];
 
-  // 무한 스크롤 상태
-  const [loadedCount, setLoadedCount] = useState(INITIAL_SCENES);
+  // 윈도우 스크롤 상태 (시작 인덱스)
+  const [windowStart, setWindowStart] = useState(0);
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
 
@@ -279,37 +278,45 @@ export function CharacterChronicle() {
       });
   }, [knowledgeGraph]);
 
-  // 현재 로드된 장면들
-  const loadedScenes = useMemo(() =>
-    allScenes.slice(0, loadedCount),
-    [allScenes, loadedCount]
+  // 윈도우 끝 인덱스
+  const windowEnd = Math.min(windowStart + WINDOW_SIZE, allScenes.length);
+
+  // 현재 윈도우의 장면들
+  const windowScenes = useMemo(() =>
+    allScenes.slice(windowStart, windowEnd),
+    [allScenes, windowStart, windowEnd]
   );
 
-  // 로드된 장면 ID Set
-  const loadedSceneIds = useMemo(() =>
-    new Set(loadedScenes.map(s => s.sceneId)),
-    [loadedScenes]
+  // 윈도우 장면 ID Set
+  const windowSceneIds = useMemo(() =>
+    new Set(windowScenes.map(s => s.sceneId)),
+    [windowScenes]
   );
 
-  // 로드된 장면에 대해서만 캐릭터별 이벤트 매핑 (컬럼은 전체 characters 사용)
-  const characterSceneEvents = useMemo(() => {
+  // 현재 윈도우에 등장하는 캐릭터들과 이벤트 매핑
+  const { characterSceneEvents, visibleCharacters } = useMemo(() => {
     if (!knowledgeGraph) {
-      return new Map<string, Map<string, HyperEdge[]>>();
+      return {
+        characterSceneEvents: new Map<string, Map<string, HyperEdge[]>>(),
+        visibleCharacters: [] as typeof characters
+      };
     }
 
     const map = new Map<string, Map<string, HyperEdge[]>>();
+    const charIdsInWindow = new Set<string>();
 
-    // 로드된 장면에 관련된 엣지만 처리
+    // 윈도우 장면에 관련된 엣지만 처리
     Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
       const edgeScenes = edge.scenes || ['unknown'];
-      const relevantScenes = edgeScenes.filter(s => loadedSceneIds.has(s));
+      const relevantScenes = edgeScenes.filter(s => windowSceneIds.has(s));
 
       if (relevantScenes.length === 0) return;
 
       edge.entities.forEach(entityId => {
-        // 캐릭터인지 확인
         const entity = knowledgeGraph.entities[entityId];
         if (!entity || entity.category !== 'character') return;
+
+        charIdsInWindow.add(entityId);
 
         if (!map.has(entityId)) {
           map.set(entityId, new Map());
@@ -325,26 +332,45 @@ export function CharacterChronicle() {
       });
     });
 
-    return map;
-  }, [knowledgeGraph, loadedSceneIds]);
+    // 현재 윈도우에 등장하는 캐릭터만
+    const visible = characters.filter(c => charIdsInWindow.has(c.id));
 
-  // 더 로드하기
-  const loadMore = useCallback(() => {
-    setLoadedCount(prev => Math.min(prev + LOAD_MORE_SCENES, allScenes.length));
+    return { characterSceneEvents: map, visibleCharacters: visible };
+  }, [knowledgeGraph, characters, windowSceneIds]);
+
+  // 윈도우 이동
+  const moveWindow = useCallback((direction: 'up' | 'down') => {
+    if (direction === 'down' && windowEnd < allScenes.length) {
+      setWindowStart(prev => Math.min(prev + 5, allScenes.length - WINDOW_SIZE));
+    } else if (direction === 'up' && windowStart > 0) {
+      setWindowStart(prev => Math.max(prev - 5, 0));
+    }
+  }, [windowStart, windowEnd, allScenes.length]);
+
+  // 특정 위치로 점프
+  const jumpToPosition = useCallback((position: number) => {
+    const newStart = Math.max(0, Math.min(position, allScenes.length - WINDOW_SIZE));
+    setWindowStart(newStart);
   }, [allScenes.length]);
 
-  // 무한 스크롤 핸들러
+  // 스크롤 핸들러 (위/아래 끝에서 윈도우 이동)
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
 
-    // 맨 아래 근처에 도달하면 더 로드
+    // 맨 아래 근처 도달
     if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
-      if (loadedCount < allScenes.length) {
-        loadMore();
+      if (windowEnd < allScenes.length) {
+        moveWindow('down');
       }
     }
-  }, [loadedCount, allScenes.length, loadMore]);
+    // 맨 위 근처 도달
+    if (scrollTop < SCROLL_THRESHOLD) {
+      if (windowStart > 0) {
+        moveWindow('up');
+      }
+    }
+  }, [windowStart, windowEnd, allScenes.length, moveWindow]);
 
   // 스크롤 이벤트 등록
   useEffect(() => {
@@ -357,18 +383,9 @@ export function CharacterChronicle() {
 
   // 장면 번호로 점프
   const jumpToScene = useCallback((sceneNum: number) => {
-    // 해당 장면까지 로드
-    if (sceneNum > loadedCount) {
-      setLoadedCount(Math.min(sceneNum + 5, allScenes.length));
-    }
-    // 약간의 딜레이 후 스크롤
-    setTimeout(() => {
-      const targetRow = document.getElementById(`scene-row-${sceneNum}`);
-      if (targetRow && scrollContainerRef.current) {
-        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
-  }, [loadedCount, allScenes.length]);
+    const targetIndex = sceneNum - 1;
+    jumpToPosition(Math.max(0, targetIndex - 2)); // 약간 위에서 시작
+  }, [jumpToPosition]);
 
   // 점프 입력 처리
   const handleJumpSubmit = () => {
@@ -453,19 +470,11 @@ export function CharacterChronicle() {
             </button>
           )}
 
-          {/* 로딩 상태 */}
+          {/* 현재 위치 */}
           <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
             <span className="text-xs text-gray-600">
-              {loadedCount} / {allScenes.length} 장면
+              {windowStart + 1}-{windowEnd} / {allScenes.length}
             </span>
-            {loadedCount < allScenes.length && (
-              <button
-                onClick={loadMore}
-                className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
-              >
-                더 보기
-              </button>
-            )}
           </div>
 
           {/* 줌 컨트롤 */}
@@ -514,18 +523,18 @@ export function CharacterChronicle() {
         <div
           className="grid gap-0 origin-top-left transition-transform duration-200"
           style={{
-            gridTemplateColumns: `${100 * zoomLevel}px repeat(${characters.length}, ${260 * zoomLevel}px)`,
-            gridTemplateRows: `${80 * zoomLevel}px repeat(${loadedScenes.length}, auto)`,
+            gridTemplateColumns: `${100 * zoomLevel}px repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
+            gridTemplateRows: `${80 * zoomLevel}px repeat(${windowScenes.length}, auto)`,
           }}
         >
           {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
           <div className="sticky left-0 z-30 bg-gray-50 border-b border-r border-gray-200 flex items-center justify-center">
             <span className="text-xs font-medium text-gray-400">장면</span>
           </div>
-          {characters.map((char, charIndex) => {
+          {visibleCharacters.map((char, charIndex) => {
             const isSelected = selectedCharId === char.id;
             const isOtherSelected = selectedCharId && !isSelected;
-            const charColor = getCharColor(charIndex);
+            const charColor = getCharColor(characters.findIndex(c => c.id === char.id));
 
             return (
               <div
@@ -567,11 +576,11 @@ export function CharacterChronicle() {
           })}
 
           {/* 각 장면 행 */}
-          {loadedScenes.map((scene, localIndex) => {
+          {windowScenes.map((scene, localIndex) => {
             const sceneNum = parseInt(scene.sceneId.replace('S', '').replace(/^0+/, '') || '0');
             // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
             const getTimeElapsedText = () => {
-              // 페이지 첫 장면이거나 전체 첫 장면은 시간 경과 표시 안함
+              // 윈도우 첫 장면은 시간 경과 표시 안함
               if (localIndex === 0) return null;
 
               // 1. 지식그래프에서 추출한 timeElapsed 사용 (우선)
@@ -580,7 +589,7 @@ export function CharacterChronicle() {
               }
 
               // 2. fallback: 이전 장면과 시간이 다르면 표시
-              const prevScene = loadedScenes[localIndex - 1];
+              const prevScene = windowScenes[localIndex - 1];
               if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
                 return `${prevScene.time} → ${scene.time}`;
               }
@@ -608,7 +617,7 @@ export function CharacterChronicle() {
                     </div>
                   </div>
                   {/* 각 캐릭터 열에 시간 경과 표시 */}
-                  {characters.map((char) => (
+                  {visibleCharacters.map((char) => (
                     <div
                       key={`time-${scene.sceneId}-${char.id}`}
                       className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
@@ -644,16 +653,17 @@ export function CharacterChronicle() {
                 </div>
               </div>
 
-              {/* 각 캐릭터의 해당 장면 셀 */}
-              {characters.map((char, charIndex) => {
+              {/* 각 캐릭터의 해당 장면 셀 (등장하는 캐릭터만) */}
+              {visibleCharacters.map((char) => {
+                const globalIndex = characters.findIndex(c => c.id === char.id);
                 const isSelected = selectedCharId === char.id;
                 const isOtherSelected = selectedCharId && !isSelected;
-                const charColor = getCharColor(charIndex);
+                const charColor = getCharColor(globalIndex);
                 const sceneMap = characterSceneEvents.get(char.id) || new Map();
                 const events = sceneMap.get(scene.sceneId) || [];
                 const hasEvents = events.length > 0;
 
-                // 등장 안 하면 빈 셀
+                // 이 장면에 등장 안 하면 빈 셀 (세로선만)
                 if (!hasEvents) {
                   return (
                     <div
@@ -741,33 +751,51 @@ export function CharacterChronicle() {
           <div className="flex items-center gap-2">
             {/* 처음으로 */}
             <button
-              onClick={() => {
-                setLoadedCount(INITIAL_SCENES);
-                scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              disabled={loadedCount <= INITIAL_SCENES}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              onClick={() => setWindowStart(0)}
+              disabled={windowStart === 0}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="처음으로"
             >
               <ChevronLeft className="w-4 h-4" />
-              <ChevronLeft className="w-4 h-4 -ml-3" />
+              <ChevronLeft className="w-4 h-4 -ml-2.5" />
+            </button>
+
+            {/* 이전 */}
+            <button
+              onClick={() => moveWindow('up')}
+              disabled={windowStart === 0}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="이전"
+            >
+              <ChevronLeft className="w-4 h-4" />
             </button>
 
             {/* 슬라이더 + 눈금 */}
             <div className="flex-1 relative">
+              {/* 슬라이더 트랙 배경에 눈금 */}
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-gray-200 rounded-full">
+                {/* 현재 위치 표시 */}
+                <div
+                  className="absolute top-0 h-full bg-blue-500 rounded-full transition-all"
+                  style={{
+                    left: `${(windowStart / Math.max(1, allScenes.length - WINDOW_SIZE)) * 100}%`,
+                    width: `${(WINDOW_SIZE / allScenes.length) * 100}%`,
+                  }}
+                />
+              </div>
               <input
                 type="range"
-                min={1}
-                max={allScenes.length}
-                value={loadedCount}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setLoadedCount(val);
+                min={0}
+                max={Math.max(0, allScenes.length - WINDOW_SIZE)}
+                value={windowStart}
+                onChange={(e) => jumpToPosition(parseInt(e.target.value))}
+                className="relative w-full h-4 appearance-none bg-transparent cursor-pointer z-10"
+                style={{
+                  WebkitAppearance: 'none',
                 }}
-                className="w-full h-2 accent-blue-500 cursor-pointer"
               />
-              {/* 눈금 표시 */}
-              <div className="flex justify-between text-[9px] text-gray-400 mt-0.5 px-0.5">
+              {/* 눈금 라벨 */}
+              <div className="flex justify-between text-[9px] text-gray-400 mt-1 px-0.5">
                 <span>1</span>
                 <span>{Math.floor(allScenes.length / 4)}</span>
                 <span>{Math.floor(allScenes.length / 2)}</span>
@@ -776,28 +804,30 @@ export function CharacterChronicle() {
               </div>
             </div>
 
+            {/* 다음 */}
+            <button
+              onClick={() => moveWindow('down')}
+              disabled={windowEnd >= allScenes.length}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="다음"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
             {/* 끝으로 */}
             <button
-              onClick={() => {
-                setLoadedCount(allScenes.length);
-                setTimeout(() => {
-                  scrollContainerRef.current?.scrollTo({
-                    top: scrollContainerRef.current.scrollHeight,
-                    behavior: 'smooth'
-                  });
-                }, 100);
-              }}
-              disabled={loadedCount >= allScenes.length}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              onClick={() => setWindowStart(Math.max(0, allScenes.length - WINDOW_SIZE))}
+              disabled={windowEnd >= allScenes.length}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="끝으로"
             >
               <ChevronRight className="w-4 h-4" />
-              <ChevronRight className="w-4 h-4 -ml-3" />
+              <ChevronRight className="w-4 h-4 -ml-2.5" />
             </button>
 
             {/* 현재 위치 표시 */}
-            <span className="text-xs text-gray-600 min-w-[80px] text-right">
-              {loadedCount} / {allScenes.length}
+            <span className="text-xs text-gray-600 min-w-[90px] text-right font-medium">
+              {windowStart + 1}-{windowEnd} / {allScenes.length}
             </span>
           </div>
         </div>
