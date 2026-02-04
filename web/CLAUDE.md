@@ -54,11 +54,11 @@ Next.js App Router를 사용하지만 메인 UI는 클라이언트 SPA:
 
 ```typescript
 // AUTH_ENABLED 환경 변수로 제어
-AUTH_ENABLED=true   # CatCident OAuth 필수
+AUTH_ENABLED=true   # Catcident OAuth 필수
 AUTH_ENABLED=false  # 익명 모드 (userId='anonymous')
 ```
 
-**CatCident OAuth 연동**:
+**Catcident OAuth 연동**:
 - OIDC 프로토콜 + PKCE
 - 커스텀 스코프: `openid profile email member`
 - JWT claims: `member_type`, `roles`

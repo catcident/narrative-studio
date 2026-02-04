@@ -3,3 +3,7 @@ node_modules
 .git
 *.md
 *.log
+
+# 로컬 환경 변수 파일 제외 (빌드 시 .env만 사용)
+.env.local
+.env.*.local

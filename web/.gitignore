@@ -8,3 +8,6 @@ dist/
 # .env는 공개 가능한 기본값만 포함 (커밋 허용)
 .env.local
 .env.*.local
+
+# Docker Compose overrides (개발 환경용)
+docker-compose.override.yml

@@ -27,15 +27,24 @@ declare module 'next-auth/jwt' {
   }
 }
 
+// OIDC issuer (django-oauth-toolkit은 /oauth/에 마운트되어 있음)
+const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER
+  ? `${process.env.AUTH_CATCIDENT_ISSUER}/oauth`
+  : undefined;
+
 export const authConfig: NextAuthConfig = {
   providers: [
     {
       id: 'catcident',
-      name: 'CatCident',
+      name: 'Catcident',
       type: 'oidc',
-      issuer: process.env.AUTH_CATCIDENT_ISSUER,
+      issuer: OIDC_ISSUER,
       clientId: process.env.AUTH_CATCIDENT_ID,
       clientSecret: process.env.AUTH_CATCIDENT_SECRET || '',
+      // Confidential 클라이언트: token 요청 시 client_secret을 Body에 포함
+      client: {
+        token_endpoint_auth_method: 'client_secret_post',
+      },
       authorization: {
         params: {
           scope: 'openid profile email member',

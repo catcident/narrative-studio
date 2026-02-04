@@ -2,7 +2,7 @@
 
 ## 개요
 
-이 문서는 Character-Relationship-Chart를 Oracle Cloud에 CatCident 회원 전용 서비스로 배포하는 절차를 안내합니다.
+이 문서는 Character-Relationship-Chart를 Oracle Cloud에 Catcident 회원 전용 서비스로 배포하는 절차를 안내합니다.
 
 - **인증**: catcident-backend OAuth 2.0 / OIDC 연동
 - **인프라**: Docker Compose + Caddy 리버스 프록시
@@ -89,7 +89,7 @@ AUTH_SECRET=생성된_32바이트_랜덤_문자열
 AUTH_URL=https://storygraph.catcident.com
 
 # ==========================================
-# CatCident OAuth Provider
+# Catcident OAuth Provider
 # ==========================================
 AUTH_CATCIDENT_ISSUER=https://catcident.com
 AUTH_CATCIDENT_ID=Django_Admin에서_복사한_Client_ID
@@ -221,9 +221,9 @@ curl -vI https://storygraph.catcident.com/ 2>&1 | grep "SSL certificate"
 
 1. 브라우저에서 `https://storygraph.catcident.com/` 접속
 2. 로그인 페이지로 리다이렉트 확인
-3. "CatCident 계정으로 로그인" 버튼 클릭
+3. "Catcident 계정으로 로그인" 버튼 클릭
 4. catcident.com으로 리다이렉트 확인
-5. CatCident 계정으로 로그인
+5. Catcident 계정으로 로그인
 6. 동의 화면 확인 후 승인
 7. storygraph.catcident.com으로 복귀 확인
 
