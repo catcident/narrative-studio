@@ -13,11 +13,9 @@ import type { HyperEdge } from '../types';
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
-// 윈도우 설정
-const BUFFER_BEFORE = 5;   // 현재 위치 앞 버퍼
-const BUFFER_AFTER = 15;   // 현재 위치 뒤 버퍼 (넉넉하게)
-const VISIBLE_SIZE = 15;   // 표시용 (UI에만 사용)
-const POSITION_UPDATE_THRESHOLD = 5; // 스크롤로 위치 업데이트 최소 거리
+// 페이지 설정
+const PAGE_SIZE = 20;      // 한 페이지에 20개 장면
+const PAGE_STEP = 10;      // 다음 페이지로 넘길 때 10개 겹침
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -180,14 +178,10 @@ export function CharacterChronicle() {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const zoomLevel = ZOOM_LEVELS[zoomIndex];
 
-  // 현재 보고 있는 위치 (첫 번째 장면 인덱스)
-  const [currentPosition, setCurrentPosition] = useState(0);
+  // 현재 페이지 시작 인덱스 (0, 10, 20, 30 ...)
+  const [pageStart, setPageStart] = useState(0);
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
-
-  // 스크롤로 인한 급격한 위치 변경 방지용
-  const isLoadingRef = useRef(false);
-  const lastPositionChangeRef = useRef(0);
 
   // 줌 핸들러
   const handleZoomIn = () => {
@@ -284,26 +278,20 @@ export function CharacterChronicle() {
       });
   }, [knowledgeGraph]);
 
-  // 로드 범위: 현재 위치 기준 앞 5개 + 뒤 10개
-  const loadStart = Math.max(0, currentPosition - BUFFER_BEFORE);
-  const loadEnd = Math.min(currentPosition + BUFFER_AFTER, allScenes.length);
-
-  // 로드된 장면들
-  const loadedScenes = useMemo(() =>
-    allScenes.slice(loadStart, loadEnd),
-    [allScenes, loadStart, loadEnd]
+  // 현재 페이지 장면들 (pageStart ~ pageStart + PAGE_SIZE)
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, allScenes.length);
+  const pageScenes = useMemo(() =>
+    allScenes.slice(pageStart, pageEnd),
+    [allScenes, pageStart, pageEnd]
   );
 
-  // UI 표시용 범위 (현재 위치 기준 15개)
-  const displayEnd = Math.min(currentPosition + VISIBLE_SIZE, allScenes.length);
-
-  // 로드된 장면 ID Set
-  const loadedSceneIds = useMemo(() =>
-    new Set(loadedScenes.map(s => s.sceneId)),
-    [loadedScenes]
+  // 현재 페이지 장면 ID Set
+  const pageSceneIds = useMemo(() =>
+    new Set(pageScenes.map(s => s.sceneId)),
+    [pageScenes]
   );
 
-  // 로드된 장면에 등장하는 캐릭터들과 이벤트 매핑
+  // 현재 페이지에 등장하는 캐릭터들과 이벤트 매핑
   const { characterSceneEvents, visibleCharacters } = useMemo(() => {
     if (!knowledgeGraph) {
       return {
@@ -313,12 +301,12 @@ export function CharacterChronicle() {
     }
 
     const map = new Map<string, Map<string, HyperEdge[]>>();
-    const charIdsInWindow = new Set<string>();
+    const charIdsInPage = new Set<string>();
 
-    // 로드된 장면에 관련된 엣지 처리
+    // 현재 페이지 장면에 관련된 엣지 처리
     Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
       const edgeScenes = edge.scenes || ['unknown'];
-      const relevantScenes = edgeScenes.filter(s => loadedSceneIds.has(s));
+      const relevantScenes = edgeScenes.filter(s => pageSceneIds.has(s));
 
       if (relevantScenes.length === 0) return;
 
@@ -326,7 +314,7 @@ export function CharacterChronicle() {
         const entity = knowledgeGraph.entities[entityId];
         if (!entity || entity.category !== 'character') return;
 
-        charIdsInWindow.add(entityId);
+        charIdsInPage.add(entityId);
 
         if (!map.has(entityId)) {
           map.set(entityId, new Map());
@@ -342,116 +330,48 @@ export function CharacterChronicle() {
       });
     });
 
-    // 로드된 범위에 등장하는 캐릭터만
-    const visible = characters.filter(c => charIdsInWindow.has(c.id));
+    // 현재 페이지에 등장하는 캐릭터만
+    const visible = characters.filter(c => charIdsInPage.has(c.id));
 
     return { characterSceneEvents: map, visibleCharacters: visible };
-  }, [knowledgeGraph, characters, loadedSceneIds]);
+  }, [knowledgeGraph, characters, pageSceneIds]);
 
-  // 위치 이동 (버튼용) - 잠금 적용
-  const movePosition = useCallback((direction: 'up' | 'down') => {
-    // 버튼 클릭 시 잠금 설정
-    isLoadingRef.current = true;
-    lastPositionChangeRef.current = Date.now();
-
-    if (direction === 'down' && currentPosition < allScenes.length - 1) {
-      setCurrentPosition(prev => Math.min(prev + 5, allScenes.length - 1));
-    } else if (direction === 'up' && currentPosition > 0) {
-      setCurrentPosition(prev => Math.max(prev - 5, 0));
+  // 페이지 이동
+  const goNextPage = useCallback(() => {
+    const nextStart = pageStart + PAGE_STEP;
+    if (nextStart < allScenes.length) {
+      setPageStart(nextStart);
+      // 스크롤 맨 위로
+      scrollContainerRef.current?.scrollTo({ top: 0 });
     }
+  }, [pageStart, allScenes.length]);
 
-    // 잠금 해제
-    setTimeout(() => {
-      isLoadingRef.current = false;
-    }, 500);
-  }, [currentPosition, allScenes.length]);
+  const goPrevPage = useCallback(() => {
+    const prevStart = pageStart - PAGE_STEP;
+    setPageStart(Math.max(0, prevStart));
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [pageStart]);
 
-  // 특정 위치로 점프 - 잠금 적용
-  const jumpToPosition = useCallback((position: number) => {
-    isLoadingRef.current = true;
-    lastPositionChangeRef.current = Date.now();
+  const goFirstPage = useCallback(() => {
+    setPageStart(0);
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, []);
 
-    const newPos = Math.max(0, Math.min(position, allScenes.length - 1));
-    setCurrentPosition(newPos);
-
-    // 잠금 해제 (점프는 더 긴 시간)
-    setTimeout(() => {
-      isLoadingRef.current = false;
-    }, 600);
+  const goLastPage = useCallback(() => {
+    // 마지막 페이지 시작점 계산
+    const lastStart = Math.max(0, allScenes.length - PAGE_SIZE);
+    setPageStart(lastStart);
+    scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [allScenes.length]);
-
-  // 스크롤 위치에 따라 현재 위치 업데이트
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef.current || loadedScenes.length === 0) return;
-
-    // 로딩 중이면 스크롤로 인한 위치 변경 무시
-    if (isLoadingRef.current) return;
-
-    // 마지막 위치 변경 후 최소 대기 시간 (300ms)
-    const now = Date.now();
-    if (now - lastPositionChangeRef.current < 300) return;
-
-    const container = scrollContainerRef.current;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-
-    // 스크롤 가능 영역이 없으면 무시
-    const scrollableHeight = scrollHeight - clientHeight;
-    if (scrollableHeight <= 0) return;
-
-    // 스크롤 비율 계산
-    const scrollRatio = scrollTop / scrollableHeight;
-
-    // 현재 보이는 장면 인덱스 추정 (로드된 범위 내에서)
-    const visibleIndex = Math.floor(scrollRatio * (loadedScenes.length - 1));
-    const newPosition = loadStart + visibleIndex;
-
-    // 위치 변경 임계값 적용: 최소 POSITION_UPDATE_THRESHOLD 만큼 차이나야 변경
-    const positionDiff = Math.abs(newPosition - currentPosition);
-    if (positionDiff >= POSITION_UPDATE_THRESHOLD) {
-      // 로딩 잠금 설정
-      isLoadingRef.current = true;
-      lastPositionChangeRef.current = now;
-
-      // 부드러운 전환을 위해 한 번에 최대 5칸만 이동
-      const maxStep = 5;
-      const direction = newPosition > currentPosition ? 1 : -1;
-      const step = Math.min(positionDiff, maxStep) * direction;
-      const targetPosition = Math.max(0, Math.min(currentPosition + step, allScenes.length - 1));
-
-      setCurrentPosition(targetPosition);
-
-      // 콘텐츠 로딩 시간 확보 후 잠금 해제
-      setTimeout(() => {
-        isLoadingRef.current = false;
-      }, 400);
-    }
-  }, [loadedScenes.length, loadStart, currentPosition, allScenes.length]);
-
-  // 스크롤 이벤트 등록 (throttle)
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          handleScroll();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    container.addEventListener('scroll', onScroll);
-    return () => container.removeEventListener('scroll', onScroll);
-  }, [handleScroll]);
 
   // 장면 번호로 점프
   const jumpToScene = useCallback((sceneNum: number) => {
     const targetIndex = sceneNum - 1;
-    jumpToPosition(Math.max(0, targetIndex - 2)); // 약간 위에서 시작
-  }, [jumpToPosition]);
+    // 해당 장면이 포함된 페이지 시작점 계산
+    const pageStartIndex = Math.floor(targetIndex / PAGE_STEP) * PAGE_STEP;
+    setPageStart(Math.max(0, Math.min(pageStartIndex, allScenes.length - 1)));
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [allScenes.length]);
 
   // 점프 입력 처리
   const handleJumpSubmit = () => {
@@ -536,10 +456,10 @@ export function CharacterChronicle() {
             </button>
           )}
 
-          {/* 현재 위치 */}
+          {/* 현재 페이지 위치 */}
           <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
             <span className="text-xs text-gray-600">
-              {currentPosition + 1}-{displayEnd} / {allScenes.length}
+              {pageStart + 1}-{pageEnd} / {allScenes.length}
             </span>
           </div>
 
@@ -590,7 +510,7 @@ export function CharacterChronicle() {
           className="grid gap-0 origin-top-left transition-transform duration-200"
           style={{
             gridTemplateColumns: `${100 * zoomLevel}px repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
-            gridTemplateRows: `${80 * zoomLevel}px repeat(${loadedScenes.length}, auto)`,
+            gridTemplateRows: `${80 * zoomLevel}px repeat(${pageScenes.length}, auto)`,
           }}
         >
           {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
@@ -642,11 +562,11 @@ export function CharacterChronicle() {
           })}
 
           {/* 각 장면 행 */}
-          {loadedScenes.map((scene, localIndex) => {
+          {pageScenes.map((scene, localIndex) => {
             const sceneNum = parseInt(scene.sceneId.replace('S', '').replace(/^0+/, '') || '0');
             // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
             const getTimeElapsedText = () => {
-              // 윈도우 첫 장면은 시간 경과 표시 안함
+              // 페이지 첫 장면은 시간 경과 표시 안함
               if (localIndex === 0) return null;
 
               // 1. 지식그래프에서 추출한 timeElapsed 사용 (우선)
@@ -655,7 +575,7 @@ export function CharacterChronicle() {
               }
 
               // 2. fallback: 이전 장면과 시간이 다르면 표시
-              const prevScene = loadedScenes[localIndex - 1];
+              const prevScene = pageScenes[localIndex - 1];
               if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
                 return `${prevScene.time} → ${scene.time}`;
               }
@@ -812,13 +732,13 @@ export function CharacterChronicle() {
 
       {/* 하단: 네비게이션 + 범례 */}
       <div className="flex-shrink-0 bg-white border-t border-gray-200">
-        {/* 장면 네비게이션 바 */}
+        {/* 페이지 네비게이션 바 */}
         <div className="px-3 py-2 border-b border-gray-100">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* 처음으로 */}
             <button
-              onClick={() => setCurrentPosition(0)}
-              disabled={currentPosition === 0}
+              onClick={goFirstPage}
+              disabled={pageStart === 0}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="처음으로"
             >
@@ -828,73 +748,46 @@ export function CharacterChronicle() {
 
             {/* 이전 */}
             <button
-              onClick={() => movePosition('up')}
-              disabled={currentPosition === 0}
-              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-              title="이전"
+              onClick={goPrevPage}
+              disabled={pageStart === 0}
+              className="px-3 py-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+              title="이전 페이지"
             >
               <ChevronLeft className="w-4 h-4" />
+              <span className="text-sm">이전</span>
             </button>
 
-            {/* 슬라이더 + 눈금 */}
-            <div className="flex-1 relative">
-              {/* 슬라이더 트랙 배경 */}
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-gray-200 rounded-full">
-                {/* 현재 위치 표시 */}
-                <div
-                  className="absolute top-0 h-full bg-blue-500 rounded-full transition-all"
-                  style={{
-                    left: `${(currentPosition / Math.max(1, allScenes.length - 1)) * 100}%`,
-                    width: `${(VISIBLE_SIZE / allScenes.length) * 100}%`,
-                  }}
-                />
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(0, allScenes.length - 1)}
-                value={currentPosition}
-                onChange={(e) => jumpToPosition(parseInt(e.target.value))}
-                className="relative w-full h-4 appearance-none bg-transparent cursor-pointer z-10"
-                style={{
-                  WebkitAppearance: 'none',
-                }}
-              />
-              {/* 눈금 라벨 */}
-              <div className="flex justify-between text-[9px] text-gray-400 mt-1 px-0.5">
-                <span>1</span>
-                <span>{Math.floor(allScenes.length / 4)}</span>
-                <span>{Math.floor(allScenes.length / 2)}</span>
-                <span>{Math.floor(allScenes.length * 3 / 4)}</span>
-                <span>{allScenes.length}</span>
-              </div>
+            {/* 페이지 정보 */}
+            <div className="flex-1 flex items-center justify-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                장면 {pageStart + 1} - {pageEnd}
+              </span>
+              <span className="text-xs text-gray-400">
+                / 총 {allScenes.length}개
+              </span>
             </div>
 
             {/* 다음 */}
             <button
-              onClick={() => movePosition('down')}
-              disabled={currentPosition >= allScenes.length - 1}
-              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-              title="다음"
+              onClick={goNextPage}
+              disabled={pageStart + PAGE_STEP >= allScenes.length}
+              className="px-3 py-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+              title="다음 페이지"
             >
+              <span className="text-sm">다음</span>
               <ChevronRight className="w-4 h-4" />
             </button>
 
             {/* 끝으로 */}
             <button
-              onClick={() => setCurrentPosition(allScenes.length - 1)}
-              disabled={currentPosition >= allScenes.length - 1}
+              onClick={goLastPage}
+              disabled={pageStart >= allScenes.length - PAGE_SIZE}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="끝으로"
             >
               <ChevronRight className="w-4 h-4" />
               <ChevronRight className="w-4 h-4 -ml-2.5" />
             </button>
-
-            {/* 현재 위치 표시 */}
-            <span className="text-xs text-gray-600 min-w-[90px] text-right font-medium">
-              {currentPosition + 1}-{displayEnd} / {allScenes.length}
-            </span>
           </div>
         </div>
 
@@ -914,7 +807,7 @@ export function CharacterChronicle() {
             중립
           </span>
           <span className="mx-2">|</span>
-          <span>스크롤로 더 보기 · 캐릭터 클릭 강조</span>
+          <span>페이지당 20개 (10개 겹침) · 캐릭터 클릭 강조</span>
         </div>
       </div>
     </div>
