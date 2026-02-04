@@ -459,7 +459,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharIds, setFocusedCharIds] = useState<string[]>([]);
-  const [minImportance, setMinImportance] = useState<number>(1);  // 최소 중요도 필터
+  const [minConnections, setMinConnections] = useState<number>(1);  // 최소 연결 횟수 필터
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
 
@@ -482,40 +482,58 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
     }
   }, [entities.length, characters]);
 
-  // 중요도 필터 적용
-  const importanceFilteredEntities = useMemo(() => {
-    if (minImportance <= 1) return entities;
-    // 인물은 항상 표시, 나머지는 중요도 필터 적용
-    return entities.filter(e =>
-      e.category === 'character' || (e.importance || 5) >= minImportance
-    );
-  }, [entities, minImportance]);
+  // 선택된 엔티티와의 연결 횟수 계산
+  const connectionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (selectedEntityIds.length === 0) return counts;
 
-  const importanceFilteredEdges = useMemo(() => {
-    if (minImportance <= 1) return edges;
-    const entityIds = new Set(importanceFilteredEntities.map(e => e.id));
-    return edges.filter(e => e.entities.every(id => entityIds.has(id)));
-  }, [edges, importanceFilteredEntities, minImportance]);
+    edges.forEach(edge => {
+      const hasSelected = selectedEntityIds.some(id => edge.entities.includes(id));
+      if (hasSelected) {
+        edge.entities.forEach(id => {
+          if (!selectedEntityIds.includes(id)) {
+            counts.set(id, (counts.get(id) || 0) + 1);
+          }
+        });
+      }
+    });
+    return counts;
+  }, [edges, selectedEntityIds]);
 
   // 사이드바 선택에 의한 필터링 (노드가 많을 때)
   const sidebarFilteredResult = useMemo(() => {
+    // 노드가 많은데 아무것도 선택 안됐으면 빈 그래프
+    if (entities.length > NODE_THRESHOLD && selectedEntityIds.length === 0) {
+      return { filteredEntities: [], filteredEdges: [] };
+    }
+
     // 사이드바에서 선택된 엔티티가 있으면 그것들과 연결된 것만 표시
     if (selectedEntityIds.length > 0) {
-      const fEdges = importanceFilteredEdges.filter(e =>
+      const fEdges = edges.filter(e =>
         selectedEntityIds.some(id => e.entities.includes(id))
       );
 
       const relatedEntityIds = new Set<string>(selectedEntityIds);
       fEdges.forEach(edge => {
-        edge.entities.forEach(id => relatedEntityIds.add(id));
+        edge.entities.forEach(id => {
+          // 연결 횟수 필터 적용 (선택된 것은 항상 표시)
+          const count = connectionCounts.get(id) || 0;
+          if (selectedEntityIds.includes(id) || count >= minConnections) {
+            relatedEntityIds.add(id);
+          }
+        });
       });
 
-      const fEntities = importanceFilteredEntities.filter(e => relatedEntityIds.has(e.id));
-      return { filteredEntities: fEntities, filteredEdges: fEdges };
+      const fEntities = entities.filter(e => relatedEntityIds.has(e.id));
+      // 연결 횟수 필터가 적용된 엣지만
+      const filteredFEdges = fEdges.filter(e =>
+        e.entities.every(id => relatedEntityIds.has(id))
+      );
+      return { filteredEntities: fEntities, filteredEdges: filteredFEdges };
     }
 
-    return { filteredEntities: importanceFilteredEntities, filteredEdges: importanceFilteredEdges };
-  }, [importanceFilteredEntities, importanceFilteredEdges, selectedEntityIds]);
+    return { filteredEntities: entities, filteredEdges: edges };
+  }, [entities, edges, selectedEntityIds, connectionCounts, minConnections]);
 
   // 인물 중심 모드: 선택된 인물들이 직접 연결된 것만 표시
   const { filteredEntities, filteredEdges } = useMemo(() => {
@@ -1106,25 +1124,25 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
           </div>
         )}
 
-        {/* 중요도 필터 */}
-        {viewMode === 'full' && (
+        {/* 연결 횟수 필터 - 선택된 엔티티가 있을 때만 */}
+        {selectedEntityIds.length > 0 && (
           <div className="border-t border-gray-100 pt-2 mt-2">
             <div className="flex items-center gap-2">
               <Filter className="w-3 h-3 text-gray-400" />
-              <span className="text-[10px] text-gray-400">중요도</span>
+              <span className="text-[10px] text-gray-400">연결</span>
               <input
                 type="range"
                 min="1"
                 max="10"
-                value={minImportance}
-                onChange={(e) => setMinImportance(Number(e.target.value))}
+                value={minConnections}
+                onChange={(e) => setMinConnections(Number(e.target.value))}
                 className="w-16 h-1 accent-blue-500"
               />
-              <span className="text-[10px] text-gray-600 font-medium w-4">{minImportance}</span>
+              <span className="text-[10px] text-gray-600 font-medium w-4">{minConnections}+</span>
             </div>
-            {minImportance > 1 && (
+            {minConnections > 1 && (
               <div className="text-[9px] text-gray-400 mt-1">
-                {displayEntities.length}/{entities.length} 표시
+                {displayEntities.length}개 표시
               </div>
             )}
           </div>
