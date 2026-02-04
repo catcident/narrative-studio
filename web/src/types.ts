@@ -137,6 +137,24 @@ export interface SourceFile {
   charCount: number;  // 글자 수
 }
 
+// 장면 스냅샷
+export interface SceneSnapshot {
+  sceneId: string;
+  order: number;
+  chapter: string | null;
+  chapterNumber: number | null;
+  time: string;
+  timeElapsed: string | null;  // 이전 장면으로부터 경과 시간
+  isFlashback: boolean;  // 회상/플래시백 여부
+  flashbackTime: string | null;  // 회상 시점 (예: "10년 전", "어린 시절")
+  location: string;
+  summary: string;
+  events: string[];
+  mood?: string;
+  charactersPresent: string[];
+  activeEdges: string[];
+}
+
 export interface NovelKnowledgeGraph {
   metadata: {
     title: string;
@@ -151,7 +169,7 @@ export interface NovelKnowledgeGraph {
   hyperedges: Record<string, HyperEdge>;
   chapters?: Record<string, Chapter>;
   timeline: TimelinePoint[];
-  snapshots: Record<string, any>;
+  snapshots: Record<string, SceneSnapshot>;
   stats: {
     totalEntities: number;
     totalEdges: number;
