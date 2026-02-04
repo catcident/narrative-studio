@@ -9,6 +9,52 @@ import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
+// 텍스트 파일 인코딩 감지 및 디코딩
+async function readTextFileWithEncoding(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const uint8Array = new Uint8Array(buffer);
+
+  // UTF-8 BOM 체크
+  if (uint8Array[0] === 0xEF && uint8Array[1] === 0xBB && uint8Array[2] === 0xBF) {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+
+  // UTF-16 LE BOM 체크
+  if (uint8Array[0] === 0xFF && uint8Array[1] === 0xFE) {
+    return new TextDecoder('utf-16le').decode(buffer);
+  }
+
+  // UTF-16 BE BOM 체크
+  if (uint8Array[0] === 0xFE && uint8Array[1] === 0xFF) {
+    return new TextDecoder('utf-16be').decode(buffer);
+  }
+
+  // UTF-8로 먼저 시도
+  try {
+    const utf8Text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    // 유효한 UTF-8인 경우
+    return utf8Text;
+  } catch {
+    // UTF-8이 아님
+  }
+
+  // EUC-KR (CP949) 시도 - 한글 텍스트에서 흔함
+  try {
+    const eucKrText = new TextDecoder('euc-kr').decode(buffer);
+    // 깨진 문자가 적은지 확인 (간단한 휴리스틱)
+    const koreanPattern = /[가-힣]/g;
+    const matches = eucKrText.match(koreanPattern);
+    if (matches && matches.length > 10) {
+      return eucKrText;
+    }
+  } catch {
+    // EUC-KR 디코딩 실패
+  }
+
+  // 기본 UTF-8로 폴백 (일부 깨질 수 있음)
+  return new TextDecoder('utf-8').decode(buffer);
+}
+
 export function FileUpload() {
   const { knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, error } = useStore();
   const [dragActive, setDragActive] = useState(false);
@@ -163,7 +209,8 @@ export function FileUpload() {
           }
           text = pdfTextParts.join('\n\n');
         } else {
-          text = await file.text();
+          // 인코딩 감지하여 텍스트 읽기
+          text = await readTextFileWithEncoding(file);
         }
 
         textParts.push(text);
@@ -258,7 +305,8 @@ export function FileUpload() {
         }
         text = textParts.join('\n\n');
       } else {
-        text = await file.text();
+        // 인코딩 감지하여 텍스트 읽기
+        text = await readTextFileWithEncoding(file);
       }
 
       if (!text.trim()) {
@@ -428,7 +476,8 @@ export function FileUpload() {
         }
         text = textParts.join('\n\n');
       } else {
-        text = await file.text();
+        // 인코딩 감지하여 텍스트 읽기
+        text = await readTextFileWithEncoding(file);
       }
 
       if (!text.trim()) {
@@ -530,7 +579,8 @@ export function FileUpload() {
             }
             fileText = pdfTextParts.join('\n\n');
           } else {
-            fileText = await file.text();
+            // 인코딩 감지하여 텍스트 읽기
+            fileText = await readTextFileWithEncoding(file);
           }
 
           fileInfos.push({ fileName: file.name, text: fileText });
