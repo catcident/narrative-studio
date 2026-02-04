@@ -359,9 +359,9 @@ async function selectRelevantEntities(
   graph: NovelKnowledgeGraph,
   model?: string
 ): Promise<string[]> {
-  // 엔티티가 적으면 선별 없이 전체 반환
+  // 엔티티가 1개 이하면 선별 없이 전체 반환
   const entityCount = Object.keys(graph.entities).length;
-  if (entityCount <= 20) {
+  if (entityCount <= 1) {
     console.log(`[선별] 엔티티 ${entityCount}개 - 선별 스킵, 전체 사용`);
     return Object.values(graph.entities).map((e: any) => e.name);
   }
