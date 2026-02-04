@@ -1,37 +1,10 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Next.js
+.next/
 
-node_modules
-dist
-dist-server
-dist-ssr
-.next
-*.local
+# Build output (Next.js standalone)
+dist/
 
 # Environment variables (보안)
-.env
+# .env는 공개 가능한 기본값만 포함 (커밋 허용)
 .env.local
 .env.*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS files
-Thumbs.db
-
-# Build outputs
-*.ontology.json

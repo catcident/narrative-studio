@@ -12,8 +12,8 @@ npm run dev
 npm run build && npm run start
 
 # Docker
-docker build -t character-chart .
-docker run -p 3000:3000 --env-file .env character-chart
+docker build -t storygraph .
+docker run -p 3000:3000 --env-file .env storygraph
 ```
 
 ## 앱 구조
@@ -107,7 +107,7 @@ MONGO_URL=mongodb://...           # 데이터 저장
 # 인증 (AUTH_ENABLED=true 시)
 AUTH_ENABLED=true
 AUTH_SECRET=...                   # openssl rand -base64 32
-AUTH_URL=https://chart.catcident.com
+AUTH_URL=https://storygraph.catcident.com
 AUTH_CATCIDENT_ISSUER=https://catcident.com
 AUTH_CATCIDENT_ID=your_client_id
 AUTH_CATCIDENT_SECRET=            # 공개 클라이언트는 빈 값
