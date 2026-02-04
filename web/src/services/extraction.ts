@@ -472,31 +472,81 @@ function filterEntitiesByNames(
 }
 
 /**
- * KnownEntity 배열에서 임시 그래프 구조 생성 (LLM 선별용)
- * 관계 정보는 knownEntities에는 없으므로 간소화된 형태로 생성
+ * allExtracted에서 축적 그래프 생성 (엔티티 + 관계 정보 포함)
+ * 한번에 올리기/따로 올리기 모두 동일한 방식으로 처리
  */
-function buildGraphFromKnownEntities(knownEntities: KnownEntity[]): NovelKnowledgeGraph {
+function buildAccumulatedGraph(allExtracted: any[], existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const entities: Record<string, any> = {};
+  const hyperedges: Record<string, any> = {};
 
-  knownEntities.forEach((e, idx) => {
-    const id = `E${String(idx + 1).padStart(4, '0')}`;
-    entities[id] = {
-      id,
-      name: e.name,
-      category: e.category || 'character',
-      description: e.description || '',
-      aliases: e.aliases || [],
-    };
-  });
+  // existingGraph가 있으면 그것을 기반으로 시작
+  if (existingGraph) {
+    Object.assign(entities, existingGraph.entities);
+    Object.assign(hyperedges, existingGraph.hyperedges);
+  }
+
+  let entityCounter = Object.keys(entities).length;
+  let edgeCounter = Object.keys(hyperedges).length;
+
+  // 이름 → ID 매핑 (중복 체크용)
+  const nameToId = new Map<string, string>();
+  for (const [id, entity] of Object.entries(entities)) {
+    nameToId.set((entity as any).name.toLowerCase(), id);
+    for (const alias of ((entity as any).aliases || [])) {
+      nameToId.set(alias.toLowerCase(), id);
+    }
+  }
+
+  // allExtracted에서 엔티티와 관계 축적
+  for (const extracted of allExtracted) {
+    // 엔티티 축적
+    for (const entity of (extracted.entities || [])) {
+      const nameLower = entity.name.toLowerCase();
+      if (!nameToId.has(nameLower)) {
+        entityCounter++;
+        const id = `E${String(entityCounter).padStart(4, '0')}`;
+        entities[id] = {
+          id,
+          name: entity.name,
+          category: entity.category || 'character',
+          description: entity.description || '',
+          aliases: entity.aliases || [],
+        };
+        nameToId.set(nameLower, id);
+        for (const alias of (entity.aliases || [])) {
+          nameToId.set(alias.toLowerCase(), id);
+        }
+      }
+    }
+
+    // 관계 축적
+    for (const rel of (extracted.relationships || [])) {
+      edgeCounter++;
+      const edgeId = `R${String(edgeCounter).padStart(4, '0')}`;
+      hyperedges[edgeId] = {
+        id: edgeId,
+        type: rel.type || '관련',
+        participants: rel.participants || [],
+        description: rel.description || '',
+        scenes: rel.scenes || [],
+      };
+    }
+  }
 
   return {
     metadata: { title: '', createdAt: '', updatedAt: '', version: '1.0.0' },
     entities,
-    hyperedges: {},  // 청크 간 축적에서는 관계 정보 없음
-    chapters: {},
-    timeline: [],
-    snapshots: {},
-    stats: { totalEntities: knownEntities.length, totalEdges: 0, totalChapters: 0, entitiesByCategory: {}, edgesByType: {} }
+    hyperedges,
+    chapters: existingGraph?.chapters || {},
+    timeline: existingGraph?.timeline || [],
+    snapshots: existingGraph?.snapshots || {},
+    stats: {
+      totalEntities: Object.keys(entities).length,
+      totalEdges: Object.keys(hyperedges).length,
+      totalChapters: 0,
+      entitiesByCategory: {},
+      edgesByType: {}
+    }
   };
 }
 
@@ -580,80 +630,27 @@ export async function extractKnowledgeGraph(
     onProgress?.(msg);
 
     try {
-      // 이전 청크에서 축적된 엔티티가 있으면 LLM으로 관련 엔티티 선별
-      // existingGraph가 있든 없든, knownEntities가 충분하면 선별 사용
-      let entitiesToUse: KnownEntity[] = [];
+      // 축적 그래프 생성: existingGraph + 이전 청크 결과 (allExtracted)
+      // 한번에 올리기/따로 올리기 모두 동일한 방식으로 처리
+      const accumulatedGraph = buildAccumulatedGraph(allExtracted, existingGraph);
+      const totalKnownCount = Object.keys(accumulatedGraph.entities).length;
 
-      // 선별 대상: existingGraph의 엔티티 + 이 세션에서 축적된 knownEntities
-      const hasExistingGraph = existingGraph && !resumeFrom;
-      const existingEntityCount = hasExistingGraph ? Object.keys(existingGraph!.entities).length : 0;
-      const totalKnownCount = existingEntityCount + knownEntities.length;
+      let entitiesToUse: KnownEntity[] = [];
 
       // 2개 이상의 알려진 엔티티가 있으면 LLM 선별 사용
       if (totalKnownCount > 1) {
         onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`);
 
-        // existingGraph와 knownEntities를 합친 임시 그래프 생성
-        let graphForSelection: NovelKnowledgeGraph;
-
-        if (hasExistingGraph) {
-          // existingGraph에 knownEntities 추가
-          const mergedEntities = { ...existingGraph!.entities };
-          let counter = Object.keys(mergedEntities).length;
-
-          // knownEntities 중 existingGraph에 없는 것만 추가
-          const existingNames = new Set(Object.values(mergedEntities).map((e: any) => e.name.toLowerCase()));
-          for (const ke of knownEntities) {
-            if (!existingNames.has(ke.name.toLowerCase())) {
-              counter++;
-              const id = `E${String(counter).padStart(4, '0')}`;
-              mergedEntities[id] = {
-                id,
-                name: ke.name,
-                category: ke.category || 'character',
-                description: ke.description || '',
-                aliases: ke.aliases || [],
-              };
-            }
-          }
-
-          graphForSelection = {
-            ...existingGraph!,
-            entities: mergedEntities,
-          };
-        } else {
-          // knownEntities만으로 임시 그래프 생성
-          graphForSelection = buildGraphFromKnownEntities(knownEntities);
-        }
-
         // LLM으로 관련 엔티티 선별
-        const selectedNames = await selectRelevantEntities(chunks[i], graphForSelection, useModel);
+        const selectedNames = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
 
         // 선별된 이름으로 필터링
-        if (hasExistingGraph) {
-          const selectedFromGraph = filterEntitiesByNames(existingGraph!, selectedNames);
-          const selectedFromKnown = filterKnownEntitiesByNames(knownEntities, selectedNames);
+        entitiesToUse = filterEntitiesByNames(accumulatedGraph, selectedNames);
 
-          // 중복 제거하며 병합
-          const mergedSet = new Map<string, KnownEntity>();
-          for (const e of selectedFromGraph) {
-            mergedSet.set(e.name.toLowerCase(), e);
-          }
-          for (const e of selectedFromKnown) {
-            if (!mergedSet.has(e.name.toLowerCase())) {
-              mergedSet.set(e.name.toLowerCase(), e);
-            }
-          }
-          entitiesToUse = Array.from(mergedSet.values());
-
-          console.log(`[청크 ${i + 1}] LLM 선별: 그래프 ${selectedFromGraph.length}개 + 세션 ${selectedFromKnown.length}개 = ${entitiesToUse.length}개`);
-        } else {
-          entitiesToUse = filterKnownEntitiesByNames(knownEntities, selectedNames);
-          console.log(`[청크 ${i + 1}] LLM 선별: 세션 ${knownEntities.length}개 중 ${entitiesToUse.length}개 선택`);
-        }
+        console.log(`[청크 ${i + 1}] LLM 선별: 축적 그래프 ${totalKnownCount}개 중 ${entitiesToUse.length}개 선택`);
       } else {
-        // 알려진 엔티티가 1개 이하면 그냥 전체 사용
-        entitiesToUse = trimKnownEntities(knownEntities);
+        // 알려진 엔티티가 1개 이하면 그냥 전체 사용 (accumulatedGraph에서 가져옴)
+        entitiesToUse = filterEntitiesByNames(accumulatedGraph, Object.values(accumulatedGraph.entities).map((e: any) => e.name));
         console.log(`[청크 ${i + 1}] 선별 스킵 (알려진 엔티티 ${totalKnownCount}개)`);
       }
 
