@@ -17,7 +17,7 @@ import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
-import { extractKnowledgeGraph, mergeKnowledgeGraphs } from './services/extraction';
+import { extractKnowledgeGraph } from './services/extraction';
 import type { NovelKnowledgeGraph } from './types';
 
 type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
@@ -117,21 +117,24 @@ function App() {
 
       if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
 
-      const title = file.name.replace(/\.[^/.]+$/, '');
       // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
       const existingModel = knowledgeGraph.metadata.model;
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
-        setAddProgress(msg);
-      }, undefined, existingModel, file.name);  // 원본 파일명 전달
-
-      setAddProgress('병합 중...');
-      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
+      // 기존 지식그래프를 전달하여 이어서 분석
+      const updatedKnowledgeGraph = await extractKnowledgeGraph(
+        text,
+        knowledgeGraph.metadata.title,  // 기존 제목 유지
+        (msg) => setAddProgress(msg),
+        undefined,
+        existingModel,
+        file.name,
+        knowledgeGraph  // 기존 지식그래프 전달
+      );
 
       // DB에 저장 (기존 ID 사용하여 업데이트)
       setAddProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
+      const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
-      setKnowledgeGraph(merged, undefined, saved.id);
+      setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       setAddProgress('');
     } catch (err: any) {
       console.error('파일 추가 오류:', err);
@@ -403,10 +406,10 @@ function App() {
         <div className="flex-1 flex flex-col min-w-0">
           {viewMode === 'graph' && (
             <>
-              <div className="p-3">
+              <div className="p-3 flex-shrink-0">
                 <GraphLegend />
               </div>
-              <div className="flex-1 p-3 pt-0">
+              <div className="flex-1 p-3 pt-0 min-h-0">
                 <RelationshipGraph
                   entities={entitiesWithOpacity}
                   edges={edgesWithOpacity}

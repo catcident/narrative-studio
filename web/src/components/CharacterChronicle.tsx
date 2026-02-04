@@ -4,14 +4,18 @@
  * CSS Grid로 행 높이 자동 맞춤
  */
 
-import { useMemo, useState, useRef, useEffect } from 'react';
-import { User, Clock, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { User, Clock, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useStore, useCharacters } from '../store';
 import type { HyperEdge } from '../types';
 
 // 줌 레벨 설정
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
+
+// 페이지 설정
+const PAGE_SIZE = 20;      // 한 페이지에 20개 장면
+const PAGE_STEP = 10;      // 다음 페이지로 넘길 때 10개 겹침
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -174,6 +178,11 @@ export function CharacterChronicle() {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const zoomLevel = ZOOM_LEVELS[zoomIndex];
 
+  // 현재 페이지 시작 인덱스 (0, 10, 20, 30 ...)
+  const [pageStart, setPageStart] = useState(0);
+  const [showJumpInput, setShowJumpInput] = useState(false);
+  const [jumpValue, setJumpValue] = useState('');
+
   // 줌 핸들러
   const handleZoomIn = () => {
     setZoomIndex((prev) => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
@@ -269,32 +278,124 @@ export function CharacterChronicle() {
       });
   }, [knowledgeGraph]);
 
-  // 캐릭터별, 장면별 이벤트 매핑
-  const characterSceneEvents = useMemo(() => {
-    if (!knowledgeGraph) return new Map<string, Map<string, HyperEdge[]>>();
+  // 현재 페이지 장면들 (pageStart ~ pageStart + PAGE_SIZE)
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, allScenes.length);
+  const pageScenes = useMemo(() =>
+    allScenes.slice(pageStart, pageEnd),
+    [allScenes, pageStart, pageEnd]
+  );
+
+  // 현재 페이지 장면 ID Set
+  const pageSceneIds = useMemo(() =>
+    new Set(pageScenes.map(s => s.sceneId)),
+    [pageScenes]
+  );
+
+  // 현재 페이지에 등장하는 캐릭터들과 이벤트 매핑
+  const { characterSceneEvents, visibleCharacters } = useMemo(() => {
+    if (!knowledgeGraph) {
+      return {
+        characterSceneEvents: new Map<string, Map<string, HyperEdge[]>>(),
+        visibleCharacters: [] as typeof characters
+      };
+    }
 
     const map = new Map<string, Map<string, HyperEdge[]>>();
+    const charIdsInPage = new Set<string>();
 
-    characters.forEach((char) => {
-      const sceneMap = new Map<string, HyperEdge[]>();
+    // 현재 페이지 장면에 관련된 엣지 처리
+    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
+      const edgeScenes = edge.scenes || ['unknown'];
+      const relevantScenes = edgeScenes.filter(s => pageSceneIds.has(s));
 
-      Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
-        if (!edge.entities.includes(char.id)) return;
+      if (relevantScenes.length === 0) return;
 
-        const scenes = edge.scenes || ['unknown'];
-        scenes.forEach((sceneId) => {
+      edge.entities.forEach(entityId => {
+        const entity = knowledgeGraph.entities[entityId];
+        if (!entity || entity.category !== 'character') return;
+
+        charIdsInPage.add(entityId);
+
+        if (!map.has(entityId)) {
+          map.set(entityId, new Map());
+        }
+        const sceneMap = map.get(entityId)!;
+
+        relevantScenes.forEach(sceneId => {
           if (!sceneMap.has(sceneId)) {
             sceneMap.set(sceneId, []);
           }
           sceneMap.get(sceneId)!.push(edge);
         });
       });
-
-      map.set(char.id, sceneMap);
     });
 
-    return map;
-  }, [knowledgeGraph, characters]);
+    // 현재 페이지에 등장하는 캐릭터만
+    const visible = characters.filter(c => charIdsInPage.has(c.id));
+
+    return { characterSceneEvents: map, visibleCharacters: visible };
+  }, [knowledgeGraph, characters, pageSceneIds]);
+
+  // 페이지 이동
+  // 특정 장면으로 스크롤 (페이지 내 인덱스 기준)
+  const scrollToSceneIndex = useCallback((localIndex: number) => {
+    // 약간의 딜레이 후 스크롤 (DOM 업데이트 대기)
+    setTimeout(() => {
+      const sceneRow = document.getElementById(`scene-row-local-${localIndex}`);
+      if (sceneRow && scrollContainerRef.current) {
+        sceneRow.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }, 50);
+  }, []);
+
+  const goNextPage = useCallback(() => {
+    const nextStart = pageStart + PAGE_STEP;
+    if (nextStart < allScenes.length) {
+      setPageStart(nextStart);
+      // 겹치는 부분의 첫 장면으로 스크롤 (새 페이지의 10번째 = 이전 페이지 마지막 부분)
+      // 0~20 -> 10~30 이면, 인덱스 10(새 페이지에서는 0번째부터 시작하므로 PAGE_STEP 위치)
+      scrollToSceneIndex(PAGE_SIZE - PAGE_STEP); // 20-10 = 10번째 장면 (인덱스로는 10)
+    }
+  }, [pageStart, allScenes.length, scrollToSceneIndex]);
+
+  const goPrevPage = useCallback(() => {
+    const prevStart = pageStart - PAGE_STEP;
+    setPageStart(Math.max(0, prevStart));
+    // 겹치는 부분의 첫 장면으로 스크롤 (새 페이지에서 이전에 본 첫 장면 위치)
+    // 30~50 -> 20~40 이면, 장면 30을 보여줘야 함 (새 페이지에서 인덱스 10)
+    scrollToSceneIndex(PAGE_STEP); // 10번째 장면
+  }, [pageStart, scrollToSceneIndex]);
+
+  const goFirstPage = useCallback(() => {
+    setPageStart(0);
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, []);
+
+  const goLastPage = useCallback(() => {
+    // 마지막 페이지 시작점 계산
+    const lastStart = Math.max(0, allScenes.length - PAGE_SIZE);
+    setPageStart(lastStart);
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [allScenes.length]);
+
+  // 장면 번호로 점프
+  const jumpToScene = useCallback((sceneNum: number) => {
+    const targetIndex = sceneNum - 1;
+    // 해당 장면이 포함된 페이지 시작점 계산
+    const pageStartIndex = Math.floor(targetIndex / PAGE_STEP) * PAGE_STEP;
+    setPageStart(Math.max(0, Math.min(pageStartIndex, allScenes.length - 1)));
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [allScenes.length]);
+
+  // 점프 입력 처리
+  const handleJumpSubmit = () => {
+    const num = parseInt(jumpValue);
+    if (!isNaN(num) && num >= 1 && num <= allScenes.length) {
+      jumpToScene(num);
+      setShowJumpInput(false);
+      setJumpValue('');
+    }
+  };
 
   // 선택된 캐릭터로 스크롤
   useEffect(() => {
@@ -319,39 +420,6 @@ export function CharacterChronicle() {
 
   const getCharColor = (index: number) => CHARACTER_COLORS[index % CHARACTER_COLORS.length];
 
-  // 캐릭터의 첫 등장 장면 인덱스
-  const getFirstSceneIndex = (charId: string): number => {
-    const sceneMap = characterSceneEvents.get(charId);
-    if (!sceneMap) return -1;
-
-    for (let i = 0; i < allScenes.length; i++) {
-      if (sceneMap.has(allScenes[i].sceneId)) {
-        return i;
-      }
-    }
-    return -1;
-  };
-
-  // 캐릭터의 마지막 등장 장면 인덱스
-  const getLastSceneIndex = (charId: string): number => {
-    const sceneMap = characterSceneEvents.get(charId);
-    if (!sceneMap) return -1;
-
-    for (let i = allScenes.length - 1; i >= 0; i--) {
-      if (sceneMap.has(allScenes[i].sceneId)) {
-        return i;
-      }
-    }
-    return -1;
-  };
-
-  // 현재 장면이 캐릭터의 타임라인 범위 안에 있는지 확인
-  const isInTimelineRange = (charId: string, sceneIndex: number): boolean => {
-    const first = getFirstSceneIndex(charId);
-    const last = getLastSceneIndex(charId);
-    return first !== -1 && sceneIndex >= first && sceneIndex <= last;
-  };
-
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* 헤더 */}
@@ -364,6 +432,51 @@ export function CharacterChronicle() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* 장면 점프 */}
+          {showJumpInput ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                max={allScenes.length}
+                value={jumpValue}
+                onChange={(e) => setJumpValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleJumpSubmit()}
+                placeholder={`1-${allScenes.length}`}
+                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+              <button
+                onClick={handleJumpSubmit}
+                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                이동
+              </button>
+              <button
+                onClick={() => { setShowJumpInput(false); setJumpValue(''); }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowJumpInput(true)}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              title="장면으로 이동"
+            >
+              <Search className="w-3 h-3" />
+              장면 이동
+            </button>
+          )}
+
+          {/* 현재 페이지 위치 */}
+          <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+            <span className="text-xs text-gray-600">
+              {pageStart + 1}-{pageEnd} / {allScenes.length}
+            </span>
+          </div>
+
           {/* 줌 컨트롤 */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
             <button
@@ -410,24 +523,24 @@ export function CharacterChronicle() {
         <div
           className="grid gap-0 origin-top-left transition-transform duration-200"
           style={{
-            gridTemplateColumns: `${100 * zoomLevel}px repeat(${characters.length}, ${260 * zoomLevel}px)`,
-            gridTemplateRows: `${80 * zoomLevel}px repeat(${allScenes.length}, auto)`,
+            gridTemplateColumns: `${100 * zoomLevel}px repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
+            gridTemplateRows: `${80 * zoomLevel}px repeat(${pageScenes.length}, auto)`,
           }}
         >
           {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
           <div className="sticky left-0 z-30 bg-gray-50 border-b border-r border-gray-200 flex items-center justify-center">
             <span className="text-xs font-medium text-gray-400">장면</span>
           </div>
-          {characters.map((char, charIndex) => {
+          {visibleCharacters.map((char, charIndex) => {
             const isSelected = selectedCharId === char.id;
             const isOtherSelected = selectedCharId && !isSelected;
-            const charColor = getCharColor(charIndex);
+            const charColor = getCharColor(characters.findIndex(c => c.id === char.id));
 
             return (
               <div
                 key={`header-${char.id}`}
                 ref={isSelected ? selectedColumnRef : undefined}
-                className={`border-b border-gray-200 flex items-center justify-center p-2 transition-opacity duration-300 ${
+                className={`sticky top-0 z-20 bg-gray-50 border-b border-gray-200 flex items-center justify-center p-2 transition-opacity duration-300 ${
                   isOtherSelected ? 'opacity-30' : 'opacity-100'
                 }`}
               >
@@ -463,11 +576,12 @@ export function CharacterChronicle() {
           })}
 
           {/* 각 장면 행 */}
-          {allScenes.map((scene, sceneIndex) => {
+          {pageScenes.map((scene, localIndex) => {
+            const sceneNum = parseInt(scene.sceneId.replace('S', '').replace(/^0+/, '') || '0');
             // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
             const getTimeElapsedText = () => {
-              // 첫 장면은 시간 경과 표시 안함
-              if (sceneIndex === 0) return null;
+              // 페이지 첫 장면은 시간 경과 표시 안함
+              if (localIndex === 0) return null;
 
               // 1. 지식그래프에서 추출한 timeElapsed 사용 (우선)
               if (scene.timeElapsed) {
@@ -475,8 +589,8 @@ export function CharacterChronicle() {
               }
 
               // 2. fallback: 이전 장면과 시간이 다르면 표시
-              const prevScene = allScenes[sceneIndex - 1];
-              if (scene.time && prevScene.time && scene.time !== prevScene.time) {
+              const prevScene = pageScenes[localIndex - 1];
+              if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
                 return `${prevScene.time} → ${scene.time}`;
               }
               return null;
@@ -486,7 +600,7 @@ export function CharacterChronicle() {
             return (
             <>
               {/* 시간 경과 행 (장면 사이에 표시) */}
-              {timeElapsedText && sceneIndex > 0 && (
+              {timeElapsedText && localIndex > 0 && (
                 <>
                   {/* 시간 경과 라벨 셀 */}
                   <div
@@ -503,7 +617,7 @@ export function CharacterChronicle() {
                     </div>
                   </div>
                   {/* 각 캐릭터 열에 시간 경과 표시 */}
-                  {characters.map((char) => (
+                  {visibleCharacters.map((char) => (
                     <div
                       key={`time-${scene.sceneId}-${char.id}`}
                       className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
@@ -519,6 +633,7 @@ export function CharacterChronicle() {
 
               {/* 장면 라벨 (고정) */}
               <div
+                id={`scene-row-local-${localIndex}`}
                 key={`label-${scene.sceneId}`}
                 className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 flex flex-col justify-center"
                 style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px` }}
@@ -538,15 +653,28 @@ export function CharacterChronicle() {
                 </div>
               </div>
 
-              {/* 각 캐릭터의 해당 장면 셀 */}
-              {characters.map((char, charIndex) => {
+              {/* 각 캐릭터의 해당 장면 셀 (등장하는 캐릭터만) */}
+              {visibleCharacters.map((char) => {
+                const globalIndex = characters.findIndex(c => c.id === char.id);
                 const isSelected = selectedCharId === char.id;
                 const isOtherSelected = selectedCharId && !isSelected;
-                const charColor = getCharColor(charIndex);
+                const charColor = getCharColor(globalIndex);
                 const sceneMap = characterSceneEvents.get(char.id) || new Map();
                 const events = sceneMap.get(scene.sceneId) || [];
                 const hasEvents = events.length > 0;
-                const inRange = isInTimelineRange(char.id, sceneIndex);
+
+                // 이 장면에 등장 안 하면 빈 셀 (세로선만)
+                if (!hasEvents) {
+                  return (
+                    <div
+                      key={`cell-${scene.sceneId}-${char.id}`}
+                      className={`border-b border-gray-100 transition-opacity duration-300 ${
+                        isOtherSelected ? 'opacity-30' : 'opacity-100'
+                      }`}
+                      style={{ minHeight: `${120 * zoomLevel}px` }}
+                    />
+                  );
+                }
 
                 // 대표 감정 결정
                 const sentiments = events.map((e: HyperEdge) => e.sentiment || 'neutral');
@@ -564,52 +692,49 @@ export function CharacterChronicle() {
                     style={{ minHeight: `${120 * zoomLevel}px`, padding: `${12 * zoomLevel}px` }}
                   >
                     {/* 연속 세로선 */}
-                    {inRange && (
-                      <div
-                        className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
-                        style={{ backgroundColor: charColor, opacity: hasEvents ? 1 : 0.3 }}
-                      />
-                    )}
+                    <div
+                      className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
+                      style={{ backgroundColor: charColor }}
+                    />
 
-                    {hasEvents && (
+                    {/* 이벤트 카드 */}
+                    <div
+                      className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
+                      style={{
+                        border: `2px solid ${colors.border}`,
+                      }}
+                    >
+                      {/* 헤더: 장면 번호 + 장소/시간 */}
                       <div
-                        className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
-                        style={{
-                          border: `2px solid ${colors.border}`,
-                        }}
+                        className="px-3 py-2 flex-shrink-0"
+                        style={{ backgroundColor: colors.bg }}
                       >
-                        {/* 헤더: 장면 번호 + 장소/시간 */}
                         <div
-                          className="px-3 py-2 flex-shrink-0"
-                          style={{ backgroundColor: colors.bg }}
+                          className="text-sm font-bold"
+                          style={{ color: colors.text }}
                         >
-                          <div
-                            className="text-sm font-bold"
-                            style={{ color: colors.text }}
-                          >
-                            {scene.sceneLabel}
-                          </div>
-                          <div
-                            className="text-xs opacity-80"
-                            style={{ color: colors.text }}
-                          >
-                            {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
-                          </div>
+                          {scene.sceneLabel}
                         </div>
-                        {/* 관계 목록 - 호버/클릭 가능 */}
-                        <div className="p-3 space-y-2 flex-1">
-                          {events.map((edge: HyperEdge, i: number) => (
-                            <RelationshipItemWithTooltip
-                              key={`${edge.id}-${i}`}
-                              edge={edge}
-                              charId={char.id}
-                              entities={knowledgeGraph.entities}
-                              colors={colors}
-                            />
-                          ))}
+                        <div
+                          className="text-xs opacity-80"
+                          style={{ color: colors.text }}
+                        >
+                          {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
                         </div>
                       </div>
-                    )}
+                      {/* 관계 목록 - 호버/클릭 가능 */}
+                      <div className="p-3 space-y-2 flex-1">
+                        {events.map((edge: HyperEdge, i: number) => (
+                          <RelationshipItemWithTooltip
+                            key={`${edge.id}-${i}`}
+                            edge={edge}
+                            charId={char.id}
+                            entities={knowledgeGraph.entities}
+                            colors={colors}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -619,23 +744,85 @@ export function CharacterChronicle() {
         </div>
       </div>
 
-      {/* 하단 범례 */}
-      <div className="flex-shrink-0 p-2 bg-white border-t border-gray-200 flex items-center gap-4 text-[10px] text-gray-500">
-        <span className="font-medium">감정:</span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded" style={{ backgroundColor: SENTIMENT_COLORS.positive.bg, border: `1px solid ${SENTIMENT_COLORS.positive.border}` }} />
-          긍정
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded" style={{ backgroundColor: SENTIMENT_COLORS.negative.bg, border: `1px solid ${SENTIMENT_COLORS.negative.border}` }} />
-          부정
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded" style={{ backgroundColor: SENTIMENT_COLORS.neutral.bg, border: `1px solid ${SENTIMENT_COLORS.neutral.border}` }} />
-          중립
-        </span>
-        <span className="mx-2">|</span>
-        <span>캐릭터를 클릭하면 강조됩니다</span>
+      {/* 하단: 네비게이션 + 범례 */}
+      <div className="flex-shrink-0 bg-white border-t border-gray-200">
+        {/* 페이지 네비게이션 바 */}
+        <div className="px-3 py-2 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            {/* 처음으로 */}
+            <button
+              onClick={goFirstPage}
+              disabled={pageStart === 0}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
+              title="처음으로"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 -ml-2.5" />
+            </button>
+
+            {/* 이전 */}
+            <button
+              onClick={goPrevPage}
+              disabled={pageStart === 0}
+              className="px-3 py-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+              title="이전 페이지"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="text-sm">이전</span>
+            </button>
+
+            {/* 페이지 정보 */}
+            <div className="flex-1 flex items-center justify-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                장면 {pageStart + 1} - {pageEnd}
+              </span>
+              <span className="text-xs text-gray-400">
+                / 총 {allScenes.length}개
+              </span>
+            </div>
+
+            {/* 다음 */}
+            <button
+              onClick={goNextPage}
+              disabled={pageStart + PAGE_STEP >= allScenes.length}
+              className="px-3 py-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+              title="다음 페이지"
+            >
+              <span className="text-sm">다음</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* 끝으로 */}
+            <button
+              onClick={goLastPage}
+              disabled={pageStart >= allScenes.length - PAGE_SIZE}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
+              title="끝으로"
+            >
+              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 -ml-2.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* 범례 */}
+        <div className="p-2 flex items-center gap-4 text-[10px] text-gray-500">
+          <span className="font-medium">감정:</span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: SENTIMENT_COLORS.positive.bg, border: `1px solid ${SENTIMENT_COLORS.positive.border}` }} />
+            긍정
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: SENTIMENT_COLORS.negative.bg, border: `1px solid ${SENTIMENT_COLORS.negative.border}` }} />
+            부정
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: SENTIMENT_COLORS.neutral.bg, border: `1px solid ${SENTIMENT_COLORS.neutral.border}` }} />
+            중립
+          </span>
+          <span className="mx-2">|</span>
+          <span>페이지당 20개 (10개 겹침) · 캐릭터 클릭 강조</span>
+        </div>
       </div>
     </div>
   );

@@ -3,16 +3,66 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
-import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
+import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
+
+// 텍스트 파일 인코딩 감지 및 디코딩
+async function readTextFileWithEncoding(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const uint8Array = new Uint8Array(buffer);
+
+  // UTF-8 BOM 체크
+  if (uint8Array[0] === 0xEF && uint8Array[1] === 0xBB && uint8Array[2] === 0xBF) {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+
+  // UTF-16 LE BOM 체크
+  if (uint8Array[0] === 0xFF && uint8Array[1] === 0xFE) {
+    return new TextDecoder('utf-16le').decode(buffer);
+  }
+
+  // UTF-16 BE BOM 체크
+  if (uint8Array[0] === 0xFE && uint8Array[1] === 0xFF) {
+    return new TextDecoder('utf-16be').decode(buffer);
+  }
+
+  // UTF-8로 먼저 시도
+  try {
+    const utf8Text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    // 유효한 UTF-8인 경우
+    return utf8Text;
+  } catch {
+    // UTF-8이 아님
+  }
+
+  // EUC-KR (CP949) 시도 - 한글 텍스트에서 흔함
+  try {
+    const eucKrText = new TextDecoder('euc-kr').decode(buffer);
+    // 깨진 문자가 적은지 확인 (간단한 휴리스틱)
+    const koreanPattern = /[가-힣]/g;
+    const matches = eucKrText.match(koreanPattern);
+    if (matches && matches.length > 10) {
+      return eucKrText;
+    }
+  } catch {
+    // EUC-KR 디코딩 실패
+  }
+
+  // 기본 UTF-8로 폴백 (일부 깨질 수 있음)
+  return new TextDecoder('utf-8').decode(buffer);
+}
 
 export function FileUpload() {
   const { knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, error } = useStore();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
+  const [progressCurrent, setProgressCurrent] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [estimatedTotalSeconds, setEstimatedTotalSeconds] = useState<number | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -65,6 +115,27 @@ export function FileUpload() {
       .catch(() => setExistingTitles([]));
   }, []);
 
+  // 경과 시간 타이머
+  useEffect(() => {
+    if (!localLoading) {
+      setElapsedSeconds(0);
+      setEstimatedTotalSeconds(null);
+      return;
+    }
+    const timer = setInterval(() => {
+      setElapsedSeconds(s => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localLoading]);
+
+  // 청크가 바뀔 때만 전체 예상 시간 계산
+  useEffect(() => {
+    if (progressCurrent > 0 && progressTotal > 0 && elapsedSeconds > 0) {
+      const estimated = Math.round((elapsedSeconds / progressCurrent) * progressTotal);
+      setEstimatedTotalSeconds(estimated);
+    }
+  }, [progressCurrent, progressTotal]);
+
   const handleSaveApiKey = () => {
     if (apiKeyInput.trim()) {
       setApiKey(apiKeyInput.trim());
@@ -84,22 +155,22 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
-      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg, current, total) => {
         setProgress(msg);
-      }, savedProgress);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+              }, savedProgress);
 
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
-      setProgress('');
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Resume error:', err);
       setError(err.message || '이어하기 중 오류가 발생했습니다.');
-      setProgress('');
-      // 진행상황 다시 확인
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       // 진행상황 다시 확인
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -116,6 +187,26 @@ export function FileUpload() {
   // 선택된 파일 제거
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // 파일 순서 위로 이동
+  const handleMoveFileUp = useCallback((index: number) => {
+    if (index === 0) return;
+    setSelectedFiles(prev => {
+      const newFiles = [...prev];
+      [newFiles[index - 1], newFiles[index]] = [newFiles[index], newFiles[index - 1]];
+      return newFiles;
+    });
+  }, []);
+
+  // 파일 순서 아래로 이동
+  const handleMoveFileDown = useCallback((index: number) => {
+    setSelectedFiles(prev => {
+      if (index >= prev.length - 1) return prev;
+      const newFiles = [...prev];
+      [newFiles[index], newFiles[index + 1]] = [newFiles[index + 1], newFiles[index]];
+      return newFiles;
+    });
   }, []);
 
   // 모든 선택 초기화
@@ -163,7 +254,8 @@ export function FileUpload() {
           }
           text = pdfTextParts.join('\n\n');
         } else {
-          text = await file.text();
+          // 인코딩 감지하여 텍스트 읽기
+          text = await readTextFileWithEncoding(file);
         }
 
         textParts.push(text);
@@ -184,9 +276,11 @@ export function FileUpload() {
       }
 
       // 첫 번째 파일명으로 extractKnowledgeGraph 호출
-      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg, current, total) => {
         setProgress(msg);
-      }, undefined, currentModel, sortedFiles[0].name);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+              }, undefined, currentModel, sortedFiles[0].name);
 
       // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
       if (sortedFiles.length > 1) {
@@ -215,13 +309,11 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
-      setProgress('');
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress('');
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
       setLoading(false);
@@ -258,7 +350,8 @@ export function FileUpload() {
         }
         text = textParts.join('\n\n');
       } else {
-        text = await file.text();
+        // 인코딩 감지하여 텍스트 읽기
+        text = await readTextFileWithEncoding(file);
       }
 
       if (!text.trim()) {
@@ -269,9 +362,11 @@ export function FileUpload() {
 
       // 사용자가 제목을 입력했으면 그것을 사용
       const title = bookTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total) => {
         setProgress(msg);
-      }, undefined, currentModel, file.name);  // 원본 파일명 전달
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+              }, undefined, currentModel, file.name);  // 원본 파일명 전달
 
       // 작가 정보 추가
       if (bookAuthor.trim()) {
@@ -297,13 +392,11 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress('');
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress('');
-      // 진행상황 다시 확인
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       // 진행상황 다시 확인
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -366,33 +459,32 @@ export function FileUpload() {
     setError(null);
 
     try {
-      const title = finalFileName.replace(/\.[^/.]+$/, '');
       setProgress('추가 분석 중...');
-      // 추가 분석은 기존 문서의 모델을 사용 (lockedModel)
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
-        setProgress(`추가: ${msg}`);
-      }, undefined, currentModel, finalFileName);
+      // 추가 분석: 기존 지식그래프를 전달하여 이어서 분석
+      const updatedKnowledgeGraph = await extractKnowledgeGraph(
+        text,
+        knowledgeGraph.metadata.title,  // 기존 제목 유지
+        (msg) => setProgress(`추가: ${msg}`),
+        undefined,
+        currentModel,
+        finalFileName,
+        knowledgeGraph  // 기존 지식그래프 전달
+      );
 
-      // 기존 결과와 병합
-      setProgress('기존 결과와 병합 중...');
-      const merged = mergeKnowledgeGraphs(knowledgeGraph, newKnowledgeGraph);
-
-      console.log('병합 완료:', merged.metadata.title);
-      console.log('총 엔티티:', Object.keys(merged.entities).length);
-      console.log('총 관계:', Object.keys(merged.hyperedges).length);
+      console.log('분석 완료:', updatedKnowledgeGraph.metadata.title);
+      console.log('총 엔티티:', Object.keys(updatedKnowledgeGraph.entities).length);
+      console.log('총 관계:', Object.keys(updatedKnowledgeGraph.hyperedges).length);
 
       // 기존 ID를 사용하여 저장 (버전 업데이트)
       setProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(merged, undefined, undefined, currentDataId || undefined);
+      const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
-      setKnowledgeGraph(merged, undefined, saved.id);
-      setProgress('');
-      setSavedProgress(null);
+      setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress('');
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
       setLoading(false);
@@ -428,7 +520,8 @@ export function FileUpload() {
         }
         text = textParts.join('\n\n');
       } else {
-        text = await file.text();
+        // 인코딩 감지하여 텍스트 읽기
+        text = await readTextFileWithEncoding(file);
       }
 
       if (!text.trim()) {
@@ -443,8 +536,7 @@ export function FileUpload() {
         setNewFileName(file.name);
         setPendingFile(file);
         setPendingFileText(text);
-        setProgress('');
-        return;
+        setProgress(''); setProgressCurrent(0); setProgressTotal(0);         return;
       }
 
       // 중복 없음 - 바로 실행
@@ -452,8 +544,7 @@ export function FileUpload() {
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress('');
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     }
   }, [knowledgeGraph, executeAddFile]);
 
@@ -530,7 +621,8 @@ export function FileUpload() {
             }
             fileText = pdfTextParts.join('\n\n');
           } else {
-            fileText = await file.text();
+            // 인코딩 감지하여 텍스트 읽기
+            fileText = await readTextFileWithEncoding(file);
           }
 
           fileInfos.push({ fileName: file.name, text: fileText });
@@ -548,9 +640,11 @@ export function FileUpload() {
       }
 
       setProgress('분석 중...');
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total) => {
         setProgress(msg);
-      }, undefined, currentModel, sourceFileName);
+        if (current !== undefined) setProgressCurrent(current);
+        if (total !== undefined) setProgressTotal(total);
+              }, undefined, currentModel, sourceFileName);
 
       // 작가 정보 추가
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
@@ -582,13 +676,11 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress('');
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '처리 중 오류가 발생했습니다.');
-      setProgress('');
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
       setLoading(false);
@@ -785,16 +877,38 @@ export function FileUpload() {
 
         <div className="flex flex-col items-center gap-4 text-center">
           {localLoading ? (
-            <>
-              <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-              <div>
-                <p className="text-lg font-medium text-gray-700">분석 중...</p>
-                <p className="text-sm text-blue-600 mt-1">{progress}</p>
-              </div>
-              <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div className="h-full bg-blue-500 animate-pulse" style={{ width: '60%' }} />
-              </div>
-            </>
+            (() => {
+              const elapsedMin = Math.floor(elapsedSeconds / 60);
+              const elapsedSec = elapsedSeconds % 60;
+              const totalMin = estimatedTotalSeconds !== null ? Math.floor(estimatedTotalSeconds / 60) : null;
+              const totalSec = estimatedTotalSeconds !== null ? estimatedTotalSeconds % 60 : null;
+              return (
+                <>
+                  <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                  <div>
+                    <p className="text-lg font-medium text-gray-700">분석 중...</p>
+                    {progressTotal > 0 && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        청크 {progressCurrent} / {progressTotal}
+                      </p>
+                    )}
+                    <p className="text-sm text-blue-600 mt-1">
+                      {elapsedMin}:{elapsedSec.toString().padStart(2, '0')}
+                      {totalMin !== null && (
+                        <span className="text-gray-500"> / {totalMin}:{totalSec!.toString().padStart(2, '0')}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{progress}</p>
+                  </div>
+                  <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: progressTotal > 0 ? `${(progressCurrent / progressTotal) * 100}%` : '10%' }}
+                    />
+                  </div>
+                </>
+              );
+            })()
           ) : (
             <>
               <div className="p-4 bg-gray-100 rounded-full">
@@ -839,16 +953,42 @@ export function FileUpload() {
                   전체 취소
                 </button>
               </div>
+              <p className="text-xs text-blue-600 mb-2">순서대로 분석됩니다. 버튼으로 순서를 변경하세요.</p>
               <div className="space-y-1">
                 {selectedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm bg-white px-3 py-1.5 rounded-lg">
-                    <span className="text-gray-700 truncate">{file.name}</span>
-                    <button
-                      onClick={() => handleRemoveFile(index)}
-                      className="text-gray-400 hover:text-red-500 ml-2"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  <div key={index} className="flex items-center text-sm bg-white px-3 py-1.5 rounded-lg gap-2">
+                    {/* 순서 번호 */}
+                    <span className="w-6 h-6 flex items-center justify-center bg-blue-600 text-white text-xs font-bold rounded-full flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    {/* 파일명 */}
+                    <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                    {/* 순서 변경 버튼 */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => handleMoveFileUp(index)}
+                        disabled={index === 0}
+                        className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
+                        title="위로 이동"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveFileDown(index)}
+                        disabled={index === selectedFiles.length - 1}
+                        className={`p-1 rounded ${index === selectedFiles.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
+                        title="아래로 이동"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveFile(index)}
+                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                        title="삭제"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
