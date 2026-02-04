@@ -61,7 +61,6 @@ export function FileUpload() {
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
-  const [estimatedRemainingMinutes, setEstimatedRemainingMinutes] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
@@ -146,25 +145,22 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
-      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg, current, total, estMin) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph('', savedProgress.title, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-        if (estMin !== undefined) setEstimatedRemainingMinutes(estMin);
-      }, savedProgress);
+              }, savedProgress);
 
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Resume error:', err);
       setError(err.message || '이어하기 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      // 진행상황 다시 확인
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       // 진행상황 다시 확인
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -270,12 +266,11 @@ export function FileUpload() {
       }
 
       // 첫 번째 파일명으로 extractKnowledgeGraph 호출
-      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg, current, total, estMin) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-        if (estMin !== undefined) setEstimatedRemainingMinutes(estMin);
-      }, undefined, currentModel, sortedFiles[0].name);
+              }, undefined, currentModel, sortedFiles[0].name);
 
       // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
       if (sortedFiles.length > 1) {
@@ -304,13 +299,11 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
       setLoading(false);
@@ -359,12 +352,11 @@ export function FileUpload() {
 
       // 사용자가 제목을 입력했으면 그것을 사용
       const title = bookTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total, estMin) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-        if (estMin !== undefined) setEstimatedRemainingMinutes(estMin);
-      }, undefined, currentModel, file.name);  // 원본 파일명 전달
+              }, undefined, currentModel, file.name);  // 원본 파일명 전달
 
       // 작가 정보 추가
       if (bookAuthor.trim()) {
@@ -390,13 +382,11 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      // 진행상황 다시 확인
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       // 진행상황 다시 확인
       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
@@ -480,13 +470,11 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
       setLoading(false);
@@ -538,8 +526,7 @@ export function FileUpload() {
         setNewFileName(file.name);
         setPendingFile(file);
         setPendingFileText(text);
-        setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-        return;
+        setProgress(''); setProgressCurrent(0); setProgressTotal(0);         return;
       }
 
       // 중복 없음 - 바로 실행
@@ -547,8 +534,7 @@ export function FileUpload() {
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     }
   }, [knowledgeGraph, executeAddFile]);
 
@@ -644,12 +630,11 @@ export function FileUpload() {
       }
 
       setProgress('분석 중...');
-      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total, estMin) => {
+      const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-        if (estMin !== undefined) setEstimatedRemainingMinutes(estMin);
-      }, undefined, currentModel, sourceFileName);
+              }, undefined, currentModel, sourceFileName);
 
       // 작가 정보 추가
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
@@ -681,13 +666,11 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(null);
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '처리 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0); setEstimatedRemainingMinutes(null);
-      setSavedProgress(hasProgress());
+      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
     } finally {
       setLocalLoading(false);
       setLoading(false);
@@ -887,7 +870,10 @@ export function FileUpload() {
             (() => {
               const elapsedMin = Math.floor(elapsedSeconds / 60);
               const elapsedSec = elapsedSeconds % 60;
-              const totalEstimatedSeconds = estimatedRemainingMinutes !== null ? elapsedSeconds + estimatedRemainingMinutes * 60 : null;
+              // 전체 예상 시간 = (경과 시간 / 완료된 청크) × 전체 청크
+              const totalEstimatedSeconds = progressCurrent > 0 && progressTotal > 0
+                ? Math.round((elapsedSeconds / progressCurrent) * progressTotal)
+                : null;
               const totalMin = totalEstimatedSeconds !== null ? Math.floor(totalEstimatedSeconds / 60) : null;
               const totalSec = totalEstimatedSeconds !== null ? totalEstimatedSeconds % 60 : null;
               return (
