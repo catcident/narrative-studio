@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, mergeKnowledgeGraphs, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
@@ -162,6 +162,26 @@ export function FileUpload() {
   // 선택된 파일 제거
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // 파일 순서 위로 이동
+  const handleMoveFileUp = useCallback((index: number) => {
+    if (index === 0) return;
+    setSelectedFiles(prev => {
+      const newFiles = [...prev];
+      [newFiles[index - 1], newFiles[index]] = [newFiles[index], newFiles[index - 1]];
+      return newFiles;
+    });
+  }, []);
+
+  // 파일 순서 아래로 이동
+  const handleMoveFileDown = useCallback((index: number) => {
+    setSelectedFiles(prev => {
+      if (index >= prev.length - 1) return prev;
+      const newFiles = [...prev];
+      [newFiles[index], newFiles[index + 1]] = [newFiles[index + 1], newFiles[index]];
+      return newFiles;
+    });
   }, []);
 
   // 모든 선택 초기화
@@ -889,16 +909,42 @@ export function FileUpload() {
                   전체 취소
                 </button>
               </div>
+              <p className="text-xs text-blue-600 mb-2">순서대로 분석됩니다. 버튼으로 순서를 변경하세요.</p>
               <div className="space-y-1">
                 {selectedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm bg-white px-3 py-1.5 rounded-lg">
-                    <span className="text-gray-700 truncate">{file.name}</span>
-                    <button
-                      onClick={() => handleRemoveFile(index)}
-                      className="text-gray-400 hover:text-red-500 ml-2"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  <div key={index} className="flex items-center text-sm bg-white px-3 py-1.5 rounded-lg gap-2">
+                    {/* 순서 번호 */}
+                    <span className="w-6 h-6 flex items-center justify-center bg-blue-600 text-white text-xs font-bold rounded-full flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    {/* 파일명 */}
+                    <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                    {/* 순서 변경 버튼 */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => handleMoveFileUp(index)}
+                        disabled={index === 0}
+                        className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
+                        title="위로 이동"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveFileDown(index)}
+                        disabled={index === selectedFiles.length - 1}
+                        className={`p-1 rounded ${index === selectedFiles.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
+                        title="아래로 이동"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveFile(index)}
+                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                        title="삭제"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
