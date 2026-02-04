@@ -469,15 +469,15 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
     [entities]
   );
 
-  // 노드가 많으면 자동으로 상위 인물만 선택
+  // 노드가 많으면 자동으로 주인공(최다 등장 인물)만 선택
   useEffect(() => {
     if (entities.length > NODE_THRESHOLD && selectedEntityIds.length === 0) {
-      // 등장 횟수 상위 5명의 인물을 기본 선택
-      const topCharacters = [...characters]
+      // 등장 횟수 1위 인물만 기본 선택
+      const topCharacter = [...characters]
         .sort((a, b) => (b.scenes?.length || 0) - (a.scenes?.length || 0))
-        .slice(0, 5)
+        .slice(0, 1)
         .map(c => c.id);
-      setSelectedEntityIds(topCharacters);
+      setSelectedEntityIds(topCharacter);
       setShowSidebar(true);
     }
   }, [entities.length, characters]);
