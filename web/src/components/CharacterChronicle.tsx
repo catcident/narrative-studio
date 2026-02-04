@@ -14,7 +14,7 @@ const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.5];
 const DEFAULT_ZOOM_INDEX = 2; // 1 (100%)
 
 // 페이지네이션 설정
-const SCENES_PER_PAGE = 30;
+const SCENES_PER_PAGE = 9;
 
 // 감정 색상
 const SENTIMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -281,64 +281,62 @@ export function CharacterChronicle() {
   const totalPages = Math.ceil(allScenes.length / SCENES_PER_PAGE);
   const startIndex = currentPage * SCENES_PER_PAGE;
   const endIndex = Math.min(startIndex + SCENES_PER_PAGE, allScenes.length);
-  const currentPageScenes = allScenes.slice(startIndex, endIndex);
-  const currentPageSceneIds = new Set(currentPageScenes.map(s => s.sceneId));
+  const currentPageScenes = useMemo(() =>
+    allScenes.slice(startIndex, endIndex),
+    [allScenes, startIndex, endIndex]
+  );
 
-  // 현재 페이지의 장면에 대해서만 캐릭터별 이벤트 매핑 (성능 최적화)
-  const characterSceneEvents = useMemo(() => {
-    if (!knowledgeGraph) return new Map<string, Map<string, HyperEdge[]>>();
+  // 현재 페이지 장면 ID Set (메모이제이션)
+  const currentPageSceneIds = useMemo(() =>
+    new Set(currentPageScenes.map(s => s.sceneId)),
+    [currentPageScenes]
+  );
+
+  // 현재 페이지의 장면에 대해서만 캐릭터별 이벤트 매핑
+  const { characterSceneEvents, visibleCharacters } = useMemo(() => {
+    if (!knowledgeGraph) {
+      return {
+        characterSceneEvents: new Map<string, Map<string, HyperEdge[]>>(),
+        visibleCharacters: []
+      };
+    }
 
     const map = new Map<string, Map<string, HyperEdge[]>>();
+    const charIdsWithEvents = new Set<string>();
 
-    characters.forEach((char) => {
-      const sceneMap = new Map<string, HyperEdge[]>();
+    // 현재 페이지 장면에 관련된 엣지만 처리
+    Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
+      const edgeScenes = edge.scenes || ['unknown'];
+      const relevantScenes = edgeScenes.filter(s => currentPageSceneIds.has(s));
 
-      Object.values(knowledgeGraph.hyperedges).forEach((edge) => {
-        if (!edge.entities.includes(char.id)) return;
+      if (relevantScenes.length === 0) return;
 
-        const scenes = edge.scenes || ['unknown'];
-        scenes.forEach((sceneId) => {
-          // 현재 페이지의 장면만 처리
-          if (!currentPageSceneIds.has(sceneId)) return;
+      edge.entities.forEach(entityId => {
+        // 캐릭터인지 확인
+        const entity = knowledgeGraph.entities[entityId];
+        if (!entity || entity.category !== 'character') return;
 
+        charIdsWithEvents.add(entityId);
+
+        if (!map.has(entityId)) {
+          map.set(entityId, new Map());
+        }
+        const sceneMap = map.get(entityId)!;
+
+        relevantScenes.forEach(sceneId => {
           if (!sceneMap.has(sceneId)) {
             sceneMap.set(sceneId, []);
           }
           sceneMap.get(sceneId)!.push(edge);
         });
       });
-
-      map.set(char.id, sceneMap);
     });
 
-    return map;
-  }, [knowledgeGraph, characters, currentPage, currentPageSceneIds]);
+    // 현재 페이지에 등장하는 캐릭터만 필터링
+    const visible = characters.filter(c => charIdsWithEvents.has(c.id));
 
-  // 캐릭터별 첫/마지막 등장 장면 (전체 기준, 가벼운 계산)
-  const characterAppearances = useMemo(() => {
-    if (!knowledgeGraph) return new Map<string, { first: number; last: number }>();
-
-    const appearances = new Map<string, { first: number; last: number }>();
-
-    characters.forEach((char) => {
-      let first = -1;
-      let last = -1;
-
-      allScenes.forEach((scene, idx) => {
-        const hasEdge = Object.values(knowledgeGraph.hyperedges).some(
-          edge => edge.entities.includes(char.id) && edge.scenes?.includes(scene.sceneId)
-        );
-        if (hasEdge) {
-          if (first === -1) first = idx;
-          last = idx;
-        }
-      });
-
-      appearances.set(char.id, { first, last });
-    });
-
-    return appearances;
-  }, [knowledgeGraph, characters, allScenes]);
+    return { characterSceneEvents: map, visibleCharacters: visible };
+  }, [knowledgeGraph, characters, currentPageSceneIds]);
 
   // 페이지 이동
   const goToPage = useCallback((page: number) => {
@@ -388,13 +386,6 @@ export function CharacterChronicle() {
   }
 
   const getCharColor = (index: number) => CHARACTER_COLORS[index % CHARACTER_COLORS.length];
-
-  // 현재 장면이 캐릭터의 타임라인 범위 안에 있는지 확인 (전체 장면 기준 인덱스 사용)
-  const isInTimelineRange = (charId: string, globalSceneIndex: number): boolean => {
-    const appearance = characterAppearances.get(charId);
-    if (!appearance || appearance.first === -1) return false;
-    return globalSceneIndex >= appearance.first && globalSceneIndex <= appearance.last;
-  };
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -513,7 +504,7 @@ export function CharacterChronicle() {
         <div
           className="grid gap-0 origin-top-left transition-transform duration-200"
           style={{
-            gridTemplateColumns: `${100 * zoomLevel}px repeat(${characters.length}, ${260 * zoomLevel}px)`,
+            gridTemplateColumns: `${100 * zoomLevel}px repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
             gridTemplateRows: `${80 * zoomLevel}px repeat(${currentPageScenes.length}, auto)`,
           }}
         >
@@ -521,7 +512,7 @@ export function CharacterChronicle() {
           <div className="sticky left-0 z-30 bg-gray-50 border-b border-r border-gray-200 flex items-center justify-center">
             <span className="text-xs font-medium text-gray-400">장면</span>
           </div>
-          {characters.map((char, charIndex) => {
+          {visibleCharacters.map((char, charIndex) => {
             const isSelected = selectedCharId === char.id;
             const isOtherSelected = selectedCharId && !isSelected;
             const charColor = getCharColor(charIndex);
@@ -567,8 +558,6 @@ export function CharacterChronicle() {
 
           {/* 각 장면 행 */}
           {currentPageScenes.map((scene, localIndex) => {
-            // 전체 장면 기준 인덱스 (타임라인 범위 계산용)
-            const globalSceneIndex = startIndex + localIndex;
             // 시간 경과 텍스트: timeElapsed 우선, 없으면 시간 변화 비교
             const getTimeElapsedText = () => {
               // 페이지 첫 장면이거나 전체 첫 장면은 시간 경과 표시 안함
@@ -608,7 +597,7 @@ export function CharacterChronicle() {
                     </div>
                   </div>
                   {/* 각 캐릭터 열에 시간 경과 표시 */}
-                  {characters.map((char) => (
+                  {visibleCharacters.map((char) => (
                     <div
                       key={`time-${scene.sceneId}-${char.id}`}
                       className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
@@ -644,14 +633,13 @@ export function CharacterChronicle() {
               </div>
 
               {/* 각 캐릭터의 해당 장면 셀 */}
-              {characters.map((char, charIndex) => {
+              {visibleCharacters.map((char, charIndex) => {
                 const isSelected = selectedCharId === char.id;
                 const isOtherSelected = selectedCharId && !isSelected;
                 const charColor = getCharColor(charIndex);
                 const sceneMap = characterSceneEvents.get(char.id) || new Map();
                 const events = sceneMap.get(scene.sceneId) || [];
                 const hasEvents = events.length > 0;
-                const inRange = isInTimelineRange(char.id, globalSceneIndex);
 
                 // 대표 감정 결정
                 const sentiments = events.map((e: HyperEdge) => e.sentiment || 'neutral');
@@ -668,11 +656,11 @@ export function CharacterChronicle() {
                     }`}
                     style={{ minHeight: `${120 * zoomLevel}px`, padding: `${12 * zoomLevel}px` }}
                   >
-                    {/* 연속 세로선 */}
-                    {inRange && (
+                    {/* 연속 세로선 (이벤트가 있는 셀만 표시) */}
+                    {hasEvents && (
                       <div
                         className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
-                        style={{ backgroundColor: charColor, opacity: hasEvents ? 1 : 0.3 }}
+                        style={{ backgroundColor: charColor }}
                       />
                     )}
 
