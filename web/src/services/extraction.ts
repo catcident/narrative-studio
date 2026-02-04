@@ -221,17 +221,40 @@ export function hasProgress(): ExtractionProgress | null {
   return loadProgress();
 }
 
-// knownCharacters 크기 제한 (최근 50명만 유지)
-const MAX_KNOWN_CHARACTERS = 50;
+// 엔티티 정보 타입 (모든 카테고리 지원)
+interface KnownEntity {
+  name: string;
+  description: string;
+  category: string;
+  aliases?: string[];
+}
 
-function trimKnownCharacters(
-  characters: { name: string; description: string; aliases?: string[] }[]
-): { name: string; description: string; aliases?: string[] }[] {
-  if (characters.length <= MAX_KNOWN_CHARACTERS) {
-    return characters;
+// knownEntities 크기 제한 (카테고리별로 관리)
+const MAX_KNOWN_ENTITIES = 100;  // 전체 최대
+const MAX_PER_CATEGORY = 30;     // 카테고리별 최대
+
+function trimKnownEntities(entities: KnownEntity[]): KnownEntity[] {
+  if (entities.length <= MAX_KNOWN_ENTITIES) {
+    return entities;
   }
-  // 최근 것들만 유지
-  return characters.slice(-MAX_KNOWN_CHARACTERS);
+
+  // 카테고리별로 그룹화하고 각각 제한
+  const byCategory: Record<string, KnownEntity[]> = {};
+  for (const e of entities) {
+    if (!byCategory[e.category]) {
+      byCategory[e.category] = [];
+    }
+    byCategory[e.category].push(e);
+  }
+
+  const result: KnownEntity[] = [];
+  for (const category of Object.keys(byCategory)) {
+    const categoryEntities = byCategory[category];
+    // 최근 것들만 유지
+    result.push(...categoryEntities.slice(-MAX_PER_CATEGORY));
+  }
+
+  return result.slice(-MAX_KNOWN_ENTITIES);
 }
 
 export async function extractKnowledgeGraph(
@@ -247,7 +270,7 @@ export async function extractKnowledgeGraph(
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
   let allExtracted: any[] = [];
-  let knownCharacters: { name: string; description: string; aliases?: string[] }[] = [];
+  let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
 
   // 사용할 모델 결정: 이어하기면 저장된 모델, 아니면 파라미터 또는 기본값
@@ -257,7 +280,11 @@ export async function extractKnowledgeGraph(
   if (resumeFrom) {
     chunks = resumeFrom.chunks;
     allExtracted = resumeFrom.allExtracted;
-    knownCharacters = resumeFrom.knownCharacters;
+    // 이전 버전 호환: knownCharacters를 knownEntities로 변환
+    knownEntities = (resumeFrom.knownCharacters || []).map(c => ({
+      ...c,
+      category: 'character'
+    }));
     startChunk = resumeFrom.processedChunks;
     console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
@@ -267,18 +294,21 @@ export async function extractKnowledgeGraph(
       chunks.push(text.slice(i, i + CHUNK_SIZE));
     }
 
-    // 기존 지식그래프가 있으면 인물 정보 초기화
+    // 기존 지식그래프가 있으면 모든 엔티티 정보 초기화
     if (existingGraph) {
       Object.values(existingGraph.entities).forEach((e: any) => {
-        if (e.category === 'character') {
-          knownCharacters.push({
-            name: e.name,
-            description: (e.description || '').slice(0, 100),
-            aliases: e.aliases || []
-          });
-        }
+        knownEntities.push({
+          name: e.name,
+          description: (e.description || '').slice(0, 100),
+          category: e.category || 'character',
+          aliases: e.aliases || []
+        });
       });
-      console.log(`기존 인물 ${knownCharacters.length}명 로드됨`);
+      const categoryCounts = knownEntities.reduce((acc, e) => {
+        acc[e.category] = (acc[e.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log(`기존 엔티티 ${knownEntities.length}개 로드됨:`, categoryCounts);
     }
 
     console.log(`분석 시작 (모델: ${useModel})`);
@@ -294,55 +324,56 @@ export async function extractKnowledgeGraph(
   for (let i = startChunk; i < chunks.length; i++) {
     const msg = `AI 분석 중... (${i + 1}/${totalChunks})`;
     console.log(msg);
-    console.log(`[청크 ${i + 1}] 현재까지 알려진 인물: ${knownCharacters.length}명 - ${knownCharacters.map(c => c.name).join(', ')}`);
+    const characterCount = knownEntities.filter(e => e.category === 'character').length;
+    console.log(`[청크 ${i + 1}] 현재까지 알려진 엔티티: ${knownEntities.length}개 (인물 ${characterCount}명)`);
     onProgress?.(msg);
 
     try {
-      const trimmedCharacters = trimKnownCharacters(knownCharacters);
-      console.log(`[청크 ${i + 1}] 프롬프트에 전달할 인물: ${trimmedCharacters.length}명`);
-      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimmedCharacters, useModel);
+      const trimmedEntities = trimKnownEntities(knownEntities);
+      console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${trimmedEntities.length}개`);
+      const extracted = await extractFromChunk(chunks[i], title, i + 1, trimmedEntities, useModel);
       if (extracted) {
         allExtracted.push(extracted);
 
-        // 이 청크에서 발견된 인물들을 다음 청크를 위해 저장
-        const newCharacters: string[] = [];
+        // 이 청크에서 발견된 모든 엔티티를 다음 청크를 위해 저장
+        const newEntities: string[] = [];
         for (const entity of (extracted.entities || [])) {
-          if (entity.category === 'character') {
-            const existing = knownCharacters.find(c =>
-              c.name === entity.name ||
-              c.aliases?.includes(entity.name) ||
-              entity.aliases?.includes(c.name)
-            );
-            if (existing) {
-              // 설명 업데이트
-              if (entity.description && !existing.description.includes(entity.description)) {
-                existing.description = (existing.description + ' ' + entity.description).slice(0, 200);
-              }
-              // 별칭 병합
-              if (entity.aliases) {
-                existing.aliases = [...new Set([...(existing.aliases || []), ...entity.aliases])];
-              }
-            } else {
-              knownCharacters.push({
-                name: entity.name,
-                description: (entity.description || '').slice(0, 100),
-                aliases: entity.aliases || []
-              });
-              newCharacters.push(entity.name);
+          const existing = knownEntities.find(e =>
+            e.name === entity.name ||
+            e.aliases?.includes(entity.name) ||
+            entity.aliases?.includes(e.name)
+          );
+          if (existing) {
+            // 설명 업데이트
+            if (entity.description && !existing.description.includes(entity.description)) {
+              existing.description = (existing.description + ' ' + entity.description).slice(0, 200);
             }
+            // 별칭 병합
+            if (entity.aliases) {
+              existing.aliases = [...new Set([...(existing.aliases || []), ...entity.aliases])];
+            }
+          } else {
+            knownEntities.push({
+              name: entity.name,
+              description: (entity.description || '').slice(0, 100),
+              category: entity.category || 'character',
+              aliases: entity.aliases || []
+            });
+            newEntities.push(`${entity.name}(${entity.category})`);
           }
         }
-        console.log(`[청크 ${i + 1}] 추출된 인물: ${(extracted.entities || []).filter((e: any) => e.category === 'character').map((e: any) => e.name).join(', ')}`);
-        console.log(`[청크 ${i + 1}] 새로 발견된 인물: ${newCharacters.join(', ') || '없음'}`);
-        console.log(`[청크 ${i + 1}] 누적 인물 수: ${knownCharacters.length}명`);
+        const extractedCharacters = (extracted.entities || []).filter((e: any) => e.category === 'character');
+        console.log(`[청크 ${i + 1}] 추출된 인물: ${extractedCharacters.map((e: any) => e.name).join(', ')}`);
+        console.log(`[청크 ${i + 1}] 새로 발견된 엔티티: ${newEntities.join(', ') || '없음'}`);
+        console.log(`[청크 ${i + 1}] 누적 엔티티 수: ${knownEntities.length}개`);
 
-        // 매 청크 후 진행상황 저장
+        // 매 청크 후 진행상황 저장 (하위 호환성을 위해 knownCharacters로 저장)
         saveProgress({
           title,
           totalChunks,
           processedChunks: i + 1,
           allExtracted,
-          knownCharacters,
+          knownCharacters: knownEntities.filter(e => e.category === 'character'),
           chunks,
           timestamp: Date.now(),
           model: useModel,
@@ -425,27 +456,56 @@ async function extractFromChunk(
   chunkText: string,
   title: string,
   chunkNum: number,
-  knownCharacters: { name: string; description: string; aliases?: string[] }[] = [],
+  knownEntities: KnownEntity[] = [],
   model?: string  // 사용할 모델
 ): Promise<any> {
-  // 이전에 발견된 인물 정보를 프롬프트에 추가 (최대 30명으로 더 제한)
-  let previousCharactersText = '';
-  const limitedCharacters = knownCharacters.slice(-30); // 최근 30명만
-  if (limitedCharacters.length > 0) {
-    previousCharactersText = `## 이전 청크에서 발견된 인물들 (동일 인물이면 같은 이름 사용)
-${limitedCharacters.map(c => {
-  const aliasText = c.aliases?.length ? ` (별칭: ${c.aliases.slice(0, 3).join(', ')})` : ''; // 별칭도 3개까지만
-  const shortDesc = (c.description || '').slice(0, 50); // 설명도 50자까지만
-  return `- ${c.name}${aliasText}: ${shortDesc}`;
-}).join('\n')}
+  // 이전에 발견된 엔티티 정보를 프롬프트에 추가 (카테고리별로 구분)
+  let previousEntitiesText = '';
+  const limitedEntities = trimKnownEntities(knownEntities);
+
+  if (limitedEntities.length > 0) {
+    // 카테고리별로 그룹화
+    const byCategory: Record<string, KnownEntity[]> = {};
+    for (const e of limitedEntities) {
+      if (!byCategory[e.category]) {
+        byCategory[e.category] = [];
+      }
+      byCategory[e.category].push(e);
+    }
+
+    const categoryNames: Record<string, string> = {
+      character: '인물',
+      location: '장소',
+      item: '물건',
+      organization: '조직',
+      event: '사건',
+      concept: '개념'
+    };
+
+    previousEntitiesText = `## 이전 청크에서 발견된 엔티티들 (동일한 것이면 같은 이름 사용!)
+⚠️ 중요: 아래 목록에 있는 엔티티가 이번 청크에 다시 등장하면 반드시 같은 이름을 사용하세요!
+
 `;
+
+    for (const [category, entities] of Object.entries(byCategory)) {
+      const categoryName = categoryNames[category] || category;
+      const limitedCategoryEntities = entities.slice(-15); // 카테고리별 15개까지만
+      previousEntitiesText += `### ${categoryName} (${category})
+${limitedCategoryEntities.map(e => {
+  const aliasText = e.aliases?.length ? ` (별칭: ${e.aliases.slice(0, 3).join(', ')})` : '';
+  const shortDesc = (e.description || '').slice(0, 50);
+  return `- ${e.name}${aliasText}: ${shortDesc}`;
+}).join('\n')}
+
+`;
+    }
   }
 
   const prompt = USER_PROMPT
     .replace('{{title}}', title)
     .replace('{{chunkNum}}', String(chunkNum))
     .replace('{{text}}', chunkText)
-    .replace('{{previousCharacters}}', previousCharactersText);
+    .replace('{{previousCharacters}}', previousEntitiesText);
 
   console.log(`청크 ${chunkNum} 프롬프트 크기: ${prompt.length}자`);
 
