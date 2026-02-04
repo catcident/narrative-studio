@@ -20,7 +20,8 @@ import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useStore } from '../store';
 import type { Entity, HyperEdge, EntityCategory } from '../types';
-import { X, Eye, EyeOff, Focus, Filter } from 'lucide-react';
+import { X, Eye, EyeOff, Focus, Filter, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { EntitySelector } from './EntitySelector';
 
 type GraphViewMode = 'full' | 'simple' | 'focused';
 
@@ -450,18 +451,36 @@ function EdgeDetailPopup({
   );
 }
 
+// 노드 수 임계값
+const NODE_THRESHOLD = 100;
+
 export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene, sceneIndex }: Props) {
   const { selectedEntityId, selectEntity } = useStore();
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharIds, setFocusedCharIds] = useState<string[]>([]);
   const [minImportance, setMinImportance] = useState<number>(1);  // 최소 중요도 필터
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
 
   // 인물 목록 추출
   const characters = useMemo(() =>
     entities.filter(e => e.category === 'character'),
     [entities]
   );
+
+  // 노드가 많으면 자동으로 상위 인물만 선택
+  useEffect(() => {
+    if (entities.length > NODE_THRESHOLD && selectedEntityIds.length === 0) {
+      // 등장 횟수 상위 5명의 인물을 기본 선택
+      const topCharacters = [...characters]
+        .sort((a, b) => (b.scenes?.length || 0) - (a.scenes?.length || 0))
+        .slice(0, 5)
+        .map(c => c.id);
+      setSelectedEntityIds(topCharacters);
+      setShowSidebar(true);
+    }
+  }, [entities.length, characters]);
 
   // 중요도 필터 적용
   const importanceFilteredEntities = useMemo(() => {
@@ -478,14 +497,37 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
     return edges.filter(e => e.entities.every(id => entityIds.has(id)));
   }, [edges, importanceFilteredEntities, minImportance]);
 
+  // 사이드바 선택에 의한 필터링 (노드가 많을 때)
+  const sidebarFilteredResult = useMemo(() => {
+    // 사이드바에서 선택된 엔티티가 있으면 그것들과 연결된 것만 표시
+    if (selectedEntityIds.length > 0) {
+      const fEdges = importanceFilteredEdges.filter(e =>
+        selectedEntityIds.some(id => e.entities.includes(id))
+      );
+
+      const relatedEntityIds = new Set<string>(selectedEntityIds);
+      fEdges.forEach(edge => {
+        edge.entities.forEach(id => relatedEntityIds.add(id));
+      });
+
+      const fEntities = importanceFilteredEntities.filter(e => relatedEntityIds.has(e.id));
+      return { filteredEntities: fEntities, filteredEdges: fEdges };
+    }
+
+    return { filteredEntities: importanceFilteredEntities, filteredEdges: importanceFilteredEdges };
+  }, [importanceFilteredEntities, importanceFilteredEdges, selectedEntityIds]);
+
   // 인물 중심 모드: 선택된 인물들이 직접 연결된 것만 표시
   const { filteredEntities, filteredEdges } = useMemo(() => {
+    const baseEntities = sidebarFilteredResult.filteredEntities;
+    const baseEdges = sidebarFilteredResult.filteredEdges;
+
     if (viewMode !== 'focused' || focusedCharIds.length === 0) {
-      return { filteredEntities: importanceFilteredEntities, filteredEdges: importanceFilteredEdges };
+      return { filteredEntities: baseEntities, filteredEdges: baseEdges };
     }
 
     // 포커스된 인물들이 직접 연결된 관계만 필터링
-    const fEdges = importanceFilteredEdges.filter(e =>
+    const fEdges = baseEdges.filter(e =>
       focusedCharIds.some(charId => e.entities.includes(charId))
     );
 
@@ -495,10 +537,10 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       edge.entities.forEach(id => relatedEntityIds.add(id));
     });
 
-    const fEntities = importanceFilteredEntities.filter(e => relatedEntityIds.has(e.id));
+    const fEntities = baseEntities.filter(e => relatedEntityIds.has(e.id));
 
     return { filteredEntities: fEntities, filteredEdges: fEdges };
-  }, [importanceFilteredEntities, importanceFilteredEdges, viewMode, focusedCharIds]);
+  }, [sidebarFilteredResult, viewMode, focusedCharIds]);
 
   // 간소화 모드: 인물만 표시
   const displayEntities = useMemo(() => {
@@ -942,9 +984,42 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
   };
 
   return (
-    <div className="w-full h-full bg-gray-50 rounded-xl overflow-hidden relative">
-      {/* 뷰 모드 컨트롤 */}
-      <div className="absolute top-3 left-3 z-10 bg-white rounded-lg shadow-lg p-2">
+    <div className="w-full h-full bg-gray-50 rounded-xl overflow-hidden relative flex">
+      {/* 엔티티 선택 사이드바 */}
+      {showSidebar && (
+        <div className="w-64 h-full flex-shrink-0 relative z-20">
+          <EntitySelector
+            entities={entities}
+            selectedIds={selectedEntityIds}
+            onSelectionChange={setSelectedEntityIds}
+          />
+        </div>
+      )}
+
+      {/* 그래프 영역 */}
+      <div className="flex-1 h-full relative">
+        {/* 사이드바 토글 버튼 */}
+        <button
+          onClick={() => setShowSidebar(!showSidebar)}
+          className="absolute top-3 left-3 z-10 bg-white rounded-lg shadow-lg p-2 hover:bg-gray-50"
+          title={showSidebar ? '사이드바 닫기' : '사이드바 열기'}
+        >
+          {showSidebar ? (
+            <PanelLeftClose className="w-4 h-4 text-gray-600" />
+          ) : (
+            <PanelLeftOpen className="w-4 h-4 text-gray-600" />
+          )}
+        </button>
+
+        {/* 노드 수 경고 (많을 때) */}
+        {entities.length > NODE_THRESHOLD && selectedEntityIds.length === 0 && (
+          <div className="absolute top-3 left-14 z-10 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-700">
+            노드가 {entities.length}개로 많습니다. 사이드바에서 표시할 항목을 선택하세요.
+          </div>
+        )}
+
+        {/* 뷰 모드 컨트롤 */}
+        <div className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-lg p-2">
         <div className="flex items-center gap-1 mb-2">
           <button
             onClick={() => { setViewMode('full'); setFocusedCharIds([]); }}
@@ -1054,57 +1129,57 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             )}
           </div>
         )}
-      </div>
 
-      <ReactFlow
-        nodes={nodes}
-        edges={flowEdges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        onEdgeClick={handleEdgeClick}
-        onPaneClick={handlePaneClick}
-        connectionMode={ConnectionMode.Loose}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        minZoom={0.2}
-        maxZoom={2}
-        nodesDraggable={true}
-        nodesConnectable={false}
-        edgesFocusable={false}
-        style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
-      >
-        <Background color="#e5e7eb" gap={20} />
-        <Controls className="bg-white rounded-lg shadow-lg" />
-        {displayEntities.length <= 100 && (
-          <MiniMap
-            nodeColor={(node) => {
-              const entity = node.data?.entity as Entity;
-              return entity ? CATEGORY_COLORS[entity.category] : '#ccc';
-            }}
-            className="bg-white rounded-lg shadow-lg"
+        <ReactFlow
+          nodes={nodes}
+          edges={flowEdges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          onEdgeClick={handleEdgeClick}
+          onPaneClick={handlePaneClick}
+          connectionMode={ConnectionMode.Loose}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          minZoom={0.2}
+          maxZoom={2}
+          nodesDraggable={true}
+          nodesConnectable={false}
+          edgesFocusable={false}
+          style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif" }}
+        >
+          <Background color="#e5e7eb" gap={20} />
+          <Controls className="bg-white rounded-lg shadow-lg" />
+          {displayEntities.length <= 100 && (
+            <MiniMap
+              nodeColor={(node) => {
+                const entity = node.data?.entity as Entity;
+                return entity ? CATEGORY_COLORS[entity.category] : '#ccc';
+              }}
+              className="bg-white rounded-lg shadow-lg"
+            />
+          )}
+        </ReactFlow>
+
+        {selectedEdge && (
+          <EdgeDetailPopup
+            edge={selectedEdge}
+            entities={entities}
+            onClose={() => setSelectedEdge(null)}
           />
         )}
-      </ReactFlow>
 
-      {selectedEdge && (
-        <EdgeDetailPopup
-          edge={selectedEdge}
-          entities={entities}
-          onClose={() => setSelectedEdge(null)}
-        />
-      )}
-
-      {/* 장면 정보 팝업 */}
-      {selectedScene && sceneIndex && (
-        <SceneInfoPopup
-          scene={selectedScene}
-          sceneIndex={sceneIndex}
-          edges={edges}
-          entities={entities}
-          onClose={() => {}}
-        />
-      )}
+        {/* 장면 정보 팝업 */}
+        {selectedScene && sceneIndex && (
+          <SceneInfoPopup
+            scene={selectedScene}
+            sceneIndex={sceneIndex}
+            edges={edges}
+            entities={entities}
+            onClose={() => {}}
+          />
+        )}
+      </div>
     </div>
   );
 }
