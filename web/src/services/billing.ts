@@ -11,6 +11,31 @@ import type {
 
 const BASE = '/api/billing';
 
+// ==================== 공통 fetcher ====================
+
+async function billingFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
+  try {
+    const res = await fetch(`${BASE}${path}`, init);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    console.error(`[billing] ${path} error:`, error);
+    return null;
+  }
+}
+
+async function billingFetchList<T>(path: string): Promise<T[]> {
+  try {
+    const res = await fetch(`${BASE}${path}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results || data;
+  } catch (error) {
+    console.error(`[billing] ${path} error:`, error);
+    return [];
+  }
+}
+
 // ==================== 구독 ====================
 
 export interface SubscriptionInfo {
@@ -31,27 +56,13 @@ export interface SubscriptionInfo {
 }
 
 export async function getSubscription(): Promise<SubscriptionInfo | null> {
-  try {
-    const res = await fetch(`${BASE}/subscription`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error('[billing] getSubscription error:', error);
-    return null;
-  }
+  return billingFetch<SubscriptionInfo>('/subscription');
 }
 
 // ==================== 크레딧 ====================
 
 export async function getCreditBalance(): Promise<{ balance: number; plan: string } | null> {
-  try {
-    const res = await fetch(`${BASE}/credits/balance`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error('[billing] getCreditBalance error:', error);
-    return null;
-  }
+  return billingFetch<{ balance: number; plan: string }>('/credits/balance');
 }
 
 export interface UsageEstimate {
@@ -66,22 +77,15 @@ export async function estimateCredits(
   charCount: number,
   model: string
 ): Promise<UsageEstimate | null> {
-  try {
-    const res = await fetch(`${BASE}/credits/estimate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service: 'storygraph',
-        char_count: charCount,
-        model,
-      }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error('[billing] estimateCredits error:', error);
-    return null;
-  }
+  return billingFetch<UsageEstimate>('/credits/estimate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service: 'storygraph',
+      char_count: charCount,
+      model,
+    }),
+  });
 }
 
 export interface DeductResult {
@@ -130,14 +134,7 @@ export interface TransactionsResponse {
 }
 
 export async function getUsageHistory(page: number = 1): Promise<TransactionsResponse | null> {
-  try {
-    const res = await fetch(`${BASE}/credits/transactions?page=${page}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error('[billing] getUsageHistory error:', error);
-    return null;
-  }
+  return billingFetch<TransactionsResponse>(`/credits/transactions?page=${page}`);
 }
 
 // ==================== 요금제 / 상품 ====================
@@ -155,15 +152,7 @@ export interface ServicePlan {
 }
 
 export async function getPlans(): Promise<ServicePlan[]> {
-  try {
-    const res = await fetch(`${BASE}/plans`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.results || data;
-  } catch (error) {
-    console.error('[billing] getPlans error:', error);
-    return [];
-  }
+  return billingFetchList<ServicePlan>('/plans');
 }
 
 export interface CreditPackage {
@@ -177,13 +166,5 @@ export interface CreditPackage {
 }
 
 export async function getCreditPackages(): Promise<CreditPackage[]> {
-  try {
-    const res = await fetch(`${BASE}/packages`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.results || data;
-  } catch (error) {
-    console.error('[billing] getCreditPackages error:', error);
-    return [];
-  }
+  return billingFetchList<CreditPackage>('/packages');
 }

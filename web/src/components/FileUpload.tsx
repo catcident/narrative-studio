@@ -96,6 +96,14 @@ export function FileUpload() {
     ? AVAILABLE_MODELS.filter(m => (subscription.features.models as string[]).includes(m.id))
     : AVAILABLE_MODELS;
 
+  // 프로그레스 상태 일괄 초기화 헬퍼
+  const resetProgressState = useCallback((checkSaved: boolean = false) => {
+    setProgress('');
+    setProgressCurrent(0);
+    setProgressTotal(0);
+    setSavedProgress(checkSaved ? hasProgress() : null);
+  }, []);
+
   // 등록 가능 여부: 제목 + 작가 + (파일 또는 텍스트) 모두 필요 + 중복 아님
   const fullTitle = bookTitle.trim() && bookAuthor.trim()
     ? `${bookTitle.trim()} - ${bookAuthor.trim()}`
@@ -174,17 +182,16 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
+      resetProgressState();
     } catch (err: any) {
       console.error('Resume error:', err);
       setError(err.message || '이어하기 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       // 진행상황 다시 확인
-      setSavedProgress(hasProgress());
+      resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [savedProgress, setKnowledgeGraph, setLoading, setError]);
+  }, [savedProgress, setKnowledgeGraph, setLoading, setError, resetProgressState]);
 
   // 저장된 진행상황 삭제
   const handleClearProgress = useCallback(() => {
@@ -317,16 +324,16 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
+      resetProgressState();
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
+      resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setKnowledgeGraph, setLoading, setError, currentModel]);
+  }, [setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState]);
 
   const handleFile = useCallback(async (file: File) => {
     console.log('파일 업로드 시작:', file.name);
@@ -400,17 +407,16 @@ export function FileUpload() {
 
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
+      resetProgressState();
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       // 진행상황 다시 확인
-      setSavedProgress(hasProgress());
+      resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setKnowledgeGraph, setLoading, setError, currentModel]);
+  }, [setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -488,16 +494,16 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
+      resetProgressState();
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
+      resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState]);
 
   // 추가 분석 (기존 결과에 새 파일 병합)
   const handleAddFile = useCallback(async (file: File) => {
@@ -544,7 +550,8 @@ export function FileUpload() {
         setNewFileName(file.name);
         setPendingFile(file);
         setPendingFileText(text);
-        setProgress(''); setProgressCurrent(0); setProgressTotal(0);         return;
+        resetProgressState();
+        return;
       }
 
       // 중복 없음 - 바로 실행
@@ -552,9 +559,9 @@ export function FileUpload() {
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
+      resetProgressState(true);
     }
-  }, [knowledgeGraph, executeAddFile]);
+  }, [knowledgeGraph, executeAddFile, resetProgressState]);
 
   // 새 파일명으로 추가 분석 계속
   const handleConfirmNewFileName = useCallback(async () => {
@@ -592,12 +599,23 @@ export function FileUpload() {
   const handleRegister = useCallback(async () => {
     if (!canRegister) return;
 
-    // 잔액 확인
+    // 잔액 확인 (예상 비용과 비교)
     if (subscription) {
       const balanceInfo = await fetchCreditBalance();
-      if (balanceInfo && balanceInfo.balance <= 0) {
-        setError('크레딧이 부족합니다. 크레딧을 충전해주세요.');
-        return;
+      if (balanceInfo) {
+        if (balanceInfo.balance <= 0) {
+          setError('크레딧이 부족합니다. 크레딧을 충전해주세요.');
+          return;
+        }
+        // 파일 기반일 때 bytes→chars 근사 변환 (UTF-8 한글 ~3bytes/char)
+        const approxCharCount = directText.trim()
+          ? directText.length
+          : Math.ceil(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 3);
+        const estimate = await estimateCredits(approxCharCount, currentModel);
+        if (estimate && estimate.estimated_credits > balanceInfo.balance) {
+          setError(`크레딧이 부족합니다. 필요: 약 ${estimate.estimated_credits.toLocaleString()}, 잔액: ${balanceInfo.balance.toLocaleString()}`);
+          return;
+        }
       }
     }
 
@@ -688,19 +706,24 @@ export function FileUpload() {
         }));
       }
 
-      // 크레딧 차감 (구독이 있는 경우)
+      // 저장하고 ID 받기
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 크레딧 차감 (구독이 있는 경우, 저장 후 실행하여 saved.id를 idempotency key에 사용)
       if (subscription) {
         setProgress('크레딧 차감 중...');
         const { currentUsage } = useStore.getState();
         const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
         if (totalTokens > 0) {
-          // estimateCredits로 실제 차감량 계산
           const estimate = await estimateCredits(text.length, currentModel);
           if (estimate) {
+            const idempotencyKey = `storygraph-${saved.id}-${currentUsage.chunks.length}`;
             const result = await deductCredits(
               estimate.estimated_credits,
               `소설 분석: ${title}`,
               { model: currentModel, chunks: currentUsage.chunks.length, totalTokens },
+              idempotencyKey,
             );
             if (result) {
               updateCreditBalance(result.balance_after);
@@ -708,10 +731,6 @@ export function FileUpload() {
           }
         }
       }
-
-      // 저장하고 ID 받기
-      setProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       // 타이틀 목록 업데이트
       setExistingTitles(prev => [...prev, title]);
@@ -724,19 +743,19 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
+      resetProgressState();
 
       // 사용량 요약 표시
       setShowUsageSummary(true);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '처리 중 오류가 발생했습니다.');
-      setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(hasProgress());
+      resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, setKnowledgeGraph, setLoading, setError, subscription, addChunkUsage, resetCurrentUsage, setShowUsageSummary, updateCreditBalance]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, setKnowledgeGraph, setLoading, setError, subscription, addChunkUsage, resetCurrentUsage, setShowUsageSummary, updateCreditBalance, resetProgressState]);
 
   return (
     <div className="space-y-4">
@@ -744,7 +763,7 @@ export function FileUpload() {
       {!hasEnvKey && !hasLocalKey && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
           <div className="flex items-start gap-3">
-            <Key className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <Key aria-hidden="true" className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium text-yellow-800">OpenRouter API 키 필요</p>
               <p className="text-sm text-yellow-700 mt-1">
@@ -780,7 +799,7 @@ export function FileUpload() {
             onClick={() => setShowApiKeyInput(true)}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
-            <Key className="w-3 h-3 inline mr-1" />
+            <Key aria-hidden="true" className="w-3 h-3 inline mr-1" />
             {hasLocalKey ? '내 API 키 변경' : '내 API 키 사용하기'}
           </button>
         </div>
@@ -815,7 +834,7 @@ export function FileUpload() {
       {/* 모델 선택 */}
       <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl">
         <div className="flex items-start gap-3">
-          <Cpu className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+          <Cpu aria-hidden="true" className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <p className="font-medium text-purple-800">AI 모델 선택</p>
@@ -859,14 +878,14 @@ export function FileUpload() {
       {!knowledgeGraph && (
         <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
           <div className="flex items-start gap-3">
-            <BookOpen className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <BookOpen aria-hidden="true" className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium text-emerald-800 mb-3">작품 정보 <span className="text-red-500">*</span></p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-emerald-700 mb-1 block">제목 <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <BookOpen aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="text"
                       value={bookTitle}
@@ -882,7 +901,7 @@ export function FileUpload() {
                 <div>
                   <label className="text-xs text-emerald-700 mb-1 block">작가 <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <User aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="text"
                       value={bookAuthor}
@@ -935,7 +954,7 @@ export function FileUpload() {
               const totalSec = estimatedTotalSeconds !== null ? estimatedTotalSeconds % 60 : null;
               return (
                 <>
-                  <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                  <Loader2 aria-hidden="true" className="w-12 h-12 text-blue-500 animate-spin" />
                   <div>
                     <p className="text-lg font-medium text-gray-700">분석 중...</p>
                     {progressTotal > 0 && (
@@ -963,7 +982,7 @@ export function FileUpload() {
           ) : (
             <>
               <div className="p-4 bg-gray-100 rounded-full">
-                <Upload className="w-8 h-8 text-gray-500" />
+                <Upload aria-hidden="true" className="w-8 h-8 text-gray-500" />
               </div>
               <div>
                 <p className="text-lg font-medium text-gray-700">
@@ -974,11 +993,11 @@ export function FileUpload() {
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Files className="w-4 h-4" />
+                <Files aria-hidden="true" className="w-4 h-4" />
                 <span>여러 파일 선택 가능 (1편, 2편...)</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <FileText className="w-4 h-4" />
+                <FileText aria-hidden="true" className="w-4 h-4" />
                 <span>드래그 앤 드롭 또는 클릭</span>
               </div>
             </>
@@ -994,7 +1013,7 @@ export function FileUpload() {
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <div className="flex items-center justify-between mb-2">
                 <p className="font-medium text-blue-800 flex items-center gap-2">
-                  <FileCheck className="w-4 h-4" />
+                  <FileCheck aria-hidden="true" className="w-4 h-4" />
                   선택된 파일 ({selectedFiles.length}개)
                 </p>
                 <button
@@ -1022,7 +1041,7 @@ export function FileUpload() {
                         className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
                         title="위로 이동"
                       >
-                        <ChevronUp className="w-4 h-4" />
+                        <ChevronUp aria-hidden="true" className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleMoveFileDown(index)}
@@ -1030,14 +1049,14 @@ export function FileUpload() {
                         className={`p-1 rounded ${index === selectedFiles.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
                         title="아래로 이동"
                       >
-                        <ChevronDown className="w-4 h-4" />
+                        <ChevronDown aria-hidden="true" className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleRemoveFile(index)}
                         className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
                         title="삭제"
                       >
-                        <X className="w-4 h-4" />
+                        <X aria-hidden="true" className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -1062,7 +1081,7 @@ export function FileUpload() {
           {showTextInput && selectedFiles.length === 0 && (
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
               <p className="font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
+                <FileText aria-hidden="true" className="w-4 h-4" />
                 텍스트 직접 입력
               </p>
               <textarea
@@ -1083,7 +1102,7 @@ export function FileUpload() {
           {/* 중복 타이틀 경고 */}
           {isDuplicateTitle && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <AlertCircle aria-hidden="true" className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-amber-800">중복된 작품명</p>
                 <p className="text-sm text-amber-600 mt-1">
@@ -1093,10 +1112,10 @@ export function FileUpload() {
             </div>
           )}
 
-          {/* 예상 사용량 */}
+          {/* 예상 사용량 — 파일은 bytes→chars 근사 변환 (UTF-8 한글 ~3bytes/char) */}
           {(selectedFiles.length > 0 || directText.trim()) && (
             <UsageEstimate
-              charCount={directText.trim() ? directText.length : selectedFiles.reduce((sum, f) => sum + f.size, 0)}
+              charCount={directText.trim() ? directText.length : Math.ceil(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 3)}
               model={currentModel}
             />
           )}
@@ -1114,7 +1133,7 @@ export function FileUpload() {
             >
               {localLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
                   분석 중...
                 </span>
               ) : (
@@ -1139,7 +1158,7 @@ export function FileUpload() {
       {knowledgeGraph && !localLoading && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <div className="flex items-start gap-3">
-            <Plus className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <Plus aria-hidden="true" className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium text-blue-800">추가 분석</p>
               <p className="text-sm text-blue-700 mt-1">
@@ -1147,7 +1166,7 @@ export function FileUpload() {
               </p>
               <div className="flex gap-2 mt-3">
                 <label className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
-                  <Plus className="w-4 h-4" />
+                  <Plus aria-hidden="true" className="w-4 h-4" />
                   파일 추가
                   <input
                     type="file"
@@ -1166,7 +1185,7 @@ export function FileUpload() {
       {savedProgress && !localLoading && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <div className="flex items-start gap-3">
-            <RotateCcw className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <RotateCcw aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium text-amber-800">이전 분석 발견</p>
               <p className="text-sm text-amber-700 mt-1">
@@ -1177,14 +1196,14 @@ export function FileUpload() {
                   onClick={handleResume}
                   className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors"
                 >
-                  <Play className="w-4 h-4" />
+                  <Play aria-hidden="true" className="w-4 h-4" />
                   이어하기
                 </button>
                 <button
                   onClick={handleClearProgress}
                   className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 aria-hidden="true" className="w-4 h-4" />
                   삭제
                 </button>
               </div>
@@ -1198,7 +1217,7 @@ export function FileUpload() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
             <div className="flex items-start gap-3 mb-4">
-              <AlertCircle className="w-6 h-6 text-amber-500 flex-shrink-0" />
+              <AlertCircle aria-hidden="true" className="w-6 h-6 text-amber-500 flex-shrink-0" />
               <div>
                 <h3 className="font-semibold text-gray-900">중복 파일명</h3>
                 <p className="text-sm text-gray-600 mt-1">
@@ -1246,7 +1265,7 @@ export function FileUpload() {
       {/* 에러 메시지 */}
       {error && !duplicateFileName && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <AlertCircle aria-hidden="true" className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-red-800">오류 발생</p>
             <p className="text-sm text-red-600 mt-1">{error}</p>

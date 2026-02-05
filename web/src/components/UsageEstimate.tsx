@@ -20,6 +20,7 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
   useEffect(() => {
     if (charCount <= 0 || !model) {
       setEstimate(null);
+      setLoading(false);
       return;
     }
 
@@ -30,7 +31,10 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
       setLoading(false);
     }, 300); // debounce
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      setLoading(false);
+    };
   }, [charCount, model]);
 
   if (!estimate && !loading) return null;

@@ -136,6 +136,63 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 
 ---
 
+## billing.ts - 과금 클라이언트 서비스
+
+서버 사이드 프록시 (`/api/billing/`)를 통해 catcident billing API에 접근하는 클라이언트 서비스
+
+### 공통 패턴
+
+내부 헬퍼 `billingFetch<T>()` / `billingFetchList<T>()`로 중복 제거:
+- null 반환 (단건) 또는 빈 배열 반환 (목록)
+- `[billing]` 접두사 로그
+- 네트워크 에러 시 silent fail (UI에서 처리)
+
+### 주요 함수
+
+```typescript
+getSubscription()           // 구독 정보 (plan, balance, features)
+getCreditBalance()          // 잔액만 조회
+estimateCredits(charCount, model)  // 분석 전 예상 비용
+deductCredits(amount, desc, metadata?, idempotencyKey?)  // 차감
+getUsageHistory(page)       // 거래 내역 (페이지네이션)
+getPlans()                  // 요금제 목록
+getCreditPackages()         // 크레딧 상품 목록
+```
+
+### 중요 규칙
+
+- **charCount vs bytes**: `estimateCredits()`에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
+- **idempotency key**: `deductCredits()` 호출 시 반드시 고유 키 전달하여 중복 차감 방지
+- **차감 시점**: 분석 완료 + 저장 후 1회만 (`saved.id`를 idempotency key에 포함)
+
+---
+
+## billingProxy.ts - 서버 사이드 프록시
+
+catcident-backend billing API로의 서버 사이드 프록시 유틸리티
+
+### 구성
+
+- `proxyToCatcident(path, accessToken, options?)` - 저수준 fetch 래퍼 (15초 타임아웃)
+- `billingGetHandler(path, logLabel)` - GET 라우트 핸들러 팩토리
+- `billingPostHandler(path, logLabel)` - POST 라우트 핸들러 팩토리
+
+### 새 billing 라우트 추가 시
+
+```typescript
+// 1줄로 라우트 생성 가능
+// api/billing/new-endpoint/route.ts
+import { billingGetHandler } from '@/services/billingProxy';
+export const GET = billingGetHandler('/new-endpoint/?service=storygraph', 'new-endpoint GET');
+```
+
+### 환경 변수
+
+- `CATCIDENT_API_URL` - catcident-backend API URL (기본값: `https://catcident.com`)
+- `CATCIDENT_SERVICE_KEY` - X-Service-Key 헤더로 전달되는 서비스 인증 키
+
+---
+
 <claude-mem-context>
 # Recent Activity
 

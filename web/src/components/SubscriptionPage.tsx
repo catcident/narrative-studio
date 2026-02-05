@@ -23,11 +23,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getPlans(), getCreditPackages()]).then(([p, pkg]) => {
-      setPlans(p);
-      setPackages(pkg);
-      setLoading(false);
-    });
+    Promise.all([getPlans(), getCreditPackages()])
+      .then(([p, pkg]) => {
+        setPlans(p);
+        setPackages(pkg);
+      })
+      .catch((error) => {
+        console.error('[billing] SubscriptionPage load error:', error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const tabs: { id: Tab; label: string }[] = [
