@@ -74,9 +74,11 @@ export function UploadArea({
                   )}
                   <p className="text-sm text-blue-600 mt-1">
                     {elapsedMin}:{elapsedSec.toString().padStart(2, '0')}
-                    {totalMin !== null && (
+                    {totalMin !== null ? (
                       <span className="text-gray-500"> / {totalMin}:{totalSec!.toString().padStart(2, '0')}</span>
-                    )}
+                    ) : progressTotal > 0 ? (
+                      <span className="text-gray-400"> / 계산 중...</span>
+                    ) : null}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">{progress}</p>
                 </div>
