@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
       knowledgeGraphId: item.knowledgeGraphId || null,
     })));
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] novels GET error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] novels POST error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

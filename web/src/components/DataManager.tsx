@@ -40,6 +40,7 @@ export function DataManager({ onClose, onLoad }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string; addedFiles?: string | null }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // 목록 새로고침
   const refreshList = async () => {
@@ -104,11 +105,12 @@ export function DataManager({ onClose, onLoad }: Props) {
     if (!file) return;
 
     try {
+      setImportError(null);
       const imported = await importKnowledgeGraph(file);
       onLoad(imported);
       onClose();
     } catch (err: any) {
-      alert(err.message || '파일 가져오기 실패');
+      setImportError(err.message || '파일 가져오기 실패');
     }
 
     // 입력 초기화
@@ -134,26 +136,27 @@ export function DataManager({ onClose, onLoad }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-blue-600" />
+            <Database className="w-5 h-5 text-blue-600" aria-hidden="true" />
             <h2 className="text-lg font-semibold">저장된 데이터 관리</h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="닫기"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* 상단 액션 */}
         <div className="flex items-center gap-2 p-4 border-b bg-gray-50">
           <label className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition-colors">
-            <Upload className="w-4 h-4" />
+            <Upload className="w-4 h-4" aria-hidden="true" />
             <span className="text-sm">JSON 가져오기</span>
             <input
               type="file"
@@ -168,17 +171,23 @@ export function DataManager({ onClose, onLoad }: Props) {
               onClick={handleExportCurrent}
               className="flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4" aria-hidden="true" />
               <span className="text-sm">현재 데이터 내보내기</span>
             </button>
           )}
         </div>
 
+        {importError && (
+          <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {importError}
+          </div>
+        )}
+
         {/* 목록 */}
         <div className="flex-1 overflow-y-auto p-4">
           {savedList.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <Database className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <Database className="w-12 h-12 mx-auto mb-3 opacity-30" aria-hidden="true" />
               <p>저장된 데이터가 없습니다</p>
               <p className="text-sm mt-1">소설을 분석하면 자동으로 저장됩니다</p>
             </div>
@@ -202,7 +211,7 @@ export function DataManager({ onClose, onLoad }: Props) {
                           <span>장면 {item.sceneCount}</span>
                         </div>
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="w-3 h-3" aria-hidden="true" />
                           <span>{formatDate(item.updatedAt)}</span>
                           <span className="ml-2">v{item.version}</span>
                         </div>
@@ -214,25 +223,28 @@ export function DataManager({ onClose, onLoad }: Props) {
                           onClick={() => handleLoad(item.id)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="불러오기"
+                          aria-label="불러오기"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-4 h-4" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => handleExport(item.id)}
                           className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                           title="내보내기"
+                          aria-label="내보내기"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-4 h-4" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => toggleVersions(item.id)}
                           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                           title="버전 히스토리"
+                          aria-label="버전 히스토리"
                         >
                           {expandedId === item.id ? (
-                            <ChevronUp className="w-4 h-4" />
+                            <ChevronUp className="w-4 h-4" aria-hidden="true" />
                           ) : (
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-4 h-4" aria-hidden="true" />
                           )}
                         </button>
 
@@ -242,15 +254,17 @@ export function DataManager({ onClose, onLoad }: Props) {
                               onClick={() => handleDelete(item.id)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="삭제 확인"
+                              aria-label="삭제 확인"
                             >
-                              <Check className="w-4 h-4" />
+                              <Check className="w-4 h-4" aria-hidden="true" />
                             </button>
                             <button
                               onClick={() => setConfirmDelete(null)}
                               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                               title="취소"
+                              aria-label="취소"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-4 h-4" aria-hidden="true" />
                             </button>
                           </div>
                         ) : (
@@ -258,8 +272,9 @@ export function DataManager({ onClose, onLoad }: Props) {
                             onClick={() => setConfirmDelete(item.id)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="삭제"
+                            aria-label="삭제"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                         )}
                       </div>
@@ -303,7 +318,7 @@ export function DataManager({ onClose, onLoad }: Props) {
                                 onClick={() => handleRestoreVersion(item.id, v.version)}
                                 className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors flex-shrink-0"
                               >
-                                <RotateCcw className="w-3 h-3" />
+                                <RotateCcw className="w-3 h-3" aria-hidden="true" />
                                 복원
                               </button>
                             </div>

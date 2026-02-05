@@ -21,19 +21,25 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const [plans, setPlans] = useState<ServicePlan[]>([]);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([getPlans(), getCreditPackages()])
       .then(([p, pkg]) => {
-        setPlans(p);
-        setPackages(pkg);
+        if (!cancelled) {
+          setPlans(p);
+          setPackages(pkg);
+        }
       })
       .catch((error) => {
         console.error('[billing] SubscriptionPage load error:', error);
+        if (!cancelled) setLoadError(true);
       })
       .finally(() => {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       });
+    return () => { cancelled = true; };
   }, []);
 
   const tabs: { id: Tab; label: string }[] = [
@@ -94,6 +100,11 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center text-gray-400 py-12">로딩 중...</div>
+          ) : loadError ? (
+            <div className="text-center text-gray-500 py-12">
+              <p>구독 정보를 불러올 수 없습니다.</p>
+              <p className="text-sm mt-1">잠시 후 다시 시도해주세요.</p>
+            </div>
           ) : activeTab === 'plans' ? (
             /* 플랜 비교 */
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

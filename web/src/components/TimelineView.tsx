@@ -138,7 +138,7 @@ export function TimelineView() {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
         <div className="text-center text-gray-400">
-          <Clock className="w-16 h-16 mx-auto mb-3 opacity-30" />
+          <Clock className="w-16 h-16 mx-auto mb-3 opacity-30" aria-hidden="true" />
           <p>데이터를 불러와주세요</p>
         </div>
       </div>
@@ -149,7 +149,7 @@ export function TimelineView() {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
         <div className="text-center text-gray-400">
-          <Clock className="w-16 h-16 mx-auto mb-3 opacity-30" />
+          <Clock className="w-16 h-16 mx-auto mb-3 opacity-30" aria-hidden="true" />
           <p>타임라인 정보가 없습니다</p>
         </div>
       </div>
@@ -163,7 +163,7 @@ export function TimelineView() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200">
-              <Clock className="w-5 h-5 text-white" />
+              <Clock className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-800">스토리 타임라인</h2>
@@ -330,9 +330,9 @@ export function TimelineView() {
                           <div className="flex items-center gap-2 text-gray-400">
                             <span className="text-xs">{event.edges.length}개</span>
                             {isExpanded ? (
-                              <ChevronDown className="w-4 h-4" />
+                              <ChevronDown className="w-4 h-4" aria-hidden="true" />
                             ) : (
-                              <ChevronRight className="w-4 h-4" />
+                              <ChevronRight className="w-4 h-4" aria-hidden="true" />
                             )}
                           </div>
                         </div>
@@ -369,7 +369,7 @@ export function TimelineView() {
                                     className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                                     style={{ backgroundColor: config.color + '20' }}
                                   >
-                                    <Icon className="w-4 h-4" style={{ color: config.color }} />
+                                    <Icon className="w-4 h-4" style={{ color: config.color }} aria-hidden="true" />
                                   </div>
 
                                   <div className="flex-1 min-w-0">
