@@ -130,7 +130,7 @@ function App() {
         (msg) => setAddProgress(msg),
         undefined,
         existingModel,
-        file.name,
+        [file.name],  // 원본 파일명 배열로 전달
         knowledgeGraph  // 기존 지식그래프 전달
       );
 

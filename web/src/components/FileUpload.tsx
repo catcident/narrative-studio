@@ -276,12 +276,13 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      // 첫 번째 파일명으로 extractKnowledgeGraph 호출
+      // 모든 파일명 배열로 extractKnowledgeGraph 호출
+      const fileNamesArray = sortedFiles.map(f => f.name);
       const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, sortedFiles[0].name);
+              }, undefined, currentModel, fileNamesArray);
 
       // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
       if (sortedFiles.length > 1) {
@@ -367,7 +368,7 @@ export function FileUpload() {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, file.name);  // 원본 파일명 전달
+              }, undefined, currentModel, [file.name]);  // 원본 파일명 배열로 전달
 
       // 작가 정보 추가
       if (bookAuthor.trim()) {
@@ -468,7 +469,7 @@ export function FileUpload() {
         (msg) => setProgress(`추가: ${msg}`),
         undefined,
         currentModel,
-        finalFileName,
+        [finalFileName],  // 원본 파일명 배열로 전달
         knowledgeGraph  // 기존 지식그래프 전달
       );
 
@@ -641,11 +642,15 @@ export function FileUpload() {
       }
 
       setProgress('분석 중...');
+      // 파일명 배열 생성: fileInfos가 있으면 모든 파일명, 없으면 sourceFileName
+      const fileNamesForExtraction = fileInfos.length > 0
+        ? fileInfos.map(f => f.fileName)
+        : (sourceFileName ? [sourceFileName] : undefined);
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, sourceFileName);
+              }, undefined, currentModel, fileNamesForExtraction);
 
       // 작가 정보 추가
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
