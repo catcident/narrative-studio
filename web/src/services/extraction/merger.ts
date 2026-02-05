@@ -119,11 +119,11 @@ export function mergeExtractions(extractions: any[]): any {
 
   let globalSceneOffset = 0;
 
-  console.log(`[병합] 총 ${extractions.length}개 청크 결과 병합 시작`);
+  console.log(`[extraction] 총 ${extractions.length}개 청크 결과 병합 시작`);
 
   for (let chunkIdx = 0; chunkIdx < extractions.length; chunkIdx++) {
     const ext = extractions[chunkIdx];
-    console.log(`[병합] 청크 ${chunkIdx + 1}: entities=${(ext.entities || []).length}, relationships=${(ext.relationships || []).length}, scenes=${(ext.scenes || []).length}`);
+    console.log(`[extraction] 청크 ${chunkIdx + 1}: entities=${(ext.entities || []).length}, relationships=${(ext.relationships || []).length}, scenes=${(ext.scenes || []).length}`);
 
     // 장(chapter) 병합 (중복 제거)
     for (const chapter of (ext.chapters || [])) {
@@ -209,8 +209,8 @@ export function mergeExtractions(extractions: any[]): any {
     }
   }
 
-  console.log(`[병합 완료] 최종 entities=${entities.length}, relationships=${relationships.length}, scenes=${scenes.length}, chapters=${chapters.length}`);
-  console.log(`[병합 완료] 인물 목록: ${entities.filter(e => e.category === 'character').map(e => e.name).join(', ')}`);
+  console.log(`[extraction] 병합 완료: 최종 entities=${entities.length}, relationships=${relationships.length}, scenes=${scenes.length}, chapters=${chapters.length}`);
+  console.log(`[extraction] 인물 목록: ${entities.filter(e => e.category === 'character').map(e => e.name).join(', ')}`);
   return { entities, relationships, scenes, chapters };
 }
 
@@ -249,19 +249,19 @@ function normalizeRelationType(type: string): string {
   // 정확한 매핑
   const mapped = RELATION_TYPE_MAPPING[trimmed] || RELATION_TYPE_MAPPING[trimmed.toLowerCase()];
   if (mapped) {
-    console.log(`관계 타입 정규화: "${trimmed}" → "${mapped}"`);
+    console.log(`[extraction] 관계 타입 정규화: "${trimmed}" → "${mapped}"`);
     return mapped;
   }
 
   // 부분 매칭 시도
   for (const [key, value] of Object.entries(RELATION_TYPE_MAPPING)) {
     if (trimmed.includes(key) || key.includes(trimmed)) {
-      console.log(`관계 타입 정규화 (부분매칭): "${trimmed}" → "${value}"`);
+      console.log(`[extraction] 관계 타입 정규화 (부분매칭): "${trimmed}" → "${value}"`);
       return value;
     }
   }
 
-  console.log(`관계 타입 정규화 실패: "${trimmed}" → "관련"`);
+  console.log(`[extraction] 관계 타입 정규화 실패: "${trimmed}" → "관련"`);
   return '관련';
 }
 
@@ -359,7 +359,7 @@ export function inferMissingRelationships(extracted: any): any {
               strength: 5,
               scenes: entity.scenes || []
             });
-            console.log(`위치 관계 추론: "${personName}" -> "${entity.name}" (${desc})`);
+            console.log(`[extraction] 위치 관계 추론: "${personName}" -> "${entity.name}" (${desc})`);
           }
           foundMatch = true;
           break;
@@ -403,13 +403,13 @@ export function inferMissingRelationships(extracted: any): any {
             strength: 4,
             scenes: entity.scenes || []
           });
-          console.log(`설명 기반 관계 추론: "${charName}" -> "${entity.name}"`);
+          console.log(`[extraction] 설명 기반 관계 추론: "${charName}" -> "${entity.name}"`);
         }
       }
     }
   }
 
-  console.log(`후처리: ${newRelationships.length}개의 누락된 관계 추가됨`);
+  console.log(`[extraction] 후처리: ${newRelationships.length}개의 누락된 관계 추가됨`);
 
   return {
     ...normalized,
@@ -463,11 +463,11 @@ function inferDescriptionBasedEdges(
       const id = formatId('H', edgeCounter.value);
 
       // 관계 타입 추정
-      let relationType = 'related';
+      let relationType = '관련';
       if (entity.category === 'location' || otherEntity.category === 'location') {
-        relationType = 'location';
-      } else if (entity.category === 'object' || otherEntity.category === 'object') {
-        relationType = 'ownership';
+        relationType = '위치';
+      } else if (entity.category === 'object' || otherEntity.category === 'object' || entity.category === 'item' || otherEntity.category === 'item') {
+        relationType = '소유';
       }
 
       // description이 너무 길면 관련 문장만 추출
@@ -496,7 +496,7 @@ function inferDescriptionBasedEdges(
         sourceRef: { chapter: 1 },
       };
 
-      console.log(`자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반)`);
+      console.log(`[extraction] 자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반)`);
     }
   }
 }
@@ -542,7 +542,7 @@ function inferCoOccurrenceEdges(
         sourceRef: { chapter: 1 },
       };
 
-      console.log(`캐릭터 동시 등장 관계 생성: ${char1.name} ↔ ${char2.name} (장면: ${commonScenes.join(', ')})`);
+      console.log(`[extraction] 캐릭터 동시 등장 관계 생성: ${char1.name} ↔ ${char2.name} (장면: ${commonScenes.join(', ')})`);
     }
   }
 
@@ -576,7 +576,7 @@ function inferCoOccurrenceEdges(
         sourceRef: { chapter: 1 },
       };
 
-      console.log(`장면 공동 등장 관계 생성: ${char.name} -> ${entity.name} (${relationType}, 장면: ${commonScenes.join(', ')})`);
+      console.log(`[extraction] 장면 공동 등장 관계 생성: ${char.name} -> ${entity.name} (${relationType}, 장면: ${commonScenes.join(', ')})`);
     }
   }
 }
@@ -699,12 +699,12 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
     const fromId = findEntityId(r.from, nameToId);
     const toId = findEntityId(r.to, nameToId);
     if (!fromId || !toId) {
-      console.log('관계 매핑 실패:', r.from, '->', r.to, '(엔티티를 찾을 수 없음)');
+      console.log('[extraction] 관계 매핑 실패:', r.from, '->', r.to, '(엔티티를 찾을 수 없음)');
       continue;
     }
 
     if (fromId === toId) {
-      console.log('자기참조 관계 무시:', r.from, '->', r.to);
+      console.log('[extraction] 자기참조 관계 무시:', r.from, '->', r.to);
       continue;
     }
 

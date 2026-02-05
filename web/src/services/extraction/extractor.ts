@@ -3,25 +3,9 @@
  */
 
 import type { KnownEntity, ChunkExtractionResult } from './types';
-import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock } from './types';
+import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { USER_PROMPT } from './prompts';
 import { trimKnownEntities } from './selector';
-
-// 클라이언트 측 fetch with timeout
-export async function fetchWithClientTimeout(url: string, options: RequestInit, timeoutMs: number = 150000): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
 
 export async function extractFromChunk(
   chunkText: string,

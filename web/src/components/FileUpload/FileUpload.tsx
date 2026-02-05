@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
 import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { getCreditBalance as fetchCreditBalance, estimateCredits, createBillingCallback, deductAfterSave, deductPartial } from '../../services/billing';
+import { getCreditBalance as fetchCreditBalance, estimateCredits, createBillingCallback, deductAfterSave, deductPartial, checkSufficientBalance } from '../../services/billing';
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
@@ -152,20 +152,20 @@ export function FileUpload() {
         if (completed) {
           setShowUsageSummary(true);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[extraction] error:', err);
         if (subscription) {
-          const { currentUsage } = useStore.getState();
-          await deductPartial(title, currentModel, currentUsage, updateCreditBalance);
+          const { currentUsage, loadSubscription } = useStore.getState();
+          await deductPartial(title, currentUsage, updateCreditBalance, loadSubscription);
         }
-        setError(err.message || '처리 중 오류가 발생했습니다.');
+        setError(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
         resetProgressState(true);
       } finally {
         setLocalLoading(false);
         setLoading(false);
       }
     },
-    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, subscription, currentModel, updateCreditBalance, resetProgressState],
+    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, subscription, updateCreditBalance, resetProgressState],
   );
 
   /**
@@ -182,25 +182,29 @@ export function FileUpload() {
 
       if (subscription) {
         setProgress('크레딧 차감 중...');
-        const { currentUsage } = useStore.getState();
-        await deductAfterSave(saved.id, title, currentModel, currentUsage, updateCreditBalance);
+        const { currentUsage, loadSubscription } = useStore.getState();
+        await deductAfterSave(saved.id, title, currentUsage, updateCreditBalance, loadSubscription);
       }
 
       return saved;
     },
-    [subscription, currentModel, updateCreditBalance],
+    [subscription, updateCreditBalance],
   );
 
   // ==================== 초기화 ====================
 
   useEffect(() => {
+    let cancelled = false;
+
     fetch('/api/config')
       .then(res => res.json())
       .then(data => {
+        if (cancelled) return;
         setHasEnvKey(data.hasEnvKey);
         useStore.getState().setAuthEnabled(data.authEnabled ?? false);
       })
       .catch(() => {
+        if (cancelled) return;
         setHasEnvKey(false);
         useStore.getState().setAuthEnabled(false);
       });
@@ -209,8 +213,10 @@ export function FileUpload() {
     setSavedProgress(hasProgress());
 
     getSavedKnowledgeGraphList()
-      .then(list => setExistingTitles(list.map(item => item.title)))
-      .catch(() => setExistingTitles([]));
+      .then(list => { if (!cancelled) setExistingTitles(list.map(item => item.title)); })
+      .catch(() => { if (!cancelled) setExistingTitles([]); });
+
+    return () => { cancelled = true; };
   }, []);
 
   // 경과 시간 타이머
@@ -232,7 +238,7 @@ export function FileUpload() {
       const estimated = Math.round((elapsedSeconds / progressCurrent) * progressTotal);
       setEstimatedTotalSeconds(estimated);
     }
-  }, [progressCurrent, progressTotal]);
+  }, [progressCurrent, progressTotal, elapsedSeconds]);
 
   // ==================== 단순 핸들러 ====================
 
@@ -301,6 +307,12 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
+      // 잔액 사전 확인
+      if (subscription) {
+        const { sufficient, error: balanceError } = await checkSufficientBalance(combinedText.length, currentModel);
+        if (!sufficient) throw new Error(balanceError);
+      }
+
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: combinedText,
         title: combinedTitle,
@@ -326,7 +338,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, saveAndDeduct, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, saveAndDeduct, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, subscription]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -365,6 +377,15 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     await runExtraction(savedProgress.title, async () => {
+      // 잔액 사전 확인 (남은 청크 문자수 추정)
+      if (subscription) {
+        const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
+        const estimatedChars = remainingChunks * 5000; // CHUNK_SIZE 기준 추정
+        const resumeModel = savedProgress.model || currentModel;
+        const { sufficient, error: balanceError } = await checkSufficientBalance(estimatedChars, resumeModel);
+        if (!sufficient) throw new Error(balanceError);
+      }
+
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: '',
         title: savedProgress.title,
@@ -379,13 +400,19 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, saveAndDeduct, setKnowledgeGraph, resetProgressState]);
+  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, saveAndDeduct, setKnowledgeGraph, resetProgressState, subscription, currentModel]);
 
   // 추가 분석 실행 (파일명 확정 후)
   const executeAddFile = useCallback(async (file: File, text: string, finalFileName: string) => {
     if (!knowledgeGraph) return;
 
     await runExtraction(knowledgeGraph.metadata.title, async () => {
+      // 잔액 사전 확인
+      if (subscription) {
+        const { sufficient, error: balanceError } = await checkSufficientBalance(text.length, currentModel);
+        if (!sufficient) throw new Error(balanceError);
+      }
+
       setProgress('추가 분석 중...');
       const updatedKnowledgeGraph = await extractKnowledgeGraph({
         text,
@@ -407,7 +434,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [knowledgeGraph, currentDataId, runExtraction, makeProgressCallback, currentModel, addChunkUsage, saveAndDeduct, setKnowledgeGraph, resetProgressState]);
+  }, [knowledgeGraph, currentDataId, runExtraction, makeProgressCallback, currentModel, addChunkUsage, saveAndDeduct, setKnowledgeGraph, resetProgressState, subscription]);
 
   // 추가 분석 (기존 결과에 새 파일 병합)
   const handleAddFile = useCallback(async (file: File) => {
@@ -435,9 +462,9 @@ export function FileUpload() {
       }
 
       await executeAddFile(file, text, file.name);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[extraction] 추가 분석 오류:', err);
-      setError(err.message || '추가 분석 중 오류가 발생했습니다.');
+      setError(err instanceof Error ? err.message : '추가 분석 중 오류가 발생했습니다.');
       resetProgressState(true);
     }
   }, [knowledgeGraph, executeAddFile, resetProgressState, setError]);

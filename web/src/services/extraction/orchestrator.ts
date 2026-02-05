@@ -17,7 +17,7 @@ const PROGRESS_KEY = 'novel-extraction-progress';
 export function saveProgress(progress: ExtractionProgress): void {
   try {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-    console.log(`진행상황 저장: ${progress.processedChunks}/${progress.totalChunks}`);
+    console.log(`[extraction] 진행상황 저장: ${progress.processedChunks}/${progress.totalChunks}`);
   } catch (e) {
     console.warn('[extraction] 진행상황 저장 실패:', e);
   }
@@ -66,13 +66,15 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   if (resumeFrom) {
     chunks = resumeFrom.chunks;
     allExtracted = resumeFrom.allExtracted;
-    // 이전 버전 호환: knownCharacters를 knownEntities로 변환
-    knownEntities = (resumeFrom.knownCharacters || []).map(c => ({
-      ...c,
-      category: 'character'
-    }));
+    // knownEntities 우선 사용, 없으면 knownCharacters 폴백 (하위 호환)
+    knownEntities = resumeFrom.knownEntities
+      ? [...resumeFrom.knownEntities]
+      : (resumeFrom.knownCharacters || []).map(c => ({
+          ...c,
+          category: 'character' as const,
+        }));
     startChunk = resumeFrom.processedChunks;
-    console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
+    console.log(`[extraction] 이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
   } else {
     // 새로 시작: 스마트 청크 분할 사용
@@ -82,16 +84,16 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     // knownEntities는 비워두고, 각 청크 처리 시 선별하여 전달
     if (existingGraph) {
       const entityCount = Object.keys(existingGraph.entities).length;
-      console.log(`기존 지식그래프 감지: ${entityCount}개 엔티티 (청크별 LLM 선별 사용)`);
+      console.log(`[extraction] 기존 지식그래프 감지: ${entityCount}개 엔티티 (청크별 LLM 선별 사용)`);
     }
 
-    console.log(`분석 시작 (모델: ${useModel})`);
+    console.log(`[extraction] 분석 시작 (모델: ${useModel})`);
   }
 
   const totalChunks = chunks.length;
 
   if (!resumeFrom) {
-    console.log(`텍스트를 ${totalChunks}개 청크로 분할`);
+    console.log(`[extraction] 텍스트를 ${totalChunks}개 청크로 분할`);
     onProgress?.(`텍스트를 ${totalChunks}개 부분으로 분할...`);
   }
 
@@ -105,6 +107,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       processedChunks,
       allExtracted,
       knownCharacters: knownEntities.filter(e => e.category === 'character'),
+      knownEntities,
       chunks,
       timestamp: Date.now(),
       model: useModel,
@@ -119,9 +122,9 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     const estimatedRemaining = avgTime > 0 ? Math.ceil((remaining * avgTime) / 60000) : null;
     const timeText = estimatedRemaining !== null ? ` (예상 ${estimatedRemaining}분 남음)` : '';
     const msg = `청크 ${i + 1}/${totalChunks} 분석 중...${timeText}`;
-    console.log(msg);
+    console.log(`[extraction] ${msg}`);
     const characterCount = knownEntities.filter(e => e.category === 'character').length;
-    console.log(`[청크 ${i + 1}] 현재까지 알려진 엔티티: ${knownEntities.length}개 (인물 ${characterCount}명)`);
+    console.log(`[extraction] 청크 ${i + 1}: 현재까지 알려진 엔티티: ${knownEntities.length}개 (인물 ${characterCount}명)`);
     onProgress?.(msg, i + 1, totalChunks, estimatedRemaining);
 
     chunkStartTime = Date.now();
@@ -139,19 +142,28 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemaining);
 
         // LLM으로 관련 엔티티 선별
-        const selectedNames = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
+        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
+
+        // selector billing 추적
+        if (selectionBilling && onChunkBilling) {
+          onChunkBilling(i, {
+            prompt_tokens: selectionBilling.prompt_tokens,
+            completion_tokens: selectionBilling.completion_tokens,
+            model: 'google/gemini-2.0-flash-001',
+          });
+        }
 
         // 선별된 이름으로 필터링
         entitiesToUse = filterEntitiesByNames(accumulatedGraph, selectedNames);
 
-        console.log(`[청크 ${i + 1}] LLM 선별: 축적 그래프 ${totalKnownCount}개 중 ${entitiesToUse.length}개 선택`);
+        console.log(`[extraction] 청크 ${i + 1}: LLM 선별: 축적 그래프 ${totalKnownCount}개 중 ${entitiesToUse.length}개 선택`);
       } else {
         // 알려진 엔티티가 1개 이하면 그냥 전체 사용 (accumulatedGraph에서 가져옴)
         entitiesToUse = filterEntitiesByNames(accumulatedGraph, Object.values(accumulatedGraph.entities).map((e: any) => e.name));
-        console.log(`[청크 ${i + 1}] 선별 스킵 (알려진 엔티티 ${totalKnownCount}개)`);
+        console.log(`[extraction] 청크 ${i + 1}: 선별 스킵 (알려진 엔티티 ${totalKnownCount}개)`);
       }
 
-      console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
+      console.log(`[extraction] 청크 ${i + 1}: 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
       const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
       if (extracted) {
         // billing 정보를 콜백으로 전달
@@ -192,9 +204,9 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
           }
         }
         const extractedCharacters = (extracted.entities || []).filter((e: any) => e.category === 'character');
-        console.log(`[청크 ${i + 1}] 추출된 인물: ${extractedCharacters.map((e: any) => e.name).join(', ')}`);
-        console.log(`[청크 ${i + 1}] 새로 발견된 엔티티: ${newEntities.join(', ') || '없음'}`);
-        console.log(`[청크 ${i + 1}] 누적 엔티티 수: ${knownEntities.length}개`);
+        console.log(`[extraction] 청크 ${i + 1}: 추출된 인물: ${extractedCharacters.map((e: any) => e.name).join(', ')}`);
+        console.log(`[extraction] 청크 ${i + 1}: 새로 발견된 엔티티: ${newEntities.join(', ') || '없음'}`);
+        console.log(`[extraction] 청크 ${i + 1}: 누적 엔티티 수: ${knownEntities.length}개`);
 
         // 청크 처리 시간 측정
         chunkTimes.push(Date.now() - chunkStartTime);
@@ -202,12 +214,14 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         // 매 청크 후 진행상황 저장
         saveCurrentProgress(i + 1);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[extraction] 청크 ${i + 1} 처리 실패:`, error);
 
       // 타임아웃이나 API 오류는 스킵하고 계속 진행
-      const isTimeout = error.message?.includes('timeout') || error.message?.includes('AbortError') || error.name === 'AbortError';
-      const isApiError = error.message?.includes('API');
+      const errMsg = error instanceof Error ? error.message : '';
+      const errName = error instanceof Error ? error.name : '';
+      const isTimeout = errMsg.includes('timeout') || errMsg.includes('AbortError') || errName === 'AbortError';
+      const isApiError = errMsg.includes('API');
 
       if (isTimeout || isApiError) {
         console.warn(`[extraction] 청크 ${i + 1} 스킵 (타임아웃/API 오류), 계속 진행...`);
@@ -223,7 +237,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
       // 다른 종류의 에러는 진행상황 저장 후 중단
       saveCurrentProgress(i);
-      throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${error.message}. 이어하기로 재시도할 수 있습니다.`);
+      throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${errMsg || '알 수 없는 오류'}. 이어하기로 재시도할 수 있습니다.`);
     }
   }
 

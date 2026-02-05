@@ -109,8 +109,8 @@ export function DataManager({ onClose, onLoad }: Props) {
       const imported = await importKnowledgeGraph(file);
       onLoad(imported);
       onClose();
-    } catch (err: any) {
-      setImportError(err.message || '파일 가져오기 실패');
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : '파일 가져오기 실패');
     }
 
     // 입력 초기화
@@ -136,7 +136,7 @@ export function DataManager({ onClose, onLoad }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b">

@@ -23,7 +23,7 @@ import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
 import { readFileAsText } from './services/fileReader';
-import { createBillingCallback, deductAfterSave, deductPartial } from './services/billing';
+import { createBillingCallback, deductAfterSave, deductPartial, checkSufficientBalance } from './services/billing';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -69,41 +69,42 @@ function App() {
   // 지식 그래프가 변경되면 자동 저장
   // FileUpload에서 저장한 경우 currentDataId가 이미 있으므로 중복 저장 방지
   useEffect(() => {
+    let cancelled = false;
+
     if (knowledgeGraph && !currentDataId) {
-      // currentDataId가 없으면 아직 저장되지 않은 것이므로 저장
       setSaveStatus('saving');
 
       const saveData = async () => {
         try {
-          // 1. 원본 텍스트가 있으면 novels 컬렉션에 먼저 저장
           let novelId: string | undefined;
           if (originalText) {
             const novelSaved = await saveNovelText(knowledgeGraph.metadata.title, originalText);
+            if (cancelled) return;
             novelId = novelSaved.id;
             console.log('소설 텍스트 저장 완료:', novelSaved.title, `(${originalText.length}자)`);
           }
 
-          // 2. 지식 그래프 저장 (novelId 연결)
           const saved = await saveKnowledgeGraph(knowledgeGraph, novelId);
+          if (cancelled) return;
           console.log('지식그래프 저장 완료:', saved.title, 'v' + saved.version);
           setSaveStatus('saved');
         } catch (err) {
           console.error('자동 저장 실패:', err);
-          setSaveStatus('idle');
+          if (!cancelled) setSaveStatus('idle');
         }
       };
 
       saveData();
 
-      // 2초 후 상태 초기화
-      const timer = setTimeout(() => setSaveStatus('idle'), 2000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => { if (!cancelled) setSaveStatus('idle'); }, 2000);
+      return () => { cancelled = true; clearTimeout(timer); };
     } else if (currentDataId) {
-      // 이미 저장된 상태면 저장됨 표시만
       setSaveStatus('saved');
-      const timer = setTimeout(() => setSaveStatus('idle'), 2000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => { if (!cancelled) setSaveStatus('idle'); }, 2000);
+      return () => { cancelled = true; clearTimeout(timer); };
     }
+
+    return () => { cancelled = true; };
   }, [knowledgeGraph, originalText, currentDataId]);
 
   // 데이터 관리자에서 불러오기 (ID 포함)
@@ -128,6 +129,13 @@ function App() {
 
       // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
       const existingModel = knowledgeGraph.metadata.model;
+
+      // 잔액 사전 확인
+      if (subscription) {
+        const { sufficient, error: balanceError } = await checkSufficientBalance(text.length, existingModel || '');
+        if (!sufficient) throw new Error(balanceError);
+      }
+
       // 기존 지식그래프를 전달하여 이어서 분석
       const updatedKnowledgeGraph = await extractKnowledgeGraph({
         text,
@@ -145,21 +153,20 @@ function App() {
 
       if (subscription) {
         setAddProgress('크레딧 차감 중...');
-        const { currentUsage } = useStore.getState();
-        await deductAfterSave(saved.id, knowledgeGraph.metadata.title, existingModel || '', currentUsage, updateCreditBalance);
+        const { currentUsage, loadSubscription } = useStore.getState();
+        await deductAfterSave(saved.id, knowledgeGraph.metadata.title, currentUsage, updateCreditBalance, loadSubscription);
       }
 
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       setAddProgress('');
       setShowUsageSummary(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('파일 추가 오류:', err);
       if (subscription) {
-        const existingModel = knowledgeGraph.metadata.model || '';
-        const { currentUsage } = useStore.getState();
-        await deductPartial(knowledgeGraph.metadata.title, existingModel, currentUsage, updateCreditBalance);
+        const { currentUsage, loadSubscription } = useStore.getState();
+        await deductPartial(knowledgeGraph.metadata.title, currentUsage, updateCreditBalance, loadSubscription);
       }
-      setError(err.message || '파일 추가 중 오류가 발생했습니다.');
+      setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAddingFile(false);
       e.target.value = '';  // input 초기화

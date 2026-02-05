@@ -4,7 +4,7 @@
 
 import { X, FileCheck } from 'lucide-react';
 import { useStore, useCreditBalance } from '../store';
-import { calculateCreditsFromTokens } from '../services/billing';
+import { calculateCreditsFromChunks } from '../services/billing';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 
 export function UsageSummary() {
@@ -19,16 +19,11 @@ export function UsageSummary() {
   const totalChunks = currentUsage.chunks.length;
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
 
-  // 실제 토큰에서 크레딧 역산
-  const model = currentUsage.chunks[0]?.model ?? '';
-  const creditsUsed = calculateCreditsFromTokens(
-    currentUsage.totalPromptTokens,
-    currentUsage.totalCompletionTokens,
-    model,
-  );
+  // 실제 토큰에서 크레딧 역산 (청크별 개별 모델 반영)
+  const creditsUsed = calculateCreditsFromChunks(currentUsage.chunks);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && setShowUsageSummary(false)}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(e) => e.key === 'Escape' && setShowUsageSummary(false)}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">

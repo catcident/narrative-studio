@@ -57,6 +57,7 @@ export const authConfig: NextAuthConfig = {
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
+      // 초기 로그인: account/profile에서 토큰 정보 저장
       if (account && profile) {
         const p = profile as CatcidentProfile;
         token.id = p.sub;
@@ -68,7 +69,43 @@ export const authConfig: NextAuthConfig = {
         token.accessTokenExpires = account.expires_at
           ? account.expires_at * 1000
           : Date.now() + 3600 * 1000;
+        return token;
       }
+
+      // 토큰 갱신: 만료 60초 전이면 refresh 시도
+      if (
+        token.accessTokenExpires &&
+        token.refreshToken &&
+        Date.now() > token.accessTokenExpires - 60_000
+      ) {
+        try {
+          const issuer = process.env.AUTH_CATCIDENT_ISSUER;
+          const response = await fetch(`${issuer}/o/token/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type: 'refresh_token',
+              refresh_token: token.refreshToken,
+              client_id: process.env.AUTH_CATCIDENT_ID || '',
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            token.accessToken = data.access_token;
+            token.refreshToken = data.refresh_token ?? token.refreshToken;
+            token.accessTokenExpires = Date.now() + (data.expires_in ?? 3600) * 1000;
+            token.error = undefined;
+          } else {
+            console.error('[auth] Token refresh failed:', response.status);
+            token.error = 'RefreshTokenError';
+          }
+        } catch (error) {
+          console.error('[auth] Token refresh error:', error);
+          token.error = 'RefreshTokenError';
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -76,6 +113,9 @@ export const authConfig: NextAuthConfig = {
       session.user.nickname = token.nickname;
       session.user.memberType = token.memberType;
       session.user.roles = token.roles;
+      if (token.error) {
+        session.error = token.error;
+      }
       return session;
     },
   },

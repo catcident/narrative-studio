@@ -108,8 +108,8 @@ export function SavedDataGrid({ onLoad }: Props) {
       setImportError(null);
       const imported = await importKnowledgeGraph(file);
       onLoad(imported);
-    } catch (err: any) {
-      setImportError(err.message || '파일 가져오기 실패');
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : '파일 가져오기 실패');
     }
 
     e.target.value = '';

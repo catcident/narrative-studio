@@ -97,7 +97,7 @@ export function ResumePanel({
 
       {/* 중복 파일명 경고 모달 */}
       {duplicateFileName && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(e) => e.key === 'Escape' && handleCancelDuplicate()}>
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
             <div className="flex items-start gap-3 mb-4">
               <AlertCircle aria-hidden="true" className="w-6 h-6 text-amber-500 flex-shrink-0" />

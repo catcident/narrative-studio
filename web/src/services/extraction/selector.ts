@@ -6,7 +6,7 @@ import type { NovelKnowledgeGraph } from '../../types';
 import type { KnownEntity, EntitySummary } from './types';
 import { CATEGORY_NAMES, MAX_KNOWN_ENTITIES, MAX_PER_CATEGORY, getApiKey, stripMarkdownCodeBlock } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
-import { fetchWithClientTimeout } from './extractor';
+import { fetchWithClientTimeout } from './types';
 
 export function trimKnownEntities(entities: KnownEntity[]): KnownEntity[] {
   if (entities.length <= MAX_KNOWN_ENTITIES) {
@@ -82,6 +82,11 @@ export function formatEntitySummariesForSelection(summaries: EntitySummary[]): s
   }).join('\n\n');
 }
 
+export interface SelectionResult {
+  names: string[];
+  billing: { prompt_tokens: number; completion_tokens: number } | null;
+}
+
 /**
  * LLM을 사용하여 청크와 관련된 엔티티 선별
  */
@@ -89,12 +94,12 @@ export async function selectRelevantEntities(
   chunkText: string,
   graph: NovelKnowledgeGraph,
   model?: string
-): Promise<string[]> {
+): Promise<SelectionResult> {
   // 엔티티가 1개 이하면 선별 없이 전체 반환
   const entityCount = Object.keys(graph.entities).length;
   if (entityCount <= 1) {
-    console.log(`[선별] 엔티티 ${entityCount}개 - 선별 스킵, 전체 사용`);
-    return Object.values(graph.entities).map((e: any) => e.name);
+    console.log(`[extraction] 엔티티 ${entityCount}개 - 선별 스킵, 전체 사용`);
+    return { names: Object.values(graph.entities).map((e: any) => e.name), billing: null };
   }
 
   // 엔티티 요약 생성
@@ -108,7 +113,7 @@ export async function selectRelevantEntities(
     .replace('{{textPreview}}', textPreview)
     .replace('{{entitySummaries}}', summaryText);
 
-  console.log(`[선별] 프롬프트 크기: ${prompt.length}자, 엔티티 ${entityCount}개`);
+  console.log(`[extraction] 선별 프롬프트 크기: ${prompt.length}자, 엔티티 ${entityCount}개`);
 
   try {
     // 빠른 모델로 선별 (gemini-flash 사용)
@@ -126,12 +131,18 @@ export async function selectRelevantEntities(
     }, 30000);  // 30초 타임아웃 (빠른 작업)
 
     if (!response.ok) {
-      console.warn('[선별] API 오류, 전체 엔티티 사용');
-      return Object.values(graph.entities).map((e: any) => e.name);
+      console.warn('[extraction] 선별 API 오류, 전체 엔티티 사용');
+      return { names: Object.values(graph.entities).map((e: any) => e.name), billing: null };
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
+
+    // billing 데이터 캡처
+    const billing = data.usage ? {
+      prompt_tokens: data.usage.prompt_tokens || 0,
+      completion_tokens: data.usage.completion_tokens || 0,
+    } : null;
 
     // JSON 배열 파싱
     let selectedNames: string[] = [];
@@ -142,16 +153,16 @@ export async function selectRelevantEntities(
         throw new Error('배열이 아님');
       }
     } catch {
-      console.warn('[선별] JSON 파싱 실패, 전체 엔티티 사용');
-      return Object.values(graph.entities).map((e: any) => e.name);
+      console.warn('[extraction] 선별 JSON 파싱 실패, 전체 엔티티 사용');
+      return { names: Object.values(graph.entities).map((e: any) => e.name), billing };
     }
 
-    console.log(`[선별] ${entityCount}개 중 ${selectedNames.length}개 선택: ${selectedNames.slice(0, 10).join(', ')}${selectedNames.length > 10 ? '...' : ''}`);
-    return selectedNames;
+    console.log(`[extraction] 선별 ${entityCount}개 중 ${selectedNames.length}개 선택: ${selectedNames.slice(0, 10).join(', ')}${selectedNames.length > 10 ? '...' : ''}`);
+    return { names: selectedNames, billing };
 
   } catch (error) {
-    console.warn('[선별] 오류 발생, 전체 엔티티 사용:', error);
-    return Object.values(graph.entities).map((e: any) => e.name);
+    console.warn('[extraction] 선별 오류 발생, 전체 엔티티 사용:', error);
+    return { names: Object.values(graph.entities).map((e: any) => e.name), billing: null };
   }
 }
 

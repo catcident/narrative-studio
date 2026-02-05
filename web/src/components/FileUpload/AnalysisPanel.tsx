@@ -284,6 +284,7 @@ export function AnalysisPanel({
                         onClick={() => handleMoveFileUp(index)}
                         disabled={index === 0}
                         className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
+                        aria-label="위로 이동"
                         title="위로 이동"
                       >
                         <ChevronUp aria-hidden="true" className="w-4 h-4" />
@@ -292,6 +293,7 @@ export function AnalysisPanel({
                         onClick={() => handleMoveFileDown(index)}
                         disabled={index === selectedFiles.length - 1}
                         className={`p-1 rounded ${index === selectedFiles.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-100'}`}
+                        aria-label="아래로 이동"
                         title="아래로 이동"
                       >
                         <ChevronDown aria-hidden="true" className="w-4 h-4" />
@@ -299,6 +301,7 @@ export function AnalysisPanel({
                       <button
                         onClick={() => handleRemoveFile(index)}
                         className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                        aria-label="삭제"
                         title="삭제"
                       >
                         <X aria-hidden="true" className="w-4 h-4" />

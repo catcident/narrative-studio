@@ -106,7 +106,7 @@ export async function deductCredits(
   amount: number,
   description: string,
   metadata?: Record<string, unknown>,
-  idempotencyKey?: string
+  idempotencyKey?: string,
 ): Promise<DeductResult | null> {
   try {
     const res = await fetch(`${BASE}/credits/deduct`, {
@@ -237,6 +237,22 @@ export function calculateCreditsFromTokens(promptTokens: number, completionToken
   return Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
 }
 
+// ==================== 잔액 사전 확인 ====================
+
+/** 분석 전 잔액 충분 여부 확인 */
+export async function checkSufficientBalance(charCount: number, model: string): Promise<{ sufficient: boolean; error?: string }> {
+  const balanceInfo = await getCreditBalance();
+  if (!balanceInfo) return { sufficient: true }; // billing 비활성 시 통과
+  if (balanceInfo.balance <= 0) {
+    return { sufficient: false, error: '크레딧이 부족합니다.' };
+  }
+  const estimate = estimateUsageLocally(charCount, model);
+  if (estimate.estimated_credits > balanceInfo.balance) {
+    return { sufficient: false, error: `크레딧이 부족합니다. 필요: 약 ${estimate.estimated_credits.toLocaleString()}, 잔액: ${balanceInfo.balance.toLocaleString()}` };
+  }
+  return { sufficient: true };
+}
+
 // ==================== Billing 콜백 / 차감 헬퍼 ====================
 
 /** extractKnowledgeGraph에 전달할 billing 콜백 생성 */
@@ -253,33 +269,40 @@ export function createBillingCallback(
   };
 }
 
+/** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 */
+export function calculateCreditsFromChunks(chunks: ChunkUsage[]): number {
+  if (chunks.length === 0) return 0;
+  return chunks.reduce((sum, chunk) =>
+    sum + calculateCreditsFromTokens(chunk.promptTokens, chunk.completionTokens, chunk.model),
+  0);
+}
+
 /** 공통 크레딧 차감 헬퍼 */
 async function deductUsage(
   description: string,
   idempotencyKey: string,
-  model: string,
   currentUsage: CurrentUsage,
   updateCreditBalance: (n: number) => void,
   extraMetadata?: Record<string, unknown>,
+  onDeductFailed?: () => void,
 ): Promise<void> {
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
   if (totalTokens <= 0) return;
 
-  const credits = calculateCreditsFromTokens(
-    currentUsage.totalPromptTokens,
-    currentUsage.totalCompletionTokens,
-    model,
-  );
+  const credits = calculateCreditsFromChunks(currentUsage.chunks);
   if (credits <= 0) return;
 
+  const models = [...new Set(currentUsage.chunks.map(c => c.model))];
   const result = await deductCredits(
     credits,
     description,
-    { model, chunks: currentUsage.chunks.length, totalTokens, ...extraMetadata },
+    { models, chunks: currentUsage.chunks.length, totalTokens, ...extraMetadata },
     idempotencyKey,
   );
   if (result) {
     updateCreditBalance(result.balance_after);
+  } else {
+    onDeductFailed?.();
   }
 }
 
@@ -287,32 +310,33 @@ async function deductUsage(
 export async function deductAfterSave(
   savedId: string,
   title: string,
-  model: string,
   currentUsage: CurrentUsage,
   updateCreditBalance: (n: number) => void,
+  onDeductFailed?: () => void,
 ): Promise<void> {
   return deductUsage(
     `소설 분석: ${title}`,
-    `storygraph-${savedId}-${Date.now()}`,
-    model,
+    `storygraph-${savedId}-${currentUsage.chunks.length}`,
     currentUsage,
     updateCreditBalance,
+    undefined,
+    onDeductFailed,
   );
 }
 
 /** 분석 도중 실패 시 부분 차감 */
 export async function deductPartial(
   title: string,
-  model: string,
   currentUsage: CurrentUsage,
   updateCreditBalance: (n: number) => void,
+  onDeductFailed?: () => void,
 ): Promise<void> {
   return deductUsage(
     `소설 분석 (부분): ${title}`,
-    `storygraph-partial-${Date.now()}`,
-    model,
+    `storygraph-partial-${title.replace(/\s+/g, '-').slice(0, 30)}-${currentUsage.chunks.length}`,
     currentUsage,
     updateCreditBalance,
     { partial: true },
+    onDeductFailed,
   );
 }

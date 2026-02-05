@@ -50,6 +50,7 @@ export interface ExtractionProgress {
   processedChunks: number;
   allExtracted: any[];
   knownCharacters: { name: string; description: string; aliases?: string[] }[];
+  knownEntities?: KnownEntity[];  // 전체 엔티티 (카테고리 포함)
   chunks: string[];
   timestamp: number;
   model?: string;  // 사용된 모델
@@ -99,4 +100,20 @@ export function setApiKey(key: string): void {
 
 export function hasApiKey(): boolean {
   return !!getApiKey();
+}
+
+// 클라이언트 측 fetch with timeout
+export async function fetchWithClientTimeout(url: string, options: RequestInit, timeoutMs: number = 150000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
