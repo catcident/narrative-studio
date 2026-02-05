@@ -3,7 +3,8 @@ import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { AUTH_ENABLED, getAuthUserId } from '@/lib/auth';
-import { addSessionTokens } from '@/lib/analysisSession';
+import { addSessionTokens, getActiveSessionIdByUserId } from '@/lib/analysisSession';
+import { CHARS_PER_TOKEN } from '@/lib/modelCosts';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -35,9 +36,40 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
+interface TokenBilling {
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
+/** usage 필드가 있으면 그대로 사용, 없으면 텍스트 길이에서 토큰 추정 */
+function resolveTokenBilling(
+  data: Record<string, unknown>,
+  promptLength: number,
+): TokenBilling | null {
+  if (data.usage) {
+    const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number };
+    return {
+      prompt_tokens: usage.prompt_tokens ?? 0,
+      completion_tokens: usage.completion_tokens ?? 0,
+    };
+  }
+
+  const content = (data.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content;
+  if (!content) return null;
+
+  const estimatedPrompt = Math.ceil(promptLength / CHARS_PER_TOKEN);
+  const estimatedCompletion = Math.ceil(content.length / CHARS_PER_TOKEN);
+  console.warn(`[analyze] usage 데이터 누락, 추정값 사용: prompt~${estimatedPrompt}, completion~${estimatedCompletion}`);
+
+  return {
+    prompt_tokens: estimatedPrompt,
+    completion_tokens: estimatedCompletion,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, apiKey: userApiKey, model: userModel, sessionId } = await request.json();
+    const { prompt, apiKey: userApiKey, model: userModel } = await request.json();
 
     // 사용자가 제공한 키 우선, 없으면 환경변수 키 사용
     const apiKey = userApiKey || ENV_API_KEY;
@@ -54,9 +86,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: balanceError }, { status: 402 });
     }
 
-    // Rate limiting (AUTH_ENABLED=true일 때만)
+    // userId 조회 (rate limit + 세션 추적 공용)
+    let userId: string | null = null;
     if (AUTH_ENABLED) {
-      const userId = await getAuthUserId();
+      userId = await getAuthUserId();
       if (userId) {
         const limited = checkRateLimit(userId);
         if (limited) {
@@ -103,32 +136,34 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // usage 데이터를 _billing 필드로 클라이언트에 전달
-    if (data.usage) {
-      data._billing = {
-        prompt_tokens: data.usage.prompt_tokens || 0,
-        completion_tokens: data.usage.completion_tokens || 0,
-      };
+    // 토큰 사용량 결정: usage 필드 우선, 없으면 텍스트 길이에서 추정
+    const billing = resolveTokenBilling(data, prompt.length);
+
+    // 서버 측 토큰 누적 (userId 기반 자동 조회, 클라이언트 sessionId 무시)
+    if (userId && userId !== 'anonymous') {
+      const activeSessionId = getActiveSessionIdByUserId(userId);
+      if (activeSessionId && billing) {
+        addSessionTokens(activeSessionId, {
+          promptTokens: billing.prompt_tokens,
+          completionTokens: billing.completion_tokens,
+          model,
+        });
+      }
     }
 
-    // 서버 측 토큰 누적 (분석 세션이 있을 때만)
-    if (sessionId && data.usage) {
-      addSessionTokens(sessionId, {
-        promptTokens: data.usage.prompt_tokens ?? 0,
-        completionTokens: data.usage.completion_tokens ?? 0,
-        model,
-      });
+    // 클라이언트 UI용 billing 정보
+    if (billing) {
+      data._billing = billing;
     }
 
     console.log(`[analyze] 응답 성공`);
     return NextResponse.json(data);
-  } catch (err) {
-    const error = err as Error;
-    if (error.name === 'AbortError') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
       console.error(`[analyze] 타임아웃 (2분 초과)`);
       return NextResponse.json({ error: 'API request timed out (2 minutes). Try with a smaller text.' }, { status: 504 });
     }
-    console.error(`[analyze] 오류: ${error.message}`);
+    console.error('[analyze] 오류:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

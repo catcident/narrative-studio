@@ -74,7 +74,6 @@ export async function selectRelevantEntities(
   chunkText: string,
   graph: NovelKnowledgeGraph,
   model?: string,
-  sessionId?: string,
 ): Promise<SelectionResult> {
   // 엔티티가 1개 이하면 선별 없이 전체 반환
   const entityCount = Object.keys(graph.entities).length;
@@ -108,7 +107,6 @@ export async function selectRelevantEntities(
         prompt,
         apiKey: userApiKey || undefined,
         model: selectionModel,
-        sessionId,
       }),
     }, 30000);  // 30초 타임아웃 (빠른 작업)
 
@@ -120,10 +118,9 @@ export async function selectRelevantEntities(
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    // billing 데이터 캡처 (사용 모델 포함)
-    const billing = data.usage ? {
-      prompt_tokens: data.usage.prompt_tokens || 0,
-      completion_tokens: data.usage.completion_tokens || 0,
+    // billing 데이터 캡처 (서버 _billing 사용 — usage 누락 시 추정값 포함)
+    const billing = data._billing ? {
+      ...data._billing,
       model: selectionModel,
     } : null;
 

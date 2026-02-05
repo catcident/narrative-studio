@@ -118,33 +118,36 @@ setApiKey(), hasApiKey(), getApiKey()
 
 ### ⚠️ Billing 추적 필수 규칙
 
-**Hold/Settle 과금 흐름** (Phase 2):
+**Hold/Settle 과금 흐름**:
 
 ```
 클라이언트                    Next.js 서버                catcident-backend
 ────────                    ──────────                ─────────────────
-startAnalysisSession() ──→  POST /api/analysis-session ──→  /credits/hold/
-                            ↓ createAnalysisSession()
-                            ← session_id + hold_token
+startAnalysisSession(       POST /api/analysis-session
+  model, {charCount})         ↓ estimateCreditsFromCharCount()  (서버가 hold 금액 계산)
+                              ↓ createAnalysisSession()       ──→  /credits/hold/
+                              ← session_id + hold_token
 
 extractKnowledgeGraph({sessionId})
-  → /api/analyze(sessionId) ──→  addSessionTokens()  (서버 측 토큰 누적)
-  → /api/analyze(sessionId) ──→  addSessionTokens()
+  → /api/analyze            ──→  getActiveSessionIdByUserId()  (userId로 세션 자동 조회)
+                              ↓ addSessionTokens()             (서버 측 토큰 누적)
+  → /api/analyze            ──→  addSessionTokens()
   ...
 
 settleAnalysisSession() ──→  POST /api/analysis-session/settle
-                            ↓ calculateCredits(session.tokens) (서버 측 계산)
+                            ↓ calculateCredits(session.tokens) (서버 측 계산, modelCosts.ts)
                             ──→  /credits/settle/ (actual_amount)
 
-실패 시:
-releaseAnalysisSession() ──→ POST /api/analysis-session/release ──→ /credits/release/
+실패 시 (스마트 릴리스):
+releaseAnalysisSession() ──→ POST /api/analysis-session/release
+                            ↓ tokens.length > 0 ? settle(부분) : release(전액)
 ```
 
 새로운 분석 경로를 추가할 때 체크리스트:
 - [ ] `sessionId`를 `extractKnowledgeGraph()`에 전달
 - [ ] `onChunkBilling` 콜백 전달 — UI 표시용 (서버 측 추적과 별개)
 - [ ] `startHoldSession()` → 분석 → `saveAndSettle()` 패턴 사용
-- [ ] 실패 시 `releaseAnalysisSession()` 호출
+- [ ] 실패 시 `releaseAnalysisSession()` 호출 — 토큰 사용 있으면 부분 정산 자동 처리
 - [ ] `idempotencyKey`는 결정론적 값 사용 (`storygraph-{savedId}-settle`)
 - [ ] `AUTH_ENABLED=false` 환경에서 sessionId=null → 기존 동작 유지
 
@@ -263,9 +266,9 @@ deductAfterSave(savedId, title, currentUsage, updateCreditBalance, onDeductFaile
 deductPartial(title, currentUsage, updateCreditBalance, onDeductFailed?)
 
 // 분석 세션 (Hold/Settle — 권장)
-startAnalysisSession(estimatedCredits, model, metadata?)  // hold 생성 + sessionId
+startAnalysisSession(model, metadata?)                     // 서버가 hold 금액 계산 + sessionId
 settleAnalysisSession(sessionId, title, idempotencyKey)   // 서버 측 정산
-releaseAnalysisSession(sessionId)                          // hold 환불
+releaseAnalysisSession(sessionId)                          // 스마트 릴리스 (토큰 있으면 부분 정산)
 
 // Billing 콜백 생성
 createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜백
@@ -273,10 +276,9 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜�
 
 ### 로컬 추정 함수 동기화
 
-`estimateUsageLocally()`와 `calculateCreditsFromTokens()`는 catcident-backend의 `StorygraphEstimator`와 동일한 상수를 사용.
-상수 변경 시 양쪽 모두 수정 필요:
-- `CHARS_PER_TOKEN`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `OUTPUT_RATIO`, `MARGIN`, `USD_TO_KRW`, `KRW_PER_CREDIT`
-- 모델 단가는 `AVAILABLE_MODELS` (types.ts)에서 조회
+`estimateUsageLocally()`와 `calculateCreditsFromTokens()`는 `lib/modelCosts.ts` 공유 모듈의 상수를 사용.
+상수 변경 시 `lib/modelCosts.ts`만 수정하면 billing.ts와 서버 라우트 모두 반영됨.
+모델 단가는 `AVAILABLE_MODELS` (types.ts)가 단일 진실 공급원.
 
 ### 중요 규칙
 
@@ -287,6 +289,34 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜�
 - **부분 실패**: 분석 도중 실패해도 이미 소비한 API 호출 비용이 있으므로 `deductPartial` 처리 필요
 - **차감 실패**: `onDeductFailed` 콜백으로 subscription 재동기화 처리
 - **잔액 확인**: 모든 분석 진입점에서 `checkSufficientBalance()` 호출 필수
+
+### ⚠️ 서버 API 라우트 — upstream 응답 확인 순서
+
+**규칙**: 서버 측 상태 변경 (`deleteAnalysisSession`, `invalidateBalanceCache` 등)은 반드시 upstream 응답 성공 확인 **이후**에 수행. 실패 시 클라이언트가 재시도할 수 있도록 세션 보존.
+
+```typescript
+// ❌ upstream 실패 시 세션 소멸 → 재시도 불가
+deleteAnalysisSession(session_id);
+if (!response.ok) return NextResponse.json({ error: '...' }, { status: 502 });
+
+// ✅ 성공 확인 후 정리
+if (!response.ok) return NextResponse.json({ error: '...' }, { status: 502 });
+deleteAnalysisSession(session_id);
+invalidateBalanceCache(userId);
+```
+
+### ⚠️ 클라이언트→서버 신뢰 경계
+
+**규칙**: 서버 API 라우트는 클라이언트에서 전달하는 금액/세션ID/토큰 수 등을 신뢰하지 않음.
+
+- hold 금액: 서버가 `estimateCreditsFromCharCount(charCount, model)`로 계산
+- 세션 추적: 서버가 `getActiveSessionIdByUserId(userId)`로 자동 조회
+- settle 금액: 서버가 `calculateCredits(session.tokens)`으로 계산
+- 클라이언트가 전달하는 `sessionId`, `amount` 등은 **무시**
+
+### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
+
+`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. `sessionId`는 서버 측에서 userId로 자동 조회하므로 클라이언트에서 전달하지 않음.
 
 ### ⚠️ ChunkBilling 타입 일관성
 

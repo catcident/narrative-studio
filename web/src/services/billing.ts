@@ -9,7 +9,10 @@ import type {
   CurrentUsage,
   ChunkUsage,
 } from '../types';
-import { AVAILABLE_MODELS } from '../types';
+import {
+  CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
+  getModelCosts, tokenCostUsd, costUsdToCredits,
+} from '@/lib/modelCosts';
 
 const BASE = '/api/billing';
 
@@ -151,24 +154,6 @@ export async function getCreditPackages(): Promise<CreditPackage[]> {
 }
 
 // ==================== 로컬 추정 (순수 함수) ====================
-// 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
-
-const CHARS_PER_TOKEN = 1.5;
-const CHUNK_SIZE = 5000;
-const CHUNK_OVERLAP = 300;
-const OUTPUT_RATIO = 0.45;
-const MARGIN = 3.0;
-const USD_TO_KRW = 1400;
-const KRW_PER_CREDIT = 10;
-const DEFAULT_INPUT_COST = 1.0;  // per 1M tokens
-const DEFAULT_OUTPUT_COST = 5.0; // per 1M tokens
-
-function getModelCosts(model: string): { inputCost: number; outputCost: number } {
-  const found = AVAILABLE_MODELS.find((m) => m.id === model);
-  return found
-    ? { inputCost: found.inputCost, outputCost: found.outputCost }
-    : { inputCost: DEFAULT_INPUT_COST, outputCost: DEFAULT_OUTPUT_COST };
-}
 
 /**
  * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
@@ -186,11 +171,10 @@ export function estimateUsageLocally(charCount: number, model: string): UsageEst
   const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
 
   const { inputCost, outputCost } = getModelCosts(model);
-  const costUsd = (inputTokens / 1_000_000) * inputCost + (outputTokens / 1_000_000) * outputCost;
-  const credits = Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
+  const costUsd = tokenCostUsd(inputTokens, outputTokens, inputCost, outputCost);
 
   return {
-    estimated_credits: credits,
+    estimated_credits: costUsdToCredits(costUsd),
     estimated_input_tokens: inputTokens,
     estimated_output_tokens: outputTokens,
     estimated_cost_usd: costUsd,
@@ -206,8 +190,7 @@ export function calculateCreditsFromTokens(promptTokens: number, completionToken
   if (promptTokens <= 0 && completionTokens <= 0) return 0;
 
   const { inputCost, outputCost } = getModelCosts(model);
-  const costUsd = (promptTokens / 1_000_000) * inputCost + (completionTokens / 1_000_000) * outputCost;
-  return Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
+  return costUsdToCredits(tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost));
 }
 
 // ==================== 잔액 사전 확인 ====================
@@ -343,79 +326,52 @@ interface ReleaseResult {
   hold_token: string;
 }
 
-/**
- * 분석 세션 시작 — 예상 크레딧을 선차감(hold)하고 세션 ID를 반환.
- */
-export async function startAnalysisSession(
-  estimatedCredits: number,
-  model: string,
-  metadata?: Record<string, unknown>,
-): Promise<AnalysisSessionResult | null> {
+/** 분석 세션 API 공통 POST 헬퍼 */
+async function sessionFetch<T>(path: string, body: Record<string, unknown>, label: string): Promise<T | null> {
   try {
-    const res = await fetch('/api/analysis-session', {
+    const res = await fetch(`/api/analysis-session${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: estimatedCredits, model, metadata }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
-      console.error(`[billing] analysis-session start HTTP ${res.status}`);
+      console.error(`[billing] analysis-session ${label} HTTP ${res.status}`);
       return null;
     }
     return await res.json();
   } catch (error: unknown) {
-    console.error('[billing] analysis-session start error:', error instanceof Error ? error.message : error);
+    console.error(`[billing] analysis-session ${label} error:`, error instanceof Error ? error.message : error);
     return null;
   }
 }
 
 /**
- * 분석 세션 정산 — 서버가 누적한 실제 토큰으로 크레딧 계산 및 정산.
+ * 분석 세션 시작 — 서버가 hold 금액을 계산하여 선차감하고 세션 ID를 반환.
+ * 서버는 metadata.charCount + model로 hold 금액을 계산 (클라이언트 amount 무시).
  */
-export async function settleAnalysisSession(
+export function startAnalysisSession(
+  model: string,
+  metadata?: Record<string, unknown>,
+): Promise<AnalysisSessionResult | null> {
+  return sessionFetch('', { model, metadata }, 'start');
+}
+
+/** 분석 세션 정산 — 서버가 누적한 실제 토큰으로 크레딧 계산 및 정산. */
+export function settleAnalysisSession(
   sessionId: string,
   title: string,
   idempotencyKey: string,
 ): Promise<SettleResult | null> {
-  try {
-    const res = await fetch('/api/analysis-session/settle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: sessionId,
-        title,
-        idempotency_key: idempotencyKey,
-      }),
-    });
-    if (!res.ok) {
-      console.error(`[billing] analysis-session settle HTTP ${res.status}`);
-      return null;
-    }
-    return await res.json();
-  } catch (error: unknown) {
-    console.error('[billing] analysis-session settle error:', error instanceof Error ? error.message : error);
-    return null;
-  }
+  return sessionFetch('/settle', {
+    session_id: sessionId,
+    title,
+    idempotency_key: idempotencyKey,
+  }, 'settle');
 }
 
-/**
- * 분석 세션 취소 — hold 전액 환불.
- */
-export async function releaseAnalysisSession(
+/** 분석 세션 취소 — 스마트 릴리스 (토큰 사용 있으면 부분 정산, 없으면 전액 환불). */
+export function releaseAnalysisSession(
   sessionId: string,
 ): Promise<ReleaseResult | null> {
-  try {
-    const res = await fetch('/api/analysis-session/release', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId }),
-    });
-    if (!res.ok) {
-      console.error(`[billing] analysis-session release HTTP ${res.status}`);
-      return null;
-    }
-    return await res.json();
-  } catch (error: unknown) {
-    console.error('[billing] analysis-session release error:', error instanceof Error ? error.message : error);
-    return null;
-  }
+  return sessionFetch('/release', { session_id: sessionId }, 'release');
 }

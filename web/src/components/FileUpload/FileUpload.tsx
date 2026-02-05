@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, deductPartial, estimateUsageLocally, startAnalysisSession, settleAnalysisSession, releaseAnalysisSession } from '../../services/billing';
+import { createBillingCallback, deductPartial, startAnalysisSession, settleAnalysisSession, releaseAnalysisSession } from '../../services/billing';
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
@@ -214,9 +214,7 @@ export function FileUpload() {
   const startHoldSession = useCallback(
     async (charCount: number, model: string): Promise<string | null> => {
       if (!subscription) return null;
-      const estimate = estimateUsageLocally(charCount, model);
       const sessionResult = await startAnalysisSession(
-        estimate.estimated_credits,
         model,
         { charCount },
       );
@@ -355,7 +353,6 @@ export function FileUpload() {
         model: currentModel,
         fileName: sortedFiles[0].name,
         onChunkBilling: createBillingCallback(addChunkUsage),
-        sessionId: sessionId ?? undefined,
       });
 
       const sourceFiles = buildSourceFiles(fileInfos);
@@ -425,7 +422,6 @@ export function FileUpload() {
         onProgress: makeProgressCallback(),
         resumeFrom: savedProgress,
         onChunkBilling: createBillingCallback(addChunkUsage),
-        sessionId: sessionId ?? undefined,
       });
 
       const saved = await saveAndSettle(newKnowledgeGraph, savedProgress.title, sessionId);
@@ -453,7 +449,6 @@ export function FileUpload() {
         fileName: finalFileName,
         existingGraph: knowledgeGraph,
         onChunkBilling: createBillingCallback(addChunkUsage),
-        sessionId: sessionId ?? undefined,
       });
 
       const saved = await saveAndSettle(
@@ -569,7 +564,6 @@ export function FileUpload() {
         model: currentModel,
         fileName: sourceFileName,
         onChunkBilling: createBillingCallback(addChunkUsage),
-        sessionId: sessionId ?? undefined,
       });
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();

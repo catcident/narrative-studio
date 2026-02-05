@@ -3,33 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { proxyToCatcident } from '@/services/billingProxy';
 import { getAnalysisSession, deleteAnalysisSession } from '@/lib/analysisSession';
 import { invalidateBalanceCache } from '@/lib/balanceCache';
-
-// 크레딧 계산 상수 (catcident-backend StorygraphEstimator와 동기화)
-const MARGIN = 3.0;
-const USD_TO_KRW = 1400;
-const KRW_PER_CREDIT = 10;
-
-const MODEL_COSTS: Record<string, { input: number; output: number }> = {
-  'google/gemini-2.0-flash-001': { input: 0.10, output: 0.40 },
-  'google/gemini-2.5-flash-preview-05-20': { input: 0.15, output: 0.60 },
-  'anthropic/claude-3.5-sonnet': { input: 3.00, output: 15.00 },
-  'openai/gpt-4o': { input: 2.50, output: 10.00 },
-  'openai/gpt-4o-mini': { input: 0.15, output: 0.60 },
-  'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
-};
-
-const DEFAULT_COST = { input: 1.0, output: 5.0 };
-
-function calculateCredits(tokens: Array<{ promptTokens: number; completionTokens: number; model: string }>): number {
-  if (tokens.length === 0) return 0;
-  return tokens.reduce((sum, t) => {
-    const costs = MODEL_COSTS[t.model] ?? DEFAULT_COST;
-    const costUsd =
-      (t.promptTokens / 1_000_000) * costs.input +
-      (t.completionTokens / 1_000_000) * costs.output;
-    return sum + Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
-  }, 0);
-}
+import { calculateCredits } from '@/lib/modelCosts';
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,15 +55,15 @@ export async function POST(request: NextRequest) {
       body: settleBody,
     });
 
-    // 세션 정리
-    deleteAnalysisSession(session_id);
-    invalidateBalanceCache(authResult.userId);
-
     if (!response.ok) {
       const status = response.status >= 500 ? 502 : response.status;
       console.error(`[billing] settle upstream error: ${response.status}`);
       return NextResponse.json({ error: 'Billing service error' }, { status });
     }
+
+    // upstream 성공 확인 후 세션 정리 (실패 시 재시도 가능하도록)
+    deleteAnalysisSession(session_id);
+    invalidateBalanceCache(authResult.userId);
 
     const result = await response.json();
 

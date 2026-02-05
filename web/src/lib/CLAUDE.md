@@ -198,18 +198,57 @@ if (limited) {
 
 ---
 
+## modelCosts.ts — 모델 비용 공유 모듈
+
+모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(settle, analysis-session) 양쪽에서 사용.
+
+- 단일 진실 공급원: `AVAILABLE_MODELS` (types.ts) — 모델 비용 동기화 불일치 방지
+- 동기화 대상: catcident-backend `StorygraphEstimator`
+
+```typescript
+// 상수
+MARGIN, USD_TO_KRW, KRW_PER_CREDIT, CHARS_PER_TOKEN,
+CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
+DEFAULT_INPUT_COST, DEFAULT_OUTPUT_COST
+
+// 공유 헬퍼 (수식 중복 제거)
+tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost) → number
+costUsdToCredits(costUsd) → number
+
+// 모델 비용 조회 (AVAILABLE_MODELS에서)
+getModelCosts(model) → { inputCost, outputCost }
+
+// 토큰 배열 → 크레딧 (settle 라우트용)
+calculateCredits(tokens) → number
+
+// 문자 수 + 모델 → 예상 크레딧 (hold 금액 계산용, 청크 오버헤드 반영)
+estimateCreditsFromCharCount(charCount, model) → number
+```
+
+**⚠️ 상수 변경 시 주의사항**:
+- `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값. 순수 한국어 소설은 과소추정될 수 있으나 `MARGIN=3.0`이 보상.
+- 상수를 변경하면 catcident-backend `StorygraphEstimator`도 동기 수정 필수.
+- 새 모델 추가 시 `types.ts`의 `AVAILABLE_MODELS`에 `inputCost`/`outputCost` 추가 — 이것이 단일 진실 공급원.
+
+---
+
 ## analysisSession.ts — 분석 세션 스토어
 
 서버 사이드 인메모리 분석 세션 관리.
 
 - `/api/analyze` 호출마다 OpenRouter 토큰 사용량을 세션에 누적
 - settle 시 서버가 직접 크레딧 계산 (클라이언트 금액 조작 방지)
+- **userId 역인덱스**: 사용자당 단일 활성 세션 강제 (동시 세션 방지)
+- **`/api/analyze`에서 userId 기반 자동 조회**: 클라이언트 sessionId에 의존하지 않음
 - 30분 TTL, 최대 1,000 세션
-- 서버 재시작 시 세션 소멸 → 만료된 hold는 Celery 태스크가 자동 정산
+- 서버 재시작 시 세션 소멸 → 만료된 hold는 Celery 태스크(`expire_stale_holds`, 5분 간격)가 자동 정산
 
 ```typescript
-// 세션 생성 (analysis-session API에서)
+// 세션 생성 — 사용자당 단일 세션 (기존 세션 자동 덮어쓰기)
 const sessionId = createAnalysisSession(userId, holdToken, model);
+
+// userId로 활성 세션 자동 조회 (/api/analyze에서 사용)
+const activeSessionId = getActiveSessionIdByUserId(userId);
 
 // 토큰 누적 (/api/analyze에서)
 addSessionTokens(sessionId, { promptTokens, completionTokens, model });

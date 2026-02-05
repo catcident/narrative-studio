@@ -73,25 +73,24 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 
 **과금 흐름 (Hold/Settle)**:
 
-1. `startAnalysisSession(estimatedCredits, model)` → 크레딧 선차감(hold) + `sessionId` 반환
-2. `extractKnowledgeGraph({ ..., sessionId })` → `/api/analyze`에 sessionId 전달
-3. `/api/analyze`: 서버 측에서 OpenRouter 응답 토큰을 세션에 누적 (클라이언트 조작 방지)
-4. `settleAnalysisSession(sessionId, title, idempotencyKey)` → 서버가 실제 크레딧 계산 + 정산
-5. 실패 시: `releaseAnalysisSession(sessionId)` → hold 전액 환불
+1. `startAnalysisSession(model, { charCount })` → 서버가 hold 금액 계산 + 선차감 + `sessionId` 반환
+2. `extractKnowledgeGraph({ ..., sessionId })` → `/api/analyze`에서 userId로 세션 자동 조회하여 토큰 누적
+3. `settleAnalysisSession(sessionId, title, idempotencyKey)` → 서버가 실제 크레딧 계산 + 정산
+4. 실패 시: `releaseAnalysisSession(sessionId)` → 스마트 릴리스 (토큰 유무에 따라 부분 정산 또는 전액 환불)
 
 **핵심 원칙**:
-- **서버가 크레딧을 계산** — 클라이언트는 차감 금액을 결정하지 않음
-- idempotency key로 중복 정산 방지 — `storygraph-{savedId}-settle` (결정론적 값, `Date.now()` 금지)
+- **서버가 모든 금액을 계산** — hold, settle 모두 서버 측 (`modelCosts.ts`, `analysisSession.ts`)
+- **서버가 userId로 세션 자동 추적** — 클라이언트 sessionId에 의존하지 않음
+- idempotency key로 중복 정산 방지 — 결정론적 값만 사용 (`Date.now()` 금지)
 - hold 미정산 시 Celery 태스크(`expire_stale_holds`)가 자동 처리
-- file.size(bytes)와 charCount(문자수) 구분 필수 (UTF-8 한글 ~3bytes/char)
-- **모든** LLM API 호출의 서버 측 토큰 추적 필수 — `sessionId`를 통해 `/api/analyze` 서버에서 누적
-- `onChunkBilling` 콜백은 UI 표시용으로 유지 (UsageSummary 모달)
-- 혼합 모델 사용 시 크레딧은 청크별 개별 계산 후 합산
+
+> 상세 흐름도: [services/CLAUDE.md](src/services/CLAUDE.md#billing-추적-필수-규칙)
+> 서버 모듈 상세: [lib/CLAUDE.md](src/lib/CLAUDE.md#modelcoststs--모델-비용-공유-모듈)
 
 **서버 측 방어선**:
-- `/api/analyze`에 잔액 체크 (`balanceCache.ts`) — 잔액 0 사용자 차단
-- 사용자별 Rate Limiting (`rateLimit.ts`) — 분당 60회 제한
-- 분석 세션 스토어 (`analysisSession.ts`) — 서버 측 토큰 누적
+- 잔액 체크 (`balanceCache.ts`) + Rate Limiting (`rateLimit.ts`) + userId 역인덱스 (`analysisSession.ts`)
+- Hold 금액 서버 계산 (`modelCosts.ts`) — 클라이언트 amount 조작 방지
+- OpenRouter usage 누락 시 토큰 추정 폴백
 
 **AUTH_ENABLED=false 배포** (Railway 등):
 - billing API 프록시에 OAuth 토큰 없이 요청 → billing 기능 비활성화됨
