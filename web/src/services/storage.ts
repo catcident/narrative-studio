@@ -93,7 +93,7 @@ async function getLocalList(): Promise<SavedKnowledgeGraphMeta[]> {
       };
     });
   } catch (err) {
-    console.error('로컬 목록 로드 실패:', err);
+    console.error('[storage] 로컬 목록 로드 실패:', err);
     return [];
   }
 }
@@ -113,7 +113,7 @@ async function loadLocal(id: string): Promise<NovelKnowledgeGraph | null> {
       };
     });
   } catch (err) {
-    console.error('로컬 로드 실패:', err);
+    console.error('[storage] 로컬 로드 실패:', err);
     return null;
   }
 }
@@ -252,7 +252,7 @@ async function getLocalListFull(): Promise<SavedKnowledgeGraph[]> {
       };
     });
   } catch (err) {
-    console.error('로컬 목록 로드 실패:', err);
+    console.error('[storage] 로컬 목록 로드 실패:', err);
     return [];
   }
 }
@@ -271,7 +271,7 @@ async function deleteLocal(id: string): Promise<boolean> {
 
     return true;
   } catch (err) {
-    console.error('로컬 삭제 실패:', err);
+    console.error('[storage] 로컬 삭제 실패:', err);
     return false;
   }
 }
@@ -295,7 +295,7 @@ async function getLocalVersionHistory(dataId: string): Promise<Omit<KnowledgeGra
       note: v.note,
     })).sort((a, b) => b.version - a.version);
   } catch (err) {
-    console.error('로컬 버전 히스토리 로드 실패:', err);
+    console.error('[storage] 로컬 버전 히스토리 로드 실패:', err);
     return [];
   }
 }
@@ -314,7 +314,7 @@ async function restoreLocalVersion(dataId: string, version: number): Promise<Nov
 
     return versionData?.data || null;
   } catch (err) {
-    console.error('로컬 버전 복원 실패:', err);
+    console.error('[storage] 로컬 버전 복원 실패:', err);
     return null;
   }
 }
@@ -332,7 +332,7 @@ export async function getSavedKnowledgeGraphList(): Promise<SavedKnowledgeGraphM
     const serverList = await response.json();
     return serverList;
   } catch (err) {
-    console.warn('서버 목록 조회 실패, 로컬 사용:', err);
+    console.warn('[storage] 서버 목록 조회 실패, 로컬 사용:', err);
     return getLocalList();
   }
 }
@@ -352,7 +352,7 @@ export async function loadKnowledgeGraph(id: string): Promise<NovelKnowledgeGrap
 
     return await response.json();
   } catch (err) {
-    console.warn('서버 로드 실패, 로컬 시도:', err);
+    console.warn('[storage] 서버 로드 실패, 로컬 시도:', err);
     return loadLocal(id);
   }
 }
@@ -383,7 +383,7 @@ export async function saveKnowledgeGraph(
 
     return await response.json();
   } catch (err) {
-    console.warn('서버 저장 실패, 로컬 저장:', err);
+    console.warn('[storage] 서버 저장 실패, 로컬 저장:', err);
     return saveLocal(knowledgeGraph, existingId);
   }
 }
@@ -463,7 +463,7 @@ export async function deleteKnowledgeGraph(id: string): Promise<boolean> {
     const result = await response.json();
     return result.success;
   } catch (err) {
-    console.warn('서버 삭제 실패:', err);
+    console.warn('[storage] 서버 삭제 실패:', err);
     return deleteLocal(id);
   }
 }
@@ -482,7 +482,7 @@ export async function getVersionHistory(dataId: string): Promise<Omit<KnowledgeG
 
     return await response.json();
   } catch (err) {
-    console.warn('버전 히스토리 조회 실패:', err);
+    console.warn('[storage] 버전 히스토리 조회 실패:', err);
     return getLocalVersionHistory(dataId);
   }
 }
@@ -504,7 +504,7 @@ export async function restoreVersion(dataId: string, version: number): Promise<N
 
     return await response.json();
   } catch (err) {
-    console.warn('버전 복원 실패:', err);
+    console.warn('[storage] 버전 복원 실패:', err);
     return restoreLocalVersion(dataId, version);
   }
 }
@@ -552,6 +552,6 @@ export async function clearAllStorage(): Promise<void> {
     const tx2 = dbConn.transaction(VERSION_STORE_NAME, 'readwrite');
     tx2.objectStore(VERSION_STORE_NAME).clear();
   } catch (err) {
-    console.error('저장소 초기화 실패:', err);
+    console.error('[storage] 저장소 초기화 실패:', err);
   }
 }

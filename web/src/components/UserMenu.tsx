@@ -24,14 +24,14 @@ export function UserMenu({ className = '' }: UserMenuProps): React.ReactNode {
   const planCode = subscription?.plan;
   const planBadgeColor = planCode === 'pro' ? 'bg-purple-100 text-purple-700'
     : planCode === 'basic' ? 'bg-blue-100 text-blue-700'
-    : '';
+    : 'bg-gray-100 text-gray-700';
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <span className="text-sm text-gray-600">{displayName}</span>
       {planCode && planCode !== 'free' && (
         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${planBadgeColor}`}>
-          {planCode === 'pro' ? 'Pro' : 'Basic'}
+          {planCode === 'pro' ? 'Pro' : planCode === 'basic' ? 'Basic' : planCode!.toUpperCase()}
         </span>
       )}
       <button

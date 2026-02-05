@@ -22,10 +22,9 @@ import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
+import { readFileAsText } from './services/fileReader';
 import { createBillingCallback, deductAfterSave, deductPartial } from './services/billing';
-import type { NovelKnowledgeGraph } from './types';
-
-type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
+import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'graph', label: '관계도', icon: Network },
@@ -36,13 +35,26 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
 ];
 
 function App() {
-  const {
-    knowledgeGraph, originalText, currentDataId, viewMode, setViewMode, reset, setKnowledgeGraph, error,
-    selectedSceneId, selectScene,
-    sceneRangeStart, sceneRangeEnd, selectSceneRange,
-    loadSubscription,
-    subscription, addChunkUsage, resetCurrentUsage, updateCreditBalance, setShowUsageSummary,
-  } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const originalText = useStore((s) => s.originalText);
+  const currentDataId = useStore((s) => s.currentDataId);
+  const viewMode = useStore((s) => s.viewMode);
+  const setViewMode = useStore((s) => s.setViewMode);
+  const reset = useStore((s) => s.reset);
+  const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
+  const error = useStore((s) => s.error);
+  const setError = useStore((s) => s.setError);
+  const selectedSceneId = useStore((s) => s.selectedSceneId);
+  const selectScene = useStore((s) => s.selectScene);
+  const sceneRangeStart = useStore((s) => s.sceneRangeStart);
+  const sceneRangeEnd = useStore((s) => s.sceneRangeEnd);
+  const selectSceneRange = useStore((s) => s.selectSceneRange);
+  const loadSubscription = useStore((s) => s.loadSubscription);
+  const subscription = useStore((s) => s.subscription);
+  const addChunkUsage = useStore((s) => s.addChunkUsage);
+  const resetCurrentUsage = useStore((s) => s.resetCurrentUsage);
+  const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const [showDataManager, setShowDataManager] = useState(false);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -110,40 +122,22 @@ function App() {
     resetCurrentUsage();
 
     try {
-      let text = '';
-      if (file.type === 'application/pdf') {
-        setAddProgress('PDF 파싱 중...');
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const textParts: string[] = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          setAddProgress(`PDF ${i}/${pdf.numPages}...`);
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          textParts.push(content.items.map((item: any) => item.str).join(' '));
-        }
-        text = textParts.join('\n\n');
-      } else {
-        text = await file.text();
-      }
+      const text = await readFileAsText(file, setAddProgress);
 
       if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
 
       // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
       const existingModel = knowledgeGraph.metadata.model;
       // 기존 지식그래프를 전달하여 이어서 분석
-      const updatedKnowledgeGraph = await extractKnowledgeGraph(
+      const updatedKnowledgeGraph = await extractKnowledgeGraph({
         text,
-        knowledgeGraph.metadata.title,  // 기존 제목 유지
-        (msg) => setAddProgress(msg),
-        undefined,
-        existingModel,
-        file.name,
-        knowledgeGraph,  // 기존 지식그래프 전달
-        createBillingCallback(addChunkUsage),
-      );
+        title: knowledgeGraph.metadata.title,
+        onProgress: (msg) => setAddProgress(msg),
+        model: existingModel,
+        fileName: file.name,
+        existingGraph: knowledgeGraph,
+        onChunkBilling: createBillingCallback(addChunkUsage),
+      });
 
       // DB에 저장 (기존 ID 사용하여 업데이트)
       setAddProgress('저장 중...');
@@ -165,7 +159,7 @@ function App() {
         const { currentUsage } = useStore.getState();
         await deductPartial(knowledgeGraph.metadata.title, existingModel, currentUsage, updateCreditBalance);
       }
-      alert(err.message || '파일 추가 중 오류가 발생했습니다.');
+      setError(err.message || '파일 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAddingFile(false);
       e.target.value = '';  // input 초기화

@@ -68,7 +68,8 @@ export async function GET(
 
     return NextResponse.json(knowledgeGraph);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] knowledge-graphs/[id] GET error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -91,6 +92,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: result.deletedCount > 0 });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] knowledge-graphs/[id] DELETE error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

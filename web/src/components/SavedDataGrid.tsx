@@ -38,6 +38,7 @@ export function SavedDataGrid({ onLoad }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // 목록 새로고침
   const refreshList = async () => {
@@ -104,10 +105,11 @@ export function SavedDataGrid({ onLoad }: Props) {
     if (!file) return;
 
     try {
+      setImportError(null);
       const imported = await importKnowledgeGraph(file);
       onLoad(imported);
     } catch (err: any) {
-      alert(err.message || '파일 가져오기 실패');
+      setImportError(err.message || '파일 가져오기 실패');
     }
 
     e.target.value = '';
@@ -142,7 +144,7 @@ export function SavedDataGrid({ onLoad }: Props) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700">저장된 데이터</h3>
         <label className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded cursor-pointer transition-colors">
-          <Upload className="w-3.5 h-3.5" />
+          <Upload className="w-3.5 h-3.5" aria-hidden="true" />
           <span>JSON 가져오기</span>
           <input
             type="file"
@@ -152,6 +154,12 @@ export function SavedDataGrid({ onLoad }: Props) {
           />
         </label>
       </div>
+
+      {importError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {importError}
+        </div>
+      )}
 
       {/* 카드 그리드 - 4열, 최대 높이 제한 + 스크롤 */}
       <div className="grid grid-cols-4 gap-4 max-h-96 overflow-y-auto pr-1">
@@ -173,11 +181,11 @@ export function SavedDataGrid({ onLoad }: Props) {
               {/* 통계 */}
               <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
-                  <Users className="w-3 h-3" />
+                  <Users className="w-3 h-3" aria-hidden="true" />
                   {item.entityCount}
                 </span>
                 <span className="flex items-center gap-1">
-                  <GitBranch className="w-3 h-3" />
+                  <GitBranch className="w-3 h-3" aria-hidden="true" />
                   {item.edgeCount}
                 </span>
                 <span className="text-gray-400">
@@ -188,7 +196,7 @@ export function SavedDataGrid({ onLoad }: Props) {
               {/* 시간 & 버전 */}
               <div className="flex items-center justify-between mt-2">
                 <span className="flex items-center gap-1 text-xs text-gray-400">
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-3 h-3" aria-hidden="true" />
                   {formatDate(item.updatedAt)}
                 </span>
                 <span className="text-xs text-blue-500 font-medium">
@@ -211,8 +219,9 @@ export function SavedDataGrid({ onLoad }: Props) {
                 onClick={(e) => toggleVersions(item.id, e)}
                 className="p-1.5 bg-white/90 hover:bg-gray-100 rounded-lg shadow-sm transition-colors"
                 title="버전 히스토리"
+                aria-label="버전 히스토리"
               >
-                <History className="w-3.5 h-3.5 text-gray-500" />
+                <History className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
               </button>
 
               {/* 내보내기 */}
@@ -220,8 +229,9 @@ export function SavedDataGrid({ onLoad }: Props) {
                 onClick={(e) => handleExport(item.id, e)}
                 className="p-1.5 bg-white/90 hover:bg-green-50 rounded-lg shadow-sm transition-colors"
                 title="JSON 내보내기"
+                aria-label="JSON 내보내기"
               >
-                <Download className="w-3.5 h-3.5 text-green-600" />
+                <Download className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
               </button>
 
               {/* 삭제 */}
@@ -231,15 +241,17 @@ export function SavedDataGrid({ onLoad }: Props) {
                     onClick={(e) => handleDelete(item.id, e)}
                     className="p-1.5 bg-red-500 hover:bg-red-600 rounded-lg shadow-sm transition-colors"
                     title="삭제 확인"
+                    aria-label="삭제 확인"
                   >
-                    <Check className="w-3.5 h-3.5 text-white" />
+                    <Check className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
                     className="p-1.5 bg-white/90 hover:bg-gray-100 rounded-lg shadow-sm transition-colors"
                     title="취소"
+                    aria-label="취소"
                   >
-                    <X className="w-3.5 h-3.5 text-gray-500" />
+                    <X className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
                   </button>
                 </div>
               ) : (
@@ -247,8 +259,9 @@ export function SavedDataGrid({ onLoad }: Props) {
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(item.id); }}
                   className="p-1.5 bg-white/90 hover:bg-red-50 rounded-lg shadow-sm transition-colors"
                   title="삭제"
+                  aria-label="삭제"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  <Trash2 className="w-3.5 h-3.5 text-red-500" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -257,7 +270,7 @@ export function SavedDataGrid({ onLoad }: Props) {
             {expandedId === item.id && (
               <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-xl shadow-lg p-3">
                 <div className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
-                  <History className="w-3 h-3" />
+                  <History className="w-3 h-3" aria-hidden="true" />
                   버전 히스토리
                 </div>
                 {versions.length === 0 ? (
@@ -277,7 +290,7 @@ export function SavedDataGrid({ onLoad }: Props) {
                           </span>
                         </div>
                         <span className="flex items-center gap-1 text-xs text-blue-500">
-                          <RotateCcw className="w-3 h-3" />
+                          <RotateCcw className="w-3 h-3" aria-hidden="true" />
                           복원
                         </span>
                       </button>

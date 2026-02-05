@@ -39,6 +39,7 @@ export async function POST(
 
     return NextResponse.json(versionDoc.data);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] knowledge-graphs/[id]/restore POST error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

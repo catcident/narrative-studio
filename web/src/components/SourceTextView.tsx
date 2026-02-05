@@ -72,7 +72,7 @@ export function SourceTextView() {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 text-gray-400">
         <div className="text-center">
-          <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" aria-hidden="true" />
           <p>업로드된 파일이 없습니다</p>
           <p className="text-sm mt-1">파일을 업로드하면 원본 텍스트를 볼 수 있습니다</p>
         </div>
@@ -86,7 +86,7 @@ export function SourceTextView() {
       <div className="flex-shrink-0 p-4 border-b bg-gray-50">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+            <FileText className="w-5 h-5" aria-hidden="true" />
             원본 텍스트
             <span className="text-sm font-normal text-gray-500">
               ({sourceFiles.length}개 파일)
@@ -102,7 +102,7 @@ export function SourceTextView() {
 
         {/* 검색 */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
           <input
             type="text"
             placeholder="텍스트 검색..."
@@ -130,9 +130,9 @@ export function SourceTextView() {
                 className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
               >
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" />
                 )}
 
                 <div className="flex-1 min-w-0">
@@ -163,11 +163,12 @@ export function SourceTextView() {
                   }}
                   className="p-1.5 hover:bg-gray-200 rounded transition-colors"
                   title="텍스트 복사"
+                  aria-label="텍스트 복사"
                 >
                   {isCopied ? (
-                    <Check className="w-4 h-4 text-green-600" />
+                    <Check className="w-4 h-4 text-green-600" aria-hidden="true" />
                   ) : (
-                    <Copy className="w-4 h-4 text-gray-400" />
+                    <Copy className="w-4 h-4 text-gray-400" aria-hidden="true" />
                   )}
                 </button>
               </button>

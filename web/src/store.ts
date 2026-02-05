@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge, BillingSubscription, CurrentUsage, ChunkUsage } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode } from './types';
 import { getSubscription } from './services/billing';
 
 interface AppState {
@@ -20,7 +20,7 @@ interface AppState {
   selectedSceneId: string | null;
   sceneRangeStart: string | null;  // 범위 선택 시작
   sceneRangeEnd: string | null;    // 범위 선택 끝
-  viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
+  viewMode: ViewMode;
 
   // Billing
   subscription: BillingSubscription | null;
@@ -39,7 +39,7 @@ interface AppState {
   selectTimePoint: (time: string | null) => void;
   selectScene: (sceneId: string | null) => void;
   selectSceneRange: (start: string | null, end: string | null) => void;
-  setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source') => void;
+  setViewMode: (mode: ViewMode) => void;
   reset: () => void;
 
   // Billing 액션
@@ -105,7 +105,7 @@ export const useStore = create<AppState>((set, get) => ({
   loadSubscription: async () => {
     try {
       const info = await getSubscription();
-      if (info) {
+      if (info?.plan) {
         set({
           subscription: {
             plan: info.plan.code,

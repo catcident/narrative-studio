@@ -172,6 +172,10 @@ export interface ChronicleEvent {
   sentiment?: string;
 }
 
+// ==================== UI ====================
+
+export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
+
 // ==================== Billing ====================
 
 /** API 응답(snake_case)을 그대로 사용 — 변환 비용 대비 이점 없음 */
