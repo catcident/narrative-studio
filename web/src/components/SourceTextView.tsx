@@ -24,8 +24,35 @@ export function SourceTextView() {
     const map: Record<string, SceneSnapshot[]> = {};
     if (!knowledgeGraph?.snapshots) return map;
 
+    // 파일이 1개뿐이면 모든 장면이 그 파일에서 온 것
+    const singleFileMode = sourceFiles.length === 1;
+    const singleFileName = singleFileMode ? sourceFiles[0].fileName : null;
+
     Object.values(knowledgeGraph.snapshots).forEach(scene => {
-      const key = scene.sourceFile || scene.sourceFileId || '_unknown';
+      // sourceFile이 있으면 그걸 사용
+      let key = scene.sourceFile || scene.sourceFileId;
+
+      // sourceFile이 없는 경우 (기존 데이터)
+      if (!key) {
+        if (singleFileName) {
+          // 파일 1개면 모든 장면이 그 파일
+          key = singleFileName;
+        } else if (scene.chapterNumber && sourceFiles.length > 0) {
+          // 여러 파일인 경우: chapterNumber로 파일 매핑 시도
+          // 파일명에서 숫자 추출해서 매칭 (01화.md → 1, 02화.md → 2)
+          const targetChapter = scene.chapterNumber;
+          const matchedFile = sourceFiles.find(f => {
+            const match = f.fileName.match(/(\d+)/);
+            return match && parseInt(match[1]) === targetChapter;
+          });
+          if (matchedFile) {
+            key = matchedFile.fileName;
+          }
+        }
+      }
+
+      if (!key) key = '_unknown';
+
       if (!map[key]) map[key] = [];
       map[key].push(scene);
     });
@@ -36,7 +63,7 @@ export function SourceTextView() {
     });
 
     return map;
-  }, [knowledgeGraph?.snapshots]);
+  }, [knowledgeGraph?.snapshots, sourceFiles]);
 
   // 검색 결과 하이라이트
   const highlightText = (text: string, query: string) => {
