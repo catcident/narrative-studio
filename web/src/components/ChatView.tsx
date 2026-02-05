@@ -9,8 +9,34 @@ import { useStore } from '../store';
 import { sendChatMessage, generateMessageId, type ChatMessage } from '../services/chat';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../types';
 
+/**
+ * 텍스트에서 언급된 엔티티 ID 추출
+ */
+function extractMentionedEntities(
+  text: string,
+  entities: Record<string, { name: string; aliases?: string[] }>
+): string[] {
+  const mentioned = new Set<string>();
+  const textLower = text.toLowerCase();
+
+  Object.entries(entities).forEach(([id, entity]) => {
+    // 이름으로 검색
+    if (textLower.includes(entity.name.toLowerCase())) {
+      mentioned.add(id);
+    }
+    // 별칭으로 검색
+    entity.aliases?.forEach(alias => {
+      if (textLower.includes(alias.toLowerCase())) {
+        mentioned.add(id);
+      }
+    });
+  });
+
+  return Array.from(mentioned);
+}
+
 export function ChatView() {
-  const { knowledgeGraph, originalText } = useStore();
+  const { knowledgeGraph, originalText, setChatMentionedEntities } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -68,6 +94,10 @@ export function ChatView() {
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
+
+      // 답변에서 언급된 엔티티 추출하여 store에 저장
+      const mentionedIds = extractMentionedEntities(fullResponse, knowledgeGraph.entities);
+      setChatMentionedEntities(mentionedIds);
     } catch (error) {
       const errorMessage: ChatMessage = {
         id: generateMessageId(),

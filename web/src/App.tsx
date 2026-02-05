@@ -14,6 +14,7 @@ import { WorldView } from './components/WorldView';
 import { SourceTextView } from './components/SourceTextView';
 import { ChatView } from './components/ChatView';
 import { DetailPanel } from './components/DetailPanel';
+import { ChatMentionedPanel } from './components/ChatMentionedPanel';
 import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
@@ -454,12 +455,10 @@ function App() {
           {viewMode === 'chat' && <ChatView />}
         </div>
 
-        {/* 오른쪽: 상세 패널 (채팅 탭에서는 숨김) */}
-        {viewMode !== 'chat' && (
-          <div className="w-96 border-l border-gray-200 flex-shrink-0 overflow-hidden">
-            <DetailPanel />
-          </div>
-        )}
+        {/* 오른쪽: 상세 패널 */}
+        <div className="w-96 border-l border-gray-200 flex-shrink-0 overflow-hidden">
+          {viewMode === 'chat' ? <ChatMentionedPanel /> : <DetailPanel />}
+        </div>
       </main>
 
       {/* 데이터 관리 모달 */}
