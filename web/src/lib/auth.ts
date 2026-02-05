@@ -171,6 +171,7 @@ export async function requireAuth(): Promise<{ userId: string; accessToken?: str
   const headerStore = await headers();
   const token = await getToken({
     req: { headers: headerStore },
+    secret: process.env.AUTH_SECRET,
     secureCookie: process.env.AUTH_URL?.startsWith('https://'),
   });
   return { userId: session.user.id, accessToken: token?.accessToken };
