@@ -19,7 +19,7 @@ export interface ChatContext {
 }
 
 /**
- * 질문에서 엔티티 ID 추출
+ * 질문에서 엔티티 ID 추출 (개선: 부분 매칭 + 유사어 지원)
  */
 function findMentionedEntityIds(
   query: string,
@@ -30,7 +30,7 @@ function findMentionedEntityIds(
 
   Object.entries(entities).forEach(([id, entity]) => {
     const nameLower = entity.name.toLowerCase();
-    // 이름으로 검색
+    // 정확히 일치
     if (queryLower.includes(nameLower)) {
       mentioned.push(id);
       return;
@@ -38,10 +38,59 @@ function findMentionedEntityIds(
     // 별칭으로 검색
     if (entity.aliases?.some(alias => queryLower.includes(alias.toLowerCase()))) {
       mentioned.push(id);
+      return;
+    }
+    // 설명에서 키워드 검색 (질문의 주요 단어가 설명에 있는지)
+    if (entity.description) {
+      const descLower = entity.description.toLowerCase();
+      const queryWords = queryLower.split(/\s+/).filter(w => w.length >= 2);
+      if (queryWords.some(word => descLower.includes(word) && word.length >= 2)) {
+        // 너무 많이 매칭되지 않도록 제한
+        if (mentioned.length < 20) {
+          mentioned.push(id);
+        }
+      }
     }
   });
 
   return mentioned;
+}
+
+/**
+ * 일반적인 질문 패턴 감지 및 관련 컨텍스트 생성
+ */
+function detectQueryIntent(query: string): {
+  wantsCharacters: boolean;
+  wantsRelationships: boolean;
+  wantsItems: boolean;
+  wantsSummary: boolean;
+  keywords: string[];
+} {
+  const queryLower = query.toLowerCase();
+
+  // 등장인물/캐릭터 관련 키워드
+  const characterKeywords = ['등장인물', '인물', '캐릭터', '주인공', '누구', '사람'];
+  const wantsCharacters = characterKeywords.some(k => queryLower.includes(k));
+
+  // 관계 관련 키워드
+  const relationshipKeywords = ['관계', '사이', '어떤', '어떻게', '왜'];
+  const wantsRelationships = relationshipKeywords.some(k => queryLower.includes(k));
+
+  // 아이템/사물 관련 키워드
+  const itemKeywords = ['의미', '상징', '뭐야', '무엇', '동전', '돈', '물건', '아이템'];
+  const wantsItems = itemKeywords.some(k => queryLower.includes(k));
+
+  // 요약/전체 관련 키워드
+  const summaryKeywords = ['요약', '줄거리', '내용', '전체', '설명'];
+  const wantsSummary = summaryKeywords.some(k => queryLower.includes(k));
+
+  // 질문에서 핵심 키워드 추출 (2글자 이상)
+  const keywords = queryLower
+    .replace(/[?!.,]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length >= 2 && !['의미', '뭐야', '무엇', '어떤', '어떻게'].includes(w));
+
+  return { wantsCharacters, wantsRelationships, wantsItems, wantsSummary, keywords };
 }
 
 /**
@@ -84,8 +133,49 @@ function extractRelevantContext(
   const contexts: string[] = [];
   const queryLower = query.toLowerCase();
 
+  // 0. 질문 의도 분석
+  const intent = detectQueryIntent(query);
+
   // 1. 질문에서 언급된 엔티티 찾기
-  const mentionedEntityIds = findMentionedEntityIds(query, knowledgeGraph.entities);
+  let mentionedEntityIds = findMentionedEntityIds(query, knowledgeGraph.entities);
+
+  // 1-1. 키워드로 엔티티 이름/설명에서 검색 (부분 매칭)
+  if (mentionedEntityIds.length === 0 && intent.keywords.length > 0) {
+    Object.entries(knowledgeGraph.entities).forEach(([id, entity]) => {
+      const nameLower = entity.name.toLowerCase();
+      const descLower = (entity.description || '').toLowerCase();
+
+      for (const keyword of intent.keywords) {
+        if (nameLower.includes(keyword) || descLower.includes(keyword)) {
+          if (!mentionedEntityIds.includes(id)) {
+            mentionedEntityIds.push(id);
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  // 1-2. 아이템 관련 질문이면 item 카테고리 검색
+  if (intent.wantsItems && mentionedEntityIds.length === 0) {
+    const itemEntities = Object.entries(knowledgeGraph.entities)
+      .filter(([, e]) => e.category === 'item')
+      .slice(0, 10);
+    mentionedEntityIds.push(...itemEntities.map(([id]) => id));
+  }
+
+  // 1-3. 캐릭터 관련 질문이면 character 카테고리 추가
+  if (intent.wantsCharacters) {
+    const characterEntities = Object.entries(knowledgeGraph.entities)
+      .filter(([, e]) => e.category === 'character')
+      .slice(0, 15);
+    characterEntities.forEach(([id]) => {
+      if (!mentionedEntityIds.includes(id)) {
+        mentionedEntityIds.push(id);
+      }
+    });
+  }
+
   const mentionedEntities = mentionedEntityIds
     .map(id => knowledgeGraph.entities[id])
     .filter(Boolean);
@@ -96,12 +186,29 @@ function extractRelevantContext(
   // 3. 언급된 엔티티와 연결된 모든 관계 찾기
   const connectedEdges = findConnectedEdges(mentionedEntityIds, knowledgeGraph.hyperedges);
 
-  // 4. 키워드 기반 추가 관계 검색
+  // 4. 키워드 기반 추가 관계 검색 (질문 키워드로 statement 검색)
   const keywordEdges = Object.values(knowledgeGraph.hyperedges).filter(edge => {
     const statementLower = edge.statement.toLowerCase();
-    return statementLower.includes(queryLower) ||
-           edge.type.toLowerCase().includes(queryLower);
+    const typeLower = edge.type.toLowerCase();
+
+    // 전체 질문 매칭
+    if (statementLower.includes(queryLower) || typeLower.includes(queryLower)) {
+      return true;
+    }
+
+    // 키워드별 매칭
+    return intent.keywords.some(keyword =>
+      statementLower.includes(keyword) || typeLower.includes(keyword)
+    );
   });
+
+  // 4-1. 관계 질문이면 주요 관계들 포함
+  let importantEdges: HyperEdge[] = [];
+  if (intent.wantsRelationships && connectedEdges.length === 0) {
+    importantEdges = Object.values(knowledgeGraph.hyperedges)
+      .filter(e => e.strength && e.strength >= 7)
+      .slice(0, 20);
+  }
 
   // === 컨텍스트 구성 ===
 
@@ -168,11 +275,22 @@ function extractRelevantContext(
   );
   if (additionalEdges.length > 0) {
     contexts.push('\n## 키워드 관련 추가 정보');
-    additionalEdges.slice(0, 10).forEach(edge => {
+    additionalEdges.slice(0, 15).forEach(edge => {
       const entityNames = edge.entities
         .map(id => knowledgeGraph.entities[id]?.name || id)
         .join(' ↔ ');
       contexts.push(`- [${edge.type}] ${entityNames}: ${edge.statement}`);
+    });
+  }
+
+  // 중요 관계 (관계 질문용)
+  if (importantEdges.length > 0) {
+    contexts.push('\n## 주요 관계');
+    importantEdges.forEach(edge => {
+      const entityNames = edge.entities
+        .map(id => knowledgeGraph.entities[id]?.name || id)
+        .join(' ↔ ');
+      contexts.push(`- [${edge.type}] ${entityNames}: ${edge.statement} (강도: ${edge.strength}/10)`);
     });
   }
 
@@ -290,6 +408,17 @@ export async function sendChatMessage(
   // 🔍 사고 과정 로깅 (개발자 도구에서 확인 가능)
   console.group('🧠 채팅 사고 과정');
   console.log('📝 사용자 질문:', lastUserMessage?.content);
+
+  // 질문 의도 분석
+  const logIntent = lastUserMessage ? detectQueryIntent(lastUserMessage.content) : null;
+  console.log('🎯 질문 의도 분석:', logIntent ? {
+    캐릭터질문: logIntent.wantsCharacters,
+    관계질문: logIntent.wantsRelationships,
+    아이템질문: logIntent.wantsItems,
+    요약질문: logIntent.wantsSummary,
+    추출키워드: logIntent.keywords,
+  } : '(없음)');
+
   console.log('📊 지식 그래프 정보:', {
     제목: context.knowledgeGraph.metadata.title,
     엔티티수: Object.keys(context.knowledgeGraph.entities).length,
