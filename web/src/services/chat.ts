@@ -57,40 +57,12 @@ function findMentionedEntityIds(
 }
 
 /**
- * 유사어/동의어 매핑 (질문 키워드 확장용)
- */
-const SYNONYM_MAP: Record<string, string[]> = {
-  '동전': ['돈', '오원', '은화', '화폐', '금전', '현금', '엽전', '백동화'],
-  '돈': ['동전', '오원', '은화', '화폐', '금전', '현금'],
-  '날개': ['날개', '비상', '날다'],
-  '사랑': ['애정', '연애', '좋아하다'],
-  '죽음': ['사망', '죽다', '자살'],
-  '집': ['방', '거처', '주거', '33번지'],
-  '아내': ['아내', '부인', '처', '여자'],
-  '남편': ['남편', '화자', '나'],
-};
-
-/**
- * 키워드를 유사어로 확장
+ * 키워드 확장 (단순화 - LLM이 엔티티 목록에서 직접 찾도록 함)
  */
 function expandKeywords(keywords: string[]): string[] {
-  const expanded = new Set(keywords);
-
-  keywords.forEach(keyword => {
-    // 직접 매핑된 유사어 추가
-    if (SYNONYM_MAP[keyword]) {
-      SYNONYM_MAP[keyword].forEach(syn => expanded.add(syn));
-    }
-    // 역방향 매핑도 확인
-    Object.entries(SYNONYM_MAP).forEach(([key, synonyms]) => {
-      if (synonyms.includes(keyword)) {
-        expanded.add(key);
-        synonyms.forEach(syn => expanded.add(syn));
-      }
-    });
-  });
-
-  return Array.from(expanded);
+  // 이제 시스템 프롬프트에 전체 엔티티 목록이 포함되므로
+  // 복잡한 유사어 매핑 없이 원본 키워드만 반환
+  return keywords;
 }
 
 /**
@@ -424,11 +396,36 @@ function extractRelevantContext(
 }
 
 /**
- * 시스템 프롬프트 생성
+ * 시스템 프롬프트 생성 (엔티티/관계 목록 포함)
  */
 function buildSystemPrompt(context: ChatContext): string {
   const { knowledgeGraph, originalText } = context;
   const title = knowledgeGraph.metadata.title;
+
+  // 엔티티를 카테고리별로 그룹화
+  const entitiesByCategory: Record<string, string[]> = {};
+  Object.values(knowledgeGraph.entities).forEach(entity => {
+    if (!entitiesByCategory[entity.category]) {
+      entitiesByCategory[entity.category] = [];
+    }
+    entitiesByCategory[entity.category].push(entity.name);
+  });
+
+  // 카테고리별 엔티티 목록 생성
+  const entityListStr = Object.entries(entitiesByCategory)
+    .map(([category, names]) => `- ${category}: ${names.slice(0, 20).join(', ')}${names.length > 20 ? ` 외 ${names.length - 20}개` : ''}`)
+    .join('\n');
+
+  // 주요 관계 목록 (강도 높은 순)
+  const topRelations = Object.values(knowledgeGraph.hyperedges)
+    .filter(e => e.strength && e.strength >= 6)
+    .sort((a, b) => (b.strength || 0) - (a.strength || 0))
+    .slice(0, 30)
+    .map(edge => {
+      const names = edge.entities.map(id => knowledgeGraph.entities[id]?.name || id).join(' ↔ ');
+      return `- [${edge.type}] ${names}: ${edge.statement.slice(0, 80)}${edge.statement.length > 80 ? '...' : ''}`;
+    })
+    .join('\n');
 
   const entityCount = Object.keys(knowledgeGraph.entities).length;
   const characterCount = Object.values(knowledgeGraph.entities)
@@ -436,7 +433,7 @@ function buildSystemPrompt(context: ChatContext): string {
   const sceneCount = Object.keys(knowledgeGraph.snapshots).length;
   const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
 
-  return `당신은 소설 "${title}"의 전문가입니다. 이 소설에 대한 질문에 상세하게 답변해주세요.
+  return `당신은 소설 "${title}"의 전문가입니다. 아래 지식 그래프 정보를 참고하여 질문에 답변하세요.
 
 ## 소설 정보
 - 제목: ${title}
@@ -445,12 +442,19 @@ function buildSystemPrompt(context: ChatContext): string {
 - 관계: ${edgeCount}개
 - 장면: ${sceneCount}개
 
+## 엔티티 목록 (카테고리별)
+${entityListStr}
+
+## 주요 관계
+${topRelations}
+
 ## 답변 규칙
-1. 소설 내용에 기반해서 구체적으로 답변하세요
-2. 인물 관계를 물으면 관계의 종류, 감정, 구체적 내용을 설명하세요
-3. 관련 장면이 있으면 언급해주세요
-4. 확실하지 않은 내용은 추측임을 명시하세요
-5. 답변은 한국어로 해주세요
+1. **반드시 위 엔티티/관계 목록에서 관련 정보를 찾아 답변하세요**
+2. 질문에 직접 언급되지 않아도, 관련된 엔티티가 있으면 함께 설명하세요
+3. 예: "동전의 의미가 뭐야?" → 엔티티 목록에서 "돈", "은화", "오원" 등 관련 항목을 찾아 답변
+4. 관련 장면이 있으면 언급해주세요
+5. 위 목록에 없는 정보로 답변하지 마세요 (할루시네이션 금지)
+6. 답변은 한국어로 해주세요
 
 ${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자 있습니다.` : '원본 텍스트는 제공되지 않았습니다.'}`;
 }
