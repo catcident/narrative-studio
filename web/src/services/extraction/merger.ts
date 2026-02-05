@@ -821,10 +821,20 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   const existingFileNameSet = new Set(existingSourceFiles.map((sf) => sf.fileName));
   const newSourceFiles: SourceFile[] = [];
 
+  // 기존 파일 ID에서 최대 번호 추출 (삭제 후 재추가 시 충돌 방지)
+  let maxFileNum = 0;
+  for (const sf of existingSourceFiles) {
+    const numMatch = sf.id.match(/F0*(\d+)/);
+    if (numMatch) {
+      maxFileNum = Math.max(maxFileNum, parseInt(numMatch[1], 10));
+    }
+  }
+
   if (fileNames && originalText) {
     for (const fileName of fileNames) {
       if (!existingFileNameSet.has(fileName)) {
-        const newId = formatId('F', existingSourceFiles.length + newSourceFiles.length + 1);
+        maxFileNum++;
+        const newId = formatId('F', maxFileNum);
         newSourceFiles.push({
           id: newId,
           fileName,

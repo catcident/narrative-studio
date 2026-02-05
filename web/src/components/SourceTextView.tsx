@@ -4,16 +4,21 @@
  * 각 파일에서 추출된 장면 목록도 표시
  */
 
-import { useState, useMemo } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2 } from 'lucide-react';
 import { useStore } from '../store';
-import type { SceneSnapshot } from '../types';
+import { updateKnowledgeGraph } from '../services/storage';
+import type { SceneSnapshot, NovelKnowledgeGraph } from '../types';
 
 export function SourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const currentDataId = useStore((s) => s.currentDataId);
+  const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
@@ -115,6 +120,116 @@ export function SourceTextView() {
       f.text.toLowerCase().includes(query)
     );
   }, [sourceFiles, searchQuery]);
+
+  // 파일 삭제 핸들러
+  const handleDeleteFile = useCallback(async (fileId: string, fileName: string) => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    setDeletingFileId(fileId);
+    try {
+      // 1. 삭제할 파일과 관련된 장면 ID 찾기
+      const scenesToDelete = new Set<string>();
+      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
+        if (scene.sourceFile === fileName || scene.sourceFileId === fileId) {
+          scenesToDelete.add(sceneId);
+        }
+      });
+
+      // 2. 새 snapshots 객체 생성 (삭제된 장면 제외)
+      const newSnapshots: Record<string, SceneSnapshot> = {};
+      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
+        if (!scenesToDelete.has(sceneId)) {
+          newSnapshots[sceneId] = scene;
+        }
+      });
+
+      // 3. 남은 장면들의 order 재정렬 (파일 순서대로)
+      const remainingSourceFiles = knowledgeGraph.metadata.sourceFiles?.filter(f => f.id !== fileId) || [];
+      const fileOrder = new Map(remainingSourceFiles.map((f, idx) => [f.fileName, idx]));
+      const fileIdOrder = new Map(remainingSourceFiles.map((f, idx) => [f.id, idx]));
+
+      // 파일별로 장면 그룹화
+      const scenesByFileIdx: Map<number, SceneSnapshot[]> = new Map();
+      Object.values(newSnapshots).forEach(scene => {
+        const fileIdx = fileOrder.get(scene.sourceFile || '') ?? fileIdOrder.get(scene.sourceFileId || '') ?? 999;
+        if (!scenesByFileIdx.has(fileIdx)) {
+          scenesByFileIdx.set(fileIdx, []);
+        }
+        scenesByFileIdx.get(fileIdx)!.push(scene);
+      });
+
+      // 파일 순서대로 정렬 후 order 재할당
+      const sortedFileIdxs = Array.from(scenesByFileIdx.keys()).sort((a, b) => a - b);
+      let newOrder = 1;
+      sortedFileIdxs.forEach(fileIdx => {
+        const scenes = scenesByFileIdx.get(fileIdx)!;
+        // 파일 내에서는 기존 order 순으로 정렬
+        scenes.sort((a, b) => a.order - b.order);
+        scenes.forEach(scene => {
+          newSnapshots[scene.sceneId] = { ...scene, order: newOrder++ };
+        });
+      });
+
+      // 4. entities의 scenes 배열에서 삭제된 장면 제거
+      const newEntities = { ...knowledgeGraph.entities };
+      Object.keys(newEntities).forEach(entityId => {
+        const entity = newEntities[entityId];
+        if (entity.scenes) {
+          newEntities[entityId] = {
+            ...entity,
+            scenes: entity.scenes.filter(sceneId => !scenesToDelete.has(sceneId)),
+          };
+        }
+      });
+
+      // 5. hyperedges의 scenes 배열에서 삭제된 장면 제거
+      const newHyperedges = { ...knowledgeGraph.hyperedges };
+      Object.keys(newHyperedges).forEach(edgeId => {
+        const edge = newHyperedges[edgeId];
+        if (edge.scenes) {
+          newHyperedges[edgeId] = {
+            ...edge,
+            scenes: edge.scenes.filter(sceneId => !scenesToDelete.has(sceneId)),
+          };
+        }
+      });
+
+      // 6. sourceFiles에서 해당 파일 제거
+      const newSourceFiles = remainingSourceFiles;
+
+      // 7. 새 지식 그래프 생성
+      const updatedGraph: NovelKnowledgeGraph = {
+        ...knowledgeGraph,
+        metadata: {
+          ...knowledgeGraph.metadata,
+          sourceFiles: newSourceFiles,
+          updatedAt: new Date().toISOString(),
+        },
+        entities: newEntities,
+        hyperedges: newHyperedges,
+        snapshots: newSnapshots,
+        stats: {
+          ...knowledgeGraph.stats,
+          totalEntities: Object.keys(newEntities).length,
+          totalEdges: Object.keys(newHyperedges).length,
+        },
+      };
+
+      // 8. 서버에 업데이트
+      await updateKnowledgeGraph(currentDataId, updatedGraph);
+
+      // 9. 스토어 업데이트
+      setKnowledgeGraph(updatedGraph, undefined, currentDataId);
+
+      console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개`);
+    } catch (error) {
+      console.error('[SourceTextView] 파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    } finally {
+      setDeletingFileId(null);
+      setConfirmDeleteId(null);
+    }
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
   if (sourceFiles.length === 0) {
     return (
@@ -219,6 +334,37 @@ export function SourceTextView() {
                     <Copy className="w-4 h-4 text-gray-400" aria-hidden="true" />
                   )}
                 </button>
+
+                {/* 삭제 버튼 */}
+                {confirmDeleteId === file.id ? (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleDeleteFile(file.id, file.fileName)}
+                      disabled={deletingFileId === file.id}
+                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deletingFileId === file.id ? '삭제 중...' : '확인'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDeleteId(file.id);
+                    }}
+                    className="p-1.5 hover:bg-red-100 rounded transition-colors"
+                    title="파일 삭제"
+                    aria-label="파일 삭제"
+                  >
+                    <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" aria-hidden="true" />
+                  </button>
+                )}
               </button>
 
               {/* 파일 내용 */}

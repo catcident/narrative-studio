@@ -73,6 +73,60 @@ export async function GET(
   }
 }
 
+// 부분 업데이트 (PUT)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authResult = await requireAuth();
+    if ('error' in authResult) return authResult.error;
+    const { userId } = authResult;
+
+    const { id } = await params;
+    const body = await request.json();
+    const { knowledgeGraph } = body;
+
+    if (!knowledgeGraph) {
+      return NextResponse.json({ error: 'knowledgeGraph is required' }, { status: 400 });
+    }
+
+    const db = await connectMongo();
+    const now = new Date();
+
+    // 기존 데이터 확인
+    const existing = await db.collection('knowledgeGraphs').findOne({
+      _id: new ObjectId(id),
+      userId,
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // 업데이트
+    const result = await db.collection('knowledgeGraphs').updateOne(
+      { _id: new ObjectId(id), userId },
+      {
+        $set: {
+          data: knowledgeGraph,
+          title: knowledgeGraph.metadata?.title || existing.title,
+          updatedAt: now,
+          entityCount: Object.keys(knowledgeGraph.entities || {}).length,
+          edgeCount: Object.keys(knowledgeGraph.hyperedges || {}).length,
+          sceneCount: Object.keys(knowledgeGraph.snapshots || {}).length,
+        },
+        $inc: { version: 1 },
+      }
+    );
+
+    return NextResponse.json({ success: result.modifiedCount > 0 });
+  } catch (err) {
+    console.error('[api] knowledge-graphs/[id] PUT error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 // 삭제 (사용자 소유권 확인)
 export async function DELETE(
   request: NextRequest,

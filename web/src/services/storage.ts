@@ -257,6 +257,52 @@ async function getLocalListFull(): Promise<SavedKnowledgeGraph[]> {
   }
 }
 
+async function updateLocal(id: string, knowledgeGraph: NovelKnowledgeGraph): Promise<boolean> {
+  try {
+    const dbConn = await openDB();
+    const tx = dbConn.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    // 기존 데이터 가져오기
+    const existing = await new Promise<SavedKnowledgeGraph | undefined>((resolve, reject) => {
+      const request = store.get(id);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+
+    if (!existing) {
+      console.error('[storage] 로컬 업데이트 실패: 데이터 없음');
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const updatedItem: SavedKnowledgeGraph = {
+      ...existing,
+      title: knowledgeGraph.metadata.title,
+      updatedAt: now,
+      version: existing.version + 1,
+      data: knowledgeGraph,
+      entityCount: Object.keys(knowledgeGraph.entities).length,
+      edgeCount: Object.keys(knowledgeGraph.hyperedges).length,
+      sceneCount: Object.keys(knowledgeGraph.snapshots || {}).length,
+    };
+
+    const tx2 = dbConn.transaction(STORE_NAME, 'readwrite');
+    const store2 = tx2.objectStore(STORE_NAME);
+    await new Promise<void>((resolve, reject) => {
+      const request = store2.put(updatedItem);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+
+    console.log(`[storage] 로컬 업데이트 완료: ${id}`);
+    return true;
+  } catch (err) {
+    console.error('[storage] 로컬 업데이트 실패:', err);
+    return false;
+  }
+}
+
 async function deleteLocal(id: string): Promise<boolean> {
   try {
     const dbConn = await openDB();
@@ -441,6 +487,35 @@ export async function getNovelList(): Promise<Array<{
     return await response.json();
   } catch {
     return [];
+  }
+}
+
+/**
+ * 지식 그래프 부분 업데이트 (PUT)
+ */
+export async function updateKnowledgeGraph(
+  id: string,
+  knowledgeGraph: NovelKnowledgeGraph
+): Promise<boolean> {
+  // 로컬 ID인 경우
+  if (id.startsWith('kg_')) {
+    return updateLocal(id, knowledgeGraph);
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/knowledge-graphs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ knowledgeGraph }),
+    });
+
+    if (!response.ok) throw new Error('API 응답 오류');
+
+    const result = await response.json();
+    return result.success;
+  } catch (err) {
+    console.warn('[storage] 서버 업데이트 실패, 로컬 업데이트:', err);
+    return updateLocal(id, knowledgeGraph);
   }
 }
 
