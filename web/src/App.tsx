@@ -23,7 +23,7 @@ import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
 import { readFileAsText } from './services/fileReader';
-import { createBillingCallback, deductAfterSave, deductPartial, checkSufficientBalance } from './services/billing';
+import { createBillingCallback, checkSufficientBalance } from './services/billing';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -132,7 +132,7 @@ function App() {
 
       // 잔액 사전 확인
       if (subscription) {
-        const balanceCheck = await checkSufficientBalance(text.length, existingModel || '');
+        const balanceCheck = await checkSufficientBalance();
         if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
       }
 
@@ -144,28 +144,18 @@ function App() {
         model: existingModel,
         fileName: file.name,
         existingGraph: knowledgeGraph,
-        onChunkBilling: createBillingCallback(addChunkUsage),
+        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
       // DB에 저장 (기존 ID 사용하여 업데이트)
       setAddProgress('저장 중...');
       const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
-      if (subscription) {
-        setAddProgress('크레딧 차감 중...');
-        const { currentUsage, loadSubscription } = useStore.getState();
-        await deductAfterSave(saved.id, knowledgeGraph.metadata.title, currentUsage, updateCreditBalance, loadSubscription);
-      }
-
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       setAddProgress('');
       setShowUsageSummary(true);
     } catch (err: unknown) {
       console.error('[extraction] 파일 추가 오류:', err);
-      if (subscription) {
-        const { currentUsage, loadSubscription } = useStore.getState();
-        await deductPartial(knowledgeGraph.metadata.title, currentUsage, updateCreditBalance, loadSubscription);
-      }
       setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAddingFile(false);

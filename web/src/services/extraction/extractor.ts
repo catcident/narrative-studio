@@ -63,6 +63,13 @@ ${limitedCategoryEntities.map(e => {
   }, 150000); // 2.5분 타임아웃
 
   if (!response.ok) {
+    // 잔액 부족 (402): 예외 대신 빈 결과 + 플래그 반환
+    if (response.status === 402) {
+      return {
+        data: { chapters: [], scenes: [], entities: [], relationships: [] },
+        billing: { prompt_tokens: 0, completion_tokens: 0, model: model || '', insufficient_balance: true },
+      };
+    }
     const err = await response.text();
     console.error('[extraction] API 응답 에러:', err);
     throw new Error(`API 오류: ${response.status} - ${err.slice(0, 200)}`);

@@ -37,6 +37,9 @@ export interface ChunkBilling {
   prompt_tokens: number;
   completion_tokens: number;
   model: string;
+  credits_deducted?: number;
+  balance_after?: number | null;
+  insufficient_balance?: boolean;
 }
 
 export interface ChunkExtractionResult {

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
-import { checkAnalyzeEligibility } from '@/lib/balanceCache';
+import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { AUTH_ENABLED, getAuthUserId } from '@/lib/auth';
-import { addSessionTokens, getActiveSessionIdByUserId } from '@/lib/analysisSession';
-import { CHARS_PER_TOKEN } from '@/lib/modelCosts';
+import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
+import { CHARS_PER_TOKEN, getModelCosts, tokenCostUsd, costUsdToCredits } from '@/lib/modelCosts';
+import { proxyToCatcident } from '@/services/billingProxy';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -86,11 +86,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: balanceError }, { status: 402 });
     }
 
-    // userId 조회 (rate limit + 세션 추적 공용)
+    // userId + accessToken 조회 (rate limit + deduct 프록시 공용)
     let userId: string | null = null;
+    let accessToken: string | undefined;
     if (AUTH_ENABLED) {
-      userId = await getAuthUserId();
-      if (userId) {
+      const authResult = await requireAuth();
+      if (!('error' in authResult)) {
+        userId = authResult.userId;
+        accessToken = authResult.accessToken;
         const limited = checkRateLimit(userId);
         if (limited) {
           return NextResponse.json(
@@ -139,21 +142,52 @@ export async function POST(request: NextRequest) {
     // 토큰 사용량 결정: usage 필드 우선, 없으면 텍스트 길이에서 추정
     const billing = resolveTokenBilling(data, prompt.length);
 
-    // 서버 측 토큰 누적 (userId 기반 자동 조회, 클라이언트 sessionId 무시)
-    if (userId && userId !== 'anonymous') {
-      const activeSessionId = getActiveSessionIdByUserId(userId);
-      if (activeSessionId && billing) {
-        addSessionTokens(activeSessionId, {
-          promptTokens: billing.prompt_tokens,
-          completionTokens: billing.completion_tokens,
-          model,
-        });
+    // 청크별 실시간 크레딧 차감
+    let deductResult: { balance_after: number; amount_deducted: number } | null = null;
+    let insufficientBalance = false;
+
+    if (userId && userId !== 'anonymous' && billing) {
+      const { inputCost, outputCost } = getModelCosts(model);
+      const credits = costUsdToCredits(
+        tokenCostUsd(billing.prompt_tokens, billing.completion_tokens, inputCost, outputCost)
+      );
+
+      if (credits > 0) {
+        try {
+          const deductResponse = await proxyToCatcident('/credits/deduct/', accessToken, {
+            method: 'POST',
+            body: JSON.stringify({
+              service: 'storygraph',
+              amount: credits,
+              description: '소설 분석 (청크)',
+              metadata: { model, prompt_tokens: billing.prompt_tokens, completion_tokens: billing.completion_tokens },
+            }),
+          });
+
+          if (deductResponse.ok) {
+            deductResult = await deductResponse.json();
+            updateBalanceCache(userId, deductResult!.balance_after);
+          } else if (deductResponse.status === 402) {
+            insufficientBalance = true;
+            console.warn(`[analyze] 잔액 부족으로 차감 실패 (사용량: ${credits}cr)`);
+          } else {
+            // Fail-open: 차감 실패해도 분석 데이터는 반환
+            console.error(`[analyze] 차감 실패 (${deductResponse.status}), fail-open`);
+          }
+        } catch (err: unknown) {
+          console.error('[analyze] 차감 네트워크 오류, fail-open:', err instanceof Error ? err.message : err);
+        }
       }
     }
 
     // 클라이언트 UI용 billing 정보
     if (billing) {
-      data._billing = billing;
+      data._billing = {
+        ...billing,
+        credits_deducted: deductResult?.amount_deducted ?? 0,
+        balance_after: deductResult?.balance_after ?? null,
+        insufficient_balance: insufficientBalance,
+      };
     }
 
     console.log(`[analyze] 응답 성공`);

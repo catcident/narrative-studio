@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, deductPartial, startAnalysisSession, settleAnalysisSession, releaseAnalysisSession } from '../../services/billing';
+import { createBillingCallback, checkSufficientBalance } from '../../services/billing';
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
@@ -137,94 +137,31 @@ export function FileUpload() {
   /**
    * 분석 공통 래퍼: loading/billing/error 라이프사이클을 한 곳에서 관리
    *
-   * @param title - 부분 차감/에러 로그에 사용할 제목
+   * @param title - 에러 로그에 사용할 제목
    * @param work  - 실제 분석 로직. 성공 시 true 반환
    */
   const runExtraction = useCallback(
-    async (title: string, work: () => Promise<{ completed: boolean; sessionId: string | null }>) => {
+    async (title: string, work: () => Promise<boolean>) => {
       setLocalLoading(true);
       setLoading(true);
       setError(null);
       resetCurrentUsage();
 
-      let sessionId: string | null = null;
-
       try {
-        const result = await work();
-        sessionId = result.sessionId;
-        if (result.completed) {
+        const completed = await work();
+        if (completed) {
           setShowUsageSummary(true);
         }
       } catch (err: unknown) {
         console.error('[extraction] error:', err);
-        const message = err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.';
-
-        // 세션이 있으면 release (분석 실패 시 hold 환불)
-        if (sessionId) {
-          await releaseAnalysisSession(sessionId).catch(() => {});
-        } else if (subscription) {
-          // 세션 없이 실패 (hold 전 에러 또는 AUTH_ENABLED=false) — 기존 partial deduct
-          const { currentUsage, loadSubscription } = useStore.getState();
-          await deductPartial(title, currentUsage, updateCreditBalance, loadSubscription);
-        }
-
-        setError(message);
+        setError(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
         resetProgressState(true);
       } finally {
         setLocalLoading(false);
         setLoading(false);
       }
     },
-    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, subscription, updateCreditBalance, resetProgressState],
-  );
-
-  /**
-   * 분석 완료 후 저장 + 정산 공통 처리 (Hold/Settle 방식)
-   */
-  const saveAndSettle = useCallback(
-    async (
-      graph: NovelKnowledgeGraph,
-      title: string,
-      sessionId: string | null,
-      existingId?: string,
-    ): Promise<{ id: string }> => {
-      setProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(graph, undefined, undefined, existingId);
-
-      if (subscription && sessionId) {
-        setProgress('크레딧 정산 중...');
-        const idempotencyKey = `storygraph-${saved.id}-settle`;
-        const result = await settleAnalysisSession(sessionId, title, idempotencyKey);
-        if (result) {
-          updateCreditBalance(result.balance_after);
-        } else {
-          // 정산 실패 — 구독 재로드 (hold는 만료 시 자동 정산됨)
-          const { loadSubscription } = useStore.getState();
-          loadSubscription();
-          throw new Error('크레딧 정산에 실패했습니다. 예약된 크레딧은 자동으로 처리됩니다.');
-        }
-      }
-
-      return saved;
-    },
-    [subscription, updateCreditBalance],
-  );
-
-  /** Hold 시작 헬퍼 — billing 활성 시 세션 시작, 비활성 시 null */
-  const startHoldSession = useCallback(
-    async (charCount: number, model: string): Promise<string | null> => {
-      if (!subscription) return null;
-      const sessionResult = await startAnalysisSession(
-        model,
-        { charCount },
-      );
-      if (!sessionResult) {
-        throw new Error('크레딧 예약에 실패했습니다. 잔액을 확인해주세요.');
-      }
-      updateCreditBalance(sessionResult.balance_after);
-      return sessionResult.session_id;
-    },
-    [subscription, updateCreditBalance],
+    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState],
   );
 
   // ==================== 초기화 ====================
@@ -343,8 +280,11 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      // Hold 시작
-      const sessionId = await startHoldSession(combinedText.length, currentModel);
+      // 잔액 사전 확인
+      if (subscription) {
+        const balanceCheck = await checkSufficientBalance();
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
+      }
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: combinedText,
@@ -352,7 +292,7 @@ export function FileUpload() {
         onProgress: makeProgressCallback(),
         model: currentModel,
         fileName: sortedFiles[0].name,
-        onChunkBilling: createBillingCallback(addChunkUsage),
+        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
       const sourceFiles = buildSourceFiles(fileInfos);
@@ -363,15 +303,16 @@ export function FileUpload() {
         newKnowledgeGraph.metadata.author = bookAuthor.trim();
       }
 
-      const saved = await saveAndSettle(newKnowledgeGraph, combinedTitle, sessionId);
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setBookTitle('');
       setBookAuthor('');
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
       resetProgressState();
-      return { completed: true, sessionId };
+      return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, saveAndSettle, startHoldSession, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -410,35 +351,39 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     await runExtraction(savedProgress.title, async () => {
-      // Hold 시작 (남은 청크 문자수 추정)
-      const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
-      const estimatedChars = remainingChunks * 5000;
-      const resumeModel = savedProgress.model || currentModel;
-      const sessionId = await startHoldSession(estimatedChars, resumeModel);
+      // 잔액 사전 확인
+      if (subscription) {
+        const balanceCheck = await checkSufficientBalance();
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
+      }
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: '',
         title: savedProgress.title,
         onProgress: makeProgressCallback(),
         resumeFrom: savedProgress,
-        onChunkBilling: createBillingCallback(addChunkUsage),
+        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
-      const saved = await saveAndSettle(newKnowledgeGraph, savedProgress.title, sessionId);
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
       resetProgressState();
-      return { completed: true, sessionId };
+      return true;
     });
-  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, saveAndSettle, startHoldSession, setKnowledgeGraph, resetProgressState, currentModel]);
+  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
 
   // 추가 분석 실행 (파일명 확정 후)
   const executeAddFile = useCallback(async (file: File, text: string, finalFileName: string) => {
     if (!knowledgeGraph) return;
 
     await runExtraction(knowledgeGraph.metadata.title, async () => {
-      // Hold 시작
-      const sessionId = await startHoldSession(text.length, currentModel);
+      // 잔액 사전 확인
+      if (subscription) {
+        const balanceCheck = await checkSufficientBalance();
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
+      }
 
       setProgress('추가 분석 중...');
       const updatedKnowledgeGraph = await extractKnowledgeGraph({
@@ -448,21 +393,22 @@ export function FileUpload() {
         model: currentModel,
         fileName: finalFileName,
         existingGraph: knowledgeGraph,
-        onChunkBilling: createBillingCallback(addChunkUsage),
+        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
-      const saved = await saveAndSettle(
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(
         updatedKnowledgeGraph,
-        knowledgeGraph.metadata.title,
-        sessionId,
+        undefined,
+        undefined,
         currentDataId || undefined,
       );
 
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       resetProgressState();
-      return { completed: true, sessionId };
+      return true;
     });
-  }, [knowledgeGraph, currentDataId, runExtraction, makeProgressCallback, currentModel, addChunkUsage, saveAndSettle, startHoldSession, setKnowledgeGraph, resetProgressState]);
+  }, [knowledgeGraph, currentDataId, runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
 
   // 추가 분석 (기존 결과에 새 파일 병합)
   const handleAddFile = useCallback(async (file: File) => {
@@ -553,8 +499,11 @@ export function FileUpload() {
         throw new Error('내용이 비어있습니다.');
       }
 
-      // Hold 시작
-      const sessionId = await startHoldSession(text.length, currentModel);
+      // 잔액 사전 확인
+      if (subscription) {
+        const balanceCheck = await checkSufficientBalance();
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
+      }
 
       setProgress('분석 중...');
       const newKnowledgeGraph = await extractKnowledgeGraph({
@@ -563,7 +512,7 @@ export function FileUpload() {
         onProgress: makeProgressCallback(),
         model: currentModel,
         fileName: sourceFileName,
-        onChunkBilling: createBillingCallback(addChunkUsage),
+        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
@@ -573,7 +522,8 @@ export function FileUpload() {
         newKnowledgeGraph.metadata.sourceFiles = sourceFiles;
       }
 
-      const saved = await saveAndSettle(newKnowledgeGraph, title, sessionId);
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setExistingTitles(prev => [...prev, title]);
       setBookTitle('');
@@ -584,9 +534,9 @@ export function FileUpload() {
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
       resetProgressState();
-      return { completed: true, sessionId };
+      return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, saveAndSettle, startHoldSession, setKnowledgeGraph, resetProgressState]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
 
   // ==================== 렌더링 ====================
 

@@ -3,7 +3,7 @@
  */
 
 import type { NovelKnowledgeGraph } from '../../types';
-import type { KnownEntity, EntitySummary } from './types';
+import type { KnownEntity, EntitySummary, ChunkBilling } from './types';
 import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
 
@@ -59,7 +59,7 @@ export function formatEntitySummariesForSelection(summaries: EntitySummary[]): s
 
 export interface SelectionResult {
   names: string[];
-  billing: { prompt_tokens: number; completion_tokens: number; model: string } | null;
+  billing: ChunkBilling | null;
 }
 
 /** 그래프의 모든 엔티티 이름 목록 반환 (선별 스킵/실패 시 폴백용) */

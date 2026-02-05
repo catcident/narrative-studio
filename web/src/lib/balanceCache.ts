@@ -103,6 +103,11 @@ export async function checkAnalyzeEligibility(): Promise<string | null> {
   }
 }
 
+/** deduct 응답 후 캐시 즉시 갱신 */
+export function updateBalanceCache(userId: string, balance: number): void {
+  balanceCache.set(userId, { balance, cachedAt: Date.now() });
+}
+
 /** Invalidate cached balance for a user (call after balance changes) */
 export function invalidateBalanceCache(userId: string): void {
   balanceCache.delete(userId);

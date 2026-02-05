@@ -118,48 +118,31 @@ setApiKey(), hasApiKey(), getApiKey()
 
 ### ⚠️ Billing 추적 필수 규칙
 
-**Hold/Settle 과금 흐름**:
+**청크별 실시간 차감 흐름**:
 
 ```
 클라이언트                    Next.js 서버                catcident-backend
 ────────                    ──────────                ─────────────────
-startAnalysisSession(       POST /api/analysis-session
-  model, {charCount})         ↓ estimateCreditsFromCharCount()  (서버가 hold 금액 계산)
-                              ↓ createAnalysisSession()       ──→  /credits/hold/
-                              ← session_id + hold_token
+checkSufficientBalance()    GET /api/billing/credits/balance
+                              ← balance > 0 확인
 
-extractKnowledgeGraph({sessionId})
-  → /api/analyze            ──→  getActiveSessionIdByUserId()  (userId로 세션 자동 조회)
-                              ↓ addSessionTokens()             (서버 측 토큰 누적)
-  → /api/analyze            ──→  addSessionTokens()
-  ...
+extractKnowledgeGraph({ onChunkBilling })
+  → /api/analyze (청크 1)   ──→  OpenRouter 호출
+                              ↓ 토큰 사용량 기반 크레딧 계산 (modelCosts.ts)
+                              ──→  /credits/deduct/ (즉시 차감)
+                              ← { billing, balance_after, insufficient_balance? }
+  onChunkBilling(billing)   ← CreditBadge 실시간 갱신
 
-settleAnalysisSession() ──→  POST /api/analysis-session/settle
-                            ↓ calculateCredits(session.tokens) (서버 측 계산, modelCosts.ts)
-                            ──→  /credits/settle/ (actual_amount)
-
-실패 시 (스마트 릴리스):
-releaseAnalysisSession() ──→ POST /api/analysis-session/release
-                            ↓ tokens.length > 0 ? settle(부분) : release(전액)
+  → /api/analyze (청크 2)   ──→  OpenRouter 호출
+                              ↓ 잔액 부족 시 insufficient_balance: true 반환
+                              ← 분석 중단, 부분 결과 반환
 ```
 
 새로운 분석 경로를 추가할 때 체크리스트:
-- [ ] `sessionId`를 `extractKnowledgeGraph()`에 전달
-- [ ] `onChunkBilling` 콜백 전달 — UI 표시용 (서버 측 추적과 별개)
-- [ ] `startHoldSession()` → 분석 → `saveAndSettle()` 패턴 사용
-- [ ] 실패 시 `releaseAnalysisSession()` 호출 — 토큰 사용 있으면 부분 정산 자동 처리
-- [ ] `idempotencyKey`는 결정론적 값 사용 (`storygraph-{savedId}-settle`)
-- [ ] `AUTH_ENABLED=false` 환경에서 sessionId=null → 기존 동작 유지
-
-### ⚠️ Idempotency Key 규칙
-
-```typescript
-// ❌ Date.now() → 매 호출마다 다른 값 → 중복 정산 방지 실패
-const key = `storygraph-${savedId}-${Date.now()}`;
-
-// ✅ 결정론적 값 → 동일 작업이면 동일 키
-const key = `storygraph-${savedId}-settle`;
-```
+- [ ] `onChunkBilling` 콜백 전달 — 실시간 잔액 갱신 + UI 표시
+- [ ] `checkSufficientBalance()` 분석 시작 전 호출
+- [ ] `insufficient_balance` 응답 시 분석 중단 + 부분 결과 반환 처리
+- [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
 
 ### 파일 추가 분석
 
@@ -248,7 +231,6 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 // API 함수 (서버 프록시 경유)
 getSubscription()           // 구독 정보 (plan, balance, features)
 getCreditBalance()          // 잔액만 조회
-deductCredits(amount, desc, metadata?, idempotencyKey)  // 차감 (idempotencyKey 필수)
 getUsageHistory(page)       // 거래 내역 (페이지네이션)
 getPlans()                  // 요금제 목록
 getCreditPackages()         // 크레딧 상품 목록
@@ -259,19 +241,10 @@ calculateCreditsFromTokens(prompt, completion, model)  // 단일 모델 토큰�
 calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합산
 
 // 잔액 확인 (discriminated union 반환)
-checkSufficientBalance(charCount, model)  // → { sufficient: true } | { sufficient: false; error: string }
-
-// 차감 헬퍼 (레거시 — deductCredits 래퍼, AUTH_ENABLED=false 폴백용)
-deductAfterSave(savedId, title, currentUsage, updateCreditBalance, onDeductFailed?)
-deductPartial(title, currentUsage, updateCreditBalance, onDeductFailed?)
-
-// 분석 세션 (Hold/Settle — 권장)
-startAnalysisSession(model, metadata?)                     // 서버가 hold 금액 계산 + sessionId
-settleAnalysisSession(sessionId, title, idempotencyKey)   // 서버 측 정산
-releaseAnalysisSession(sessionId)                          // 스마트 릴리스 (토큰 있으면 부분 정산)
+checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
 
 // Billing 콜백 생성
-createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜백
+createBillingCallback(updateCreditBalance?)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백
 ```
 
 ### 로컬 추정 함수 동기화
@@ -283,40 +256,14 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜�
 ### 중요 규칙
 
 - **charCount vs bytes**: 분석 함수에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
-- **idempotency key**: `deductCredits()` 호출 시 결정론적 키 필수. `Date.now()`, UUID 금지 → `storygraph-{savedId}-{chunks.length}` 패턴
-- **차감 시점**: 분석 완료 + 저장 후 1회만 (`deductAfterSave` 사용)
-- **차감 금액**: `calculateCreditsFromChunks()`로 청크별 개별 계산 후 합산 (혼합 모델 대응)
-- **부분 실패**: 분석 도중 실패해도 이미 소비한 API 호출 비용이 있으므로 `deductPartial` 처리 필요
-- **차감 실패**: `onDeductFailed` 콜백으로 subscription 재동기화 처리
+- **차감 금액**: 서버가 실제 OpenRouter 토큰 사용량 기반으로 계산 후 즉시 차감
+- **부분 실패**: 분석 도중 잔액 소진 시 `insufficient_balance` 플래그로 중단 → 이미 완료된 청크까지 부분 결과 반환
 - **잔액 확인**: 모든 분석 진입점에서 `checkSufficientBalance()` 호출 필수
-
-### ⚠️ 서버 API 라우트 — upstream 응답 확인 순서
-
-**규칙**: 서버 측 상태 변경 (`deleteAnalysisSession`, `invalidateBalanceCache` 등)은 반드시 upstream 응답 성공 확인 **이후**에 수행. 실패 시 클라이언트가 재시도할 수 있도록 세션 보존.
-
-```typescript
-// ❌ upstream 실패 시 세션 소멸 → 재시도 불가
-deleteAnalysisSession(session_id);
-if (!response.ok) return NextResponse.json({ error: '...' }, { status: 502 });
-
-// ✅ 성공 확인 후 정리
-if (!response.ok) return NextResponse.json({ error: '...' }, { status: 502 });
-deleteAnalysisSession(session_id);
-invalidateBalanceCache(userId);
-```
-
-### ⚠️ 클라이언트→서버 신뢰 경계
-
-**규칙**: 서버 API 라우트는 클라이언트에서 전달하는 금액/세션ID/토큰 수 등을 신뢰하지 않음.
-
-- hold 금액: 서버가 `estimateCreditsFromCharCount(charCount, model)`로 계산
-- 세션 추적: 서버가 `getActiveSessionIdByUserId(userId)`로 자동 조회
-- settle 금액: 서버가 `calculateCredits(session.tokens)`으로 계산
-- 클라이언트가 전달하는 `sessionId`, `amount` 등은 **무시**
+- **실시간 갱신**: `onChunkBilling` 콜백의 `balance_after`로 CreditBadge 실시간 동기화
 
 ### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
 
-`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. `sessionId`는 서버 측에서 userId로 자동 조회하므로 클라이언트에서 전달하지 않음.
+`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. 서버가 OpenRouter 응답 후 토큰 사용량을 계산하여 즉시 크레딧을 차감하고, 응답에 `billing`, `balance_after`, `insufficient_balance` 필드를 포함하여 반환.
 
 ### ⚠️ ChunkBilling 타입 일관성
 
@@ -344,10 +291,10 @@ Discriminated union 반환이므로 type narrowing 필수:
 
 ```typescript
 // ❌ destructuring → sufficient: true일 때 error 프로퍼티 없음
-const { sufficient, error } = await checkSufficientBalance(charCount, model);
+const { sufficient, error } = await checkSufficientBalance();
 
 // ✅ type narrowing 패턴
-const balanceCheck = await checkSufficientBalance(charCount, model);
+const balanceCheck = await checkSufficientBalance();
 if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
 ```
 

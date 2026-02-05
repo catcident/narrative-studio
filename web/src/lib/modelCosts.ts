@@ -4,7 +4,7 @@
  * 단일 진실 공급원(single source of truth): AVAILABLE_MODELS (types.ts)
  * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
  *
- * 클라이언트(billing.ts)와 서버(settle/route.ts, analysis-session/route.ts) 양쪽에서 사용.
+ * 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
  */
 
 import { AVAILABLE_MODELS } from '@/types';
@@ -45,51 +45,3 @@ export function costUsdToCredits(costUsd: number): number {
   return Math.max(1, Math.ceil((costUsd * USD_TO_KRW * MARGIN) / KRW_PER_CREDIT));
 }
 
-/** 토큰 배열에서 크레딧 계산 (settle 라우트용) */
-export function calculateCredits(
-  tokens: Array<{ promptTokens: number; completionTokens: number; model: string }>,
-): number {
-  if (tokens.length === 0) return 0;
-  return tokens.reduce((sum, t) => {
-    const { inputCost, outputCost } = getModelCosts(t.model);
-    return sum + costUsdToCredits(tokenCostUsd(t.promptTokens, t.completionTokens, inputCost, outputCost));
-  }, 0);
-}
-
-/**
- * 문자 수 + 모델에서 예상 크레딧 추정 (서버 측 hold 금액 계산용)
- *
- * 청크 분할 오버헤드를 반영:
- * - 청크 오버랩으로 인한 재처리 (~6%)
- * - 엔티티 선별 API 호출 (flash 모델로 청크당 1회)
- * - 시스템 프롬프트 + 엔티티 컨텍스트 반복
- * MARGIN=3.0이 추가 버퍼 역할.
- */
-export function estimateCreditsFromCharCount(charCount: number, model: string): number {
-  if (charCount <= 0) return 0;
-
-  // 청크 분할 고려: 오버랩으로 인해 실제 처리 문자수가 증가
-  const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
-  const numChunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
-
-  // 메인 모델: 전체 텍스트 + 청크당 시스템 프롬프트/엔티티 컨텍스트 오버헤드 (~500 tokens/chunk)
-  const PER_CHUNK_OVERHEAD_TOKENS = 500;
-  const inputTokens = Math.ceil(charCount / CHARS_PER_TOKEN) + numChunks * PER_CHUNK_OVERHEAD_TOKENS;
-  const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
-
-  const { inputCost, outputCost } = getModelCosts(model);
-  let totalCostUsd = tokenCostUsd(inputTokens, outputTokens, inputCost, outputCost);
-
-  // 엔티티 선별 호출 (3번째 청크부터, flash 모델 사용)
-  if (numChunks > 2) {
-    const selectionCalls = numChunks - 2;
-    const selectionTokensPerCall = 1500; // 프롬프트 + 응답
-    const selectionCost = getModelCosts('google/gemini-2.0-flash-001');
-    totalCostUsd += selectionCalls * tokenCostUsd(
-      selectionTokensPerCall, Math.ceil(selectionTokensPerCall * 0.1),
-      selectionCost.inputCost, selectionCost.outputCost,
-    );
-  }
-
-  return costUsdToCredits(totalCostUsd);
-}
