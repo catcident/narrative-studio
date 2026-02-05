@@ -6,7 +6,7 @@
 import type { NovelKnowledgeGraph } from '../types';
 import { DEFAULT_MODEL } from '../types';
 
-function getApiKey(): string {
+export function getApiKey(): string {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('OPENROUTER_API_KEY') || '';
 }
@@ -115,10 +115,14 @@ const USER_PROMPT = `소설 텍스트 청크 {{chunkNum}} 분석
 - **서사적 역할이 다른 물건**: 평범한 도구 vs 특별한 능력을 가진 물건 → 별개
 - **물리적으로 다른 객체**: 같은 종류여도 별개 개체면 별개 (예: "A의 검"과 "B의 검")
 - **다른 캐릭터**: 같은 종류/직업이어도 개체가 다르면 별개
+- **⚠️ 같은 종류지만 용도/역할이 다른 물건**: 반드시 별개로 추출!
+  - 예: "주인공의 집" vs "새로 발견한 오두막" → 둘 다 집이지만 별개
+  - 예: "마법 지팡이" vs "평범한 지팡이" → 별개 엔티티
+  - 이름이 비슷해도 용도/역할/소유자가 다르면 수식어 붙여서 구분!
 
 **판단 기준**: "이 두 개가 소설에서 같은 역할/의미를 가지는가?"
 - YES → 이전 이름 사용
-- NO → 새로 추출 (구분되는 이름으로)
+- NO → 새로 추출 (구분되는 이름으로, 수식어 붙여서 구분)
 
 ### 6. 관계 필수 규칙
 - from/to는 반드시 entities의 name과 동일해야 함
@@ -132,10 +136,11 @@ export interface ExtractionProgress {
   allExtracted: any[];
   knownCharacters: { name: string; description: string; aliases?: string[] }[];
   chunks: string[];
+  chunkSourceFileIndices?: number[];  // 각 청크가 어느 파일에서 왔는지
   timestamp: number;
   model?: string;  // 사용된 모델
   originalText?: string;  // 원본 텍스트
-  fileName?: string;  // 원본 파일명
+  fileNames?: string[];  // 원본 파일명 배열
 }
 
 // localStorage 키
@@ -178,10 +183,14 @@ export function hasProgress(): ExtractionProgress | null {
   return loadProgress();
 }
 
+// 파일 구분선 상수
+const FILE_SEPARATOR = '\n\n--- 파일 구분 ---\n\n';
+
 /**
  * 스마트 청크 분할
  *
  * ⚠️ 중요: 청크는 반드시 "화/장" 단위로 분할해야 함!
+ * ⚠️ 중요: 다른 파일의 내용은 절대 하나의 청크에 합쳐지면 안 됨!
  *
  * 잘못된 분할 (씬/구분선 단위):
  *   - 청크1: 1화 씬1 → LLM: "1화: 아침"
@@ -198,7 +207,50 @@ export function hasProgress(): ExtractionProgress | null {
  *   - 구분선 (---, ***, ===) → 씬 구분임
  *   - ## 또는 ### 헤딩 → 씬 제목일 수 있음
  */
+interface ChunkWithSource {
+  content: string;
+  sourceFileIndex: number;  // 원본 파일 인덱스 (0부터 시작)
+}
+
 function splitIntoSmartChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
+  return splitIntoSmartChunksWithSource(text, targetSize, overlapSize).map(c => c.content);
+}
+
+/**
+ * 청크 분할 + 원본 파일 인덱스 추적
+ */
+function splitIntoSmartChunksWithSource(text: string, targetSize: number = 5000, overlapSize: number = 300): ChunkWithSource[] {
+  // 🔥 먼저 파일 구분선으로 분리 (다른 파일끼리 절대 합치지 않음)
+  const fileParts = text.split(FILE_SEPARATOR).filter(part => part.trim());
+
+  // 단일 파일이면 기존 로직 그대로
+  if (fileParts.length <= 1) {
+    return splitSingleFileIntoChunks(text, targetSize, overlapSize).map(content => ({
+      content,
+      sourceFileIndex: 0,
+    }));
+  }
+
+  // 여러 파일이면 각 파일을 독립적으로 청크 분할 후 합침
+  console.log(`[청크 분할] ${fileParts.length}개 파일 독립 분할`);
+  const allChunks: ChunkWithSource[] = [];
+
+  for (let i = 0; i < fileParts.length; i++) {
+    const filePart = fileParts[i];
+    const fileChunks = splitSingleFileIntoChunks(filePart, targetSize, overlapSize);
+    console.log(`[청크 분할] 파일 ${i + 1}: ${fileChunks.length}개 청크`);
+    fileChunks.forEach(content => {
+      allChunks.push({ content, sourceFileIndex: i });
+    });
+  }
+
+  return allChunks;
+}
+
+/**
+ * 단일 파일 청크 분할 (기존 로직)
+ */
+function splitSingleFileIntoChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
   const chunks: string[] = [];
 
   // ⚠️ 화/장 단위로만 분할! 씬 단위로 분할하면 안 됨!
@@ -665,12 +717,13 @@ export async function extractKnowledgeGraph(
   onProgress?: (msg: string, current?: number, total?: number, estimatedMinutes?: number | null) => void,
   resumeFrom?: ExtractionProgress,
   model?: string,  // 사용할 모델 ID
-  fileName?: string,  // 원본 파일명
+  fileNames?: string[],  // 원본 파일명 배열 (여러 파일 업로드 시)
   existingGraph?: NovelKnowledgeGraph  // 기존 지식그래프 (파일 추가 시)
 ): Promise<NovelKnowledgeGraph> {
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
+  let chunkSourceFileIndices: number[] = [];  // 각 청크가 어느 파일에서 왔는지 추적
   let allExtracted: any[] = [];
   let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
@@ -681,6 +734,7 @@ export async function extractKnowledgeGraph(
   // 이어하기인 경우
   if (resumeFrom) {
     chunks = resumeFrom.chunks;
+    chunkSourceFileIndices = resumeFrom.chunkSourceFileIndices || chunks.map(() => 0);
     allExtracted = resumeFrom.allExtracted;
     // 이전 버전 호환: knownCharacters를 knownEntities로 변환
     knownEntities = (resumeFrom.knownCharacters || []).map(c => ({
@@ -691,8 +745,10 @@ export async function extractKnowledgeGraph(
     console.log(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
   } else {
-    // 새로 시작: 스마트 청크 분할 사용
-    chunks = splitIntoSmartChunks(text, CHUNK_SIZE);
+    // 새로 시작: 스마트 청크 분할 사용 (파일 인덱스 추적 포함)
+    const chunksWithSource = splitIntoSmartChunksWithSource(text, CHUNK_SIZE);
+    chunks = chunksWithSource.map(c => c.content);
+    chunkSourceFileIndices = chunksWithSource.map(c => c.sourceFileIndex);
 
     // 기존 지식그래프가 있으면 LLM 선별 방식 사용 예정
     // knownEntities는 비워두고, 각 청크 처리 시 선별하여 전달
@@ -800,10 +856,11 @@ export async function extractKnowledgeGraph(
           allExtracted,
           knownCharacters: knownEntities.filter(e => e.category === 'character'),
           chunks,
+          chunkSourceFileIndices,
           timestamp: Date.now(),
           model: useModel,
           originalText: resumeFrom?.originalText || text,
-          fileName: resumeFrom?.fileName || fileName,
+          fileNames: resumeFrom?.fileNames || fileNames,
         });
       }
     } catch (error: any) {
@@ -818,7 +875,7 @@ export async function extractKnowledgeGraph(
         onProgress?.(`청크 ${i + 1} 스킵 (오류), 계속 진행...`);
 
         // 빈 결과로 추가 (장면 번호 유지를 위해)
-        allExtracted.push({ chapters: [], scenes: [], entities: [], relationships: [] });
+        allExtracted.push({ chapters: [], scenes: [], entities: [], relationships: [], sourceFileIndex: chunkSourceFileIndices[i] });
 
         // 진행상황 저장 (실패한 청크도 처리됨으로 표시)
         saveProgress({
@@ -828,10 +885,11 @@ export async function extractKnowledgeGraph(
           allExtracted,
           knownCharacters: knownEntities.filter(e => e.category === 'character'),
           chunks,
+          chunkSourceFileIndices,
           timestamp: Date.now(),
           model: useModel,
           originalText: resumeFrom?.originalText || text,
-          fileName: resumeFrom?.fileName || fileName,
+          fileNames: resumeFrom?.fileNames || fileNames,
         });
         continue; // 다음 청크로 계속
       }
@@ -844,10 +902,11 @@ export async function extractKnowledgeGraph(
         allExtracted,
         knownCharacters: knownEntities.filter(e => e.category === 'character'),
         chunks,
+        chunkSourceFileIndices,
         timestamp: Date.now(),
         model: useModel,
         originalText: resumeFrom?.originalText || text,
-        fileName: resumeFrom?.fileName || fileName,
+        fileNames: resumeFrom?.fileNames || fileNames,
       });
       throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${error.message}. 이어하기로 재시도할 수 있습니다.`);
     }
@@ -857,8 +916,8 @@ export async function extractKnowledgeGraph(
   clearProgress();
   onProgress?.('인물 정보 병합 중...');
 
-  // 결과 병합
-  const merged = mergeExtractions(allExtracted);
+  // 결과 병합 (청크별 파일 인덱스 전달)
+  const merged = mergeExtractions(allExtracted, chunkSourceFileIndices);
 
   // 후처리: 누락된 관계 자동 생성
   onProgress?.('관계 검증 및 보완 중...');
@@ -866,8 +925,8 @@ export async function extractKnowledgeGraph(
 
   // 이어하기인 경우 저장된 원본 텍스트/파일명 사용
   const finalText = resumeFrom?.originalText || text;
-  const finalFileName = resumeFrom?.fileName || fileName;
-  return buildKnowledgeGraph(validated, title, useModel, finalFileName, finalText, existingGraph);
+  const finalFileNames = resumeFrom?.fileNames || fileNames;
+  return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph);
 }
 
 // 클라이언트 측 fetch with timeout
@@ -1006,7 +1065,7 @@ ${limitedCategoryEntities.map(e => {
 }
 
 // 여러 청크 결과를 병합 (같은 인물 판단 + 장면 번호 글로벌화)
-function mergeExtractions(extractions: any[]): any {
+function mergeExtractions(extractions: any[], chunkSourceFileIndices: number[] = []): any {
   const entities: any[] = [];
   const relationships: any[] = [];
   const scenes: any[] = [];
@@ -1020,7 +1079,8 @@ function mergeExtractions(extractions: any[]): any {
 
   for (let chunkIdx = 0; chunkIdx < extractions.length; chunkIdx++) {
     const ext = extractions[chunkIdx];
-    console.log(`[병합] 청크 ${chunkIdx + 1}: entities=${(ext.entities || []).length}, relationships=${(ext.relationships || []).length}, scenes=${(ext.scenes || []).length}`);
+    const sourceFileIndex = chunkSourceFileIndices[chunkIdx] ?? 0;  // 이 청크가 어느 파일에서 왔는지
+    console.log(`[병합] 청크 ${chunkIdx + 1}: entities=${(ext.entities || []).length}, relationships=${(ext.relationships || []).length}, scenes=${(ext.scenes || []).length}, 파일=${sourceFileIndex}`);
 
     // 장(chapter) 병합 (중복 제거)
     for (const chapter of (ext.chapters || [])) {
@@ -1065,7 +1125,8 @@ function mergeExtractions(extractions: any[]): any {
         ...scene,
         id: globalId,
         chapter: actualChapterNumber,  // 실제 화/장 번호 (정렬용)
-        chunkNum: chunkIdx + 1
+        chunkNum: chunkIdx + 1,
+        sourceFileIndex,  // 이 장면이 추출된 원본 파일 인덱스
       });
     }
     globalSceneOffset += chunkScenes.length || 1;
@@ -1490,7 +1551,7 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
   );
 }
 
-function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileName?: string, originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
+function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
   // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
@@ -1935,6 +1996,12 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       }
     });
 
+    // 장면이 추출된 원본 파일명 결정
+    // sourceFileIndex가 있으면 fileNames 배열에서 가져오고, 없으면 첫 번째 파일명 사용
+    const sceneSourceFile = (s.sourceFileIndex !== undefined && fileNames && fileNames[s.sourceFileIndex])
+      ? fileNames[s.sourceFileIndex]
+      : (fileNames?.[0] || undefined);
+
     snapshots[sceneId] = {
       sceneId,
       order: actualSceneNum,  // 서술 순서 (기존 + 새 번호)
@@ -1948,6 +2015,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       mood: s.mood,
       charactersPresent: entitiesInScene,
       activeEdges,
+      sourceFile: sceneSourceFile,  // 이 장면이 추출된 원본 파일명
     };
   });
 
@@ -1963,16 +2031,42 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
   });
 
-  // 소스 파일 정보 생성 - 기존 파일 목록에 추가
+  // 소스 파일 정보 생성 - 기존 파일 목록에 새 파일 추가
   const existingSourceFiles = existingGraph?.metadata?.sourceFiles || [];
-  const newSourceFile = (fileName && originalText) ? {
-    id: `F${String(existingSourceFiles.length + 1).padStart(4, '0')}`,
-    fileName,
-    uploadedAt: now,
-    text: originalText,
-    charCount: originalText.length,
-  } : null;
-  const sourceFiles = newSourceFile ? [...existingSourceFiles, newSourceFile] : existingSourceFiles;
+
+  // 새로 추가할 파일들 생성 (기존에 없는 파일명만)
+  const existingFileNames = new Set(existingSourceFiles.map((sf: any) => sf.fileName));
+  const newSourceFiles: any[] = [];
+
+  if (fileNames && originalText) {
+    fileNames.forEach((fileName) => {
+      if (!existingFileNames.has(fileName)) {
+        const newId = `F${String(existingSourceFiles.length + newSourceFiles.length + 1).padStart(4, '0')}`;
+        newSourceFiles.push({
+          id: newId,
+          fileName,
+          uploadedAt: now,
+          text: originalText,  // 전체 텍스트 (단일 파일의 경우)
+          charCount: originalText.length,
+        });
+      }
+    });
+  }
+
+  const sourceFiles = [...existingSourceFiles, ...newSourceFiles];
+
+  // sourceFileId 매핑: 파일명으로 ID 찾기
+  const fileNameToId: Record<string, string> = {};
+  sourceFiles.forEach((sf: any) => {
+    fileNameToId[sf.fileName] = sf.id;
+  });
+
+  // 새로 생성된 장면들에 sourceFileId 추가
+  Object.values(snapshots).forEach((snap: any) => {
+    if (snap.sourceFile && !snap.sourceFileId) {
+      snap.sourceFileId = fileNameToId[snap.sourceFile];
+    }
+  });
 
   // 기존 타임라인과 병합
   const mergedTimeline = existingGraph ? [...(existingGraph.timeline || []), ...timeline] : timeline;

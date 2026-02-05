@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2, FileText } from 'lucide-react';
+import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2, FileText, MessageCircle } from 'lucide-react';
 import { useStore } from './store';
 import { FileUpload } from './components/FileUpload';
 import { RelationshipGraph, GraphLegend } from './components/RelationshipGraph';
@@ -12,7 +12,9 @@ import { TimelineView } from './components/TimelineView';
 import { CharacterChronicle } from './components/CharacterChronicle';
 import { WorldView } from './components/WorldView';
 import { SourceTextView } from './components/SourceTextView';
+import { ChatView } from './components/ChatView';
 import { DetailPanel } from './components/DetailPanel';
+import { ChatMentionedPanel } from './components/ChatMentionedPanel';
 import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
@@ -21,7 +23,7 @@ import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
 import type { NovelKnowledgeGraph } from './types';
 
-type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
+type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'graph', label: '관계도', icon: Network },
@@ -29,13 +31,15 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'chronicle', label: '연대기', icon: User },
   { mode: 'world', label: '세계관', icon: Globe },
   { mode: 'source', label: '원본', icon: FileText },
+  { mode: 'chat', label: '채팅', icon: MessageCircle },
 ];
 
 function App() {
   const {
     knowledgeGraph, originalText, currentDataId, viewMode, setViewMode, reset, setKnowledgeGraph, error,
     selectedSceneId, selectScene,
-    sceneRangeStart, sceneRangeEnd, selectSceneRange
+    sceneRangeStart, sceneRangeEnd, selectSceneRange,
+    selectedEntityId
   } = useStore();
   const [showDataManager, setShowDataManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -127,7 +131,7 @@ function App() {
         (msg) => setAddProgress(msg),
         undefined,
         existingModel,
-        file.name,
+        [file.name],  // 원본 파일명 배열로 전달
         knowledgeGraph  // 기존 지식그래프 전달
       );
 
@@ -455,11 +459,15 @@ function App() {
           {viewMode === 'world' && <WorldView />}
 
           {viewMode === 'source' && <SourceTextView />}
+
+          {viewMode === 'chat' && <ChatView />}
         </div>
 
         {/* 오른쪽: 상세 패널 */}
-        <div className="w-96 border-l border-gray-200 flex-shrink-0 overflow-hidden">
-          <DetailPanel />
+        <div className={`border-l border-gray-200 flex-shrink-0 overflow-hidden ${
+          viewMode === 'chat' ? 'w-[720px]' : 'w-96'
+        }`}>
+          {viewMode === 'chat' && !selectedEntityId ? <ChatMentionedPanel /> : <DetailPanel />}
         </div>
       </main>
 

@@ -5,8 +5,9 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
-import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
+import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, getApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
+import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../services/embedding';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
 // 텍스트 파일 인코딩 감지 및 디코딩
@@ -275,12 +276,13 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      // 첫 번째 파일명으로 extractKnowledgeGraph 호출
+      // 모든 파일명 배열로 extractKnowledgeGraph 호출
+      const fileNamesArray = sortedFiles.map(f => f.name);
       const newKnowledgeGraph = await extractKnowledgeGraph(combinedText, combinedTitle, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, sortedFiles[0].name);
+              }, undefined, currentModel, fileNamesArray);
 
       // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
       if (sortedFiles.length > 1) {
@@ -366,7 +368,7 @@ export function FileUpload() {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, file.name);  // 원본 파일명 전달
+              }, undefined, currentModel, [file.name]);  // 원본 파일명 배열로 전달
 
       // 작가 정보 추가
       if (bookAuthor.trim()) {
@@ -467,7 +469,7 @@ export function FileUpload() {
         (msg) => setProgress(`추가: ${msg}`),
         undefined,
         currentModel,
-        finalFileName,
+        [finalFileName],  // 원본 파일명 배열로 전달
         knowledgeGraph  // 기존 지식그래프 전달
       );
 
@@ -640,11 +642,15 @@ export function FileUpload() {
       }
 
       setProgress('분석 중...');
+      // 파일명 배열 생성: fileInfos가 있으면 모든 파일명, 없으면 sourceFileName
+      const fileNamesForExtraction = fileInfos.length > 0
+        ? fileInfos.map(f => f.fileName)
+        : (sourceFileName ? [sourceFileName] : undefined);
       const newKnowledgeGraph = await extractKnowledgeGraph(text, title, (msg, current, total) => {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, sourceFileName);
+              }, undefined, currentModel, fileNamesForExtraction);
 
       // 작가 정보 추가
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
@@ -664,6 +670,56 @@ export function FileUpload() {
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 엔티티 임베딩 + 청크 임베딩 생성 (백그라운드)
+      setProgress('임베딩 생성 중...');
+      const entities = Object.values(newKnowledgeGraph.entities);
+
+      // 엔티티 임베딩
+      if (entities.length > 0) {
+        createEntityEmbeddings(saved.id, entities, getApiKey() || undefined)
+          .then(result => {
+            if (result.success) {
+              console.log(`[embedding] ${result.count}개 엔티티 임베딩 완료`);
+            } else {
+              console.warn('[embedding] 임베딩 생성 실패:', result.error);
+            }
+          })
+          .catch(err => console.warn('[embedding] 임베딩 오류:', err));
+      }
+
+      // 청크 임베딩 (텍스트를 청크로 나누어 임베딩)
+      if (text.length > 0) {
+        const FILE_SEPARATOR = '\n\n--- 파일 구분 ---\n\n';
+        const fileParts = text.split(FILE_SEPARATOR);
+        const chunks: ChunkData[] = [];
+        let chunkIndex = 0;
+
+        fileParts.forEach((filePart, fileIdx) => {
+          const fileName = fileInfos.length > fileIdx ? fileInfos[fileIdx].fileName : undefined;
+          // 5000자씩 청크로 분할
+          const chunkSize = 5000;
+          for (let i = 0; i < filePart.length; i += chunkSize) {
+            chunks.push({
+              index: chunkIndex++,
+              content: filePart.slice(i, i + chunkSize),
+              sourceFile: fileName,
+            });
+          }
+        });
+
+        if (chunks.length > 0) {
+          createChunkEmbeddings(saved.id, chunks, getApiKey() || undefined)
+            .then(result => {
+              if (result.success) {
+                console.log(`[chunk-embedding] ${result.count}개 청크 임베딩 완료`);
+              } else {
+                console.warn('[chunk-embedding] 청크 임베딩 실패:', result.error);
+              }
+            })
+            .catch(err => console.warn('[chunk-embedding] 청크 임베딩 오류:', err));
+        }
+      }
 
       // 타이틀 목록 업데이트
       setExistingTitles(prev => [...prev, title]);

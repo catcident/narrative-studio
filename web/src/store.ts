@@ -19,7 +19,10 @@ interface AppState {
   selectedSceneId: string | null;
   sceneRangeStart: string | null;  // 범위 선택 시작
   sceneRangeEnd: string | null;    // 범위 선택 끝
-  viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
+  viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
+
+  // 채팅 관련
+  chatMentionedEntities: string[];  // 채팅에서 언급된 엔티티 ID 목록
 
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
@@ -29,7 +32,8 @@ interface AppState {
   selectTimePoint: (time: string | null) => void;
   selectScene: (sceneId: string | null) => void;
   selectSceneRange: (start: string | null, end: string | null) => void;
-  setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source') => void;
+  setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat') => void;
+  setChatMentionedEntities: (entityIds: string[]) => void;
   reset: () => void;
 }
 
@@ -45,6 +49,7 @@ export const useStore = create<AppState>((set) => ({
   sceneRangeStart: null,
   sceneRangeEnd: null,
   viewMode: 'graph',
+  chatMentionedEntities: [],
 
   setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set({
     knowledgeGraph,
@@ -59,6 +64,7 @@ export const useStore = create<AppState>((set) => ({
   selectScene: (selectedSceneId) => set({ selectedSceneId, sceneRangeStart: null, sceneRangeEnd: null }),
   selectSceneRange: (sceneRangeStart, sceneRangeEnd) => set({ sceneRangeStart, sceneRangeEnd, selectedSceneId: null }),
   setViewMode: (viewMode) => set({ viewMode }),
+  setChatMentionedEntities: (chatMentionedEntities) => set({ chatMentionedEntities }),
   reset: () => set({
     knowledgeGraph: null,
     originalText: null,
@@ -68,6 +74,7 @@ export const useStore = create<AppState>((set) => ({
     selectedSceneId: null,
     sceneRangeStart: null,
     sceneRangeEnd: null,
+    chatMentionedEntities: [],
     error: null,
   }),
 }));
