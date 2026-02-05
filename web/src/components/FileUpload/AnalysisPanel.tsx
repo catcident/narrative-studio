@@ -6,7 +6,7 @@
 import React from 'react';
 import { Key, Cpu, BookOpen, User, FileCheck, FileText, Loader2, AlertCircle, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { UsageEstimate } from '../UsageEstimate';
-import { AVAILABLE_MODELS, type ModelInfo, type NovelKnowledgeGraph } from '../../types';
+import type { ModelInfo, NovelKnowledgeGraph } from '../../types';
 
 interface AnalysisPanelProps {
   // API key
@@ -24,6 +24,7 @@ interface AnalysisPanelProps {
   selectedModel: string;
   setSelectedModel: (v: string) => void;
   availableModels: ModelInfo[];
+  allModels: ModelInfo[];  // 잠금 모델 이름 조회용 (만료 포함)
   // Title/Author
   knowledgeGraph: NovelKnowledgeGraph | null;
   bookTitle: string;
@@ -65,6 +66,7 @@ export function AnalysisPanel({
   selectedModel,
   setSelectedModel,
   availableModels,
+  allModels,
   knowledgeGraph,
   bookTitle,
   setBookTitle,
@@ -190,7 +192,7 @@ export function AnalysisPanel({
             </select>
             {lockedModel && (
               <p className="text-xs text-purple-600 mt-1">
-                이 문서는 {AVAILABLE_MODELS.find(m => m.id === lockedModel)?.name || lockedModel}로 분석되었습니다. 추가 분석도 같은 모델을 사용합니다.
+                이 문서는 {allModels.find(m => m.id === lockedModel)?.name || lockedModel}로 분석되었습니다. 추가 분석도 같은 모델을 사용합니다.
               </p>
             )}
             {!lockedModel && (

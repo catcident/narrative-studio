@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { Calculator, AlertTriangle, CheckCircle } from 'lucide-react';
 import { estimateUsageLocally } from '../services/billing';
-import { useCreditBalance } from '../store';
+import { useCreditBalance, useModels } from '../store';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 
 interface UsageEstimateProps {
@@ -17,10 +17,11 @@ interface UsageEstimateProps {
 export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
+  const allModels = useModels();
 
   const estimate = useMemo(
-    () => estimateUsageLocally(charCount, model),
-    [charCount, model],
+    () => estimateUsageLocally(charCount, model, allModels),
+    [charCount, model, allModels],
   );
 
   if (estimate.chunks === 0) return null;

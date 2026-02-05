@@ -6,9 +6,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useStore } from '../store';
+import { useStore, useModels } from '../store';
 import { sendChatMessage, generateMessageId, type ChatMessage } from '../services/chat';
-import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../types';
+import { DEFAULT_MODEL } from '../types';
 
 // 대화 세션 타입
 interface ChatSession {
@@ -125,7 +125,10 @@ function extractMentionedEntities(
 }
 
 export function ChatView() {
-  const { knowledgeGraph, originalText, setChatMentionedEntities } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const originalText = useStore((s) => s.originalText);
+  const setChatMentionedEntities = useStore((s) => s.setChatMentionedEntities);
+  const models = useModels();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -342,7 +345,7 @@ export function ChatView() {
   };
 
   // 모델 정보 가져오기
-  const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0];
+  const currentModel = models.find(m => m.id === selectedModel) || models[0];
 
   if (!knowledgeGraph) {
     return (
@@ -387,7 +390,7 @@ export function ChatView() {
                     <span className="text-xs text-gray-500">모델 선택</span>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
-                    {AVAILABLE_MODELS.map(model => (
+                    {models.map(model => (
                       <button
                         key={model.id}
                         onClick={() => {

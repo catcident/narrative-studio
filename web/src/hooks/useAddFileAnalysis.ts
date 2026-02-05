@@ -4,16 +4,18 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useStore, useBillingSubscription } from '../store';
+import { useStore, useBillingSubscription, useModels } from '../store';
 import { extractKnowledgeGraph } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
 import { createBillingCallback, ensureSufficientBalance } from '../services/billing';
 import { readFileAsText } from '../services/fileReader';
+import { getAvailableModelIds } from '../types';
 
 export function useAddFileAnalysis() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const currentDataId = useStore((s) => s.currentDataId);
   const subscription = useBillingSubscription();
+  const allModels = useModels();
   const addChunkUsage = useStore((s) => s.addChunkUsage);
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
@@ -46,6 +48,7 @@ export function useAddFileAnalysis() {
         fileNames: [fileName],
         existingGraph: knowledgeGraph,
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       setProgress('저장 중...');
@@ -66,7 +69,7 @@ export function useAddFileAnalysis() {
     }
   }, [knowledgeGraph, currentDataId, subscription, addChunkUsage,
       updateCreditBalance, setKnowledgeGraph, setShowUsageSummary,
-      setError, resetCurrentUsage, setLoading, loadSubscription]);
+      setError, resetCurrentUsage, setLoading, loadSubscription, allModels]);
 
   const addFile = useCallback(async (
     file: File,

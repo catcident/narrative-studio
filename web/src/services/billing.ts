@@ -11,6 +11,7 @@ import type {
   CreditTransaction,
   PlanFeatures,
   ChunkUsage,
+  ModelInfo,
 } from '../types';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
@@ -162,7 +163,7 @@ const ZERO_ESTIMATE: UsageEstimate = {
  * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
  * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
  */
-export function estimateUsageLocally(charCount: number, model: string): UsageEstimate {
+export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
   if (charCount <= 0) return ZERO_ESTIMATE;
 
   const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
@@ -171,7 +172,7 @@ export function estimateUsageLocally(charCount: number, model: string): UsageEst
   const inputTokens = Math.ceil(charCount / CHARS_PER_TOKEN);
   const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
 
-  const { inputCost, outputCost } = getModelCosts(model);
+  const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
   const costUsd = tokenCostUsd(inputTokens, outputTokens, inputCost, outputCost);
 
   return {
@@ -187,10 +188,10 @@ export function estimateUsageLocally(charCount: number, model: string): UsageEst
  * 실제 토큰 사용량에서 크레딧 역산 (UsageSummary용)
  * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
  */
-export function calculateCreditsFromTokens(promptTokens: number, completionTokens: number, model: string): number {
+export function calculateCreditsFromTokens(promptTokens: number, completionTokens: number, model: string, dynamicModels?: ModelInfo[]): number {
   if (promptTokens <= 0 && completionTokens <= 0) return 0;
 
-  const { inputCost, outputCost } = getModelCosts(model);
+  const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
   return costUsdToCredits(tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost));
 }
 
@@ -239,9 +240,9 @@ export function createBillingCallback(
 }
 
 /** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 */
-export function calculateCreditsFromChunks(chunks: ChunkUsage[]): number {
+export function calculateCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
   if (chunks.length === 0) return 0;
   return chunks.reduce((sum, chunk) =>
-    sum + calculateCreditsFromTokens(chunk.promptTokens, chunk.completionTokens, chunk.model),
+    sum + calculateCreditsFromTokens(chunk.promptTokens, chunk.completionTokens, chunk.model, dynamicModels),
   0);
 }

@@ -34,7 +34,7 @@ async function analyzeQueryWithLLM(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',  // 빠르고 저렴한 모델
+        model: DEFAULT_MODEL,  // 빠르고 저렴한 모델
         messages: [
           {
             role: 'system',
@@ -152,7 +152,7 @@ async function selectRelevantData(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
+        model: DEFAULT_MODEL,
         messages: [
           {
             role: 'system',

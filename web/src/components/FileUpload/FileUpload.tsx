@@ -3,13 +3,13 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { useStore, useBillingSubscription } from '../../store';
+import { useStore, useBillingSubscription, useModels } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
-import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
+import { DEFAULT_MODEL, getAvailableModelIds } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
 import { useAddFileAnalysis } from '../../hooks/useAddFileAnalysis';
 import { UploadArea } from './UploadArea';
@@ -72,7 +72,9 @@ export function FileUpload() {
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const loadSubscription = useStore((s) => s.loadSubscription);
+  const loadModels = useStore((s) => s.loadModels);
   const subscription = useBillingSubscription();
+  const allModels = useModels();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -102,10 +104,20 @@ export function FileUpload() {
   const lockedModel = knowledgeGraph?.metadata?.model;
   const currentModel = lockedModel || selectedModel;
 
-  // 플랜에 따른 모델 필터링
-  const availableModels = subscription?.features?.models && subscription.features.models !== 'all'
-    ? AVAILABLE_MODELS.filter(m => (subscription.features.models as string[]).includes(m.id))
-    : AVAILABLE_MODELS;
+  // 이어하기 시 만료 모델 감지
+  const savedModelId = savedProgress?.model;
+  const invalidSavedModel = savedModelId
+    ? !allModels.some((m) => m.id === savedModelId && m.available !== false)
+    : false;
+
+  // 플랜에 따른 모델 필터링 (available !== false인 모델만)
+  const availableModels = (() => {
+    const active = allModels.filter((m) => m.available !== false);
+    if (subscription?.features?.models && subscription.features.models !== 'all') {
+      return active.filter((m) => (subscription.features.models as string[]).includes(m.id));
+    }
+    return active;
+  })();
 
   // 프로그레스 상태 일괄 초기화 헬퍼
   const resetProgressState = useCallback((checkSaved: boolean = false) => {
@@ -186,6 +198,8 @@ export function FileUpload() {
         setHasEnvKey(false);
         useStore.getState().setAuthEnabled(false);
       });
+
+    loadModels();
 
     setHasLocalKey(hasApiKey());
     setSavedProgress(loadProgress());
@@ -293,6 +307,7 @@ export function FileUpload() {
         model: currentModel,
         fileNames: sortedFiles.map(f => f.name),
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       const sourceFiles = buildSourceFiles(fileInfos);
@@ -312,7 +327,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -353,12 +368,18 @@ export function FileUpload() {
     await runExtraction(async () => {
       await ensureSufficientBalance(subscription);
 
+      // 만료 모델이면 현재 선택된 모델로 override
+      const resumeData = invalidSavedModel
+        ? { ...savedProgress, model: currentModel }
+        : savedProgress;
+
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: '',
         title: savedProgress.title,
         onProgress: makeProgressCallback(),
-        resumeFrom: savedProgress,
+        resumeFrom: resumeData,
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       setProgress('저장 중...');
@@ -368,7 +389,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
+  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels]);
 
   // 추가 분석 (기존 결과에 새 파일 병합) — useAddFileAnalysis 훅 위임
   const handleAddFile = useCallback(async (file: File) => {
@@ -451,6 +472,7 @@ export function FileUpload() {
           ? fileInfos.map(f => f.fileName)
           : (sourceFileName ? [sourceFileName] : undefined),
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
@@ -520,7 +542,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels]);
 
   // ==================== 렌더링 ====================
 
@@ -555,6 +577,7 @@ export function FileUpload() {
         selectedModel={selectedModel}
         setSelectedModel={setSelectedModel}
         availableModels={availableModels}
+        allModels={allModels}
         knowledgeGraph={knowledgeGraph}
         bookTitle={bookTitle}
         setBookTitle={setBookTitle}
@@ -589,6 +612,9 @@ export function FileUpload() {
         handleConfirmNewFileName={handleConfirmNewFileName}
         handleCancelDuplicate={handleCancelDuplicate}
         error={error}
+        invalidSavedModel={invalidSavedModel}
+        savedModelName={savedModelId ? (allModels.find((m) => m.id === savedModelId)?.name ?? savedModelId) : undefined}
+        currentModelName={allModels.find((m) => m.id === currentModel)?.name ?? currentModel}
       />
     </div>
   );

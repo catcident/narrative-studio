@@ -117,22 +117,56 @@ export interface ModelInfo {
   inputCost: number;  // per 1M tokens, USD
   outputCost: number; // per 1M tokens, USD
   description: string;
+  available?: boolean;          // OpenRouter에서 현재 사용 가능 여부
 }
 
-// 성능 순으로 정렬 (벤치마크 기준, 최고 → 최저)
+/** 큐레이션 메타데이터: 소설 분석에 적합한 모델만 선별 + 한국어 설명 + 정렬 순서 */
+export interface CuratedModelMeta {
+  description: string;
+  sortOrder: number;
+}
+
+/**
+ * OpenRouter 400+개 모델 중 소설 분석에 적합한 모델만 큐레이션.
+ * key = OpenRouter 모델 ID, value = 한국어 설명 + 정렬 순서 (낮을수록 상위).
+ * 동적 모델 로딩 시 이 목록에 있는 모델만 표시됨.
+ */
+export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
+  'anthropic/claude-sonnet-4': { description: '최고 품질', sortOrder: 10 },
+  'anthropic/claude-3.5-sonnet': { description: '최고 품질', sortOrder: 11 },
+  'openai/gpt-4o': { description: '고품질', sortOrder: 20 },
+  'deepseek/deepseek-chat': { description: '가성비', sortOrder: 30 },
+  'google/gemini-2.0-flash-001': { description: '빠르고 저렴', sortOrder: 40 },
+  'google/gemini-2.5-flash': { description: '빠르고 저렴', sortOrder: 41 },
+  'qwen/qwen-2.5-72b-instruct': { description: '준수한 성능', sortOrder: 50 },
+  'openai/gpt-4o-mini': { description: '경량', sortOrder: 60 },
+  'anthropic/claude-3-haiku': { description: '경량', sortOrder: 70 },
+  'google/gemini-2.5-flash-lite': { description: '가장 저렴', sortOrder: 80 },
+};
+
+/**
+ * 정적 폴백 모델 목록 (API 불가 시 사용).
+ * 동적 로딩 성공 시 이 목록은 사용되지 않음.
+ */
 export const AVAILABLE_MODELS: ModelInfo[] = [
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', inputCost: 3.00, outputCost: 15.00, description: '1위 - 최고 품질' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', inputCost: 2.50, outputCost: 10.00, description: '2위 - 고품질' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', inputCost: 0.14, outputCost: 0.28, description: '3위 - 가성비 최고 ⭐' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', inputCost: 0.10, outputCost: 0.40, description: '4위 - 빠르고 저렴' },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', inputCost: 0.35, outputCost: 0.40, description: '5위 - 준수한 성능' },
-  { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro', inputCost: 1.25, outputCost: 5.00, description: '6위 - 비싼 편' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', inputCost: 0.15, outputCost: 0.60, description: '7위 - 경량' },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', inputCost: 0.25, outputCost: 1.25, description: '8위 - 경량' },
-  { id: 'google/gemini-2.0-flash-lite-preview-02-05', name: 'Gemini 2.0 Flash Lite', inputCost: 0.075, outputCost: 0.30, description: '9위 - 가장 저렴' },
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', inputCost: 3.00, outputCost: 15.00, description: '최고 품질' },
+  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', inputCost: 3.00, outputCost: 15.00, description: '최고 품질' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', inputCost: 2.50, outputCost: 10.00, description: '고품질' },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', inputCost: 0.14, outputCost: 0.28, description: '가성비' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', inputCost: 0.10, outputCost: 0.40, description: '빠르고 저렴' },
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', inputCost: 0.15, outputCost: 0.60, description: '빠르고 저렴' },
+  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', inputCost: 0.12, outputCost: 0.39, description: '준수한 성능' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', inputCost: 0.15, outputCost: 0.60, description: '경량' },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', inputCost: 0.25, outputCost: 1.25, description: '경량' },
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', inputCost: 0.075, outputCost: 0.30, description: '가장 저렴' },
 ];
 
 export const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+
+/** available !== false인 모델의 ID 배열 반환 (orchestrator availableModelIds용) */
+export function getAvailableModelIds(models: ModelInfo[]): string[] {
+  return models.filter((m) => m.available !== false).map((m) => m.id);
+}
 
 // 업로드된 소스 파일 정보
 export interface SourceFile {
