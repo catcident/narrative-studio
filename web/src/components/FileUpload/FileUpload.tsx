@@ -309,8 +309,8 @@ export function FileUpload() {
 
       // 잔액 사전 확인
       if (subscription) {
-        const { sufficient, error: balanceError } = await checkSufficientBalance(combinedText.length, currentModel);
-        if (!sufficient) throw new Error(balanceError);
+        const balanceCheck = await checkSufficientBalance(combinedText.length, currentModel);
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
       }
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
@@ -382,8 +382,8 @@ export function FileUpload() {
         const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
         const estimatedChars = remainingChunks * 5000; // CHUNK_SIZE 기준 추정
         const resumeModel = savedProgress.model || currentModel;
-        const { sufficient, error: balanceError } = await checkSufficientBalance(estimatedChars, resumeModel);
-        if (!sufficient) throw new Error(balanceError);
+        const balanceCheck = await checkSufficientBalance(estimatedChars, resumeModel);
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
       }
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
@@ -409,8 +409,8 @@ export function FileUpload() {
     await runExtraction(knowledgeGraph.metadata.title, async () => {
       // 잔액 사전 확인
       if (subscription) {
-        const { sufficient, error: balanceError } = await checkSufficientBalance(text.length, currentModel);
-        if (!sufficient) throw new Error(balanceError);
+        const balanceCheck = await checkSufficientBalance(text.length, currentModel);
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
       }
 
       setProgress('추가 분석 중...');
@@ -527,8 +527,8 @@ export function FileUpload() {
 
       // 잔액 사전 확인
       if (subscription) {
-        const { sufficient, error: balanceError } = await checkSufficientBalance(text.length, currentModel);
-        if (!sufficient) throw new Error(balanceError);
+        const balanceCheck = await checkSufficientBalance(text.length, currentModel);
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
       }
 
       setProgress('분석 중...');

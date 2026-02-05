@@ -224,7 +224,7 @@ export function calculateCreditsFromTokens(promptTokens: number, completionToken
 // ==================== 잔액 사전 확인 ====================
 
 /** 분석 전 잔액 충분 여부 확인 */
-export async function checkSufficientBalance(charCount: number, model: string): Promise<{ sufficient: boolean; error?: string }> {
+export async function checkSufficientBalance(charCount: number, model: string): Promise<{ sufficient: true } | { sufficient: false; error: string }> {
   const balanceInfo = await getCreditBalance();
   if (!balanceInfo) return { sufficient: true }; // billing 비활성 시 통과
   if (balanceInfo.balance <= 0) {

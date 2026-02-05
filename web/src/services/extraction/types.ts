@@ -36,6 +36,7 @@ export const MAX_PER_CATEGORY = 30;     // 카테고리별 최대
 export interface ChunkBilling {
   prompt_tokens: number;
   completion_tokens: number;
+  model: string;
 }
 
 export interface ChunkExtractionResult {
@@ -59,7 +60,7 @@ export interface ExtractionProgress {
 }
 
 export type ProgressCallback = (msg: string, current?: number, total?: number, estimatedMinutes?: number | null) => void;
-export type ChunkBillingCallback = (chunkIndex: number, billing: { prompt_tokens: number; completion_tokens: number; model: string }) => void;
+export type ChunkBillingCallback = (chunkIndex: number, billing: ChunkBilling) => void;
 
 export interface ExtractionOptions {
   text: string;

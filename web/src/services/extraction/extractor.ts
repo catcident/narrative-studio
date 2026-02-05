@@ -105,7 +105,7 @@ ${limitedCategoryEntities.map(e => {
 
   return {
     data: extracted,
-    billing: data._billing || null,
+    billing: data._billing ? { ...data._billing, model } : null,
   };
 }
 

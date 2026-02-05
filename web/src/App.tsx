@@ -81,15 +81,15 @@ function App() {
             const novelSaved = await saveNovelText(knowledgeGraph.metadata.title, originalText);
             if (cancelled) return;
             novelId = novelSaved.id;
-            console.log('소설 텍스트 저장 완료:', novelSaved.title, `(${originalText.length}자)`);
+            console.log('[storage] 소설 텍스트 저장 완료:', novelSaved.title, `(${originalText.length}자)`);
           }
 
           const saved = await saveKnowledgeGraph(knowledgeGraph, novelId);
           if (cancelled) return;
-          console.log('지식그래프 저장 완료:', saved.title, 'v' + saved.version);
+          console.log('[storage] 지식그래프 저장 완료:', saved.title, 'v' + saved.version);
           setSaveStatus('saved');
-        } catch (err) {
-          console.error('자동 저장 실패:', err);
+        } catch (err: unknown) {
+          console.error('[storage] 자동 저장 실패:', err);
           if (!cancelled) setSaveStatus('idle');
         }
       };
@@ -132,8 +132,8 @@ function App() {
 
       // 잔액 사전 확인
       if (subscription) {
-        const { sufficient, error: balanceError } = await checkSufficientBalance(text.length, existingModel || '');
-        if (!sufficient) throw new Error(balanceError);
+        const balanceCheck = await checkSufficientBalance(text.length, existingModel || '');
+        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
       }
 
       // 기존 지식그래프를 전달하여 이어서 분석
@@ -161,7 +161,7 @@ function App() {
       setAddProgress('');
       setShowUsageSummary(true);
     } catch (err: unknown) {
-      console.error('파일 추가 오류:', err);
+      console.error('[extraction] 파일 추가 오류:', err);
       if (subscription) {
         const { currentUsage, loadSubscription } = useStore.getState();
         await deductPartial(knowledgeGraph.metadata.title, currentUsage, updateCreditBalance, loadSubscription);

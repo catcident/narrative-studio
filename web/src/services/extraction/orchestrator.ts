@@ -164,7 +164,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       if (extracted) {
         // billing 정보를 콜백으로 전달
         if (billing && onChunkBilling) {
-          onChunkBilling(i, { ...billing, model: useModel });
+          onChunkBilling(i, billing);
         }
         allExtracted.push(extracted);
 

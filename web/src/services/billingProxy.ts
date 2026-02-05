@@ -125,7 +125,8 @@ export function billingPostHandler(billingPath: string, logLabel: string) {
           }
         }
       } else {
-        // 알 수 없는 경로: service만 강제, 나머지는 통과
+        // 알 수 없는 경로: service만 강제, 나머지는 통과 (fail-open 설계)
+        // 새 라우트 추가 시 ALLOWED_POST_FIELDS에 화이트리스트 등록 필요
         Object.assign(filtered, rawBody, { service: 'storygraph' });
       }
 
