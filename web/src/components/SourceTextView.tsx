@@ -276,37 +276,27 @@ export function SourceTextView() {
       console.log(`[SourceTextView] 파일B 장면: ${scenesB.map(s => s.sceneId).join(', ')}`);
 
       // 3. 장면 order 재계산
-      // 두 파일의 장면 order 범위를 swap
+      // 모든 장면을 order 순으로 정렬 후 sourceFiles 순서대로 재배치
       const newSnapshots = { ...knowledgeGraph.snapshots };
 
-      // 각 파일 장면들의 현재 order 범위 확인
-      const ordersA = scenesA.map(s => s.order).sort((a, b) => a - b);
-      const ordersB = scenesB.map(s => s.order).sort((a, b) => a - b);
-
-      if (ordersA.length > 0 && ordersB.length > 0) {
-        // 두 파일의 order를 swap
-        // A의 장면들은 B의 시작 order부터, B의 장면들은 A의 시작 order부터
-        const minOrderA = ordersA[0];
-        const minOrderB = ordersB[0];
-
-        // 파일 A의 장면들에 새 order 부여 (B의 시작 위치부터)
-        const sortedScenesA = [...scenesA].sort((a, b) => a.order - b.order);
-        sortedScenesA.forEach((scene, idx) => {
-          newSnapshots[scene.sceneId] = {
-            ...newSnapshots[scene.sceneId],
-            order: minOrderB + idx,
-          };
-        });
-
-        // 파일 B의 장면들에 새 order 부여 (A의 시작 위치부터)
-        const sortedScenesB = [...scenesB].sort((a, b) => a.order - b.order);
-        sortedScenesB.forEach((scene, idx) => {
-          newSnapshots[scene.sceneId] = {
-            ...newSnapshots[scene.sceneId],
-            order: minOrderA + idx,
-          };
-        });
+      // 새 sourceFiles 순서대로 모든 장면 수집
+      const allScenesInNewOrder: SceneSnapshot[] = [];
+      for (const file of newSourceFiles) {
+        const fileScenes = Object.values(knowledgeGraph.snapshots)
+          .filter(scene => scene.sourceFile === file.fileName || scene.sourceFileId === file.id)
+          .sort((a, b) => a.order - b.order);
+        allScenesInNewOrder.push(...fileScenes);
       }
+
+      // 연속된 order 재부여 (1부터 시작)
+      allScenesInNewOrder.forEach((scene, idx) => {
+        newSnapshots[scene.sceneId] = {
+          ...newSnapshots[scene.sceneId],
+          order: idx + 1,
+        };
+      });
+
+      console.log(`[SourceTextView] 새 장면 순서: ${allScenesInNewOrder.map(s => `${s.sceneId}(${s.order}→${allScenesInNewOrder.indexOf(s) + 1})`).join(', ')}`)
 
       // 4. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
