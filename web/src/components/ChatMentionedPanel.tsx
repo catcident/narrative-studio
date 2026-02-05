@@ -134,7 +134,7 @@ export function ChatMentionedPanel() {
       .width(width)
       .height(height)
       .nodeCanvasObject((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const radius = 12;
+        const radius = 10;
 
         // 노드 원
         ctx.beginPath();
@@ -142,23 +142,23 @@ export function ChatMentionedPanel() {
         ctx.fillStyle = node.color;
         ctx.fill();
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // 라벨 (이름)
-        const label = node.name.length > 8 ? node.name.slice(0, 8) + '…' : node.name;
-        const fontSize = Math.max(11 / globalScale, 6);
-        ctx.font = `bold ${fontSize}px Sans-Serif`;
+        // 라벨 (이름) - Pretendard 폰트 사용
+        const label = node.name.length > 6 ? node.name.slice(0, 6) + '…' : node.name;
+        const fontSize = Math.max(10 / globalScale, 5);
+        ctx.font = `500 ${fontSize}px Pretendard, -apple-system, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillStyle = '#333';
-        ctx.fillText(label, node.x, node.y + radius + 4);
+        ctx.fillStyle = '#374151';
+        ctx.fillText(label, node.x, node.y + radius + 3);
       })
       .nodeCanvasObjectMode(() => 'replace')
       .nodePointerAreaPaint((node: any, color: string, ctx: CanvasRenderingContext2D) => {
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 18, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, 14, 0, 2 * Math.PI);
         ctx.fill();
       })
       .linkCanvasObject((link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -174,19 +174,19 @@ export function ChatMentionedPanel() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // 엣지 라벨
+        // 엣지 라벨 - Pretendard 폰트 사용
         if (link.label) {
           const midX = (start.x + end.x) / 2;
           const midY = (start.y + end.y) / 2;
-          const fontSize = Math.max(9 / globalScale, 5);
-          ctx.font = `bold ${fontSize}px Sans-Serif`;
+          const fontSize = Math.max(8 / globalScale, 4);
+          ctx.font = `500 ${fontSize}px Pretendard, -apple-system, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
           const textWidth = ctx.measureText(link.label).width;
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.fillRect(midX - textWidth/2 - 3, midY - fontSize/2 - 2, textWidth + 6, fontSize + 4);
-          ctx.fillStyle = SENTIMENT_COLORS[link.sentiment] || '#666';
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
+          ctx.fillRect(midX - textWidth/2 - 2, midY - fontSize/2 - 1, textWidth + 4, fontSize + 2);
+          ctx.fillStyle = SENTIMENT_COLORS[link.sentiment] || '#6b7280';
           ctx.fillText(link.label, midX, midY);
         }
       })
@@ -235,15 +235,15 @@ export function ChatMentionedPanel() {
         }
       });
 
-    // Force 조정
-    graphRef.current.d3Force('charge').strength(-300);
-    graphRef.current.d3Force('link').distance(80);
+    // Force 조정 - 더 퍼지게
+    graphRef.current.d3Force('charge').strength(-200);
+    graphRef.current.d3Force('link').distance(60);
     graphRef.current.d3Force('center', null);
 
-    // 초기 줌 조정
+    // 초기 줌 조정 - 더 작게 시작
     setTimeout(() => {
-      graphRef.current?.zoomToFit(300, 40);
-    }, 500);
+      graphRef.current?.zoomToFit(400, 60);
+    }, 600);
   }, [mentionedEntities, relevantEdges, selectEntity]);
 
   // 그래프 업데이트
@@ -299,7 +299,7 @@ export function ChatMentionedPanel() {
       {mentionedEntities.length >= 2 && (
         <div
           ref={containerRef}
-          className="flex-shrink-0 h-[400px] border-b border-gray-100"
+          className="flex-shrink-0 h-[600px] border-b border-gray-100"
         />
       )}
 
