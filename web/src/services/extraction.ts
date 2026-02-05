@@ -1069,7 +1069,6 @@ function mergeExtractions(extractions: any[]): any {
         chapter: globalChapter,
         chunkNum: chunkIdx + 1
       });
-      console.log(`[병합] 장면 ${globalId}: chapter=${globalChapter} (원래: ${scene.chapter})`);
     }
     globalSceneOffset += chunkScenes.length || 1;
 
@@ -1876,7 +1875,6 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
   const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
-  console.log(`[buildKnowledgeGraph] 정렬된 장면 순서: ${sortedScenes.map((s: any) => `${s.id}(ch:${s.chapter})`).join(', ')}`);
 
   sortedScenes.forEach((s: any) => {
     const sceneId = `S${String(s.id).padStart(4, '0')}`;
