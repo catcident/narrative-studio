@@ -159,6 +159,7 @@ export interface SceneSnapshot {
 
 export interface NovelKnowledgeGraph {
   metadata: {
+    id?: string;  // 저장 후 할당되는 고유 ID
     title: string;
     author?: string;
     createdAt: string;

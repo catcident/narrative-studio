@@ -112,6 +112,116 @@ function fallbackExtractKeywords(query: string): string[] {
   return [...new Set(words)].slice(0, 5);
 }
 
+/**
+ * LLM 선별 결과 타입
+ */
+interface SelectionResult {
+  selectedEntityIds: string[];
+  selectedChunkIndices: number[];
+}
+
+/**
+ * LLM을 사용하여 질문에 필요한 노드/청크 선별
+ */
+async function selectRelevantData(
+  query: string,
+  entities: { id: string; name: string; category: string; description?: string }[],
+  chunks: { index: number; preview: string }[],
+  apiKey?: string
+): Promise<SelectionResult> {
+  // 선별할 데이터가 적으면 그냥 전부 반환 (선별 불필요)
+  if (entities.length <= 10 && chunks.length <= 3) {
+    return {
+      selectedEntityIds: entities.map(e => e.id),
+      selectedChunkIndices: chunks.map(c => c.index),
+    };
+  }
+
+  try {
+    // 엔티티 목록 문자열 생성
+    const entityList = entities.slice(0, 50).map(e =>
+      `- [${e.id}] ${e.name} (${e.category})${e.description ? ': ' + e.description.slice(0, 50) : ''}`
+    ).join('\n');
+
+    // 청크 목록 문자열 생성
+    const chunkList = chunks.map(c =>
+      `- [청크${c.index}] ${c.preview.slice(0, 100)}...`
+    ).join('\n');
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-001',
+        messages: [
+          {
+            role: 'system',
+            content: `당신은 소설 Q&A를 위한 데이터 선별기입니다.
+사용자 질문에 답변하기 위해 필요한 엔티티와 텍스트 청크만 선택하세요.
+
+## 선택 기준
+1. 질문에 직접 언급된 인물/물건/장소
+2. 질문에 답변하는 데 필요한 관련 정보
+3. 불필요한 것은 선택하지 마세요
+
+## 응답 형식 (JSON만)
+{"entityIds": ["E0001", "E0002"], "chunkIndices": [0, 2]}
+
+- entityIds: 필요한 엔티티 ID 배열 (최대 15개)
+- chunkIndices: 필요한 청크 인덱스 배열 (최대 3개)`
+          },
+          {
+            role: 'user',
+            content: `## 질문
+${query}
+
+## 후보 엔티티
+${entityList || '(없음)'}
+
+## 후보 텍스트 청크
+${chunkList || '(없음)'}`
+          }
+        ],
+        apiKey,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[selectData] API 오류, 전체 반환');
+      return {
+        selectedEntityIds: entities.slice(0, 15).map(e => e.id),
+        selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+      };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    const match = content.match(/\{[\s\S]*\}/);
+    if (match) {
+      const parsed = JSON.parse(match[0]);
+      const result: SelectionResult = {
+        selectedEntityIds: Array.isArray(parsed.entityIds) ? parsed.entityIds.slice(0, 15) : [],
+        selectedChunkIndices: Array.isArray(parsed.chunkIndices) ? parsed.chunkIndices.slice(0, 3) : [],
+      };
+      console.log('[selectData] LLM 선별 결과:', result);
+      return result;
+    }
+
+    return {
+      selectedEntityIds: entities.slice(0, 15).map(e => e.id),
+      selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+    };
+  } catch (err) {
+    console.warn('[selectData] 오류, 전체 반환:', err);
+    return {
+      selectedEntityIds: entities.slice(0, 15).map(e => e.id),
+      selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+    };
+  }
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -845,6 +955,53 @@ export async function sendChatMessage(
     console.log('📄 폴백 청크 검색:', chunkResults.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
   }
 
+  console.log('📊 데이터 수집 완료:', { 엔티티수: foundEntityIds.length, 청크수: chunkResults.length });
+
+  // [3단계] LLM 선별 - 수집된 데이터 중 필요한 것만 선택
+  if (lastUserMessage && (foundEntityIds.length > 10 || chunkResults.length > 3)) {
+    console.log('🎯 LLM 선별 시작...');
+
+    // 후보 엔티티 목록 생성
+    const candidateEntities = foundEntityIds.map(id => {
+      const entity = context.knowledgeGraph.entities[id];
+      return entity ? {
+        id,
+        name: entity.name,
+        category: entity.category,
+        description: entity.description?.slice(0, 100),
+      } : null;
+    }).filter(Boolean) as { id: string; name: string; category: string; description?: string }[];
+
+    // 후보 청크 목록 생성
+    const candidateChunks = chunkResults.map(chunk => ({
+      index: chunk.chunkIndex,
+      preview: chunk.content.slice(0, 150),
+    }));
+
+    const selectionResult = await selectRelevantData(
+      lastUserMessage.content,
+      candidateEntities,
+      candidateChunks,
+      userApiKey || undefined
+    );
+
+    // 선별된 결과로 필터링
+    const selectedEntitySet = new Set(selectionResult.selectedEntityIds);
+    const selectedChunkSet = new Set(selectionResult.selectedChunkIndices);
+
+    const prevEntityCount = foundEntityIds.length;
+    const prevChunkCount = chunkResults.length;
+
+    foundEntityIds = foundEntityIds.filter(id => selectedEntitySet.has(id));
+    chunkResults = chunkResults.filter(chunk => selectedChunkSet.has(chunk.chunkIndex));
+
+    console.log('✅ LLM 선별 완료:', {
+      엔티티: `${prevEntityCount} → ${foundEntityIds.length}`,
+      청크: `${prevChunkCount} → ${chunkResults.length}`,
+      선택된엔티티: foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean),
+    });
+  }
+
   const foundEntities = foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean);
   console.log('🔍 최종 찾은 엔티티:', foundEntities.length > 0 ? foundEntities.slice(0, 20) : '(없음)', foundEntities.length > 20 ? `외 ${foundEntities.length - 20}개` : '');
 
@@ -854,7 +1011,7 @@ export async function sendChatMessage(
     ? relatedEdges.slice(0, 10).map(e => `[${e.type}] ${e.entities.map(id => context.knowledgeGraph.entities[id]?.name || id).join(' ↔ ')}`)
     : '(없음)');
 
-  // [3단계] 컨텍스트 생성 - LLM 분석 결과를 intent로 변환
+  // [4단계] 컨텍스트 생성 - LLM 분석 결과를 intent로 변환
   const intentForContext: QueryIntent = {
     wantsCharacters: queryAnalysis.targetCategory === 'character',
     wantsRelationships: false,

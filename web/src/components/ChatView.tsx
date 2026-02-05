@@ -4,18 +4,91 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Trash2, Settings, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from '../store';
 import { sendChatMessage, generateMessageId, type ChatMessage } from '../services/chat';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../types';
 
-// 채팅 내역 저장 키 (지식 그래프 ID 또는 제목 기반)
-const getChatStorageKey = (graphId?: string, title?: string) => {
-  // ID가 있으면 ID 사용, 없으면 제목 해시 사용
-  if (graphId) return `chat_history_${graphId}`;
-  if (title) return `chat_history_title_${title.replace(/\s+/g, '_').slice(0, 50)}`;
-  return 'chat_history_default';
+// 대화 세션 타입
+interface ChatSession {
+  id: string;
+  graphId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  preview: string;  // 첫 메시지 미리보기
+}
+
+// 대화 세션 저장소 키
+const CHAT_SESSIONS_KEY = 'chat_sessions';
+
+// 대화 세션 ID 생성
+const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+// 채팅 내역 저장 키
+const getChatStorageKey = (sessionId: string) => `chat_messages_${sessionId}`;
+
+// 세션 목록 가져오기
+const getChatSessions = (): ChatSession[] => {
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem(CHAT_SESSIONS_KEY);
+  if (!saved) return [];
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return [];
+  }
+};
+
+// 세션 목록 저장
+const saveChatSessions = (sessions: ChatSession[]) => {
+  localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
+};
+
+// 특정 그래프의 세션 목록
+const getSessionsForGraph = (graphId: string): ChatSession[] => {
+  return getChatSessions().filter(s => s.graphId === graphId);
+};
+
+// 세션 생성
+const createSession = (graphId: string, graphTitle: string): ChatSession => {
+  const session: ChatSession = {
+    id: generateSessionId(),
+    graphId,
+    title: `대화 ${new Date().toLocaleDateString('ko-KR')} ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    messageCount: 0,
+    preview: '',
+  };
+  const sessions = getChatSessions();
+  sessions.unshift(session);
+  saveChatSessions(sessions);
+  return session;
+};
+
+// 세션 업데이트
+const updateSession = (sessionId: string, messages: ChatMessage[]) => {
+  const sessions = getChatSessions();
+  const idx = sessions.findIndex(s => s.id === sessionId);
+  if (idx >= 0) {
+    sessions[idx].updatedAt = new Date().toISOString();
+    sessions[idx].messageCount = messages.length;
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    sessions[idx].preview = firstUserMsg?.content.slice(0, 50) || '';
+    // 최근 업데이트 순으로 정렬
+    sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    saveChatSessions(sessions);
+  }
+};
+
+// 세션 삭제
+const deleteSession = (sessionId: string) => {
+  const sessions = getChatSessions().filter(s => s.id !== sessionId);
+  saveChatSessions(sessions);
+  localStorage.removeItem(getChatStorageKey(sessionId));
 };
 
 /**
@@ -52,18 +125,26 @@ export function ChatView() {
   const [streamingContent, setStreamingContent] = useState('');
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [showModelSelect, setShowModelSelect] = useState(false);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 채팅 내역 로드 (지식 그래프 변경 시)
-  useEffect(() => {
-    if (!knowledgeGraph) return;
-    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
+  // 세션 목록 로드
+  const loadSessions = useCallback(() => {
+    if (!knowledgeGraph?.metadata.id) return;
+    const graphSessions = getSessionsForGraph(knowledgeGraph.metadata.id);
+    setSessions(graphSessions);
+  }, [knowledgeGraph?.metadata.id]);
+
+  // 세션 메시지 로드
+  const loadSessionMessages = useCallback((session: ChatSession) => {
+    const storageKey = getChatStorageKey(session.id);
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // timestamp를 Date 객체로 복원
         const restored = parsed.map((m: ChatMessage & { timestamp: string }) => ({
           ...m,
           timestamp: new Date(m.timestamp),
@@ -71,26 +152,51 @@ export function ChatView() {
         setMessages(restored);
 
         // 마지막 AI 답변에서 언급된 엔티티 복원
-        const lastAssistant = [...restored].reverse().find((m: ChatMessage) => m.role === 'assistant');
-        if (lastAssistant) {
-          const mentionedIds = extractMentionedEntities(lastAssistant.content, knowledgeGraph.entities);
-          setChatMentionedEntities(mentionedIds);
+        if (knowledgeGraph) {
+          const lastAssistant = [...restored].reverse().find((m: ChatMessage) => m.role === 'assistant');
+          if (lastAssistant) {
+            const mentionedIds = extractMentionedEntities(lastAssistant.content, knowledgeGraph.entities);
+            setChatMentionedEntities(mentionedIds);
+          }
         }
+        return restored;
       } catch {
-        // 파싱 실패 시 무시
+        return [];
       }
+    }
+    return [];
+  }, [knowledgeGraph, setChatMentionedEntities]);
+
+  // 지식 그래프 변경 시: 가장 최근 세션 로드 또는 새 세션 생성
+  useEffect(() => {
+    if (!knowledgeGraph?.metadata.id) return;
+
+    loadSessions();
+    const graphSessions = getSessionsForGraph(knowledgeGraph.metadata.id);
+
+    if (graphSessions.length > 0) {
+      // 가장 최근 세션 로드
+      const latestSession = graphSessions[0];
+      setCurrentSession(latestSession);
+      loadSessionMessages(latestSession);
     } else {
+      // 새 세션 생성
+      const newSession = createSession(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
+      setCurrentSession(newSession);
       setMessages([]);
       setChatMentionedEntities([]);
+      loadSessions();
     }
   }, [knowledgeGraph?.metadata.id, knowledgeGraph?.metadata.title]);
 
-  // 채팅 내역 저장 (메시지 변경 시)
+  // 메시지 변경 시 저장
   useEffect(() => {
-    if (!knowledgeGraph || messages.length === 0) return;
-    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
+    if (!currentSession || messages.length === 0) return;
+    const storageKey = getChatStorageKey(currentSession.id);
     localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, knowledgeGraph?.metadata.id, knowledgeGraph?.metadata.title]);
+    updateSession(currentSession.id, messages);
+    loadSessions();
+  }, [messages, currentSession?.id]);
 
   // 자동 스크롤
   const scrollToBottom = useCallback(() => {
@@ -123,7 +229,7 @@ export function ChatView() {
 
       await sendChatMessage(
         allMessages,
-        { knowledgeGraph, originalText },
+        { knowledgeGraph, originalText: originalText || undefined },
         selectedModel,
         (chunk) => {
           fullResponse += chunk;
@@ -166,16 +272,59 @@ export function ChatView() {
     }
   };
 
-  // 대화 초기화
+  // 현재 대화 초기화 (내용만 삭제)
   const handleClear = () => {
     if (messages.length === 0) return;
-    if (confirm('대화 내용을 모두 삭제하시겠습니까?')) {
+    if (confirm('현재 대화 내용을 모두 삭제하시겠습니까?')) {
       setMessages([]);
       setChatMentionedEntities([]);
-      // localStorage에서도 삭제
-      if (knowledgeGraph) {
-        const storageKey = getChatStorageKey(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
-        localStorage.removeItem(storageKey);
+      if (currentSession) {
+        localStorage.removeItem(getChatStorageKey(currentSession.id));
+        updateSession(currentSession.id, []);
+        loadSessions();
+      }
+    }
+  };
+
+  // 새 대화 시작
+  const handleNewChat = () => {
+    if (!knowledgeGraph?.metadata.id) return;
+    const newSession = createSession(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
+    setCurrentSession(newSession);
+    setMessages([]);
+    setChatMentionedEntities([]);
+    loadSessions();
+    setShowHistoryPanel(false);
+  };
+
+  // 대화 세션 선택
+  const handleSelectSession = (session: ChatSession) => {
+    setCurrentSession(session);
+    loadSessionMessages(session);
+    setShowHistoryPanel(false);
+  };
+
+  // 대화 세션 삭제
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('이 대화를 삭제하시겠습니까?')) return;
+
+    deleteSession(sessionId);
+    loadSessions();
+
+    // 현재 세션이 삭제된 경우
+    if (currentSession?.id === sessionId) {
+      const remaining = getSessionsForGraph(knowledgeGraph?.metadata.id || '');
+      if (remaining.length > 0) {
+        setCurrentSession(remaining[0]);
+        loadSessionMessages(remaining[0]);
+      } else if (knowledgeGraph) {
+        // 새 세션 생성
+        const newSession = createSession(knowledgeGraph.metadata.id!, knowledgeGraph.metadata.title);
+        setCurrentSession(newSession);
+        setMessages([]);
+        setChatMentionedEntities([]);
+        loadSessions();
       }
     }
   };
@@ -251,6 +400,25 @@ export function ChatView() {
               )}
             </div>
 
+            {/* 대화 기록 */}
+            <button
+              onClick={() => setShowHistoryPanel(!showHistoryPanel)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                showHistoryPanel
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+              title="대화 기록"
+            >
+              <History className="w-4 h-4" />
+              <span>기록</span>
+              {sessions.length > 1 && (
+                <span className="text-xs bg-gray-200 px-1.5 py-0.5 rounded-full">
+                  {sessions.length}
+                </span>
+              )}
+            </button>
+
             {/* 대화 초기화 */}
             <button
               onClick={handleClear}
@@ -264,6 +432,63 @@ export function ChatView() {
           </div>
         </div>
       </div>
+
+      {/* 대화 기록 패널 */}
+      {showHistoryPanel && (
+        <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 max-h-64 overflow-y-auto">
+          <div className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">대화 기록</span>
+              <button
+                onClick={handleNewChat}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                새 대화
+              </button>
+            </div>
+
+            {sessions.length === 0 ? (
+              <div className="text-sm text-gray-500 text-center py-4">
+                저장된 대화가 없습니다
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {sessions.map(session => (
+                  <div
+                    key={session.id}
+                    onClick={() => handleSelectSession(session)}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors group ${
+                      currentSession?.id === session.id
+                        ? 'bg-blue-100 border border-blue-200'
+                        : 'bg-white border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-800 truncate">
+                          {session.preview || session.title}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 ml-6">
+                        {session.messageCount}개 메시지 · {new Date(session.updatedAt).toLocaleDateString('ko-KR')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteSession(session.id, e)}
+                      className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="삭제"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 메시지 목록 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
