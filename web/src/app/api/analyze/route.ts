@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
+import { checkAnalyzeEligibility } from '@/lib/balanceCache';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -42,6 +43,12 @@ export async function POST(request: NextRequest) {
 
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
+    }
+
+    // 서버 측 잔액 확인 (AUTH_ENABLED=true 시에만 활성)
+    const balanceError = await checkAnalyzeEligibility();
+    if (balanceError) {
+      return NextResponse.json({ error: balanceError }, { status: 402 });
     }
 
     // 프롬프트 크기 로깅
