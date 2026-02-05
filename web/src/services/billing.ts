@@ -88,11 +88,7 @@ export async function estimateCredits(
   return billingFetch<UsageEstimate>('/credits/estimate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      service: 'storygraph',
-      char_count: charCount,
-      model,
-    }),
+    body: JSON.stringify({ char_count: charCount, model }),
   });
 }
 
@@ -108,28 +104,16 @@ export async function deductCredits(
   metadata?: Record<string, unknown>,
   idempotencyKey?: string,
 ): Promise<DeductResult | null> {
-  try {
-    const res = await fetch(`${BASE}/credits/deduct`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service: 'storygraph',
-        amount,
-        description,
-        metadata,
-        idempotency_key: idempotencyKey,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error('[billing] deductCredits error:', err);
-      return null;
-    }
-    return await res.json();
-  } catch (error) {
-    console.error('[billing] deductCredits error:', error);
-    return null;
-  }
+  return billingFetch<DeductResult>('/credits/deduct', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount,
+      description,
+      metadata,
+      idempotency_key: idempotencyKey,
+    }),
+  });
 }
 
 // ==================== 거래 내역 ====================
@@ -283,8 +267,8 @@ async function deductUsage(
   idempotencyKey: string,
   currentUsage: CurrentUsage,
   updateCreditBalance: (n: number) => void,
-  extraMetadata?: Record<string, unknown>,
   onDeductFailed?: () => void,
+  extraMetadata?: Record<string, unknown>,
 ): Promise<void> {
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
   if (totalTokens <= 0) return;
@@ -319,7 +303,6 @@ export async function deductAfterSave(
     `storygraph-${savedId}-${currentUsage.chunks.length}`,
     currentUsage,
     updateCreditBalance,
-    undefined,
     onDeductFailed,
   );
 }
@@ -336,7 +319,7 @@ export async function deductPartial(
     `storygraph-partial-${title.replace(/\s+/g, '-').slice(0, 30)}-${currentUsage.chunks.length}`,
     currentUsage,
     updateCreditBalance,
-    { partial: true },
     onDeductFailed,
+    { partial: true },
   );
 }

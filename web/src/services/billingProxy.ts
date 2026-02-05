@@ -54,6 +54,23 @@ export async function proxyToCatcident(
   }
 }
 
+/** 업스트림 응답을 처리하여 NextResponse 반환 (에러 차단 + JSON 파싱) */
+async function handleUpstreamResponse(response: Response, logLabel: string): Promise<NextResponse> {
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    console.error(`[billing] ${logLabel} upstream error ${response.status}:`, errorBody);
+    return NextResponse.json(
+      { error: 'Billing service error' },
+      { status: response.status >= 500 ? 502 : response.status }
+    );
+  }
+
+  let data;
+  try { data = await response.json(); }
+  catch { return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 }); }
+  return NextResponse.json(data);
+}
+
 /**
  * GET 프록시 라우트 핸들러 팩토리
  * 대부분의 billing GET 라우트에서 공통으로 사용
@@ -65,21 +82,7 @@ export function billingGetHandler(billingPath: string, logLabel: string) {
       if ('error' in authResult) return authResult.error;
 
       const response = await proxyToCatcident(billingPath, authResult.accessToken);
-
-      // 업스트림 에러 응답 차단
-      if (!response.ok) {
-        const errorBody = await response.text().catch(() => '');
-        console.error(`[billing] ${logLabel} upstream error ${response.status}:`, errorBody);
-        return NextResponse.json(
-          { error: 'Billing service error' },
-          { status: response.status >= 500 ? 502 : response.status }
-        );
-      }
-
-      let data;
-      try { data = await response.json(); }
-      catch { return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 }); }
-      return NextResponse.json(data);
+      return handleUpstreamResponse(response, logLabel);
     } catch (error) {
       console.error(`[billing] ${logLabel} error:`, error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -128,21 +131,7 @@ export function billingPostHandler(billingPath: string, logLabel: string) {
 
       const body = JSON.stringify(filtered);
       const response = await proxyToCatcident(billingPath, authResult.accessToken, { method: 'POST', body });
-
-      // 업스트림 에러 응답 차단
-      if (!response.ok) {
-        const errorBody = await response.text().catch(() => '');
-        console.error(`[billing] ${logLabel} upstream error ${response.status}:`, errorBody);
-        return NextResponse.json(
-          { error: 'Billing service error' },
-          { status: response.status >= 500 ? 502 : response.status }
-        );
-      }
-
-      let data;
-      try { data = await response.json(); }
-      catch { return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 }); }
-      return NextResponse.json(data);
+      return handleUpstreamResponse(response, logLabel);
     } catch (error) {
       console.error(`[billing] ${logLabel} error:`, error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

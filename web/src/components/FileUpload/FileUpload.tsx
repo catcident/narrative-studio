@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
 import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { getCreditBalance as fetchCreditBalance, estimateCredits, createBillingCallback, deductAfterSave, deductPartial, checkSufficientBalance } from '../../services/billing';
+import { createBillingCallback, deductAfterSave, deductPartial, checkSufficientBalance } from '../../services/billing';
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
@@ -504,25 +504,6 @@ export function FileUpload() {
   const handleRegister = useCallback(async () => {
     if (!canRegister) return;
 
-    // 잔액 확인 (예상 비용과 비교)
-    if (subscription) {
-      const balanceInfo = await fetchCreditBalance();
-      if (balanceInfo) {
-        if (balanceInfo.balance <= 0) {
-          setError('크레딧이 부족합니다. 크레딧을 충전해주세요.');
-          return;
-        }
-        const approxCharCount = directText.trim()
-          ? directText.length
-          : Math.ceil(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 3);
-        const estimate = await estimateCredits(approxCharCount, currentModel);
-        if (estimate && estimate.estimated_credits > balanceInfo.balance) {
-          setError(`크레딧이 부족합니다. 필요: 약 ${estimate.estimated_credits.toLocaleString()}, 잔액: ${balanceInfo.balance.toLocaleString()}`);
-          return;
-        }
-      }
-    }
-
     const title = `${bookTitle.trim()} - ${bookAuthor.trim()}`;
 
     await runExtraction(title, async () => {
@@ -542,6 +523,12 @@ export function FileUpload() {
 
       if (!text.trim()) {
         throw new Error('내용이 비어있습니다.');
+      }
+
+      // 잔액 사전 확인
+      if (subscription) {
+        const { sufficient, error: balanceError } = await checkSufficientBalance(text.length, currentModel);
+        if (!sufficient) throw new Error(balanceError);
       }
 
       setProgress('분석 중...');
@@ -574,7 +561,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, saveAndDeduct, setKnowledgeGraph, setError, subscription, resetProgressState]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, saveAndDeduct, setKnowledgeGraph, subscription, resetProgressState]);
 
   // ==================== 렌더링 ====================
 

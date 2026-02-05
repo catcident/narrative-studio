@@ -24,6 +24,41 @@ const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER
   ? `${process.env.AUTH_CATCIDENT_ISSUER}/oauth`
   : undefined;
 
+const REFRESH_TOKEN_ERROR = 'RefreshTokenError';
+
+/** 만료 임박한 access token을 refresh token으로 갱신 */
+async function refreshAccessToken(token: import('next-auth/jwt').JWT): Promise<import('next-auth/jwt').JWT> {
+  try {
+    const response = await fetch(`${OIDC_ISSUER}/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken!,
+        client_id: process.env.AUTH_CATCIDENT_ID || '',
+        client_secret: process.env.AUTH_CATCIDENT_SECRET || '',
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('[auth] Token refresh failed:', response.status);
+      return { ...token, error: REFRESH_TOKEN_ERROR };
+    }
+
+    const data = await response.json();
+    return {
+      ...token,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token ?? token.refreshToken,
+      accessTokenExpires: Date.now() + (data.expires_in ?? 3600) * 1000,
+      error: undefined,
+    };
+  } catch (error) {
+    console.error('[auth] Token refresh error:', error);
+    return { ...token, error: REFRESH_TOKEN_ERROR };
+  }
+}
+
 export const authConfig: NextAuthConfig = {
   providers: [
     {
@@ -73,49 +108,19 @@ export const authConfig: NextAuthConfig = {
       }
 
       // 토큰 갱신: 만료 60초 전이면 refresh 시도
-      if (
+      const needsRefresh =
         token.accessTokenExpires &&
         token.refreshToken &&
-        Date.now() > token.accessTokenExpires - 60_000
-      ) {
-        try {
-          const response = await fetch(`${OIDC_ISSUER}/token/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              grant_type: 'refresh_token',
-              refresh_token: token.refreshToken,
-              client_id: process.env.AUTH_CATCIDENT_ID || '',
-              client_secret: process.env.AUTH_CATCIDENT_SECRET || '',
-            }),
-          });
+        Date.now() > token.accessTokenExpires - 60_000;
 
-          if (response.ok) {
-            const data = await response.json();
-            token.accessToken = data.access_token;
-            token.refreshToken = data.refresh_token ?? token.refreshToken;
-            token.accessTokenExpires = Date.now() + (data.expires_in ?? 3600) * 1000;
-            token.error = undefined;
-          } else {
-            console.error('[auth] Token refresh failed:', response.status);
-            token.error = 'RefreshTokenError';
-          }
-        } catch (error) {
-          console.error('[auth] Token refresh error:', error);
-          token.error = 'RefreshTokenError';
-        }
-      }
-
-      return token;
+      return needsRefresh ? refreshAccessToken(token) : token;
     },
     async session({ session, token }) {
       session.user.id = token.id;
       session.user.nickname = token.nickname;
       session.user.memberType = token.memberType;
       session.user.roles = token.roles;
-      if (token.error) {
-        session.error = token.error;
-      }
+      session.error = token.error;
       return session;
     },
   },

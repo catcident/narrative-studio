@@ -4,9 +4,8 @@
 
 import type { NovelKnowledgeGraph } from '../../types';
 import type { KnownEntity, EntitySummary } from './types';
-import { CATEGORY_NAMES, MAX_KNOWN_ENTITIES, MAX_PER_CATEGORY, getApiKey, stripMarkdownCodeBlock } from './types';
+import { CATEGORY_NAMES, MAX_KNOWN_ENTITIES, MAX_PER_CATEGORY, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
-import { fetchWithClientTimeout } from './types';
 
 export function trimKnownEntities(entities: KnownEntity[]): KnownEntity[] {
   if (entities.length <= MAX_KNOWN_ENTITIES) {
@@ -87,6 +86,11 @@ export interface SelectionResult {
   billing: { prompt_tokens: number; completion_tokens: number; model: string } | null;
 }
 
+/** 그래프의 모든 엔티티 이름 목록 반환 (선별 스킵/실패 시 폴백용) */
+function allEntityNames(graph: NovelKnowledgeGraph): string[] {
+  return Object.values(graph.entities).map((e: any) => e.name);
+}
+
 /**
  * LLM을 사용하여 청크와 관련된 엔티티 선별
  */
@@ -99,7 +103,7 @@ export async function selectRelevantEntities(
   const entityCount = Object.keys(graph.entities).length;
   if (entityCount <= 1) {
     console.log(`[extraction] 엔티티 ${entityCount}개 - 선별 스킵, 전체 사용`);
-    return { names: Object.values(graph.entities).map((e: any) => e.name), billing: null };
+    return { names: allEntityNames(graph), billing: null };
   }
 
   // 엔티티 요약 생성
@@ -132,7 +136,7 @@ export async function selectRelevantEntities(
 
     if (!response.ok) {
       console.warn('[extraction] 선별 API 오류, 전체 엔티티 사용');
-      return { names: Object.values(graph.entities).map((e: any) => e.name), billing: null };
+      return { names: allEntityNames(graph), billing: null };
     }
 
     const data = await response.json();
@@ -155,7 +159,7 @@ export async function selectRelevantEntities(
       }
     } catch {
       console.warn('[extraction] 선별 JSON 파싱 실패, 전체 엔티티 사용');
-      return { names: Object.values(graph.entities).map((e: any) => e.name), billing };
+      return { names: allEntityNames(graph), billing };
     }
 
     console.log(`[extraction] 선별 ${entityCount}개 중 ${selectedNames.length}개 선택: ${selectedNames.slice(0, 10).join(', ')}${selectedNames.length > 10 ? '...' : ''}`);
@@ -163,7 +167,7 @@ export async function selectRelevantEntities(
 
   } catch (error) {
     console.warn('[extraction] 선별 오류 발생, 전체 엔티티 사용:', error);
-    return { names: Object.values(graph.entities).map((e: any) => e.name), billing: null };
+    return { names: allEntityNames(graph), billing: null };
   }
 }
 

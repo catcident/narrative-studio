@@ -146,11 +146,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
         // selector billing 추적
         if (selectionBilling && onChunkBilling) {
-          onChunkBilling(i, {
-            prompt_tokens: selectionBilling.prompt_tokens,
-            completion_tokens: selectionBilling.completion_tokens,
-            model: selectionBilling.model,
-          });
+          onChunkBilling(i, selectionBilling);
         }
 
         // 선별된 이름으로 필터링
@@ -168,11 +164,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       if (extracted) {
         // billing 정보를 콜백으로 전달
         if (billing && onChunkBilling) {
-          onChunkBilling(i, {
-            prompt_tokens: billing.prompt_tokens || 0,
-            completion_tokens: billing.completion_tokens || 0,
-            model: useModel,
-          });
+          onChunkBilling(i, { ...billing, model: useModel });
         }
         allExtracted.push(extracted);
 
