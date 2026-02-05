@@ -137,13 +137,14 @@ export const useStore = create<AppState>((set, get) => ({
 
 // 셀렉터 헬퍼
 export const useSelectedEntity = (): Entity | null => {
-  const { knowledgeGraph, selectedEntityId } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
   if (!knowledgeGraph || !selectedEntityId) return null;
   return knowledgeGraph.entities[selectedEntityId] || null;
 };
 
 export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
-  const { knowledgeGraph } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   if (!knowledgeGraph || !entityId) return [];
   return Object.values(knowledgeGraph.hyperedges).filter(
     (edge) => edge.entities.includes(entityId)
@@ -155,7 +156,7 @@ export const useCreditBalance = () => useStore((s) => s.subscription?.creditBala
 export const useAuthEnabled = () => useStore((s) => s.authEnabled);
 
 export const useCharacters = (): Entity[] => {
-  const { knowledgeGraph } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   if (!knowledgeGraph) return [];
   return Object.values(knowledgeGraph.entities).filter(
     (e) => e.category === 'character'

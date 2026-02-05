@@ -35,7 +35,7 @@ interface Props {
 }
 
 export function DataManager({ onClose, onLoad }: Props) {
-  const { knowledgeGraph } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string; addedFiles?: string | null }[]>([]);

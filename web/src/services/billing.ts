@@ -253,13 +253,14 @@ export function createBillingCallback(
   };
 }
 
-/** 분석 완료 후 실제 토큰 기반 크레딧 차감 */
-export async function deductAfterSave(
-  savedId: string,
-  title: string,
+/** 공통 크레딧 차감 헬퍼 */
+async function deductUsage(
+  description: string,
+  idempotencyKey: string,
   model: string,
   currentUsage: CurrentUsage,
   updateCreditBalance: (n: number) => void,
+  extraMetadata?: Record<string, unknown>,
 ): Promise<void> {
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
   if (totalTokens <= 0) return;
@@ -271,16 +272,32 @@ export async function deductAfterSave(
   );
   if (credits <= 0) return;
 
-  const idempotencyKey = `storygraph-${savedId}-${Date.now()}`;
   const result = await deductCredits(
     credits,
-    `소설 분석: ${title}`,
-    { model, chunks: currentUsage.chunks.length, totalTokens },
+    description,
+    { model, chunks: currentUsage.chunks.length, totalTokens, ...extraMetadata },
     idempotencyKey,
   );
   if (result) {
     updateCreditBalance(result.balance_after);
   }
+}
+
+/** 분석 완료 후 실제 토큰 기반 크레딧 차감 */
+export async function deductAfterSave(
+  savedId: string,
+  title: string,
+  model: string,
+  currentUsage: CurrentUsage,
+  updateCreditBalance: (n: number) => void,
+): Promise<void> {
+  return deductUsage(
+    `소설 분석: ${title}`,
+    `storygraph-${savedId}-${Date.now()}`,
+    model,
+    currentUsage,
+    updateCreditBalance,
+  );
 }
 
 /** 분석 도중 실패 시 부분 차감 */
@@ -290,24 +307,12 @@ export async function deductPartial(
   currentUsage: CurrentUsage,
   updateCreditBalance: (n: number) => void,
 ): Promise<void> {
-  const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
-  if (totalTokens <= 0) return;
-
-  const credits = calculateCreditsFromTokens(
-    currentUsage.totalPromptTokens,
-    currentUsage.totalCompletionTokens,
-    model,
-  );
-  if (credits <= 0) return;
-
-  const idempotencyKey = `storygraph-partial-${Date.now()}`;
-  const result = await deductCredits(
-    credits,
+  return deductUsage(
     `소설 분석 (부분): ${title}`,
-    { model, chunks: currentUsage.chunks.length, totalTokens, partial: true },
-    idempotencyKey,
+    `storygraph-partial-${Date.now()}`,
+    model,
+    currentUsage,
+    updateCreditBalance,
+    { partial: true },
   );
-  if (result) {
-    updateCreditBalance(result.balance_after);
-  }
 }

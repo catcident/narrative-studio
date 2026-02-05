@@ -191,24 +191,7 @@ export function tryFixJson(content: string): any {
   try {
     return JSON.parse(fixed);
   } catch {
-    // 마지막 시도: 유효한 JSON 객체 부분만 추출
-    try {
-      // scenes 배열까지만 파싱 시도
-      const scenesEnd = fixed.lastIndexOf('"scenes"');
-      if (scenesEnd > 0) {
-        // 최소한의 유효한 JSON 구조 생성
-        const minimalJson = {
-          chapters: [],
-          scenes: [],
-          entities: [],
-          relationships: []
-        };
-        console.log('불완전한 JSON, 최소 구조로 반환');
-        return minimalJson;
-      }
-    } catch {
-      // 무시
-    }
+    // 복구 불가능한 경우 null 반환
     return null;
   }
 }

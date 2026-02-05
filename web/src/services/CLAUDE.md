@@ -2,24 +2,61 @@
 
 비즈니스 로직 서비스 모듈
 
-## extraction.ts - AI 분석 서비스
+## extraction/ - AI 분석 서비스 (8개 모듈)
 
-소설 텍스트를 분석하여 지식 그래프를 추출하는 핵심 서비스
+소설 텍스트를 분석하여 지식 그래프를 추출하는 핵심 서비스.
+단일 파일에서 8개 모듈로 분할됨:
+
+| 모듈 | 역할 |
+|------|------|
+| `types.ts` | 타입 정의 + 공유 유틸리티 (`stripMarkdownCodeBlock`, `getApiKey`) |
+| `prompts.ts` | LLM 프롬프트 템플릿 |
+| `chunker.ts` | 텍스트 → 스마트 청크 분할 (챕터 경계 인식) |
+| `selector.ts` | 엔티티 선별 (LLM 기반) + API 키 관리 |
+| `extractor.ts` | 단일 청크 LLM 추출 + JSON 복구 |
+| `merger.ts` | 결과 병합 + 관계 추론 + 지식 그래프 구조화 |
+| `orchestrator.ts` | 메인 파이프라인 + 진행상황 저장/복원 |
+| `index.ts` | Public API re-export |
+
+### ⚠️ 모듈 의존성 규칙
+
+`extractor.ts` ↔ `selector.ts` 간 순환 의존이 존재 (TODO: 해소 필요).
+공유 유틸리티는 `types.ts`에 배치하여 순환 방지.
+
+```
+orchestrator → extractor → selector (✅ 단방향)
+orchestrator → merger (✅ 단방향)
+extractor ← → selector (⚠️ 순환 — fetchWithClientTimeout를 types.ts로 이동 필요)
+```
 
 ### 분석 파이프라인
 
 ```
 텍스트 입력
     ↓
-청크 분할 (5,000자)
+청크 분할 (5,000자) [chunker.ts]
     ↓
-순차 LLM 분석 (청크별)
+엔티티 선별 (청크별 LLM) [selector.ts]
+    ↓
+순차 LLM 분석 (청크별) [extractor.ts]
     ↓ 이전 인물 컨텍스트 전달
-결과 병합
+결과 병합 [merger.ts]
     ↓
-관계 추론 (후처리)
+관계 추론 (후처리) [merger.ts]
     ↓
-지식 그래프 구조화
+지식 그래프 구조화 [merger.ts]
+```
+
+### ⚠️ 관계 타입 규칙
+
+관계 타입은 반드시 한국어 10종만 사용: `가족`, `연인`, `친구`, `적대`, `동료`, `소속`, `위치`, `소유`, `포함`, `관련`
+
+```typescript
+// ❌ 영문 관계 타입 (normalizeAllRelationTypes 이후에 생성하면 누락됨)
+relationType = 'related';  // 'location', 'ownership' 도 동일
+
+// ✅ 한국어 관계 타입 직접 사용
+relationType = '관련';  // '위치', '소유'
 ```
 
 ### 청크 처리 전략
@@ -56,8 +93,20 @@
 ### 주요 함수
 
 ```typescript
-// 메인 추출 함수 (파일 추가 시 existingGraph 전달하여 이어서 분석)
-extractKnowledgeGraph(text, title, onProgress?, resumeFrom?, model?, fileName?, existingGraph?, onChunkBilling?)
+// 메인 추출 함수 (ExtractionOptions 객체 파라미터)
+extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph>
+
+// ExtractionOptions 인터페이스
+interface ExtractionOptions {
+  text: string;
+  title: string;
+  onProgress?: (message: string, current?: number, total?: number) => void;
+  resumeFrom?: ExtractionProgress;
+  model?: string;
+  fileName?: string;
+  existingGraph?: NovelKnowledgeGraph;
+  onChunkBilling?: (billing: ChunkBillingData) => void;
+}
 
 // 진행상황 관리
 saveProgress(), loadProgress(), clearProgress(), hasProgress()
@@ -66,17 +115,28 @@ saveProgress(), loadProgress(), clearProgress(), hasProgress()
 setApiKey(), hasApiKey(), getApiKey()
 ```
 
-### ⚠️ Billing 콜백 필수 규칙
+### ⚠️ Billing 추적 필수 규칙
 
-**모든 `extractKnowledgeGraph` 호출에 `onChunkBilling` 콜백을 전달해야 합니다.**
-콜백 누락 시 해당 분석 경로에서 토큰 사용량이 추적되지 않아 무료 사용이 됩니다.
+**모든 LLM API 호출(`/api/analyze`)은 billing 추적 대상입니다.**
+`extractKnowledgeGraph`의 `onChunkBilling` 콜백뿐 아니라, 내부에서 발생하는 모든 LLM 호출 (예: `selectRelevantEntities`의 엔티티 선별 호출)도 포함됩니다.
 
 새로운 분석 경로를 추가할 때 체크리스트:
 - [ ] `onChunkBilling` 콜백 전달
+- [ ] 내부 LLM 호출 (`selectRelevantEntities` 등)의 billing 데이터도 수집
 - [ ] 분석 완료 후 `deductCredits()` 호출
-- [ ] 분석 전 잔액 확인 (`estimateCredits` + balance 비교)
+- [ ] 분석 전 잔액 확인 (`estimateCredits` + balance 비교) — **모든** 진입점에서
+- [ ] `idempotencyKey`는 결정론적 값 사용 (타임스탬프/`Date.now()` 금지)
 
-> TODO: 8개 positional 파라미터를 `ExtractionOptions` 객체로 전환하면 누락 방지에 효과적
+### ⚠️ Idempotency Key 규칙
+
+```typescript
+// ❌ Date.now() → 매 호출마다 다른 값 → 중복 차감 방지 실패
+const key = `storygraph-${savedId}-${Date.now()}`;
+
+// ✅ 결정론적 값 → 동일 작업이면 동일 키
+const key = `storygraph-${savedId}-${chunks.length}`;
+const key = `storygraph-partial-${titleHash}-${chunks.length}`;
+```
 
 ### 파일 추가 분석
 

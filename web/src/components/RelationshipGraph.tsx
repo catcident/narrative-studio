@@ -457,7 +457,8 @@ function EdgeDetailPopup({
 const NODE_THRESHOLD = 100;
 
 export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene, sceneIndex }: Props) {
-  const { selectedEntityId, selectEntity } = useStore();
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
+  const selectEntity = useStore((s) => s.selectEntity);
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharIds, setFocusedCharIds] = useState<string[]>([]);

@@ -52,7 +52,9 @@ interface TimelineEvent {
 }
 
 export function TimelineView() {
-  const { knowledgeGraph, selectEntity, selectedEntityId } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectEntity = useStore((s) => s.selectEntity);
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
   // 장면(snapshot) 기반 타임라인

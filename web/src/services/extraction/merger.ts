@@ -3,9 +3,15 @@
  */
 
 import type { NovelKnowledgeGraph } from '../../types';
-import { CATEGORY_NAMES } from './types';
 
-// 이름 정규화 (공백, 호칭 제거)
+// --- ID 포맷 헬퍼 ---
+
+function formatId(prefix: string, num: number): string {
+  return `${prefix}${String(num).padStart(4, '0')}`;
+}
+
+// --- 이름 정규화 ---
+
 export function normalizeName(name: string): string {
   return name
     .trim()
@@ -14,7 +20,65 @@ export function normalizeName(name: string): string {
     .replace(/(씨|님|군|양|선생|사장|부장|과장|대리|사원)$/g, '');
 }
 
-// 비슷한 엔티티 찾기
+// 두 문자열의 최대 공통 부분 문자열 찾기
+function findOverlap(a: string, b: string): string {
+  const aLower = a.toLowerCase();
+  const bLower = b.toLowerCase();
+  let maxOverlap = '';
+
+  for (let i = 0; i < aLower.length; i++) {
+    for (let j = i + 1; j <= aLower.length; j++) {
+      const sub = aLower.slice(i, j);
+      if (bLower.includes(sub) && sub.length > maxOverlap.length) {
+        maxOverlap = sub;
+      }
+    }
+  }
+  return maxOverlap;
+}
+
+// 이름 → ID 매핑에 정확/소문자/정규화 3가지 키를 등록
+function registerNameMapping(nameToId: Record<string, string>, name: string, id: string): void {
+  nameToId[name] = id;
+  nameToId[name.toLowerCase()] = id;
+  nameToId[normalizeName(name)] = id;
+}
+
+// nameToId 맵에서 유연한 이름 매칭으로 엔티티 ID를 찾기
+function findEntityId(name: string, nameToId: Record<string, string>): string | undefined {
+  if (!name) return undefined;
+
+  // 1. 정확한 매칭
+  if (nameToId[name]) return nameToId[name];
+  if (nameToId[name.toLowerCase()]) return nameToId[name.toLowerCase()];
+
+  // 2. 정규화된 이름으로 매칭
+  const normalized = normalizeName(name);
+  if (nameToId[normalized]) return nameToId[normalized];
+
+  // 3. 부분 매칭 (이름이 포함되거나 포함하는 경우)
+  const nameLower = name.toLowerCase();
+  for (const [entityName, id] of Object.entries(nameToId)) {
+    const entityNameLower = entityName.toLowerCase();
+    if (entityNameLower.includes(nameLower) || nameLower.includes(entityNameLower)) {
+      return id;
+    }
+  }
+
+  // 4. 2글자 이상 공통 부분 매칭
+  if (name.length >= 2) {
+    for (const [entityName, id] of Object.entries(nameToId)) {
+      if (findOverlap(name, entityName).length >= 2) {
+        return id;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+// --- 비슷한 엔티티 찾기 (mergeExtractions 전용) ---
+
 export function findSimilarEntity(name: string, nameMap: Record<string, number>, _entities: any[]): number {
   // 정확히 일치
   if (nameMap[name] !== undefined) {
@@ -43,14 +107,15 @@ export function findSimilarEntity(name: string, nameMap: Record<string, number>,
   return -1;
 }
 
-// 여러 청크 결과를 병합 (같은 인물 판단 + 장면 번호 글로벌화)
+// --- 청크 결과 병합 ---
+
 export function mergeExtractions(extractions: any[]): any {
   const entities: any[] = [];
   const relationships: any[] = [];
   const scenes: any[] = [];
   const chapters: any[] = [];
-  const chapterMap: Record<string, number> = {}; // 장 제목 -> id 매핑
-  const nameMap: Record<string, number> = {}; // 이름 -> entities 인덱스
+  const chapterMap: Record<string, number> = {};
+  const nameMap: Record<string, number> = {};
 
   let globalSceneOffset = 0;
 
@@ -66,32 +131,24 @@ export function mergeExtractions(extractions: any[]): any {
       if (!chapterMap[key]) {
         const newId = chapters.length + 1;
         chapterMap[key] = newId;
-        chapters.push({
-          ...chapter,
-          id: newId,
-        });
+        chapters.push({ ...chapter, id: newId });
       }
     }
 
-    // 장면 병합 (글로벌 번호 부여 - 청크 내 순서 기준)
-    // LLM이 준 scene.id는 무시하고, 배열 인덱스(청크 내 순서)를 사용
+    // 장면 병합 (글로벌 번호 부여)
     const localToGlobal: Record<number, number> = {};
     const chunkScenes = ext.scenes || [];
 
     for (let sceneIdx = 0; sceneIdx < chunkScenes.length; sceneIdx++) {
       const scene = chunkScenes[sceneIdx];
-      // 글로벌 ID = 이전 청크들의 장면 수 + 현재 청크 내 순서(1부터 시작)
       const globalId = globalSceneOffset + sceneIdx + 1;
-      // LLM이 준 scene.id를 글로벌 ID로 매핑 (엔티티/관계의 scenes 참조용)
       localToGlobal[scene.id] = globalId;
 
-      // 장면의 chapter를 실제 번호로 변환 (제목에서 추출)
-      // "2화: xxx" → 2, "제3장: yyy" → 3
+      // 장면의 chapter를 실제 번호로 변환
       let actualChapterNumber = scene.chapter;
       if (scene.chapter && ext.chapters) {
         const chapterInfo = ext.chapters.find((c: any) => c.id === scene.chapter);
-        if (chapterInfo && chapterInfo.title) {
-          // 제목에서 숫자 추출 (예: "2화: xxx" → 2, "제3장" → 3)
+        if (chapterInfo?.title) {
           const numMatch = chapterInfo.title.match(/(\d+)/);
           if (numMatch) {
             actualChapterNumber = parseInt(numMatch[1], 10);
@@ -102,7 +159,7 @@ export function mergeExtractions(extractions: any[]): any {
       scenes.push({
         ...scene,
         id: globalId,
-        chapter: actualChapterNumber,  // 실제 화/장 번호 (정렬용)
+        chapter: actualChapterNumber,
         chunkNum: chunkIdx + 1
       });
     }
@@ -112,34 +169,23 @@ export function mergeExtractions(extractions: any[]): any {
     for (const entity of (ext.entities || [])) {
       const normalizedName = normalizeName(entity.name);
       const existingIdx = findSimilarEntity(normalizedName, nameMap, entities);
-
-      // 장면 번호를 글로벌로 변환
       const globalScenes = (entity.scenes || []).map((s: number) => localToGlobal[s] || s);
 
       if (existingIdx !== -1) {
-        // 기존 엔티티에 정보 추가
         const existing = entities[existingIdx];
         if (entity.description && !existing.description?.includes(entity.description)) {
           existing.description = (existing.description || '') + ' ' + entity.description;
         }
-        // 장면 병합
         existing.scenes = [...new Set([...(existing.scenes || []), ...globalScenes])];
-        // 속성 병합
         if (entity.attributes) {
           existing.attributes = { ...(existing.attributes || {}), ...entity.attributes };
         }
-        // aliases 병합
         if (entity.aliases) {
           existing.aliases = [...new Set([...(existing.aliases || []), ...entity.aliases])];
         }
       } else {
-        // 새 엔티티
         const idx = entities.length;
-        entities.push({
-          ...entity,
-          scenes: globalScenes,
-          aliases: entity.aliases || []
-        });
+        entities.push({ ...entity, scenes: globalScenes, aliases: entity.aliases || [] });
         nameMap[normalizedName] = idx;
         for (const alias of (entity.aliases || [])) {
           nameMap[normalizeName(alias)] = idx;
@@ -156,7 +202,6 @@ export function mergeExtractions(extractions: any[]): any {
       );
 
       if (existingRel) {
-        // 장면만 추가
         existingRel.scenes = [...new Set([...(existingRel.scenes || []), ...globalScenes])];
       } else {
         relationships.push({ ...rel, scenes: globalScenes });
@@ -169,10 +214,10 @@ export function mergeExtractions(extractions: any[]): any {
   return { entities, relationships, scenes, chapters };
 }
 
-// 허용된 관계 타입
+// --- 관계 타입 정규화 ---
+
 const VALID_RELATION_TYPES = ['가족', '연인', '친구', '적대', '동료', '소속', '위치', '소유', '포함', '관련'];
 
-// 잘못된 관계 타입을 올바른 타입으로 매핑
 const RELATION_TYPE_MAPPING: Record<string, string> = {
   // 가족 관련
   '부모': '가족', '자녀': '가족', '형제': '가족', '자매': '가족', '친척': '가족',
@@ -181,7 +226,7 @@ const RELATION_TYPE_MAPPING: Record<string, string> = {
   '사랑': '연인', '짝사랑': '연인', '애인': '연인', '전연인': '연인', '결혼': '연인',
   // 친구 관련
   '지인': '친구', '아는사이': '친구', '친한사이': '친구', '우정': '친구',
-  '아친구이': '친구', // 잘못 생성된 예시
+  '아친구이': '친구',
   // 적대 관련
   '원수': '적대', '라이벌': '적대', '갈등': '적대', '경쟁': '적대', '싸움': '적대',
   // 동료 관련
@@ -192,20 +237,16 @@ const RELATION_TYPE_MAPPING: Record<string, string> = {
   'located_at': '위치', 'related_to': '관련', 'related': '관련',
 };
 
-/**
- * 관계 타입 정규화 - 잘못된 타입을 올바른 타입으로 변환
- */
 function normalizeRelationType(type: string): string {
   if (!type) return '관련';
 
   const trimmed = type.trim();
 
-  // 이미 유효한 타입이면 그대로 반환
   if (VALID_RELATION_TYPES.includes(trimmed)) {
     return trimmed;
   }
 
-  // 매핑에서 찾기
+  // 정확한 매핑
   const mapped = RELATION_TYPE_MAPPING[trimmed] || RELATION_TYPE_MAPPING[trimmed.toLowerCase()];
   if (mapped) {
     console.log(`관계 타입 정규화: "${trimmed}" → "${mapped}"`);
@@ -220,26 +261,21 @@ function normalizeRelationType(type: string): string {
     }
   }
 
-  // 매핑 실패 시 기본값
   console.log(`관계 타입 정규화 실패: "${trimmed}" → "관련"`);
   return '관련';
 }
 
-/**
- * 모든 관계의 타입을 정규화
- */
 function normalizeAllRelationTypes(extracted: any): any {
   const { relationships, ...rest } = extracted;
-
   const normalizedRelationships = (relationships || []).map((rel: any) => ({
     ...rel,
     type: normalizeRelationType(rel.type)
   }));
-
   return { ...rest, relationships: normalizedRelationships };
 }
 
-// 소유자 이름 정규화
+// --- 후처리: 누락된 관계 추론 ---
+
 function normalizeOwnerName(name: string): string {
   const firstPersonAliases = ['화자', '주인공', '나는', '내'];
   if (firstPersonAliases.includes(name.toLowerCase())) {
@@ -248,7 +284,6 @@ function normalizeOwnerName(name: string): string {
   return name;
 }
 
-// 관계 존재 여부 확인
 function hasRelationship(relationships: any[], from: string, to: string): boolean {
   const normFrom = from.toLowerCase();
   const normTo = to.toLowerCase();
@@ -264,30 +299,26 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
  * "화자가 걷는 길" 같은 설명에서 위치 관계를 추출
  */
 export function inferMissingRelationships(extracted: any): any {
-  // 먼저 관계 타입 정규화
   const normalized = normalizeAllRelationTypes(extracted);
   const { entities, relationships } = normalized;
   const newRelationships: any[] = [];
 
-  // 엔티티 이름 목록 (인물만)
   const characterNames = entities
     .filter((e: any) => e.category === 'character')
     .map((e: any) => e.name);
 
-  // 소유자/사용자 패턴 (소유 관계)
   const ownerPatterns = [
     /^(.+?)(?:가|이|의)\s*(?:피우는|먹는|마시는|쓰는|타는|가진|입는|쓰던|읽는|보는|사용하는|운전하는|타고\s*다니는|가지고\s*있는)/,
-    /^(.+?)의\s+/,  // "~의 물건" 패턴
+    /^(.+?)의\s+/,
   ];
 
-  // 위치 패턴 (위치 관계) - location 엔티티용
   const locationPatterns = [
     /^(.+?)(?:가|이)\s*(?:걷는|걸어가는|지나가는|다니는|있는|가는|오는|서\s*있는|앉아\s*있는|누워\s*있는)/,
     /^(.+?)(?:가|이)\s*(?:사는|거주하는|일하는|근무하는|다니는)/,
   ];
 
   for (const entity of entities) {
-    if (entity.category === 'character') continue; // 인물은 스킵
+    if (entity.category === 'character') continue;
 
     const desc = entity.description || '';
     const attrOwner = entity.attributes?.owner;
@@ -316,10 +347,7 @@ export function inferMissingRelationships(extracted: any): any {
       for (const pattern of locationPatterns) {
         const match = desc.match(pattern);
         if (match) {
-          let personName = match[1].trim();
-          personName = normalizeOwnerName(personName);
-
-          // 이미 관계가 있는지 확인
+          const personName = normalizeOwnerName(match[1].trim());
           if (!hasRelationship(relationships, personName, entity.name) &&
               !hasRelationship(newRelationships, personName, entity.name)) {
             newRelationships.push({
@@ -344,10 +372,7 @@ export function inferMissingRelationships(extracted: any): any {
     for (const pattern of ownerPatterns) {
       const match = desc.match(pattern);
       if (match) {
-        let ownerName = match[1].trim();
-        ownerName = normalizeOwnerName(ownerName);
-
-        // 이미 관계가 있는지 확인
+        const ownerName = normalizeOwnerName(match[1].trim());
         if (!hasRelationship(relationships, ownerName, entity.name) &&
             !hasRelationship(newRelationships, ownerName, entity.name)) {
           newRelationships.push({
@@ -360,7 +385,7 @@ export function inferMissingRelationships(extracted: any): any {
             scenes: entity.scenes || []
           });
         }
-        break; // 첫 번째 매칭만 사용
+        break;
       }
     }
 
@@ -392,210 +417,50 @@ export function inferMissingRelationships(extracted: any): any {
   };
 }
 
-export function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileName?: string, originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
-  const now = new Date().toISOString();
+// --- 지식 그래프 구축 ---
 
-  // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
-  const entities: Record<string, any> = existingGraph ? { ...existingGraph.entities } : {};
-  const hyperedges: Record<string, any> = existingGraph ? { ...existingGraph.hyperedges } : {};
-  const nameToId: Record<string, string> = {};
+// 두 엔티티 간 기존 관계가 존재하는지 확인
+function hasEdgeBetween(hyperedges: Record<string, any>, id1: string, id2: string): boolean {
+  return Object.values(hyperedges).some((edge: any) =>
+    edge.entities.includes(id1) && edge.entities.includes(id2)
+  );
+}
 
-  // 기존 엔티티의 이름 매핑 초기화
-  Object.values(entities).forEach((e: any) => {
-    nameToId[e.name] = e.id;
-    nameToId[e.name.toLowerCase()] = e.id;
-    nameToId[normalizeName(e.name)] = e.id;
-    (e.aliases || []).forEach((alias: string) => {
-      nameToId[alias] = e.id;
-      nameToId[alias.toLowerCase()] = e.id;
-      nameToId[normalizeName(alias)] = e.id;
-    });
-  });
+// 카테고리 기반 관계 타입 추정
+function inferRelationType(category: string): string {
+  if (category === 'location') return '위치';
+  if (category === 'item' || category === 'object') return '소유';
+  return '관련';
+}
 
-  // 기존 카운터 (기존 데이터가 있으면 이어서)
-  let entityCounter = Object.keys(entities).length;
-  let edgeCounter = Object.keys(hyperedges).length;
+// 장면 ID 문자열에서 사람이 읽기 쉬운 번호 추출 ("S0003" -> "3")
+function sceneIdToReadable(sceneId: string): string {
+  return sceneId.replace('S', '').replace(/^0+/, '');
+}
 
-  // 엔티티 등록
-  (extracted.entities || []).forEach((e: any) => {
-    // 기존에 같은 이름의 엔티티가 있는지 확인
-    const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
-
-    if (existingId && entities[existingId]) {
-      // 기존 엔티티에 정보 추가
-      const existing = entities[existingId];
-      // 별칭 병합
-      existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
-      // 설명 추가
-      if (e.description && !existing.description?.includes(e.description)) {
-        existing.description = (existing.description + ' ' + e.description).slice(0, 500);
-      }
-      // 장면 병합 (새 장면 번호는 나중에 처리)
-      return; // 새 엔티티 생성 안함
-    }
-
-    entityCounter++;
-    const id = `E${String(entityCounter).padStart(4, '0')}`;
-    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
-    entities[id] = {
-      id,
-      name: e.name,
-      category: e.category || 'character',
-      aliases: e.aliases || [],
-      description: e.description || '',
-      attributes: e.attributes || {},
-      scenes: sceneIds,  // 등장 장면 ID들 (문자열)
-      firstMention: { chapter: 1 },
-      importance: e.importance || 5,  // 기본 중요도 5
-    };
-    nameToId[e.name] = id;
-    // 소문자로도 매핑
-    nameToId[e.name.toLowerCase()] = id;
-    // 정규화된 이름으로도 매핑
-    nameToId[normalizeName(e.name)] = id;
-    (e.aliases || []).forEach((alias: string) => {
-      nameToId[alias] = id;
-      nameToId[alias.toLowerCase()] = id;
-      nameToId[normalizeName(alias)] = id;
-    });
-  });
-
-  // 유연한 이름 매칭 함수
-  const findEntityId = (name: string): string | undefined => {
-    if (!name) return undefined;
-
-    // 1. 정확한 매칭
-    if (nameToId[name]) return nameToId[name];
-    if (nameToId[name.toLowerCase()]) return nameToId[name.toLowerCase()];
-
-    // 2. 정규화된 이름으로 매칭
-    const normalized = normalizeName(name);
-    if (nameToId[normalized]) return nameToId[normalized];
-
-    // 3. 부분 매칭 (이름이 포함되거나 포함하는 경우)
-    const nameLower = name.toLowerCase();
-    for (const [entityName, id] of Object.entries(nameToId)) {
-      const entityNameLower = entityName.toLowerCase();
-      // "춘향" ↔ "춘향이", "이도령" ↔ "이몽룡 이도령"
-      if (entityNameLower.includes(nameLower) || nameLower.includes(entityNameLower)) {
-        return id;
-      }
-    }
-
-    // 4. 2글자 이상 공통 부분 매칭
-    if (name.length >= 2) {
-      for (const [entityName, id] of Object.entries(nameToId)) {
-        // 한글 이름에서 겹치는 부분이 2글자 이상이면 매칭
-        const overlap = findOverlap(name, entityName);
-        if (overlap.length >= 2) {
-          return id;
-        }
-      }
-    }
-
-    return undefined;
-  };
-
-  // 두 문자열의 최대 겹치는 부분 찾기
-  const findOverlap = (a: string, b: string): string => {
-    const aLower = a.toLowerCase();
-    const bLower = b.toLowerCase();
-    let maxOverlap = '';
-
-    for (let i = 0; i < aLower.length; i++) {
-      for (let j = i + 1; j <= aLower.length; j++) {
-        const sub = aLower.slice(i, j);
-        if (bLower.includes(sub) && sub.length > maxOverlap.length) {
-          maxOverlap = sub;
-        }
-      }
-    }
-    return maxOverlap;
-  };
-
-  // 관계 등록
-  (extracted.relationships || []).forEach((r: any) => {
-    // 유연한 이름 매칭
-    const fromId = findEntityId(r.from);
-    const toId = findEntityId(r.to);
-    if (!fromId || !toId) {
-      console.log('관계 매핑 실패:', r.from, '->', r.to, '(엔티티를 찾을 수 없음)');
-      return;
-    }
-
-    // 같은 엔티티 간의 관계는 무시
-    if (fromId === toId) {
-      console.log('자기참조 관계 무시:', r.from, '->', r.to);
-      return;
-    }
-
-    // 기존에 같은 관계가 있는지 확인
-    const existingEdge = Object.values(hyperedges).find((e: any) =>
-      e.type === r.type &&
-      e.entities.includes(fromId) &&
-      e.entities.includes(toId)
-    );
-
-    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
-
-    if (existingEdge) {
-      // 기존 관계에 장면만 추가
-      existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...sceneIds])];
-      return;
-    }
-
-    edgeCounter++;
-    const id = `H${String(edgeCounter).padStart(4, '0')}`;
-    hyperedges[id] = {
-      id,
-      type: r.type,
-      subtype: r.subtype,
-      entities: [fromId, toId],
-      statement: r.description,
-      quote: r.quote,  // 원문 인용
-      timeline: {
-        start: r.start_time,
-        chapter: 1,
-      },
-      sentiment: r.sentiment,
-      strength: r.strength,
-      bidirectional: r.bidirectional,
-      fromPerspective: r.from_perspective,
-      toPerspective: r.to_perspective,
-      scenes: sceneIds,  // 등장 장면 ID들 (문자열)
-      sourceRef: { chapter: 1 },
-    };
-  });
-
-  // description에서 다른 엔티티 언급을 찾아 자동 관계 생성
-  // edgeCounter는 이미 위에서 관계 등록 시 업데이트됨
-  Object.values(entities).forEach((entity: any) => {
-    if (!entity.description) return;
+// description에서 다른 엔티티 언급을 찾아 자동 관계 생성
+function inferDescriptionBasedEdges(
+  entities: Record<string, any>,
+  hyperedges: Record<string, any>,
+  edgeCounter: { value: number }
+): void {
+  for (const entity of Object.values(entities) as any[]) {
+    if (!entity.description) continue;
 
     const descLower = entity.description.toLowerCase();
 
-    // 다른 모든 엔티티를 검사해서 description에 언급되어 있는지 확인
-    Object.values(entities).forEach((otherEntity: any) => {
-      if (entity.id === otherEntity.id) return;
+    for (const otherEntity of Object.values(entities) as any[]) {
+      if (entity.id === otherEntity.id) continue;
 
-      // 이름이나 별칭이 description에 포함되어 있는지 확인
       const namesToCheck = [otherEntity.name, ...(otherEntity.aliases || [])];
       const isMentioned = namesToCheck.some((name: string) =>
         descLower.includes(name.toLowerCase())
       );
+      if (!isMentioned) continue;
+      if (hasEdgeBetween(hyperedges, entity.id, otherEntity.id)) continue;
 
-      if (!isMentioned) return;
-
-      // 이미 관계가 존재하는지 확인
-      const existingEdge = Object.values(hyperedges).find((edge: any) =>
-        (edge.entities.includes(entity.id) && edge.entities.includes(otherEntity.id))
-      );
-
-      if (existingEdge) return; // 이미 관계 있음
-
-      // 새 관계 생성
-      edgeCounter++;
-      const id = `H${String(edgeCounter).padStart(4, '0')}`;
+      edgeCounter.value++;
+      const id = formatId('H', edgeCounter.value);
 
       // 관계 타입 추정
       let relationType = 'related';
@@ -605,21 +470,16 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
         relationType = 'ownership';
       }
 
-      // statement에 실제 description 내용을 포함
-      // description에서 해당 인물/엔티티가 언급된 부분을 추출
+      // description이 너무 길면 관련 문장만 추출
       let statementText = entity.description;
-      // description이 너무 길면 축약
       if (statementText && statementText.length > 200) {
-        // 다른 엔티티 이름이 포함된 문장만 추출 시도
         const sentences = statementText.split(/[.!?。]/).filter((s: string) => s.trim());
         const relevantSentences = sentences.filter((s: string) =>
           namesToCheck.some((name: string) => s.toLowerCase().includes(name.toLowerCase()))
         );
-        if (relevantSentences.length > 0) {
-          statementText = relevantSentences.join('. ').trim();
-        } else {
-          statementText = statementText.slice(0, 200) + '...';
-        }
+        statementText = relevantSentences.length > 0
+          ? relevantSentences.join('. ').trim()
+          : statementText.slice(0, 200) + '...';
       }
 
       hyperedges[id] = {
@@ -637,42 +497,43 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
       };
 
       console.log(`자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반)`);
-    });
-  });
+    }
+  }
+}
 
-  // 같은 장면에 등장하는 캐릭터-캐릭터 간 자동 관계 생성 (2번 후처리)
-  // LLM이 관계를 추출하지 못한 경우, 같은 장면에 등장하면 "관련" 관계 자동 생성
-  const characterEntities = Object.values(entities).filter((e: any) => e.category === 'character');
+// 같은 장면에 등장하는 엔티티 쌍에 대해 자동 관계 생성
+function inferCoOccurrenceEdges(
+  entities: Record<string, any>,
+  hyperedges: Record<string, any>,
+  edgeCounter: { value: number }
+): void {
+  const allEntities = Object.values(entities) as any[];
+  const characterEntities = allEntities.filter(e => e.category === 'character');
+  const nonCharacterEntities = allEntities.filter(e => e.category !== 'character');
 
+  // 캐릭터-캐릭터 동시 등장
   for (let i = 0; i < characterEntities.length; i++) {
-    const char1 = characterEntities[i] as any;
-    if (!char1.scenes || char1.scenes.length === 0) continue;
+    const char1 = characterEntities[i];
+    if (!char1.scenes?.length) continue;
 
     for (let j = i + 1; j < characterEntities.length; j++) {
-      const char2 = characterEntities[j] as any;
-      if (!char2.scenes || char2.scenes.length === 0) continue;
+      const char2 = characterEntities[j];
+      if (!char2.scenes?.length) continue;
 
-      // 공통 장면 찾기
       const commonScenes = char1.scenes.filter((s: string) => char2.scenes.includes(s));
       if (commonScenes.length === 0) continue;
+      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
 
-      // 이미 관계가 존재하는지 확인
-      const existingEdge = Object.values(hyperedges).find((edge: any) =>
-        edge.entities.includes(char1.id) && edge.entities.includes(char2.id)
-      );
-
-      if (existingEdge) continue; // 이미 관계 있음
-
-      // 새 관계 생성
-      edgeCounter++;
-      const id = `H${String(edgeCounter).padStart(4, '0')}`;
+      edgeCounter.value++;
+      const id = formatId('H', edgeCounter.value);
+      const sceneNums = commonScenes.map(sceneIdToReadable).join(', ');
 
       hyperedges[id] = {
         id,
         type: '관련',
         subtype: undefined,
         entities: [char1.id, char2.id],
-        statement: `${char1.name}과(와) ${char2.name}이(가) 동일 장면에 등장 (장면 ${commonScenes.map((s: string) => s.replace('S', '').replace(/^0+/, '')).join(', ')})`,
+        statement: `${char1.name}과(와) ${char2.name}이(가) 동일 장면에 등장 (장면 ${sceneNums})`,
         timeline: { start: undefined, chapter: 1 },
         sentiment: 'neutral',
         strength: 3,
@@ -685,46 +546,28 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
     }
   }
 
-  // 같은 장면에 등장하는 캐릭터-비캐릭터 엔티티 간 자동 관계 생성
-  // 예: "콘크리트"와 "나"가 둘 다 장면 2에 등장하면 위치 관계 생성
-  const nonCharacterEntities = Object.values(entities).filter((e: any) => e.category !== 'character');
+  // 캐릭터-비캐릭터 동시 등장
+  for (const entity of nonCharacterEntities) {
+    if (!entity.scenes?.length) continue;
 
-  nonCharacterEntities.forEach((entity: any) => {
-    if (!entity.scenes || entity.scenes.length === 0) return;
+    for (const char of characterEntities) {
+      if (!char.scenes?.length) continue;
 
-    // 이 엔티티와 같은 장면에 등장하는 캐릭터들 찾기
-    characterEntities.forEach((char: any) => {
-      if (!char.scenes || char.scenes.length === 0) return;
-
-      // 공통 장면이 있는지 확인
       const commonScenes = entity.scenes.filter((s: string) => char.scenes.includes(s));
-      if (commonScenes.length === 0) return;
+      if (commonScenes.length === 0) continue;
+      if (hasEdgeBetween(hyperedges, entity.id, char.id)) continue;
 
-      // 이미 관계가 존재하는지 확인
-      const existingEdge = Object.values(hyperedges).find((edge: any) =>
-        edge.entities.includes(entity.id) && edge.entities.includes(char.id)
-      );
-
-      if (existingEdge) return; // 이미 관계 있음
-
-      // 새 관계 생성
-      edgeCounter++;
-      const id = `H${String(edgeCounter).padStart(4, '0')}`;
-
-      // 관계 타입 추정
-      let relationType = '관련';
-      if (entity.category === 'location') {
-        relationType = '위치';
-      } else if (entity.category === 'item' || entity.category === 'object') {
-        relationType = '소유';
-      }
+      edgeCounter.value++;
+      const id = formatId('H', edgeCounter.value);
+      const relationType = inferRelationType(entity.category);
+      const sceneNums = commonScenes.map(sceneIdToReadable).join(', ');
 
       hyperedges[id] = {
         id,
         type: relationType,
         subtype: undefined,
         entities: [char.id, entity.id],
-        statement: `${char.name}이(가) ${entity.name}에서/과 함께 등장 (장면 ${commonScenes.map((s: string) => s.replace('S', '').replace(/^0+/, '')).join(', ')})`,
+        statement: `${char.name}이(가) ${entity.name}에서/과 함께 등장 (장면 ${sceneNums})`,
         timeline: { start: undefined, chapter: 1 },
         sentiment: 'neutral',
         strength: 3,
@@ -734,8 +577,172 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
       };
 
       console.log(`장면 공동 등장 관계 생성: ${char.name} -> ${entity.name} (${relationType}, 장면: ${commonScenes.join(', ')})`);
-    });
-  });
+    }
+  }
+}
+
+// 장면(Scene)을 snapshots로 변환, 추가 분석 시 번호 이어가기
+function buildSnapshots(
+  extracted: any,
+  entities: Record<string, any>,
+  hyperedges: Record<string, any>,
+  existingGraph?: NovelKnowledgeGraph
+): Record<string, any> {
+  const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
+  const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
+  const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
+  const defaultChapterNumber = 0;
+
+  for (const s of sortedScenes) {
+    const actualSceneNum = existingSceneCount + s.id;
+    const sceneId = formatId('S', actualSceneNum);
+    const originalSceneId = formatId('S', s.id);
+
+    const actualChapterNum = s.chapter || defaultChapterNumber;
+    const chapterId = actualChapterNum ? formatId('C', actualChapterNum) : null;
+
+    // 이 장면에 등장하는 엔티티/관계 찾기
+    const entitiesInScene = Object.values(entities)
+      .filter((e: any) => e.scenes?.includes(originalSceneId))
+      .map((e: any) => e.id);
+
+    const activeEdges = Object.values(hyperedges)
+      .filter((e: any) => e.scenes?.includes(originalSceneId))
+      .map((e: any) => e.id);
+
+    // 엔티티와 관계의 scenes 배열에서 원래 ID를 새 ID로 교체
+    for (const e of Object.values(entities) as any[]) {
+      if (e.scenes?.includes(originalSceneId)) {
+        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
+      }
+    }
+    for (const e of Object.values(hyperedges) as any[]) {
+      if (e.scenes?.includes(originalSceneId)) {
+        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
+      }
+    }
+
+    snapshots[sceneId] = {
+      sceneId,
+      order: actualSceneNum,
+      chapter: chapterId,
+      chapterNumber: actualChapterNum,
+      time: s.time || `장면 ${s.id}`,
+      timeMarker: s.time_marker || null,
+      location: s.location,
+      summary: s.summary,
+      events: s.events || [],
+      mood: s.mood,
+      charactersPresent: entitiesInScene,
+      activeEdges,
+    };
+  }
+
+  return snapshots;
+}
+
+export function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileName?: string, originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
+  const now = new Date().toISOString();
+
+  // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
+  const entities: Record<string, any> = existingGraph ? { ...existingGraph.entities } : {};
+  const hyperedges: Record<string, any> = existingGraph ? { ...existingGraph.hyperedges } : {};
+  const nameToId: Record<string, string> = {};
+
+  // 기존 엔티티의 이름 매핑 초기화
+  for (const e of Object.values(entities) as any[]) {
+    registerNameMapping(nameToId, e.name, e.id);
+    for (const alias of (e.aliases || [])) {
+      registerNameMapping(nameToId, alias, e.id);
+    }
+  }
+
+  let entityCounter = Object.keys(entities).length;
+  const edgeCounter = { value: Object.keys(hyperedges).length };
+
+  // 엔티티 등록
+  for (const e of (extracted.entities || []) as any[]) {
+    const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
+
+    if (existingId && entities[existingId]) {
+      // 기존 엔티티에 정보 추가
+      const existing = entities[existingId];
+      existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
+      if (e.description && !existing.description?.includes(e.description)) {
+        existing.description = (existing.description + ' ' + e.description).slice(0, 500);
+      }
+      continue;
+    }
+
+    entityCounter++;
+    const id = formatId('E', entityCounter);
+    const sceneIds = (e.scenes || []).map((s: number) => formatId('S', s));
+    entities[id] = {
+      id,
+      name: e.name,
+      category: e.category || 'character',
+      aliases: e.aliases || [],
+      description: e.description || '',
+      attributes: e.attributes || {},
+      scenes: sceneIds,
+      firstMention: { chapter: 1 },
+      importance: e.importance || 5,
+    };
+    registerNameMapping(nameToId, e.name, id);
+    for (const alias of (e.aliases || [])) {
+      registerNameMapping(nameToId, alias, id);
+    }
+  }
+
+  // 관계 등록
+  for (const r of (extracted.relationships || []) as any[]) {
+    const fromId = findEntityId(r.from, nameToId);
+    const toId = findEntityId(r.to, nameToId);
+    if (!fromId || !toId) {
+      console.log('관계 매핑 실패:', r.from, '->', r.to, '(엔티티를 찾을 수 없음)');
+      continue;
+    }
+
+    if (fromId === toId) {
+      console.log('자기참조 관계 무시:', r.from, '->', r.to);
+      continue;
+    }
+
+    // 기존에 같은 관계가 있는지 확인
+    const existingEdge = Object.values(hyperedges).find((e: any) =>
+      e.type === r.type && e.entities.includes(fromId) && e.entities.includes(toId)
+    );
+
+    const sceneIds = (r.scenes || []).map((s: number) => formatId('S', s));
+
+    if (existingEdge) {
+      existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...sceneIds])];
+      continue;
+    }
+
+    edgeCounter.value++;
+    const id = formatId('H', edgeCounter.value);
+    hyperedges[id] = {
+      id,
+      type: r.type,
+      subtype: r.subtype,
+      entities: [fromId, toId],
+      statement: r.description,
+      quote: r.quote,
+      timeline: { start: r.start_time, chapter: 1 },
+      sentiment: r.sentiment,
+      strength: r.strength,
+      bidirectional: r.bidirectional,
+      fromPerspective: r.from_perspective,
+      toPerspective: r.to_perspective,
+      scenes: sceneIds,
+      sourceRef: { chapter: 1 },
+    };
+  }
+
+  // 자동 관계 생성: description 기반 + 장면 동시 등장
+  inferDescriptionBasedEdges(entities, hyperedges, edgeCounter);
+  inferCoOccurrenceEdges(entities, hyperedges, edgeCounter);
 
   // 타임라인 등록
   const timeline = (extracted.timeline || []).map((t: any) => ({
@@ -749,24 +756,17 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
     edges: [],
   })).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
-  // 장(Chapter) 정보 처리 - 기존 그래프가 있으면 포함
+  // 장(Chapter) 정보 처리
   const chapters: Record<string, any> = existingGraph ? { ...existingGraph.chapters } : {};
-
-  // 새 장 정보 추가 (제목에서 실제 번호 추출)
-  // "2화: xxx" → number: 2, "제3장: yyy" → number: 3
-  (extracted.chapters || []).forEach((c: any) => {
-    // 제목에서 실제 번호 추출
-    let actualNumber = c.id; // 기본값은 LLM이 준 id
+  for (const c of (extracted.chapters || []) as any[]) {
+    let actualNumber = c.id;
     if (c.title) {
       const numMatch = c.title.match(/(\d+)/);
       if (numMatch) {
         actualNumber = parseInt(numMatch[1], 10);
       }
     }
-
-    const chapterId = `C${String(actualNumber).padStart(4, '0')}`;
-
-    // 이미 같은 번호의 장이 있으면 스킵 (중복 방지)
+    const chapterId = formatId('C', actualNumber);
     if (!chapters[chapterId]) {
       chapters[chapterId] = {
         id: chapterId,
@@ -775,100 +775,26 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
         summary: c.summary || '',
       };
     }
-  });
+  }
 
-  // 장이 없을 때의 기본 번호 (0 = 장 없음)
-  let newChapterNumber = 0;
-
-  // 장이 없으면 장 정보를 생성하지 않음 (파일명을 장 제목으로 쓰지 않음)
-  // LLM이 장/화를 추출하지 못했다면 그냥 장 없이 장면만 표시
-  // (이전에는 파일명을 장 제목으로 사용했으나, 사용자가 입력한 제목이 잘못 표시되는 문제 발생)
-
-  // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
-  const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
-  const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
-
-  /**
-   * ⚠️ 중요: 추가 분석 시 장면 번호 이어가기
-   *
-   * 문제 상황:
-   *   - 1화 분석: s.id = 1,2,3 → S0001, S0002, S0003
-   *   - 2화 추가 분석: s.id = 1,2,3 → S0001, S0002, S0003 (덮어쓰기!)
-   *
-   * 해결:
-   *   - 기존 스냅샷의 마지막 번호를 확인
-   *   - 새 장면 번호 = 기존 마지막 번호 + s.id
-   *   - 2화 분석: s.id = 1,2,3 → S0004, S0005, S0006 (이어가기!)
-   */
-  const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
-
-  sortedScenes.forEach((s: any) => {
-    // 새 장면 번호 = 기존 마지막 번호 + 현재 장면 번호
-    const actualSceneNum = existingSceneCount + s.id;
-    const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
-
-    // 장 번호는 텍스트에서 추출한 실제 번호 그대로 사용 (1화 → 1, 2화 → 2)
-    // 업로드 순서와 무관하게 정렬 시 chapterNumber로 올바른 순서 보장
-    const actualChapterNum = s.chapter || newChapterNumber;
-    const chapterId = actualChapterNum ? `C${String(actualChapterNum).padStart(4, '0')}` : null;
-
-    // 이 장면에 등장하는 엔티티들 - 원래 장면 ID로 찾아서 새 ID로 매핑
-    const originalSceneId = `S${String(s.id).padStart(4, '0')}`;
-    const entitiesInScene = Object.values(entities)
-      .filter((e: any) => e.scenes?.includes(originalSceneId))
-      .map((e: any) => e.id);
-
-    // 엔티티의 scenes 배열도 새 ID로 업데이트
-    Object.values(entities).forEach((e: any) => {
-      if (e.scenes?.includes(originalSceneId)) {
-        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
-      }
-    });
-
-    // 이 장면에 해당하는 관계들 - 원래 장면 ID로 찾아서 새 ID로 매핑
-    const activeEdges = Object.values(hyperedges)
-      .filter((e: any) => e.scenes?.includes(originalSceneId))
-      .map((e: any) => e.id);
-
-    // hyperedges의 scenes 배열도 새 ID로 업데이트
-    Object.values(hyperedges).forEach((e: any) => {
-      if (e.scenes?.includes(originalSceneId)) {
-        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
-      }
-    });
-
-    snapshots[sceneId] = {
-      sceneId,
-      order: actualSceneNum,  // 서술 순서 (기존 + 새 번호)
-      chapter: chapterId,
-      chapterNumber: actualChapterNum,
-      time: s.time || `장면 ${s.id}`,
-      timeMarker: s.time_marker || null,  // 텍스트에 명시된 시간 표현만 (추측 금지)
-      location: s.location,
-      summary: s.summary,
-      events: s.events || [],
-      mood: s.mood,
-      charactersPresent: entitiesInScene,
-      activeEdges,
-    };
-  });
+  // 장면(Scene)을 snapshots로 변환
+  const snapshots = buildSnapshots(extracted, entities, hyperedges, existingGraph);
 
   // 통계
   const entitiesByCategory: Record<string, number> = {};
   const edgesByType: Record<string, number> = {};
 
-  Object.values(entities).forEach((e: any) => {
+  for (const e of Object.values(entities) as any[]) {
     entitiesByCategory[e.category] = (entitiesByCategory[e.category] || 0) + 1;
-  });
-
-  Object.values(hyperedges).forEach((e: any) => {
+  }
+  for (const e of Object.values(hyperedges) as any[]) {
     edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
-  });
+  }
 
-  // 소스 파일 정보 생성 - 기존 파일 목록에 추가
+  // 소스 파일 정보
   const existingSourceFiles = existingGraph?.metadata?.sourceFiles || [];
   const newSourceFile = (fileName && originalText) ? {
-    id: `F${String(existingSourceFiles.length + 1).padStart(4, '0')}`,
+    id: formatId('F', existingSourceFiles.length + 1),
     fileName,
     uploadedAt: now,
     text: originalText,
@@ -881,13 +807,12 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
 
   return {
     metadata: {
-      // 기존 메타데이터 유지 (제목, 작가 등)
       ...(existingGraph?.metadata || {}),
-      title: existingGraph?.metadata?.title || title,  // 기존 제목 유지
+      title: existingGraph?.metadata?.title || title,
       createdAt: existingGraph?.metadata?.createdAt || now,
       updatedAt: now,
       version: '1.0.0',
-      model: existingGraph?.metadata?.model || model,  // 기존 모델 유지
+      model: existingGraph?.metadata?.model || model,
       sourceFiles,
     },
     entities,

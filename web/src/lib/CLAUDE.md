@@ -97,6 +97,36 @@ return NextResponse.json({ error: error.message }, { status: 500 });
 return NextResponse.json({ error: 'Request failed' }, { status: 500 });
 ```
 
+### ⚠️ 프록시 보안 규칙
+
+프록시 API 라우트 (`billingProxy.ts` 등)에 적용:
+
+**1. 업스트림 에러 응답 sanitization**: 백엔드 4xx/5xx 응답 본문을 클라이언트에 그대로 전달하지 않음.
+
+```typescript
+// ❌ 백엔드 에러 본문 노출 (스택 트레이스, DB 에러 등 포함 가능)
+return NextResponse.json(data, { status: response.status });
+
+// ✅ 에러 시 제네릭 메시지 반환
+if (!response.ok) {
+  return NextResponse.json({ error: 'Billing service error' }, { status: response.status });
+}
+```
+
+**2. POST 요청 본문 검증**: 클라이언트 body를 백엔드로 그대로 전달하지 않고, 허용 필드만 화이트리스트로 추출.
+
+```typescript
+// ❌ 클라이언트 body 무검증 전달 → service/user_id 조작 가능
+const body = await request.text();
+proxyToCatcident(path, token, { method: 'POST', body });
+
+// ✅ 허용 필드만 추출 + service 서버 주입
+const { amount, description, metadata, idempotency_key } = await request.json();
+const body = JSON.stringify({ amount, description, metadata, idempotency_key, service: 'storygraph' });
+```
+
+**3. `service` 필드 서버 강제**: GET 라우트처럼 POST 라우트도 `service: 'storygraph'`를 서버에서 주입.
+
 ---
 
 ## useShowTokenDetails.ts - 토큰 상세 표시 훅

@@ -8,7 +8,7 @@ import { FileText, ChevronDown, ChevronRight, Search, Copy, Check } from 'lucide
 import { useStore } from '../store';
 
 export function SourceTextView() {
-  const { knowledgeGraph } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);

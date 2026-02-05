@@ -168,7 +168,8 @@ interface SceneInfo {
 }
 
 export function CharacterChronicle() {
-  const { knowledgeGraph, selectEntity } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectEntity = useStore((s) => s.selectEntity);
   const characters = useCharacters();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);

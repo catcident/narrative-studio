@@ -263,20 +263,3 @@ export function buildAccumulatedGraph(allExtracted: any[], existingGraph?: Novel
   };
 }
 
-/**
- * KnownEntity 배열에서 선택된 이름으로 필터링
- */
-export function filterKnownEntitiesByNames(
-  knownEntities: KnownEntity[],
-  selectedNames: string[]
-): KnownEntity[] {
-  const selectedSet = new Set(selectedNames.map(n => n.toLowerCase()));
-
-  return knownEntities.filter(e => {
-    const nameLower = e.name.toLowerCase();
-    const aliasMatch = (e.aliases || []).some((a: string) =>
-      selectedSet.has(a.toLowerCase())
-    );
-    return selectedSet.has(nameLower) || aliasMatch;
-  });
-}

@@ -17,30 +17,7 @@ interface CatcidentProfile {
   roles?: string[];
 }
 
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string;
-      email: string;
-      name?: string | null;
-      nickname?: string | null;
-      memberType?: string | null;
-      roles?: string[];
-    };
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id: string;
-    nickname?: string | null;
-    memberType?: string | null;
-    roles?: string[];
-    accessToken?: string;
-    refreshToken?: string;
-    accessTokenExpires?: number;
-  }
-}
+// NextAuth type augmentations are in types/next-auth.d.ts
 
 // OIDC issuer (django-oauth-toolkit은 /oauth/에 마운트되어 있음)
 const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER

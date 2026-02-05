@@ -155,12 +155,20 @@ NextAuth.js SessionProvider 래퍼
 **규칙**: 모든 모달은 키보드 접근성을 제공해야 함
 
 ```tsx
-// ✅ 모달 필수 요소
-<div role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+// ✅ 모달 필수 요소 (tabIndex={-1} 필수 — 없으면 Escape 키 미작동)
+<div
+  role="dialog"
+  aria-modal="true"
+  tabIndex={-1}
+  onKeyDown={(e) => e.key === 'Escape' && onClose()}
+>
   <button onClick={onClose} aria-label="닫기">
     <X aria-hidden="true" className="w-5 h-5" />
   </button>
 </div>
+
+// ❌ tabIndex 없는 모달 — div는 기본적으로 포커스 불가, onKeyDown 미작동
+<div role="dialog" aria-modal="true" onKeyDown={...}>
 
 // ❌ 키보드 접근성 없는 모달
 <div className="fixed inset-0">
@@ -180,6 +188,12 @@ NextAuth.js SessionProvider 래퍼
 
 // ✅ 아이콘만: aria-label 필수
 <button aria-label="구독 관리"><Coins aria-hidden="true" /></button>
+
+// ❌ title만으로는 부족 — 스크린 리더가 title을 일관되게 읽지 않음
+<button title="삭제"><X aria-hidden="true" /></button>
+
+// ✅ aria-label 사용 (title은 선택적 추가)
+<button aria-label="삭제" title="삭제"><X aria-hidden="true" /></button>
 ```
 
 **체크리스트** (새 UI 컴포넌트 작성 시):
@@ -187,9 +201,9 @@ NextAuth.js SessionProvider 래퍼
 - [ ] 인라인 SVG에 `aria-hidden="true"` 추가
 - [ ] 장식용 요소(불릿, 구분선 등)에 `aria-hidden="true"` 추가
 - [ ] 기능적 아이콘(버튼 없는 독립 아이콘)은 `aria-label` 제공
-- [ ] 모달: Escape 키 닫기 + `role="dialog"` + `aria-modal="true"`
+- [ ] 모달: `tabIndex={-1}` + Escape 키 닫기 + `role="dialog"` + `aria-modal="true"`
 - [ ] 모달 닫기 버튼: `aria-label="닫기"` 추가
-- [ ] 아이콘 전용 버튼: `aria-label` 추가
+- [ ] 아이콘 전용 버튼: `aria-label` 필수 (`title`만으로는 부족)
 
 ### 타입 안전성
 
@@ -203,7 +217,40 @@ NextAuth.js SessionProvider 래퍼
 {session.user.nickname}
 ```
 
-**참조**: `lib/auth.ts`의 `declare module 'next-auth'` 타입 확장
+**참조**: `types/next-auth.d.ts`의 `declare module 'next-auth'` 타입 확장 (단일 정의 위치)
+
+### 에러 타입
+
+**규칙**: `catch` 블록에서 `err: any` 대신 `err: unknown` 사용
+
+```tsx
+// ❌ any → 타입 안전성 우회
+catch (err: any) {
+  setError(err.message);
+}
+
+// ✅ unknown → 타입 가드 필수
+catch (err: unknown) {
+  const message = err instanceof Error ? err.message : '알 수 없는 오류';
+  setError(message);
+}
+```
+
+### useCallback 의존성 완전성
+
+**규칙**: `useCallback` 내에서 참조하는 모든 클로저 변수는 의존성 배열에 포함
+
+```tsx
+// ❌ bookTitle을 내부에서 사용하지만 deps에 누락 → stale closure
+const handleSubmit = useCallback(() => {
+  console.log(bookTitle);  // 항상 초기값만 캡처
+}, []);
+
+// ✅ 사용하는 모든 변수 포함
+const handleSubmit = useCallback(() => {
+  console.log(bookTitle);
+}, [bookTitle]);
+```
 
 ---
 
