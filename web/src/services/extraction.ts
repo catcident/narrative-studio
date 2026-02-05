@@ -1047,20 +1047,24 @@ function mergeExtractions(extractions: any[]): any {
       // LLM이 준 scene.id를 글로벌 ID로 매핑 (엔티티/관계의 scenes 참조용)
       localToGlobal[scene.id] = globalId;
 
-      // 장면의 chapter를 글로벌 chapter id로 변환
-      let globalChapter = scene.chapter;
+      // 장면의 chapter를 실제 번호로 변환 (제목에서 추출)
+      // "2화: xxx" → 2, "제3장: yyy" → 3
+      let actualChapterNumber = scene.chapter;
       if (scene.chapter && ext.chapters) {
         const chapterInfo = ext.chapters.find((c: any) => c.id === scene.chapter);
-        if (chapterInfo) {
-          const key = chapterInfo.title || `제${chapterInfo.id}장`;
-          globalChapter = chapterMap[key] || scene.chapter;
+        if (chapterInfo && chapterInfo.title) {
+          // 제목에서 숫자 추출 (예: "2화: xxx" → 2, "제3장" → 3)
+          const numMatch = chapterInfo.title.match(/(\d+)/);
+          if (numMatch) {
+            actualChapterNumber = parseInt(numMatch[1], 10);
+          }
         }
       }
 
       scenes.push({
         ...scene,
         id: globalId,
-        chapter: globalChapter,
+        chapter: actualChapterNumber,  // 실제 화/장 번호 (정렬용)
         chunkNum: chunkIdx + 1
       });
     }
@@ -1509,7 +1513,6 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 기존 카운터 (기존 데이터가 있으면 이어서)
   let entityCounter = Object.keys(entities).length;
   let edgeCounter = Object.keys(hyperedges).length;
-  let chapterCounter = existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0;
 
   // 엔티티 등록
   (extracted.entities || []).forEach((e: any) => {
@@ -1847,20 +1850,33 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 장(Chapter) 정보 처리 - 기존 그래프가 있으면 포함
   const chapters: Record<string, any> = existingGraph ? { ...existingGraph.chapters } : {};
 
-  // 새 장 정보 추가 (번호 이어서)
+  // 새 장 정보 추가 (제목에서 실제 번호 추출)
+  // "2화: xxx" → number: 2, "제3장: yyy" → number: 3
   (extracted.chapters || []).forEach((c: any) => {
-    chapterCounter++;
-    const chapterId = `C${String(chapterCounter).padStart(4, '0')}`;
-    chapters[chapterId] = {
-      id: chapterId,
-      number: chapterCounter,
-      title: c.title || `제${chapterCounter}장`,
-      summary: c.summary || '',
-    };
+    // 제목에서 실제 번호 추출
+    let actualNumber = c.id; // 기본값은 LLM이 준 id
+    if (c.title) {
+      const numMatch = c.title.match(/(\d+)/);
+      if (numMatch) {
+        actualNumber = parseInt(numMatch[1], 10);
+      }
+    }
+
+    const chapterId = `C${String(actualNumber).padStart(4, '0')}`;
+
+    // 이미 같은 번호의 장이 있으면 스킵 (중복 방지)
+    if (!chapters[chapterId]) {
+      chapters[chapterId] = {
+        id: chapterId,
+        number: actualNumber,
+        title: c.title || `제${actualNumber}장`,
+        summary: c.summary || '',
+      };
+    }
   });
 
-  // 새 장 정보를 위한 번호 매핑 (extracted의 장 번호 -> 실제 장 번호)
-  let newChapterNumber = chapterCounter;
+  // 장이 없을 때의 기본 번호 (0 = 장 없음)
+  let newChapterNumber = 0;
 
   // 장이 없으면 장 정보를 생성하지 않음 (파일명을 장 제목으로 쓰지 않음)
   // LLM이 장/화를 추출하지 못했다면 그냥 장 없이 장면만 표시
@@ -1870,26 +1886,58 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
   const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
 
-  sortedScenes.forEach((s: any) => {
-    const sceneId = `S${String(s.id).padStart(4, '0')}`;
+  /**
+   * ⚠️ 중요: 추가 분석 시 장면 번호 이어가기
+   *
+   * 문제 상황:
+   *   - 1화 분석: s.id = 1,2,3 → S0001, S0002, S0003
+   *   - 2화 추가 분석: s.id = 1,2,3 → S0001, S0002, S0003 (덮어쓰기!)
+   *
+   * 해결:
+   *   - 기존 스냅샷의 마지막 번호를 확인
+   *   - 새 장면 번호 = 기존 마지막 번호 + s.id
+   *   - 2화 분석: s.id = 1,2,3 → S0004, S0005, S0006 (이어가기!)
+   */
+  const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
 
-    // 장 번호도 기존 것에 이어서
-    const actualChapterNum = s.chapter ? (s.chapter + (existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0)) : newChapterNumber;
+  sortedScenes.forEach((s: any) => {
+    // 새 장면 번호 = 기존 마지막 번호 + 현재 장면 번호
+    const actualSceneNum = existingSceneCount + s.id;
+    const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
+
+    // 장 번호는 텍스트에서 추출한 실제 번호 그대로 사용 (1화 → 1, 2화 → 2)
+    // 업로드 순서와 무관하게 정렬 시 chapterNumber로 올바른 순서 보장
+    const actualChapterNum = s.chapter || newChapterNumber;
     const chapterId = actualChapterNum ? `C${String(actualChapterNum).padStart(4, '0')}` : null;
 
-    // 이 장면에 등장하는 엔티티들 (scenes 배열에 sceneId가 포함된 것)
+    // 이 장면에 등장하는 엔티티들 - 원래 장면 ID로 찾아서 새 ID로 매핑
+    const originalSceneId = `S${String(s.id).padStart(4, '0')}`;
     const entitiesInScene = Object.values(entities)
-      .filter((e: any) => e.scenes?.includes(sceneId))
+      .filter((e: any) => e.scenes?.includes(originalSceneId))
       .map((e: any) => e.id);
 
-    // 이 장면에 해당하는 관계들
+    // 엔티티의 scenes 배열도 새 ID로 업데이트
+    Object.values(entities).forEach((e: any) => {
+      if (e.scenes?.includes(originalSceneId)) {
+        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
+      }
+    });
+
+    // 이 장면에 해당하는 관계들 - 원래 장면 ID로 찾아서 새 ID로 매핑
     const activeEdges = Object.values(hyperedges)
-      .filter((e: any) => e.scenes?.includes(sceneId))
+      .filter((e: any) => e.scenes?.includes(originalSceneId))
       .map((e: any) => e.id);
+
+    // hyperedges의 scenes 배열도 새 ID로 업데이트
+    Object.values(hyperedges).forEach((e: any) => {
+      if (e.scenes?.includes(originalSceneId)) {
+        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
+      }
+    });
 
     snapshots[sceneId] = {
       sceneId,
-      order: s.id,  // 서술 순서 (청크 병합에서 부여된 글로벌 번호)
+      order: actualSceneNum,  // 서술 순서 (기존 + 새 번호)
       chapter: chapterId,
       chapterNumber: actualChapterNum,
       time: s.time || `장면 ${s.id}`,

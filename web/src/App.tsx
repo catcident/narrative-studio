@@ -188,10 +188,28 @@ function App() {
 
   const entities = Object.values(knowledgeGraph.entities);
   const allEdges = Object.values(knowledgeGraph.hyperedges);
-  // ⚠️ 장면 정렬: 반드시 order 필드 사용! (sceneId 문자열 정렬 금지)
-  // 잘못: .sort(([a], [b]) => a.localeCompare(b)) → "S0001" < "S0010" < "S0002" 엉망
-  // 올바름: .sort((a, b) => a.order - b.order) → 1, 2, 3, 4... 순서대로
-  const scenes = Object.entries(knowledgeGraph.snapshots || {}).sort(([, a], [, b]) => (a.order || 0) - (b.order || 0));
+  /**
+   * ⚠️ 장면 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
+   *
+   * 문제 상황 (order만 사용):
+   *   - 2화 먼저 업로드: order = 1, 2
+   *   - 1화 나중 업로드: order = 3, 4, 5
+   *   - 결과: 2화 → 1화 순서로 표시됨
+   *
+   * 해결 (chapterNumber 우선):
+   *   - 1화 (chapterNumber=1): 장면 3, 4, 5 → 먼저 표시
+   *   - 2화 (chapterNumber=2): 장면 1, 2 → 나중에 표시
+   */
+  const scenes = Object.entries(knowledgeGraph.snapshots || {}).sort(([, a], [, b]) => {
+    // 1. chapterNumber로 먼저 정렬 (1화 → 2화 → 3화...)
+    const chapterA = a.chapterNumber || 0;
+    const chapterB = b.chapterNumber || 0;
+    if (chapterA !== chapterB) {
+      return chapterA - chapterB;
+    }
+    // 2. 같은 장 내에서는 order로 정렬
+    return (a.order || 0) - (b.order || 0);
+  });
 
   // 선택된 장면에 따른 필터링
   const currentScene = selectedSceneId ? knowledgeGraph.snapshots[selectedSceneId] : null;
