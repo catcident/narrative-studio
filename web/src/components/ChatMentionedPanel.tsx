@@ -92,9 +92,9 @@ export function ChatMentionedPanel() {
       return { initialNodes: [], initialEdges: [] };
     }
 
-    // 가로로 넓게 배치
-    const width = 450;
-    const height = 120;
+    // 배치 영역
+    const width = 480;
+    const height = 200;
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -108,7 +108,7 @@ export function ChatMentionedPanel() {
         x = centerX;
         y = centerY;
       } else if (count === 2) {
-        x = index === 0 ? centerX - 100 : centerX + 100;
+        x = index === 0 ? centerX - 120 : centerX + 120;
         y = centerY;
       } else if (count <= 4) {
         // 가로 일렬
@@ -116,10 +116,10 @@ export function ChatMentionedPanel() {
         x = spacing * (index + 1);
         y = centerY;
       } else {
-        // 타원형 배치 (가로로 긴)
+        // 타원형 배치
         const angle = (2 * Math.PI * index) / count - Math.PI / 2;
         const radiusX = 180;
-        const radiusY = 45;
+        const radiusY = 70;
         x = centerX + radiusX * Math.cos(angle);
         y = centerY + radiusY * Math.sin(angle);
       }
@@ -233,9 +233,9 @@ export function ChatMentionedPanel() {
         </div>
       </div>
 
-      {/* 미니 관계도 - 높이 고정, 가로로 넓게 */}
+      {/* 미니 관계도 - 적당한 높이 */}
       {mentionedEntities.length >= 2 && (
-        <div className="flex-shrink-0 h-[140px] border-b border-gray-100 bg-gray-50/50">
+        <div className="flex-shrink-0 h-[220px] border-b border-gray-100 bg-gray-50/50">
           <ReactFlow
             nodes={nodes}
             edges={edges}

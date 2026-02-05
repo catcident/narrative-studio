@@ -10,8 +10,13 @@ import { useStore } from '../store';
 import { sendChatMessage, generateMessageId, type ChatMessage } from '../services/chat';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../types';
 
-// 채팅 내역 저장 키 (지식 그래프 ID 기반)
-const getChatStorageKey = (graphId?: string) => `chat_history_${graphId || 'default'}`;
+// 채팅 내역 저장 키 (지식 그래프 ID 또는 제목 기반)
+const getChatStorageKey = (graphId?: string, title?: string) => {
+  // ID가 있으면 ID 사용, 없으면 제목 해시 사용
+  if (graphId) return `chat_history_${graphId}`;
+  if (title) return `chat_history_title_${title.replace(/\s+/g, '_').slice(0, 50)}`;
+  return 'chat_history_default';
+};
 
 /**
  * 텍스트에서 언급된 엔티티 ID 추출
@@ -53,7 +58,7 @@ export function ChatView() {
   // 채팅 내역 로드 (지식 그래프 변경 시)
   useEffect(() => {
     if (!knowledgeGraph) return;
-    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id);
+    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
@@ -78,14 +83,14 @@ export function ChatView() {
       setMessages([]);
       setChatMentionedEntities([]);
     }
-  }, [knowledgeGraph?.metadata.id]);
+  }, [knowledgeGraph?.metadata.id, knowledgeGraph?.metadata.title]);
 
   // 채팅 내역 저장 (메시지 변경 시)
   useEffect(() => {
     if (!knowledgeGraph || messages.length === 0) return;
-    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id);
+    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
     localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, knowledgeGraph?.metadata.id]);
+  }, [messages, knowledgeGraph?.metadata.id, knowledgeGraph?.metadata.title]);
 
   // 자동 스크롤
   const scrollToBottom = useCallback(() => {
@@ -168,7 +173,7 @@ export function ChatView() {
       setChatMentionedEntities([]);
       // localStorage에서도 삭제
       if (knowledgeGraph) {
-        const storageKey = getChatStorageKey(knowledgeGraph.metadata.id);
+        const storageKey = getChatStorageKey(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
         localStorage.removeItem(storageKey);
       }
     }
@@ -249,10 +254,11 @@ export function ChatView() {
             <button
               onClick={handleClear}
               disabled={messages.length === 0}
-              className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="대화 초기화"
             >
               <Trash2 className="w-4 h-4" />
+              <span>초기화</span>
             </button>
           </div>
         </div>
