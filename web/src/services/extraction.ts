@@ -1889,8 +1889,9 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     const actualSceneNum = existingSceneCount + s.id;
     const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
 
-    // 장 번호도 기존 것에 이어서
-    const actualChapterNum = s.chapter ? (s.chapter + (existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0)) : newChapterNumber;
+    // 장 번호는 텍스트에서 추출한 실제 번호 그대로 사용 (1화 → 1, 2화 → 2)
+    // 업로드 순서와 무관하게 정렬 시 chapterNumber로 올바른 순서 보장
+    const actualChapterNum = s.chapter || newChapterNumber;
     const chapterId = actualChapterNum ? `C${String(actualChapterNum).padStart(4, '0')}` : null;
 
     // 이 장면에 등장하는 엔티티들 - 원래 장면 ID로 찾아서 새 ID로 매핑
