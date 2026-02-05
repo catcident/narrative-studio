@@ -407,11 +407,25 @@ function extractRelevantContext(
   return contexts.join('\n');
 }
 
+interface QueryIntent {
+  wantsCharacters: boolean;
+  wantsRelationships: boolean;
+  wantsItems: boolean;
+  wantsSummary: boolean;
+  keywords: string[];
+  expandedKeywords: string[];
+}
+
 /**
  * 시스템 프롬프트 생성 (관련 엔티티만 포함)
  * @param foundEntityIds 검색으로 찾은 엔티티 ID들 (임베딩 + 키워드 매칭)
+ * @param intent 질문 의도 (전체 목록 요청인지 판단용)
  */
-function buildSystemPrompt(context: ChatContext, foundEntityIds: string[] = []): string {
+function buildSystemPrompt(
+  context: ChatContext,
+  foundEntityIds: string[] = [],
+  intent?: QueryIntent
+): string {
   const { knowledgeGraph, originalText } = context;
   const title = knowledgeGraph.metadata.title;
 
@@ -419,12 +433,53 @@ function buildSystemPrompt(context: ChatContext, foundEntityIds: string[] = []):
   const characterCount = Object.values(knowledgeGraph.entities)
     .filter(e => e.category === 'character').length;
 
-  // 찾은 엔티티가 있으면 해당 엔티티 정보만 상세히 제공
   let entitySection = '';
   let relationSection = '';
 
-  if (foundEntityIds.length > 0) {
-    // 찾은 엔티티들의 상세 정보
+  // 전체 목록 요청인지 확인 (등장인물 알려줘, 요약해줘 등)
+  const wantsFullList = intent && (intent.wantsCharacters || intent.wantsSummary);
+
+  if (wantsFullList && foundEntityIds.length === 0) {
+    // 전체 목록 요청: 카테고리별로 엔티티 제공
+    const entitiesByCategory: Record<string, Entity[]> = {};
+    Object.values(knowledgeGraph.entities).forEach(entity => {
+      if (!entitiesByCategory[entity.category]) {
+        entitiesByCategory[entity.category] = [];
+      }
+      entitiesByCategory[entity.category].push(entity);
+    });
+
+    // 인물 요청이면 character 우선
+    if (intent?.wantsCharacters) {
+      const characters = entitiesByCategory['character'] || [];
+      entitySection = characters.slice(0, 30).map(entity => {
+        const lines = [`### ${entity.name}`];
+        if (entity.description) lines.push(`- ${entity.description}`);
+        return lines.join('\n');
+      }).join('\n\n');
+    } else {
+      // 전체 요약
+      entitySection = Object.entries(entitiesByCategory)
+        .map(([category, entities]) => {
+          const names = entities.slice(0, 15).map(e => e.name).join(', ');
+          const more = entities.length > 15 ? ` 외 ${entities.length - 15}개` : '';
+          return `### ${category}\n${names}${more}`;
+        }).join('\n\n');
+    }
+
+    // 주요 관계
+    const topRelations = Object.values(knowledgeGraph.hyperedges)
+      .filter(e => e.strength && e.strength >= 6)
+      .sort((a, b) => (b.strength || 0) - (a.strength || 0))
+      .slice(0, 20);
+
+    relationSection = topRelations.map(edge => {
+      const names = edge.entities.map(id => knowledgeGraph.entities[id]?.name || id).join(' ↔ ');
+      return `- [${edge.type}] ${names}: ${edge.statement.slice(0, 60)}...`;
+    }).join('\n');
+
+  } else if (foundEntityIds.length > 0) {
+    // 특정 엔티티 검색 결과가 있음
     const foundEntities = foundEntityIds
       .map(id => knowledgeGraph.entities[id])
       .filter(Boolean);
@@ -446,8 +501,9 @@ function buildSystemPrompt(context: ChatContext, foundEntityIds: string[] = []):
       const names = edge.entities.map(id => knowledgeGraph.entities[id]?.name || id).join(' ↔ ');
       return `- [${edge.type}] ${names}: ${edge.statement}`;
     }).join('\n');
+
   } else {
-    // 찾은 엔티티가 없으면 주요 인물만 간략히
+    // 찾은 엔티티 없고 전체 목록도 아님
     const mainCharacters = Object.values(knowledgeGraph.entities)
       .filter(e => e.category === 'character')
       .slice(0, 10)
@@ -558,7 +614,7 @@ export async function sendChatMessage(
   console.groupEnd();
 
   const apiMessages = [
-    { role: 'system', content: buildSystemPrompt(context, foundEntityIds) },
+    { role: 'system', content: buildSystemPrompt(context, foundEntityIds, logIntent || undefined) },
     ...messages.map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.role === 'user' && m === lastUserMessage
