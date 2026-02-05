@@ -4,7 +4,7 @@
  * CSS Grid로 행 높이 자동 맞춤
  */
 
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { User, Clock, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useStore, useCharacters } from '../store';
 import type { HyperEdge } from '../types';
@@ -172,8 +172,7 @@ export function CharacterChronicle() {
   const characters = useCharacters();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const leftColumnRef = useRef<HTMLDivElement>(null);  // 왼쪽 고정 열 스크롤 동기화용
-  const selectedColumnRef = useRef<HTMLDivElement>(null);
+  const selectedColumnRef = useRef<HTMLTableCellElement>(null);
 
   // 줌 상태
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
@@ -514,157 +513,85 @@ export function CharacterChronicle() {
       </div>
 
       {/*
-        ⚠️ 레이아웃 구조: 왼쪽 고정 열 + 오른쪽 스크롤 영역
+        ⚠️ 레이아웃: HTML Table 사용
 
         CSS Grid의 sticky는 가로 스크롤에서 제대로 작동하지 않음!
-        따라서 왼쪽 열을 완전히 분리하고, 세로 스크롤만 동기화함.
+        HTML table의 첫 번째 열(td/th)에 sticky left-0을 적용하면
+        가로 스크롤해도 왼쪽 열이 고정됨.
 
-        구조:
-        [고정 왼쪽 열] | [가로+세로 스크롤 가능한 오른쪽 영역]
+        행 높이가 자동으로 동기화되어 왼쪽/오른쪽 불일치 문제 해결.
       */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* 왼쪽 고정 열: 장면 라벨 */}
-        <div
-          className="flex-shrink-0 overflow-hidden bg-white border-r border-gray-300"
-          style={{ width: `${100 * zoomLevel}px` }}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-auto cursor-grab select-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
+        <table
+          className="border-collapse"
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
         >
-          {/* 왼쪽 열 헤더 */}
-          <div
-            className="bg-gray-50 border-b border-gray-200 flex items-center justify-center"
-            style={{ height: `${80 * zoomLevel}px` }}
-          >
-            <span className="text-xs font-medium text-gray-400">장면</span>
-          </div>
-          {/* 왼쪽 열 내용 - 세로 스크롤은 오른쪽과 동기화 */}
-          <div
-            ref={leftColumnRef}
-            className="overflow-hidden"
-            style={{ height: `calc(100% - ${80 * zoomLevel}px)` }}
-          >
-            <div>
-              {pageScenes.map((scene, localIndex) => {
-                // 시간 마커 텍스트: 텍스트에 명시된 시간 표현만 표시
-                const getTimeMarkerText = () => {
-                  if (localIndex === 0) return null;
-                  if (scene.timeMarker) return scene.timeMarker;
-                  const prevScene = pageScenes[localIndex - 1];
-                  if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
-                    return `${prevScene.time} → ${scene.time}`;
-                  }
-                  return null;
-                };
-                const timeMarkerText = getTimeMarkerText();
+          {/* 헤더 행: 장면 라벨 + 캐릭터들 */}
+          <thead>
+            <tr>
+              {/* 왼쪽 상단 고정 셀 */}
+              <th
+                className="sticky left-0 z-30 bg-gray-50 border-b border-r border-gray-200 text-center"
+                style={{ width: 100, minWidth: 100 }}
+              >
+                <span className="text-xs font-medium text-gray-400">장면</span>
+              </th>
+              {/* 캐릭터 헤더들 */}
+              {visibleCharacters.map((char) => {
+                const isSelected = selectedCharId === char.id;
+                const isOtherSelected = selectedCharId && !isSelected;
+                const charColor = getCharColor(characters.findIndex(c => c.id === char.id));
 
                 return (
-                  <div key={`left-${scene.sceneId}`}>
-                    {/* 시간 경과 행 */}
-                    {timeMarkerText && localIndex > 0 && (
-                      <div
-                        className="bg-amber-50 border-b border-amber-200 flex items-center justify-center"
-                        style={{ padding: `${8 * zoomLevel}px ${12 * zoomLevel}px` }}
-                      >
-                        <div
-                          className="text-amber-700 font-medium flex items-center gap-1"
-                          style={{ fontSize: `${11 * zoomLevel}px` }}
-                        >
-                          <span>⏱</span>
-                          <span>{timeMarkerText}</span>
-                        </div>
-                      </div>
-                    )}
-                    {/* 장면 라벨 */}
-                    <div
-                      id={`scene-row-local-${localIndex}`}
-                      className="bg-white border-b border-gray-200 flex flex-col justify-center"
-                      style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px`, minHeight: `${120 * zoomLevel}px` }}
+                  <th
+                    key={`header-${char.id}`}
+                    ref={isSelected ? selectedColumnRef : undefined}
+                    className={`sticky top-0 z-20 bg-gray-50 border-b border-gray-200 p-2 transition-opacity duration-300 ${
+                      isOtherSelected ? 'opacity-30' : 'opacity-100'
+                    }`}
+                    style={{ width: 260, minWidth: 260 }}
+                  >
+                    <button
+                      onClick={() => {
+                        if (selectedCharId === char.id) {
+                          setSelectedCharId(null);
+                        } else {
+                          setSelectedCharId(char.id);
+                          selectEntity(char.id);
+                        }
+                      }}
+                      className={`flex flex-col items-center p-2 rounded-xl transition-all mx-auto ${
+                        isSelected
+                          ? 'bg-blue-50 ring-2 ring-blue-400 shadow-lg scale-105'
+                          : 'bg-white hover:bg-gray-50 shadow'
+                      }`}
                     >
                       <div
-                        className="font-bold text-blue-600"
-                        style={{ fontSize: `${14 * zoomLevel}px` }}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
+                        style={{ backgroundColor: charColor }}
                       >
-                        {scene.sceneLabel}
+                        {char.name.charAt(0)}
                       </div>
-                      <div
-                        className="text-gray-500"
-                        style={{ fontSize: `${12 * zoomLevel}px`, marginTop: `${2 * zoomLevel}px` }}
-                      >
-                        {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
-                      </div>
-                    </div>
-                  </div>
+                      <span className={`mt-1 text-xs font-medium truncate max-w-[120px] ${
+                        isSelected ? 'text-blue-700' : 'text-gray-700'
+                      }`}>
+                        {char.name}
+                      </span>
+                    </button>
+                  </th>
                 );
               })}
-            </div>
-          </div>
-        </div>
-
-        {/* 오른쪽 스크롤 영역: 캐릭터 열들 */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-auto cursor-grab select-none"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          onScroll={(e) => {
-            // 세로 스크롤 동기화: 오른쪽 스크롤 → 왼쪽 열
-            if (leftColumnRef.current) {
-              leftColumnRef.current.scrollTop = e.currentTarget.scrollTop;
-            }
-          }}
-        >
-          <div
-            className="grid gap-0 origin-top-left transition-transform duration-200"
-            style={{
-              gridTemplateColumns: `repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
-              gridTemplateRows: `${80 * zoomLevel}px repeat(${pageScenes.length}, auto)`,
-            }}
-          >
-          {visibleCharacters.map((char, charIndex) => {
-            const isSelected = selectedCharId === char.id;
-            const isOtherSelected = selectedCharId && !isSelected;
-            const charColor = getCharColor(characters.findIndex(c => c.id === char.id));
-
-            return (
-              <div
-                key={`header-${char.id}`}
-                ref={isSelected ? selectedColumnRef : undefined}
-                className={`sticky top-0 z-20 bg-gray-50 border-b border-gray-200 flex items-center justify-center p-2 transition-opacity duration-300 ${
-                  isOtherSelected ? 'opacity-30' : 'opacity-100'
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    if (selectedCharId === char.id) {
-                      setSelectedCharId(null);
-                    } else {
-                      setSelectedCharId(char.id);
-                      selectEntity(char.id);
-                    }
-                  }}
-                  className={`flex flex-col items-center p-2 rounded-xl transition-all ${
-                    isSelected
-                      ? 'bg-blue-50 ring-2 ring-blue-400 shadow-lg scale-105'
-                      : 'bg-white hover:bg-gray-50 shadow'
-                  }`}
-                >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
-                    style={{ backgroundColor: charColor }}
-                  >
-                    {char.name.charAt(0)}
-                  </div>
-                  <span className={`mt-1 text-xs font-medium truncate max-w-[120px] ${
-                    isSelected ? 'text-blue-700' : 'text-gray-700'
-                  }`}>
-                    {char.name}
-                  </span>
-                </button>
-              </div>
-            );
-          })}
-
-          {/* 각 장면 행 (오른쪽 영역: 캐릭터 열만) */}
+            </tr>
+          </thead>
+          <tbody>
+          {/* 각 장면 행 */}
           {pageScenes.map((scene, localIndex) => {
             // 시간 마커 텍스트
             const getTimeMarkerText = () => {
@@ -679,110 +606,139 @@ export function CharacterChronicle() {
             const timeMarkerText = getTimeMarkerText();
 
             return (
-            <>
-              {/* 시간 경과 행: 캐릭터 열들만 (왼쪽 라벨은 고정 열에 있음) */}
+            <React.Fragment key={`row-${scene.sceneId}`}>
+              {/* 시간 경과 행 */}
               {timeMarkerText && localIndex > 0 && (
-                visibleCharacters.map((char) => (
-                  <div
-                    key={`time-${scene.sceneId}-${char.id}`}
-                    className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
-                    style={{ padding: `${8 * zoomLevel}px` }}
+                <tr>
+                  {/* 시간 경과 라벨 (왼쪽 고정) */}
+                  <td
+                    className="sticky left-0 z-20 bg-amber-50 border-b border-r border-amber-200"
+                    style={{ padding: '8px 12px' }}
                   >
-                    <div className="w-full border-t-2 border-dashed border-amber-300" />
-                  </div>
-                ))
+                    <div className="text-amber-700 font-medium flex items-center gap-1 text-xs">
+                      <span>⏱</span>
+                      <span>{timeMarkerText}</span>
+                    </div>
+                  </td>
+                  {/* 각 캐릭터 열에 시간 경과 표시 */}
+                  {visibleCharacters.map((char) => (
+                    <td
+                      key={`time-${scene.sceneId}-${char.id}`}
+                      className="bg-amber-50/50 border-b border-amber-100"
+                      style={{ padding: 8 }}
+                    >
+                      <div className="w-full border-t-2 border-dashed border-amber-300" />
+                    </td>
+                  ))}
+                </tr>
               )}
 
-              {/* 각 캐릭터의 해당 장면 셀 */}
-              {visibleCharacters.map((char) => {
-                const globalIndex = characters.findIndex(c => c.id === char.id);
-                const isSelected = selectedCharId === char.id;
-                const isOtherSelected = selectedCharId && !isSelected;
-                const charColor = getCharColor(globalIndex);
-                const sceneMap = characterSceneEvents.get(char.id) || new Map();
-                const events = sceneMap.get(scene.sceneId) || [];
-                const hasEvents = events.length > 0;
+              {/* 장면 데이터 행 */}
+              <tr id={`scene-row-local-${localIndex}`}>
+                {/* 장면 라벨 (왼쪽 고정) */}
+                <td
+                  className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 align-top"
+                  style={{ padding: '16px 12px', minHeight: 120 }}
+                >
+                  <div className="font-bold text-blue-600 text-sm">
+                    {scene.sceneLabel}
+                  </div>
+                  <div className="text-gray-500 text-xs mt-0.5">
+                    {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
+                  </div>
+                </td>
 
-                // 이 장면에 등장 안 하면 빈 셀 (세로선만)
-                if (!hasEvents) {
+                {/* 각 캐릭터의 해당 장면 셀 */}
+                {visibleCharacters.map((char) => {
+                  const globalIndex = characters.findIndex(c => c.id === char.id);
+                  const isSelected = selectedCharId === char.id;
+                  const isOtherSelected = selectedCharId && !isSelected;
+                  const charColor = getCharColor(globalIndex);
+                  const sceneMap = characterSceneEvents.get(char.id) || new Map();
+                  const events = sceneMap.get(scene.sceneId) || [];
+                  const hasEvents = events.length > 0;
+
+                  // 이 장면에 등장 안 하면 빈 셀
+                  if (!hasEvents) {
+                    return (
+                      <td
+                        key={`cell-${scene.sceneId}-${char.id}`}
+                        className={`border-b border-gray-100 transition-opacity duration-300 ${
+                          isOtherSelected ? 'opacity-30' : 'opacity-100'
+                        }`}
+                        style={{ minHeight: 120 }}
+                      />
+                    );
+                  }
+
+                  // 대표 감정 결정
+                  const sentiments = events.map((e: HyperEdge) => e.sentiment || 'neutral');
+                  const mainSentiment = sentiments.includes('negative') ? 'negative' :
+                    sentiments.includes('positive') ? 'positive' :
+                    sentiments.includes('complex') ? 'complex' : 'neutral';
+                  const colors = SENTIMENT_COLORS[mainSentiment];
+
                   return (
-                    <div
+                    <td
                       key={`cell-${scene.sceneId}-${char.id}`}
-                      className={`border-b border-gray-100 transition-opacity duration-300 ${
+                      className={`border-b border-gray-100 relative transition-opacity duration-300 align-top ${
                         isOtherSelected ? 'opacity-30' : 'opacity-100'
                       }`}
-                      style={{ minHeight: `${120 * zoomLevel}px` }}
-                    />
-                  );
-                }
-
-                // 대표 감정 결정
-                const sentiments = events.map((e: HyperEdge) => e.sentiment || 'neutral');
-                const mainSentiment = sentiments.includes('negative') ? 'negative' :
-                  sentiments.includes('positive') ? 'positive' :
-                  sentiments.includes('complex') ? 'complex' : 'neutral';
-                const colors = SENTIMENT_COLORS[mainSentiment];
-
-                return (
-                  <div
-                    key={`cell-${scene.sceneId}-${char.id}`}
-                    className={`border-b border-gray-100 flex items-stretch justify-center relative transition-opacity duration-300 ${
-                      isOtherSelected ? 'opacity-30' : 'opacity-100'
-                    }`}
-                    style={{ minHeight: `${120 * zoomLevel}px`, padding: `${12 * zoomLevel}px` }}
-                  >
-                    {/* 연속 세로선 */}
-                    <div
-                      className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
-                      style={{ backgroundColor: charColor }}
-                    />
-
-                    {/* 이벤트 카드 */}
-                    <div
-                      className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
-                      style={{
-                        border: `2px solid ${colors.border}`,
-                      }}
+                      style={{ minHeight: 120, padding: 12 }}
                     >
-                      {/* 헤더: 장면 번호 + 장소/시간 */}
+                      {/* 연속 세로선 */}
                       <div
-                        className="px-3 py-2 flex-shrink-0"
-                        style={{ backgroundColor: colors.bg }}
+                        className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2"
+                        style={{ backgroundColor: charColor }}
+                      />
+
+                      {/* 이벤트 카드 */}
+                      <div
+                        className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
+                        style={{
+                          border: `2px solid ${colors.border}`,
+                        }}
                       >
+                        {/* 헤더: 장면 번호 + 장소/시간 */}
                         <div
-                          className="text-sm font-bold"
-                          style={{ color: colors.text }}
+                          className="px-3 py-2 flex-shrink-0"
+                          style={{ backgroundColor: colors.bg }}
                         >
-                          {scene.sceneLabel}
+                          <div
+                            className="text-sm font-bold"
+                            style={{ color: colors.text }}
+                          >
+                            {scene.sceneLabel}
+                          </div>
+                          <div
+                            className="text-xs opacity-80"
+                            style={{ color: colors.text }}
+                          >
+                            {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
+                          </div>
                         </div>
-                        <div
-                          className="text-xs opacity-80"
-                          style={{ color: colors.text }}
-                        >
-                          {[scene.location, scene.time].filter(Boolean).join(' / ') || '정보 없음'}
+                        {/* 관계 목록 - 호버/클릭 가능 */}
+                        <div className="p-3 space-y-2 flex-1">
+                          {events.map((edge: HyperEdge, i: number) => (
+                            <RelationshipItemWithTooltip
+                              key={`${edge.id}-${i}`}
+                              edge={edge}
+                              charId={char.id}
+                              entities={knowledgeGraph.entities}
+                              colors={colors}
+                            />
+                          ))}
                         </div>
                       </div>
-                      {/* 관계 목록 - 호버/클릭 가능 */}
-                      <div className="p-3 space-y-2 flex-1">
-                        {events.map((edge: HyperEdge, i: number) => (
-                          <RelationshipItemWithTooltip
-                            key={`${edge.id}-${i}`}
-                            edge={edge}
-                            charId={char.id}
-                            entities={knowledgeGraph.entities}
-                            colors={colors}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
+                    </td>
+                  );
+                })}
+              </tr>
+            </React.Fragment>
           );
           })}
-        </div>
-      </div>
+          </tbody>
+        </table>
       </div>
 
       {/* 하단: 네비게이션 + 범례 */}
