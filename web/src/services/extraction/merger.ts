@@ -603,23 +603,13 @@ function buildSnapshots(
   extracted: MergedExtraction,
   entities: Record<string, Entity>,
   hyperedges: Record<string, HyperEdge>,
+  sceneIdMapping: Record<number, string>,
   existingGraph?: NovelKnowledgeGraph,
   fileNames?: string[],
 ): Record<string, SceneSnapshot> {
   const snapshots: Record<string, SceneSnapshot> = existingGraph ? { ...existingGraph.snapshots } : {};
   const sortedScenes = [...(extracted.scenes || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
   const defaultChapterNumber = 0;
-
-  // 기존 장면의 최대 번호 추출 (삭제 후 재추가 시 ID 충돌 방지)
-  let maxSceneNum = 0;
-  if (existingGraph?.snapshots) {
-    for (const sceneId of Object.keys(existingGraph.snapshots)) {
-      const numMatch = sceneId.match(/S0*(\d+)/);
-      if (numMatch) {
-        maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
-      }
-    }
-  }
 
   // 기존 장면의 최대 order 추출
   let maxOrder = 0;
@@ -631,36 +621,26 @@ function buildSnapshots(
 
   for (let idx = 0; idx < sortedScenes.length; idx++) {
     const s = sortedScenes[idx];
-    // 새 장면 번호는 최대값 + 1부터 시작
-    const actualSceneNum = maxSceneNum + idx + 1;
-    const sceneId = formatId('S', actualSceneNum);
-    const originalSceneId = formatId('S', s.id);
+    // sceneIdMapping에서 실제 장면 ID 가져오기
+    const sceneId = sceneIdMapping[s.id];
+    if (!sceneId) {
+      console.warn(`[extraction] 장면 ID 매핑 없음: ${s.id}`);
+      continue;
+    }
     // order는 기존 최대 order + 1부터 시작
     const actualOrder = maxOrder + idx + 1;
 
     const actualChapterNum = s.chapter || defaultChapterNumber;
     const chapterId = actualChapterNum ? formatId('C', actualChapterNum) : null;
 
-    // 이 장면에 등장하는 엔티티/관계 찾기
+    // 이 장면에 등장하는 엔티티/관계 찾기 (이미 매핑된 sceneId 사용)
     const entitiesInScene = Object.values(entities)
-      .filter((e) => e.scenes?.includes(originalSceneId))
+      .filter((e) => e.scenes?.includes(sceneId))
       .map((e) => e.id);
 
     const activeEdges = Object.values(hyperedges)
-      .filter((e) => e.scenes?.includes(originalSceneId))
+      .filter((e) => e.scenes?.includes(sceneId))
       .map((e) => e.id);
-
-    // 엔티티와 관계의 scenes 배열에서 원래 ID를 새 ID로 교체
-    for (const e of Object.values(entities)) {
-      if (e.scenes?.includes(originalSceneId)) {
-        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
-      }
-    }
-    for (const e of Object.values(hyperedges)) {
-      if (e.scenes?.includes(originalSceneId)) {
-        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
-      }
-    }
 
     // 장면이 추출된 원본 파일명 결정
     const sceneSourceFile = (s.sourceFileIndex !== undefined && fileNames && fileNames[s.sourceFileIndex])
@@ -695,6 +675,28 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   const hyperedges: Record<string, HyperEdge> = existingGraph ? { ...existingGraph.hyperedges } : {};
   const nameToId: Record<string, string> = {};
 
+  // 기존 장면의 최대 번호 추출 (새 장면 ID 계산용)
+  let maxSceneNum = 0;
+  if (existingGraph?.snapshots) {
+    for (const sceneId of Object.keys(existingGraph.snapshots)) {
+      const numMatch = sceneId.match(/S0*(\d+)/);
+      if (numMatch) {
+        maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
+      }
+    }
+  }
+
+  // 새로 추출된 장면 ID를 실제 ID로 매핑하는 맵 생성
+  // 예: extracted.scenes의 id=1 → S0005 (maxSceneNum + 1)
+  const sceneIdMapping: Record<number, string> = {};
+  const sortedScenes = [...(extracted.scenes || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
+  for (let idx = 0; idx < sortedScenes.length; idx++) {
+    const s = sortedScenes[idx];
+    const actualSceneNum = maxSceneNum + idx + 1;
+    sceneIdMapping[s.id] = formatId('S', actualSceneNum);
+  }
+  console.log('[extraction] 장면 ID 매핑:', sceneIdMapping);
+
   // 기존 엔티티의 이름 매핑 초기화
   for (const e of Object.values(entities)) {
     registerNameMapping(nameToId, e.name, e.id);
@@ -709,20 +711,23 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   // 엔티티 등록
   for (const e of extracted.entities) {
     const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
+    // 새 장면 ID로 변환 (sceneIdMapping 사용)
+    const newSceneIds = (e.scenes || []).map((s: number) => sceneIdMapping[s] || formatId('S', s));
 
     if (existingId && entities[existingId]) {
-      // 기존 엔티티에 정보 추가
+      // 기존 엔티티에 정보 추가 - 새 장면 ID만 추가
       const existing = entities[existingId];
       existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
       if (e.description && !existing.description?.includes(e.description)) {
         existing.description = ((existing.description || '') + ' ' + e.description).slice(0, 500);
       }
+      // 기존 scenes에 새 장면 ID 추가 (중복 제거)
+      existing.scenes = [...new Set([...(existing.scenes || []), ...newSceneIds])];
       continue;
     }
 
     entityCounter++;
     const id = formatId('E', entityCounter);
-    const sceneIds = (e.scenes || []).map((s: number) => formatId('S', s));
     entities[id] = {
       id,
       name: e.name,
@@ -730,7 +735,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       aliases: e.aliases || [],
       description: e.description || '',
       attributes: (e.attributes || {}) as Record<string, unknown>,
-      scenes: sceneIds,
+      scenes: newSceneIds,
       firstMention: { chapter: 1 },
       importance: e.importance || 5,
     };
@@ -759,7 +764,8 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       e.type === r.type && e.entities.includes(fromId) && e.entities.includes(toId)
     );
 
-    const sceneIds = (r.scenes || []).map((s: number) => formatId('S', s));
+    // 새 장면 ID로 변환 (sceneIdMapping 사용)
+    const sceneIds = (r.scenes || []).map((s: number) => sceneIdMapping[s] || formatId('S', s));
 
     if (existingEdge) {
       existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...sceneIds])];
@@ -824,7 +830,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   }
 
   // 장면(Scene)을 snapshots로 변환
-  const snapshots = buildSnapshots(extracted, entities, hyperedges, existingGraph, fileNames);
+  const snapshots = buildSnapshots(extracted, entities, hyperedges, sceneIdMapping, existingGraph, fileNames);
 
   // 통계
   const entitiesByCategory: Partial<Record<EntityCategory, number>> = {};
