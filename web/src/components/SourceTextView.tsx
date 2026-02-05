@@ -130,10 +130,16 @@ export function SourceTextView() {
       // 1. 삭제할 파일과 관련된 장면 ID 찾기
       const scenesToDelete = new Set<string>();
       Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
-        if (scene.sourceFile === fileName || scene.sourceFileId === fileId) {
+        const matchByName = scene.sourceFile === fileName;
+        const matchById = scene.sourceFileId === fileId;
+        if (matchByName || matchById) {
           scenesToDelete.add(sceneId);
+          console.log(`[SourceTextView] 삭제 대상 장면: ${sceneId}, sourceFile=${scene.sourceFile}, sourceFileId=${scene.sourceFileId}`);
         }
       });
+
+      console.log(`[SourceTextView] 삭제할 장면들: ${[...scenesToDelete].join(', ')} (총 ${scenesToDelete.size}개)`);
+      console.log(`[SourceTextView] 전체 장면: ${Object.keys(knowledgeGraph.snapshots).join(', ')}`);
 
       // 2. 새 snapshots 객체 생성 (삭제된 장면 제외)
       const newSnapshots: Record<string, SceneSnapshot> = {};
