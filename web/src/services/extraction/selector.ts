@@ -84,7 +84,7 @@ export function formatEntitySummariesForSelection(summaries: EntitySummary[]): s
 
 export interface SelectionResult {
   names: string[];
-  billing: { prompt_tokens: number; completion_tokens: number } | null;
+  billing: { prompt_tokens: number; completion_tokens: number; model: string } | null;
 }
 
 /**
@@ -138,10 +138,11 @@ export async function selectRelevantEntities(
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    // billing 데이터 캡처
+    // billing 데이터 캡처 (사용 모델 포함)
     const billing = data.usage ? {
       prompt_tokens: data.usage.prompt_tokens || 0,
       completion_tokens: data.usage.completion_tokens || 0,
+      model: selectionModel,
     } : null;
 
     // JSON 배열 파싱

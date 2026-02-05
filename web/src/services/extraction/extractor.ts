@@ -51,7 +51,7 @@ ${limitedCategoryEntities.map(e => {
     .replace('{{text}}', chunkText)
     .replace('{{previousCharacters}}', previousEntitiesText);
 
-  console.log(`청크 ${chunkNum} 프롬프트 크기: ${prompt.length}자`);
+  console.log(`[extraction] 청크 ${chunkNum} 프롬프트 크기: ${prompt.length}자`);
 
   // 서버 API route 사용 (환경변수 우선, 없으면 사용자 키 사용)
   const userApiKey = getApiKey();
@@ -74,7 +74,7 @@ ${limitedCategoryEntities.map(e => {
   if (data.error) {
     throw new Error(data.error);
   }
-  console.log('API 응답 데이터:', data);
+  console.log('[extraction] API 응답 데이터:', data);
 
   const content = data.choices?.[0]?.message?.content;
 
@@ -83,7 +83,7 @@ ${limitedCategoryEntities.map(e => {
     throw new Error('LLM 응답이 비어있습니다. API 키를 확인해주세요.');
   }
 
-  console.log('LLM 응답 내용:', content.slice(0, 500));
+  console.log('[extraction] LLM 응답 내용:', content.slice(0, 500));
 
   let extracted;
   try {
@@ -94,7 +94,7 @@ ${limitedCategoryEntities.map(e => {
     // JSON이 잘린 경우 복구 시도
     const fixedContent = tryFixJson(content);
     if (fixedContent) {
-      console.log('JSON 복구 성공');
+      console.log('[extraction] JSON 복구 성공');
       extracted = fixedContent;
     } else {
       // 파싱 실패 시 빈 결과 반환 (전체 분석을 중단하지 않음)
@@ -130,7 +130,7 @@ export function tryFixJson(content: string): any {
     const match = fixed.match(pattern);
     if (match && match[0].length > 500) {
       // 반복 패턴이 감지되면 첫 번째 유효한 부분만 남기고 자르기
-      console.log('반복 패턴 감지됨, JSON 복구 시도...');
+      console.log('[extraction] 반복 패턴 감지됨, JSON 복구 시도...');
       const firstMatch = match[0];
       const repeatStart = fixed.indexOf(firstMatch);
       if (repeatStart > 100) {  // 충분한 데이터가 앞에 있으면

@@ -79,14 +79,14 @@ export const authConfig: NextAuthConfig = {
         Date.now() > token.accessTokenExpires - 60_000
       ) {
         try {
-          const issuer = process.env.AUTH_CATCIDENT_ISSUER;
-          const response = await fetch(`${issuer}/o/token/`, {
+          const response = await fetch(`${OIDC_ISSUER}/token/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
               grant_type: 'refresh_token',
               refresh_token: token.refreshToken,
               client_id: process.env.AUTH_CATCIDENT_ID || '',
+              client_secret: process.env.AUTH_CATCIDENT_SECRET || '',
             }),
           });
 

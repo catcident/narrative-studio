@@ -149,7 +149,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
           onChunkBilling(i, {
             prompt_tokens: selectionBilling.prompt_tokens,
             completion_tokens: selectionBilling.completion_tokens,
-            model: 'google/gemini-2.0-flash-001',
+            model: selectionBilling.model,
           });
         }
 
