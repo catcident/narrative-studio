@@ -22,6 +22,7 @@ import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
+import { createBillingCallback, deductAfterSave, deductPartial } from './services/billing';
 import type { NovelKnowledgeGraph } from './types';
 
 type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
@@ -40,6 +41,7 @@ function App() {
     selectedSceneId, selectScene,
     sceneRangeStart, sceneRangeEnd, selectSceneRange,
     loadSubscription,
+    subscription, addChunkUsage, resetCurrentUsage, updateCreditBalance, setShowUsageSummary,
   } = useStore();
   const [showDataManager, setShowDataManager] = useState(false);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
@@ -105,6 +107,7 @@ function App() {
 
     setIsAddingFile(true);
     setAddProgress('파일 읽는 중...');
+    resetCurrentUsage();
 
     try {
       let text = '';
@@ -138,17 +141,30 @@ function App() {
         undefined,
         existingModel,
         file.name,
-        knowledgeGraph  // 기존 지식그래프 전달
+        knowledgeGraph,  // 기존 지식그래프 전달
+        createBillingCallback(addChunkUsage),
       );
 
       // DB에 저장 (기존 ID 사용하여 업데이트)
       setAddProgress('저장 중...');
       const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
+      if (subscription) {
+        setAddProgress('크레딧 차감 중...');
+        const { currentUsage } = useStore.getState();
+        await deductAfterSave(saved.id, knowledgeGraph.metadata.title, existingModel || '', currentUsage, updateCreditBalance);
+      }
+
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       setAddProgress('');
+      setShowUsageSummary(true);
     } catch (err: any) {
       console.error('파일 추가 오류:', err);
+      if (subscription) {
+        const existingModel = knowledgeGraph.metadata.model || '';
+        const { currentUsage } = useStore.getState();
+        await deductPartial(knowledgeGraph.metadata.title, existingModel, currentUsage, updateCreditBalance);
+      }
       alert(err.message || '파일 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAddingFile(false);

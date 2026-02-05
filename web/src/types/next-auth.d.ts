@@ -29,5 +29,8 @@ declare module 'next-auth/jwt' {
     nickname?: string | null;
     memberType?: string | null;
     roles?: string[];
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
   }
 }

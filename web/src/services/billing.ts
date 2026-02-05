@@ -4,9 +4,10 @@
  */
 
 import type {
-  BillingSubscription,
   CreditTransaction,
   PlanFeatures,
+  CurrentUsage,
+  ChunkUsage,
 } from '../types';
 import { AVAILABLE_MODELS } from '../types';
 
@@ -17,7 +18,10 @@ const BASE = '/api/billing';
 async function billingFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
     const res = await fetch(`${BASE}${path}`, init);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[billing] ${path} HTTP ${res.status}`);
+      return null;
+    }
     return await res.json();
   } catch (error) {
     console.error(`[billing] ${path} error:`, error);
@@ -28,7 +32,10 @@ async function billingFetch<T>(path: string, init?: RequestInit): Promise<T | nu
 async function billingFetchList<T>(path: string): Promise<T[]> {
   try {
     const res = await fetch(`${BASE}${path}`);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[billing] ${path} HTTP ${res.status}`);
+      return [];
+    }
     const data = await res.json();
     return data.results || data;
   } catch (error) {
@@ -201,9 +208,9 @@ export function estimateUsageLocally(charCount: number, model: string): UsageEst
 
   const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
   const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
-  const totalTokens = Math.ceil(charCount / CHARS_PER_TOKEN);
-  const inputTokens = Math.ceil(totalTokens * (1 / (1 + OUTPUT_RATIO)));
-  const outputTokens = totalTokens - inputTokens;
+  // 백엔드 StorygraphEstimator와 동일: input = char/1.5, output = input * 0.45
+  const inputTokens = Math.ceil(charCount / CHARS_PER_TOKEN);
+  const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
 
   const { inputCost, outputCost } = getModelCosts(model);
   const costUsd = (inputTokens / 1_000_000) * inputCost + (outputTokens / 1_000_000) * outputCost;
@@ -228,4 +235,79 @@ export function calculateCreditsFromTokens(promptTokens: number, completionToken
   const { inputCost, outputCost } = getModelCosts(model);
   const costUsd = (promptTokens / 1_000_000) * inputCost + (completionTokens / 1_000_000) * outputCost;
   return Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
+}
+
+// ==================== Billing 콜백 / 차감 헬퍼 ====================
+
+/** extractKnowledgeGraph에 전달할 billing 콜백 생성 */
+export function createBillingCallback(
+  addChunkUsage: (chunk: ChunkUsage) => void
+): (chunkIndex: number, billing: { prompt_tokens: number; completion_tokens: number; model: string }) => void {
+  return (chunkIndex, billing) => {
+    addChunkUsage({
+      chunkIndex,
+      promptTokens: billing.prompt_tokens,
+      completionTokens: billing.completion_tokens,
+      model: billing.model,
+    });
+  };
+}
+
+/** 분석 완료 후 실제 토큰 기반 크레딧 차감 */
+export async function deductAfterSave(
+  savedId: string,
+  title: string,
+  model: string,
+  currentUsage: CurrentUsage,
+  updateCreditBalance: (n: number) => void,
+): Promise<void> {
+  const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
+  if (totalTokens <= 0) return;
+
+  const credits = calculateCreditsFromTokens(
+    currentUsage.totalPromptTokens,
+    currentUsage.totalCompletionTokens,
+    model,
+  );
+  if (credits <= 0) return;
+
+  const idempotencyKey = `storygraph-${savedId}-${Date.now()}`;
+  const result = await deductCredits(
+    credits,
+    `소설 분석: ${title}`,
+    { model, chunks: currentUsage.chunks.length, totalTokens },
+    idempotencyKey,
+  );
+  if (result) {
+    updateCreditBalance(result.balance_after);
+  }
+}
+
+/** 분석 도중 실패 시 부분 차감 */
+export async function deductPartial(
+  title: string,
+  model: string,
+  currentUsage: CurrentUsage,
+  updateCreditBalance: (n: number) => void,
+): Promise<void> {
+  const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
+  if (totalTokens <= 0) return;
+
+  const credits = calculateCreditsFromTokens(
+    currentUsage.totalPromptTokens,
+    currentUsage.totalCompletionTokens,
+    model,
+  );
+  if (credits <= 0) return;
+
+  const idempotencyKey = `storygraph-partial-${Date.now()}`;
+  const result = await deductCredits(
+    credits,
+    `소설 분석 (부분): ${title}`,
+    { model, chunks: currentUsage.chunks.length, totalTokens, partial: true },
+    idempotencyKey,
+  );
+  if (result) {
+    updateCreditBalance(result.balance_after);
+  }
 }

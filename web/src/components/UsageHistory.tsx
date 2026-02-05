@@ -23,15 +23,16 @@ export function UsageHistory() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(false);
     getUsageHistory(page).then(result => {
-      if (!result) {
-        setError(true);
-      }
+      if (cancelled) return;
+      if (!result) setError(true);
       setData(result);
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [page]);
 
   if (loading) {

@@ -65,7 +65,9 @@ export function billingGetHandler(billingPath: string, logLabel: string) {
       if ('error' in authResult) return authResult.error;
 
       const response = await proxyToCatcident(billingPath, authResult.accessToken);
-      const data = await response.json().catch(() => ({ error: 'Invalid response from billing service' }));
+      let data;
+      try { data = await response.json(); }
+      catch { return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 }); }
       return NextResponse.json(data, { status: response.status });
     } catch (error) {
       console.error(`[billing] ${logLabel} error:`, error);
@@ -86,7 +88,9 @@ export function billingPostHandler(billingPath: string, logLabel: string) {
 
       const body = await request.text();
       const response = await proxyToCatcident(billingPath, authResult.accessToken, { method: 'POST', body });
-      const data = await response.json().catch(() => ({ error: 'Invalid response from billing service' }));
+      let data;
+      try { data = await response.json(); }
+      catch { return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 }); }
       return NextResponse.json(data, { status: response.status });
     } catch (error) {
       console.error(`[billing] ${logLabel} error:`, error);

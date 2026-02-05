@@ -150,11 +150,46 @@ NextAuth.js SessionProvider 래퍼
 <div className="w-1.5 h-1.5 rounded-full bg-blue-500" aria-hidden="true" />
 ```
 
+### 모달 접근성
+
+**규칙**: 모든 모달은 키보드 접근성을 제공해야 함
+
+```tsx
+// ✅ 모달 필수 요소
+<div role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+  <button onClick={onClose} aria-label="닫기">
+    <X aria-hidden="true" className="w-5 h-5" />
+  </button>
+</div>
+
+// ❌ 키보드 접근성 없는 모달
+<div className="fixed inset-0">
+  <button onClick={onClose}>
+    <X aria-hidden="true" />  {/* aria-label 없음 */}
+  </button>
+</div>
+```
+
+### 버튼 접근성
+
+**규칙**: 텍스트 없는 아이콘 버튼은 반드시 `aria-label` 제공
+
+```tsx
+// ✅ 아이콘 + 텍스트: aria-label 불필요
+<button><Coins aria-hidden="true" /> 크레딧</button>
+
+// ✅ 아이콘만: aria-label 필수
+<button aria-label="구독 관리"><Coins aria-hidden="true" /></button>
+```
+
 **체크리스트** (새 UI 컴포넌트 작성 시):
 - [ ] lucide-react 아이콘에 `aria-hidden="true"` 추가
 - [ ] 인라인 SVG에 `aria-hidden="true"` 추가
 - [ ] 장식용 요소(불릿, 구분선 등)에 `aria-hidden="true"` 추가
 - [ ] 기능적 아이콘(버튼 없는 독립 아이콘)은 `aria-label` 제공
+- [ ] 모달: Escape 키 닫기 + `role="dialog"` + `aria-modal="true"`
+- [ ] 모달 닫기 버튼: `aria-label="닫기"` 추가
+- [ ] 아이콘 전용 버튼: `aria-label` 추가
 
 ### 타입 안전성
 
@@ -247,6 +282,38 @@ showUsageSummary: boolean;                 // 분석 세션 수준 (reset()에�
 ```typescript
 useBillingSubscription()  // subscription 객체
 useCreditBalance()        // creditBalance 또는 null
+```
+
+### ⚠️ Zustand 셀렉터 규칙
+
+**규칙**: 컴포넌트에서 `useStore()` 호출 시 반드시 개별 셀렉터 사용
+
+```tsx
+// ❌ 전체 스토어 구독 → 불필요한 리렌더링
+const { currentUsage, showUsageSummary } = useStore();
+
+// ✅ 개별 셀렉터 → 해당 필드 변경 시에만 리렌더링
+const currentUsage = useStore((s) => s.currentUsage);
+const showUsageSummary = useStore((s) => s.showUsageSummary);
+
+// ✅ 전용 셀렉터 훅 사용
+const subscription = useBillingSubscription();
+const balance = useCreditBalance();
+```
+
+### useEffect 클린업 규칙
+
+**규칙**: 비동기 데이터 로딩 useEffect는 반드시 언마운트 대비
+
+```tsx
+// ✅ cancelled flag로 stale update 방지
+useEffect(() => {
+  let cancelled = false;
+  fetchData().then(data => {
+    if (!cancelled) setData(data);
+  });
+  return () => { cancelled = true; };
+}, [deps]);
 ```
 
 ---
