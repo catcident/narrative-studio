@@ -111,9 +111,15 @@ export function DetailPanel() {
 
   // 현재 장면 정보
   const currentScene = selectedSceneId && knowledgeGraph?.snapshots ? knowledgeGraph.snapshots[selectedSceneId] : null;
+  // ⚠️ 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
   const sceneIndex = selectedSceneId && knowledgeGraph?.snapshots
     ? Object.values(knowledgeGraph.snapshots)
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .sort((a, b) => {
+          const chapterA = a.chapterNumber || 0;
+          const chapterB = b.chapterNumber || 0;
+          if (chapterA !== chapterB) return chapterA - chapterB;
+          return (a.order || 0) - (b.order || 0);
+        })
         .findIndex(s => s.sceneId === selectedSceneId) + 1
     : 0;
 
@@ -273,7 +279,14 @@ export function DetailPanel() {
                 <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {[...edge.scenes]
-                    .sort((a, b) => (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0))
+                    .sort((a, b) => {
+                      const snapshotA = knowledgeGraph.snapshots[a];
+                      const snapshotB = knowledgeGraph.snapshots[b];
+                      const chapterA = snapshotA?.chapterNumber || 0;
+                      const chapterB = snapshotB?.chapterNumber || 0;
+                      if (chapterA !== chapterB) return chapterA - chapterB;
+                      return (snapshotA?.order || 0) - (snapshotB?.order || 0);
+                    })
                     .map((sceneId) => {
                     const scene = knowledgeGraph.snapshots[sceneId];
                     const sceneIdx = scene?.order || 0;
@@ -396,9 +409,15 @@ export function DetailPanel() {
 
             {/* 첫 등장 */}
             {(() => {
-              const sortedScenes = [...entity.scenes].sort((a, b) =>
-                (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0)
-              );
+              // ⚠️ 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
+              const sortedScenes = [...entity.scenes].sort((a, b) => {
+                const snapshotA = knowledgeGraph.snapshots[a];
+                const snapshotB = knowledgeGraph.snapshots[b];
+                const chapterA = snapshotA?.chapterNumber || 0;
+                const chapterB = snapshotB?.chapterNumber || 0;
+                if (chapterA !== chapterB) return chapterA - chapterB;
+                return (snapshotA?.order || 0) - (snapshotB?.order || 0);
+              });
               const firstSceneId = sortedScenes[0];
               const firstScene = knowledgeGraph.snapshots[firstSceneId];
               const firstSceneIndex = firstScene?.order || 0;
@@ -430,7 +449,14 @@ export function DetailPanel() {
             {/* 모든 등장 장면 목록 */}
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {[...entity.scenes]
-                .sort((a, b) => (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0))
+                .sort((a, b) => {
+                  const snapshotA = knowledgeGraph.snapshots[a];
+                  const snapshotB = knowledgeGraph.snapshots[b];
+                  const chapterA = snapshotA?.chapterNumber || 0;
+                  const chapterB = snapshotB?.chapterNumber || 0;
+                  if (chapterA !== chapterB) return chapterA - chapterB;
+                  return (snapshotA?.order || 0) - (snapshotB?.order || 0);
+                })
                 .map((sceneId) => {
                 const scene = knowledgeGraph.snapshots[sceneId];
                 const sceneIdx = scene?.order || 0;
