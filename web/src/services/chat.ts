@@ -104,30 +104,61 @@ export interface ChatContext {
 /**
  * 질문에서 엔티티 ID 추출 (개선: 부분 매칭 + 유사어 지원)
  */
+// 비슷한 의미의 단어 매핑 (동의어/유사어)
+const SYNONYM_MAP: Record<string, string[]> = {
+  '박스': ['상자', '박스', '골판지'],
+  '상자': ['박스', '상자', '골판지'],
+  '집': ['집', '거처', '잠자리', '보금자리'],
+  '칼': ['칼', '검', '도검', '무기'],
+  '검': ['칼', '검', '도검', '무기'],
+};
+
 function findMentionedEntityIds(
   query: string,
   entities: Record<string, Entity>
 ): string[] {
   const mentioned: string[] = [];
   const queryLower = query.toLowerCase();
+  const queryWords = queryLower.split(/\s+/).filter(w => w.length >= 2);
+
+  // 키워드 확장 (동의어 추가)
+  const expandedQueryWords = new Set(queryWords);
+  queryWords.forEach(word => {
+    const synonyms = SYNONYM_MAP[word];
+    if (synonyms) {
+      synonyms.forEach(syn => expandedQueryWords.add(syn));
+    }
+  });
 
   Object.entries(entities).forEach(([id, entity]) => {
     const nameLower = entity.name.toLowerCase();
-    // 정확히 일치
+
+    // 1. 질문에 엔티티 이름이 포함됨 (정확히 일치)
     if (queryLower.includes(nameLower)) {
       mentioned.push(id);
       return;
     }
-    // 별칭으로 검색
-    if (entity.aliases?.some(alias => queryLower.includes(alias.toLowerCase()))) {
+
+    // 2. 엔티티 이름에 질문 키워드가 포함됨 (부분 일치 - "새 박스"에서 "박스" 검색)
+    if ([...expandedQueryWords].some(word => nameLower.includes(word))) {
       mentioned.push(id);
       return;
     }
-    // 설명에서 키워드 검색 (질문의 주요 단어가 설명에 있는지)
+
+    // 3. 별칭으로 검색
+    if (entity.aliases?.some(alias => {
+      const aliasLower = alias.toLowerCase();
+      return queryLower.includes(aliasLower) ||
+             [...expandedQueryWords].some(word => aliasLower.includes(word));
+    })) {
+      mentioned.push(id);
+      return;
+    }
+
+    // 4. 설명에서 키워드 검색 (질문의 주요 단어가 설명에 있는지)
     if (entity.description) {
       const descLower = entity.description.toLowerCase();
-      const queryWords = queryLower.split(/\s+/).filter(w => w.length >= 2);
-      if (queryWords.some(word => descLower.includes(word) && word.length >= 2)) {
+      if ([...expandedQueryWords].some(word => descLower.includes(word) && word.length >= 2)) {
         // 너무 많이 매칭되지 않도록 제한
         if (mentioned.length < 20) {
           mentioned.push(id);
