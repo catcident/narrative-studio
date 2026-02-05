@@ -74,37 +74,84 @@ function detectQueryIntent(query: string): {
   wantsRelationships: boolean;
   wantsItems: boolean;
   wantsSummary: boolean;
+  wantsLocations: boolean;
+  wantsOrganizations: boolean;
+  wantsEvents: boolean;
+  wantsConcepts: boolean;
+  wantsCategoryList: boolean;  // 카테고리 전체 목록 요청
+  targetCategory: string | null;  // 요청된 특정 카테고리
   keywords: string[];
   expandedKeywords: string[];
 } {
   const queryLower = query.toLowerCase();
 
-  // 등장인물/캐릭터 관련 키워드
-  const characterKeywords = ['등장인물', '인물', '캐릭터', '주인공', '누구', '사람'];
-  const wantsCharacters = characterKeywords.some(k => queryLower.includes(k));
+  // 전체 목록 요청 패턴 (뭐있어, 알려줘, 목록, 전부 등)
+  const listPatterns = ['뭐있', '뭐가있', '뭐 있', '알려줘', '알려줄래', '목록', '전부', '모두', '다 알려', '뭐가 있'];
+  const wantsList = listPatterns.some(p => queryLower.includes(p));
+
+  // 카테고리별 키워드 매핑
+  const categoryKeywords: Record<string, string[]> = {
+    character: ['등장인물', '인물', '캐릭터', '주인공', '사람', '누구누구'],
+    item: ['아이템', '물건', '물품', '도구', '무기', '장비', '비법', '비급', '책', '보물'],
+    location: ['장소', '지역', '곳', '위치', '마을', '도시', '산', '문파', '어디'],
+    organization: ['조직', '단체', '문파', '세력', '가문', '파벌', '종파'],
+    event: ['사건', '이벤트', '일', '무슨일'],
+    concept: ['개념', '설정', '세계관', '규칙', '법칙', '비법', '무공', '기술', '능력'],
+  };
+
+  // 각 카테고리 감지
+  const wantsCharacters = categoryKeywords.character.some(k => queryLower.includes(k));
+  const wantsItems = categoryKeywords.item.some(k => queryLower.includes(k));
+  const wantsLocations = categoryKeywords.location.some(k => queryLower.includes(k));
+  const wantsOrganizations = categoryKeywords.organization.some(k => queryLower.includes(k));
+  const wantsEvents = categoryKeywords.event.some(k => queryLower.includes(k));
+  const wantsConcepts = categoryKeywords.concept.some(k => queryLower.includes(k));
 
   // 관계 관련 키워드
-  const relationshipKeywords = ['관계', '사이', '어떤', '어떻게', '왜'];
+  const relationshipKeywords = ['관계', '사이', '어떤 관계', '어떻게 연결'];
   const wantsRelationships = relationshipKeywords.some(k => queryLower.includes(k));
 
-  // 아이템/사물 관련 키워드
-  const itemKeywords = ['의미', '상징', '뭐야', '무엇', '물건', '아이템'];
-  const wantsItems = itemKeywords.some(k => queryLower.includes(k));
-
   // 요약/전체 관련 키워드
-  const summaryKeywords = ['요약', '줄거리', '내용', '전체', '설명'];
+  const summaryKeywords = ['요약', '줄거리', '내용', '전체', '설명해줘'];
   const wantsSummary = summaryKeywords.some(k => queryLower.includes(k));
 
+  // 카테고리 목록 요청 감지 (예: "아이템 뭐있어?", "장소 알려줘")
+  let targetCategory: string | null = null;
+  if (wantsList) {
+    if (wantsCharacters) targetCategory = 'character';
+    else if (wantsItems) targetCategory = 'item';
+    else if (wantsLocations) targetCategory = 'location';
+    else if (wantsOrganizations) targetCategory = 'organization';
+    else if (wantsEvents) targetCategory = 'event';
+    else if (wantsConcepts) targetCategory = 'concept';
+  }
+
+  const wantsCategoryList = wantsList && targetCategory !== null;
+
   // 질문에서 핵심 키워드 추출 (2글자 이상)
+  const stopWords = ['의미', '뭐야', '무엇', '어떤', '어떻게', '가', '이', '를', '의', '뭐있', '알려줘', '있어', '뭐가'];
   const keywords = queryLower
     .replace(/[?!.,]/g, '')
     .split(/\s+/)
-    .filter(w => w.length >= 2 && !['의미', '뭐야', '무엇', '어떤', '어떻게', '가', '이', '를', '의'].includes(w));
+    .filter(w => w.length >= 2 && !stopWords.includes(w));
 
   // 유사어로 확장
   const expandedKeywords = expandKeywords(keywords);
 
-  return { wantsCharacters, wantsRelationships, wantsItems, wantsSummary, keywords, expandedKeywords };
+  return {
+    wantsCharacters,
+    wantsRelationships,
+    wantsItems,
+    wantsSummary,
+    wantsLocations,
+    wantsOrganizations,
+    wantsEvents,
+    wantsConcepts,
+    wantsCategoryList,
+    targetCategory,
+    keywords,
+    expandedKeywords
+  };
 }
 
 /**
@@ -412,6 +459,12 @@ interface QueryIntent {
   wantsRelationships: boolean;
   wantsItems: boolean;
   wantsSummary: boolean;
+  wantsLocations: boolean;
+  wantsOrganizations: boolean;
+  wantsEvents: boolean;
+  wantsConcepts: boolean;
+  wantsCategoryList: boolean;
+  targetCategory: string | null;
   keywords: string[];
   expandedKeywords: string[];
 }
@@ -436,36 +489,71 @@ function buildSystemPrompt(
   let entitySection = '';
   let relationSection = '';
 
-  // 전체 목록 요청인지 확인 (등장인물 알려줘, 요약해줘 등)
-  const wantsFullList = intent && (intent.wantsCharacters || intent.wantsSummary);
+  // 카테고리 이름 매핑 (영어 → 한글)
+  const categoryNames: Record<string, string> = {
+    character: '등장인물',
+    item: '아이템/물건',
+    location: '장소',
+    organization: '조직/단체',
+    event: '사건',
+    concept: '개념/설정',
+    creature: '생물',
+    time_period: '시간',
+    status: '상태',
+    emotion: '감정',
+  };
 
-  if (wantsFullList && foundEntityIds.length === 0) {
-    // 전체 목록 요청: 카테고리별로 엔티티 제공
-    const entitiesByCategory: Record<string, Entity[]> = {};
-    Object.values(knowledgeGraph.entities).forEach(entity => {
-      if (!entitiesByCategory[entity.category]) {
-        entitiesByCategory[entity.category] = [];
-      }
-      entitiesByCategory[entity.category].push(entity);
-    });
-
-    // 인물 요청이면 character 우선
-    if (intent?.wantsCharacters) {
-      const characters = entitiesByCategory['character'] || [];
-      entitySection = characters.slice(0, 30).map(entity => {
-        const lines = [`### ${entity.name}`];
-        if (entity.description) lines.push(`- ${entity.description}`);
-        return lines.join('\n');
-      }).join('\n\n');
-    } else {
-      // 전체 요약
-      entitySection = Object.entries(entitiesByCategory)
-        .map(([category, entities]) => {
-          const names = entities.slice(0, 15).map(e => e.name).join(', ');
-          const more = entities.length > 15 ? ` 외 ${entities.length - 15}개` : '';
-          return `### ${category}\n${names}${more}`;
-        }).join('\n\n');
+  // 카테고리별 엔티티 그룹화 (공통 사용)
+  const entitiesByCategory: Record<string, Entity[]> = {};
+  Object.values(knowledgeGraph.entities).forEach(entity => {
+    if (!entitiesByCategory[entity.category]) {
+      entitiesByCategory[entity.category] = [];
     }
+    entitiesByCategory[entity.category].push(entity);
+  });
+
+  // 1. 특정 카테고리 목록 요청 ("아이템 뭐있어?", "장소 알려줘")
+  if (intent?.wantsCategoryList && intent.targetCategory) {
+    const targetEntities = entitiesByCategory[intent.targetCategory] || [];
+    const categoryName = categoryNames[intent.targetCategory] || intent.targetCategory;
+
+    if (targetEntities.length > 0) {
+      entitySection = `## ${categoryName} 목록 (${targetEntities.length}개)\n\n` +
+        targetEntities.slice(0, 40).map(entity => {
+          const lines = [`### ${entity.name}`];
+          if (entity.description) lines.push(`- ${entity.description}`);
+          return lines.join('\n');
+        }).join('\n\n');
+
+      if (targetEntities.length > 40) {
+        entitySection += `\n\n... 외 ${targetEntities.length - 40}개`;
+      }
+    } else {
+      entitySection = `${categoryName} 카테고리에 해당하는 항목이 없습니다.`;
+    }
+
+    // 해당 카테고리 엔티티들의 관계
+    const targetIds = new Set(targetEntities.map(e => e.id));
+    const relatedEdges = Object.values(knowledgeGraph.hyperedges)
+      .filter(edge => edge.entities.some(id => targetIds.has(id)))
+      .slice(0, 20);
+
+    relationSection = relatedEdges.length > 0
+      ? relatedEdges.map(edge => {
+          const names = edge.entities.map(id => knowledgeGraph.entities[id]?.name || id).join(' ↔ ');
+          return `- [${edge.type}] ${names}: ${edge.statement.slice(0, 60)}...`;
+        }).join('\n')
+      : '(관련 관계 없음)';
+
+  // 2. 전체 요약 요청
+  } else if (intent?.wantsSummary && foundEntityIds.length === 0) {
+    entitySection = Object.entries(entitiesByCategory)
+      .map(([category, entities]) => {
+        const catName = categoryNames[category] || category;
+        const names = entities.slice(0, 15).map(e => e.name).join(', ');
+        const more = entities.length > 15 ? ` 외 ${entities.length - 15}개` : '';
+        return `### ${catName} (${entities.length}개)\n${names}${more}`;
+      }).join('\n\n');
 
     // 주요 관계
     const topRelations = Object.values(knowledgeGraph.hyperedges)
@@ -478,6 +566,7 @@ function buildSystemPrompt(
       return `- [${edge.type}] ${names}: ${edge.statement.slice(0, 60)}...`;
     }).join('\n');
 
+  // 3. 특정 엔티티 검색 결과가 있음
   } else if (foundEntityIds.length > 0) {
     // 특정 엔티티 검색 결과가 있음
     const foundEntities = foundEntityIds
