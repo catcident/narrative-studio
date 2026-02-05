@@ -608,13 +608,35 @@ function buildSnapshots(
 ): Record<string, SceneSnapshot> {
   const snapshots: Record<string, SceneSnapshot> = existingGraph ? { ...existingGraph.snapshots } : {};
   const sortedScenes = [...(extracted.scenes || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
-  const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
   const defaultChapterNumber = 0;
 
-  for (const s of sortedScenes) {
-    const actualSceneNum = existingSceneCount + s.id;
+  // 기존 장면의 최대 번호 추출 (삭제 후 재추가 시 ID 충돌 방지)
+  let maxSceneNum = 0;
+  if (existingGraph?.snapshots) {
+    for (const sceneId of Object.keys(existingGraph.snapshots)) {
+      const numMatch = sceneId.match(/S0*(\d+)/);
+      if (numMatch) {
+        maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
+      }
+    }
+  }
+
+  // 기존 장면의 최대 order 추출
+  let maxOrder = 0;
+  if (existingGraph?.snapshots) {
+    for (const scene of Object.values(existingGraph.snapshots)) {
+      maxOrder = Math.max(maxOrder, scene.order || 0);
+    }
+  }
+
+  for (let idx = 0; idx < sortedScenes.length; idx++) {
+    const s = sortedScenes[idx];
+    // 새 장면 번호는 최대값 + 1부터 시작
+    const actualSceneNum = maxSceneNum + idx + 1;
     const sceneId = formatId('S', actualSceneNum);
     const originalSceneId = formatId('S', s.id);
+    // order는 기존 최대 order + 1부터 시작
+    const actualOrder = maxOrder + idx + 1;
 
     const actualChapterNum = s.chapter || defaultChapterNumber;
     const chapterId = actualChapterNum ? formatId('C', actualChapterNum) : null;
@@ -647,7 +669,7 @@ function buildSnapshots(
 
     snapshots[sceneId] = {
       sceneId,
-      order: actualSceneNum,
+      order: actualOrder,
       chapter: chapterId,
       chapterNumber: actualChapterNum,
       time: s.time || `장면 ${s.id}`,
