@@ -5,9 +5,13 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Trash2, Settings, ChevronDown } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useStore } from '../store';
 import { sendChatMessage, generateMessageId, type ChatMessage } from '../services/chat';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../types';
+
+// 채팅 내역 저장 키 (지식 그래프 ID 기반)
+const getChatStorageKey = (graphId?: string) => `chat_history_${graphId || 'default'}`;
 
 /**
  * 텍스트에서 언급된 엔티티 ID 추출
@@ -45,6 +49,43 @@ export function ChatView() {
   const [showModelSelect, setShowModelSelect] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // 채팅 내역 로드 (지식 그래프 변경 시)
+  useEffect(() => {
+    if (!knowledgeGraph) return;
+    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id);
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // timestamp를 Date 객체로 복원
+        const restored = parsed.map((m: ChatMessage & { timestamp: string }) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages(restored);
+
+        // 마지막 AI 답변에서 언급된 엔티티 복원
+        const lastAssistant = [...restored].reverse().find((m: ChatMessage) => m.role === 'assistant');
+        if (lastAssistant) {
+          const mentionedIds = extractMentionedEntities(lastAssistant.content, knowledgeGraph.entities);
+          setChatMentionedEntities(mentionedIds);
+        }
+      } catch {
+        // 파싱 실패 시 무시
+      }
+    } else {
+      setMessages([]);
+      setChatMentionedEntities([]);
+    }
+  }, [knowledgeGraph?.metadata.id]);
+
+  // 채팅 내역 저장 (메시지 변경 시)
+  useEffect(() => {
+    if (!knowledgeGraph || messages.length === 0) return;
+    const storageKey = getChatStorageKey(knowledgeGraph.metadata.id);
+    localStorage.setItem(storageKey, JSON.stringify(messages));
+  }, [messages, knowledgeGraph?.metadata.id]);
 
   // 자동 스크롤
   const scrollToBottom = useCallback(() => {
@@ -124,6 +165,12 @@ export function ChatView() {
     if (messages.length === 0) return;
     if (confirm('대화 내용을 모두 삭제하시겠습니까?')) {
       setMessages([]);
+      setChatMentionedEntities([]);
+      // localStorage에서도 삭제
+      if (knowledgeGraph) {
+        const storageKey = getChatStorageKey(knowledgeGraph.metadata.id);
+        localStorage.removeItem(storageKey);
+      }
     }
   };
 
@@ -246,8 +293,8 @@ export function ChatView() {
               AI
             </div>
             <div className="flex-1 bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                {streamingContent}
+              <div className="prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-2">
+                <ReactMarkdown>{streamingContent}</ReactMarkdown>
                 <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
               </div>
             </div>
@@ -333,9 +380,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             : 'bg-white rounded-tl-none'
         }`}
       >
-        <div className={`prose prose-sm max-w-none whitespace-pre-wrap ${isUser ? 'prose-invert' : ''}`}>
-          {message.content}
-        </div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap">
+            {message.content}
+          </div>
+        ) : (
+          <div className="prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-2">
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
+        )}
         <div className={`text-xs mt-1 ${isUser ? 'text-green-100' : 'text-gray-400'}`}>
           {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
         </div>
