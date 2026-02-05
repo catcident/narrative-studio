@@ -2027,9 +2027,29 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
     edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
   });
 
-  // 소스 파일 정보 생성은 FileUpload에서 처리하므로 여기서는 기존 것 유지
+  // 소스 파일 정보 생성 - 기존 파일 목록에 새 파일 추가
   const existingSourceFiles = existingGraph?.metadata?.sourceFiles || [];
-  const sourceFiles = existingSourceFiles;
+
+  // 새로 추가할 파일들 생성 (기존에 없는 파일명만)
+  const existingFileNames = new Set(existingSourceFiles.map((sf: any) => sf.fileName));
+  const newSourceFiles: any[] = [];
+
+  if (fileNames && originalText) {
+    fileNames.forEach((fileName) => {
+      if (!existingFileNames.has(fileName)) {
+        const newId = `F${String(existingSourceFiles.length + newSourceFiles.length + 1).padStart(4, '0')}`;
+        newSourceFiles.push({
+          id: newId,
+          fileName,
+          uploadedAt: now,
+          text: originalText,  // 전체 텍스트 (단일 파일의 경우)
+          charCount: originalText.length,
+        });
+      }
+    });
+  }
+
+  const sourceFiles = [...existingSourceFiles, ...newSourceFiles];
 
   // sourceFileId 매핑: 파일명으로 ID 찾기
   const fileNameToId: Record<string, string> = {};
