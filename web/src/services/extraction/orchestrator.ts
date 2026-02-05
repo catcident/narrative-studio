@@ -135,7 +135,9 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
   for (let i = startChunk; i < chunks.length; i++) {
     const remaining = totalChunks - i;
-    const avgTime = chunkTimes.length > 0 ? chunkTimes.reduce((a, b) => a + b, 0) / chunkTimes.length : 0;
+    // 최근 3개 청크의 평균 사용 — 축적 그래프 성장에 따른 시간 증가를 더 정확히 반영
+    const recentTimes = chunkTimes.slice(-3);
+    const avgTime = recentTimes.length > 0 ? recentTimes.reduce((a, b) => a + b, 0) / recentTimes.length : 0;
     const estimatedRemaining = avgTime > 0 ? Math.ceil((remaining * avgTime) / 60000) : null;
     const timeText = estimatedRemaining !== null ? ` (예상 ${estimatedRemaining}분 남음)` : '';
     const msg = `청크 ${i + 1}/${totalChunks} 분석 중...${timeText}`;

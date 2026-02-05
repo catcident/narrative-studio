@@ -17,10 +17,12 @@ export async function middleware(request: NextRequest) {
     const isLoggedIn = !!req.auth;
     const isApiRoute = req.nextUrl.pathname.startsWith('/api');
     const isAuthRoute = req.nextUrl.pathname.startsWith('/api/auth');
+    const isPublicApi = req.nextUrl.pathname === '/api/config'
+      || req.nextUrl.pathname === '/api/models';
     const isLoginPage = req.nextUrl.pathname === '/login';
 
-    // Auth routes are always accessible
-    if (isAuthRoute) {
+    // Auth routes and public API routes are always accessible
+    if (isAuthRoute || isPublicApi) {
       return NextResponse.next();
     }
 
