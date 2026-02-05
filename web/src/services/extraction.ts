@@ -1047,20 +1047,24 @@ function mergeExtractions(extractions: any[]): any {
       // LLM이 준 scene.id를 글로벌 ID로 매핑 (엔티티/관계의 scenes 참조용)
       localToGlobal[scene.id] = globalId;
 
-      // 장면의 chapter를 글로벌 chapter id로 변환
-      let globalChapter = scene.chapter;
+      // 장면의 chapter를 실제 번호로 변환 (제목에서 추출)
+      // "2화: xxx" → 2, "제3장: yyy" → 3
+      let actualChapterNumber = scene.chapter;
       if (scene.chapter && ext.chapters) {
         const chapterInfo = ext.chapters.find((c: any) => c.id === scene.chapter);
-        if (chapterInfo) {
-          const key = chapterInfo.title || `제${chapterInfo.id}장`;
-          globalChapter = chapterMap[key] || scene.chapter;
+        if (chapterInfo && chapterInfo.title) {
+          // 제목에서 숫자 추출 (예: "2화: xxx" → 2, "제3장" → 3)
+          const numMatch = chapterInfo.title.match(/(\d+)/);
+          if (numMatch) {
+            actualChapterNumber = parseInt(numMatch[1], 10);
+          }
         }
       }
 
       scenes.push({
         ...scene,
         id: globalId,
-        chapter: globalChapter,
+        chapter: actualChapterNumber,  // 실제 화/장 번호 (정렬용)
         chunkNum: chunkIdx + 1
       });
     }
@@ -1509,7 +1513,6 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 기존 카운터 (기존 데이터가 있으면 이어서)
   let entityCounter = Object.keys(entities).length;
   let edgeCounter = Object.keys(hyperedges).length;
-  let chapterCounter = existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0;
 
   // 엔티티 등록
   (extracted.entities || []).forEach((e: any) => {
@@ -1847,20 +1850,33 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 장(Chapter) 정보 처리 - 기존 그래프가 있으면 포함
   const chapters: Record<string, any> = existingGraph ? { ...existingGraph.chapters } : {};
 
-  // 새 장 정보 추가 (번호 이어서)
+  // 새 장 정보 추가 (제목에서 실제 번호 추출)
+  // "2화: xxx" → number: 2, "제3장: yyy" → number: 3
   (extracted.chapters || []).forEach((c: any) => {
-    chapterCounter++;
-    const chapterId = `C${String(chapterCounter).padStart(4, '0')}`;
-    chapters[chapterId] = {
-      id: chapterId,
-      number: chapterCounter,
-      title: c.title || `제${chapterCounter}장`,
-      summary: c.summary || '',
-    };
+    // 제목에서 실제 번호 추출
+    let actualNumber = c.id; // 기본값은 LLM이 준 id
+    if (c.title) {
+      const numMatch = c.title.match(/(\d+)/);
+      if (numMatch) {
+        actualNumber = parseInt(numMatch[1], 10);
+      }
+    }
+
+    const chapterId = `C${String(actualNumber).padStart(4, '0')}`;
+
+    // 이미 같은 번호의 장이 있으면 스킵 (중복 방지)
+    if (!chapters[chapterId]) {
+      chapters[chapterId] = {
+        id: chapterId,
+        number: actualNumber,
+        title: c.title || `제${actualNumber}장`,
+        summary: c.summary || '',
+      };
+    }
   });
 
-  // 새 장 정보를 위한 번호 매핑 (extracted의 장 번호 -> 실제 장 번호)
-  let newChapterNumber = chapterCounter;
+  // 장이 없을 때의 기본 번호 (0 = 장 없음)
+  let newChapterNumber = 0;
 
   // 장이 없으면 장 정보를 생성하지 않음 (파일명을 장 제목으로 쓰지 않음)
   // LLM이 장/화를 추출하지 못했다면 그냥 장 없이 장면만 표시
