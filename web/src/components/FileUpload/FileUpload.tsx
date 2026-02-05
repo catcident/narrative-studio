@@ -11,6 +11,7 @@ import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '.
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
+import { useAddFileAnalysis } from '../../hooks/useAddFileAnalysis';
 import { UploadArea } from './UploadArea';
 import { AnalysisPanel } from './AnalysisPanel';
 import { ResumePanel } from './ResumePanel';
@@ -95,6 +96,7 @@ export function FileUpload() {
   const [directText, setDirectText] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [existingTitles, setExistingTitles] = useState<string[]>([]);
+  const { addFile: addFileFromHook, execute: executeAddFromHook } = useAddFileAnalysis();
 
   // 기존 지식그래프가 있으면 해당 모델로 고정
   const lockedModel = knowledgeGraph?.metadata?.model;
@@ -368,70 +370,18 @@ export function FileUpload() {
     });
   }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
 
-  // 추가 분석 실행 (파일명 확정 후)
-  const executeAddFile = useCallback(async (file: File, text: string, finalFileName: string) => {
-    if (!knowledgeGraph) return;
-
-    await runExtraction(async () => {
-      await ensureSufficientBalance(subscription);
-
-      setProgress('추가 분석 중...');
-      const updatedKnowledgeGraph = await extractKnowledgeGraph({
-        text,
-        title: knowledgeGraph.metadata.title,
-        onProgress: makeProgressCallback('추가'),
-        model: currentModel,
-        fileNames: [finalFileName],
-        existingGraph: knowledgeGraph,
-        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-      });
-
-      setProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(
-        updatedKnowledgeGraph,
-        undefined,
-        undefined,
-        currentDataId || undefined,
-      );
-
-      setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
-      resetProgressState();
-      return true;
-    });
-  }, [knowledgeGraph, currentDataId, runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState]);
-
-  // 추가 분석 (기존 결과에 새 파일 병합)
+  // 추가 분석 (기존 결과에 새 파일 병합) — useAddFileAnalysis 훅 위임
   const handleAddFile = useCallback(async (file: File) => {
     if (!knowledgeGraph) return;
 
     setError(null);
-    setProgress('파일 읽는 중...');
-
-    try {
-      const text = await readFileAsText(file, setProgress);
-
-      if (!text.trim()) {
-        throw new Error('파일 내용이 비어있습니다.');
-      }
-
-      // 중복 파일명 체크
-      const existingFileNames = (knowledgeGraph.metadata.sourceFiles || []).map(f => f.fileName);
-      if (existingFileNames.includes(file.name)) {
-        setDuplicateFileName(file.name);
-        setNewFileName(file.name);
-        setPendingFile(file);
-        setPendingFileText(text);
-        resetProgressState();
-        return;
-      }
-
-      await executeAddFile(file, text, file.name);
-    } catch (err: unknown) {
-      console.error('[extraction] 추가 분석 오류:', err);
-      setError(err instanceof Error ? err.message : '추가 분석 중 오류가 발생했습니다.');
-      resetProgressState(true);
-    }
-  }, [knowledgeGraph, executeAddFile, resetProgressState, setError]);
+    await addFileFromHook(file, (fileName, text) => {
+      setDuplicateFileName(fileName);
+      setNewFileName(fileName);
+      setPendingFile(file);
+      setPendingFileText(text);
+    });
+  }, [knowledgeGraph, addFileFromHook, setError]);
 
   // 새 파일명으로 추가 분석 계속
   const handleConfirmNewFileName = useCallback(async () => {
@@ -444,11 +394,11 @@ export function FileUpload() {
     }
 
     setDuplicateFileName(null);
-    await executeAddFile(pendingFile, pendingFileText, newFileName.trim());
+    await executeAddFromHook(pendingFileText, newFileName.trim());
     setPendingFile(null);
     setPendingFileText('');
     setNewFileName('');
-  }, [pendingFile, pendingFileText, newFileName, knowledgeGraph, executeAddFile, setError]);
+  }, [pendingFile, pendingFileText, newFileName, knowledgeGraph, executeAddFromHook, setError]);
 
   // 중복 파일명 대화상자 취소
   const handleCancelDuplicate = useCallback(() => {

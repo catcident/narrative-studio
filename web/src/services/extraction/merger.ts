@@ -2,8 +2,14 @@
  * 지식 그래프 추출 서비스 — 결과 병합 및 후처리
  */
 
-import type { NovelKnowledgeGraph } from '../../types';
-import type { ChunkExtractedData } from './types';
+import type {
+  NovelKnowledgeGraph, Entity, HyperEdge,
+  EntityCategory, RelationType, Chapter, SceneSnapshot, SourceFile,
+} from '../../types';
+import type {
+  ChunkExtractedData, MergedExtraction, MergedEntity, MergedRelationship,
+  MergedScene, MergedChapter, MergedTimelinePoint,
+} from './types';
 
 // --- ID 포맷 헬퍼 ---
 
@@ -110,11 +116,11 @@ function findSimilarEntity(name: string, nameMap: Record<string, number>): numbe
 
 // --- 청크 결과 병합 ---
 
-export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceFileIndices: number[] = []): any {
-  const entities: any[] = [];
-  const relationships: any[] = [];
-  const scenes: any[] = [];
-  const chapters: any[] = [];
+export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceFileIndices: number[] = []): MergedExtraction {
+  const entities: MergedEntity[] = [];
+  const relationships: MergedRelationship[] = [];
+  const scenes: MergedScene[] = [];
+  const chapters: MergedChapter[] = [];
   const chapterMap: Record<string, number> = {};
   const nameMap: Record<string, number> = {};
 
@@ -149,7 +155,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
       // 장면의 chapter를 실제 번호로 변환
       let actualChapterNumber = scene.chapter;
       if (scene.chapter && ext.chapters) {
-        const chapterInfo = ext.chapters.find((c: any) => c.id === scene.chapter);
+        const chapterInfo = ext.chapters.find((c) => c.id === scene.chapter);
         if (chapterInfo?.title) {
           const numMatch = chapterInfo.title.match(/(\d+)/);
           if (numMatch) {
@@ -163,7 +169,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
         id: globalId,
         chapter: actualChapterNumber,
         chunkNum: chunkIdx + 1,
-        sourceFileIndex,  // 이 장면이 추출된 원본 파일 인덱스
+        sourceFileIndex,
       });
     }
     globalSceneOffset += chunkScenes.length || 1;
@@ -188,7 +194,15 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
         }
       } else {
         const idx = entities.length;
-        entities.push({ ...entity, scenes: globalScenes, aliases: entity.aliases || [] });
+        entities.push({
+          name: entity.name,
+          category: entity.category || 'character',
+          description: entity.description || '',
+          aliases: entity.aliases || [],
+          scenes: globalScenes,
+          attributes: entity.attributes,
+          importance: entity.importance,
+        });
         nameMap[normalizedName] = idx;
         for (const alias of (entity.aliases || [])) {
           nameMap[normalizeName(alias)] = idx;
@@ -268,9 +282,9 @@ function normalizeRelationType(type: string): string {
   return '관련';
 }
 
-function normalizeAllRelationTypes(extracted: any): any {
+function normalizeAllRelationTypes(extracted: MergedExtraction): MergedExtraction {
   const { relationships, ...rest } = extracted;
-  const normalizedRelationships = (relationships || []).map((rel: any) => ({
+  const normalizedRelationships = (relationships || []).map((rel) => ({
     ...rel,
     type: normalizeRelationType(rel.type)
   }));
@@ -287,7 +301,7 @@ function normalizeOwnerName(name: string): string {
   return name;
 }
 
-function hasRelationship(relationships: any[], from: string, to: string): boolean {
+function hasRelationship(relationships: MergedRelationship[], from: string, to: string): boolean {
   const normFrom = from.toLowerCase();
   const normTo = to.toLowerCase();
   return relationships.some(r =>
@@ -301,14 +315,14 @@ function hasRelationship(relationships: any[], from: string, to: string): boolea
  * "화자가 피우는 담배" 같은 설명에서 소유 관계를 추출
  * "화자가 걷는 길" 같은 설명에서 위치 관계를 추출
  */
-export function inferMissingRelationships(extracted: any): any {
+export function inferMissingRelationships(extracted: MergedExtraction): MergedExtraction {
   const normalized = normalizeAllRelationTypes(extracted);
   const { entities, relationships } = normalized;
-  const newRelationships: any[] = [];
+  const newRelationships: MergedRelationship[] = [];
 
   const characterNames = entities
-    .filter((e: any) => e.category === 'character')
-    .map((e: any) => e.name);
+    .filter((e) => e.category === 'character')
+    .map((e) => e.name);
 
   const ownerPatterns = [
     /^(.+?)(?:가|이|의)\s*(?:피우는|먹는|마시는|쓰는|타는|가진|입는|쓰던|읽는|보는|사용하는|운전하는|타고\s*다니는|가지고\s*있는)/,
@@ -324,7 +338,7 @@ export function inferMissingRelationships(extracted: any): any {
     if (entity.category === 'character') continue;
 
     const desc = entity.description || '';
-    const attrOwner = entity.attributes?.owner;
+    const attrOwner = (entity.attributes as Record<string, string> | undefined)?.owner;
     const isLocation = entity.category === 'location';
 
     // attributes.owner가 있으면 관계 생성
@@ -423,8 +437,8 @@ export function inferMissingRelationships(extracted: any): any {
 // --- 지식 그래프 구축 ---
 
 // 두 엔티티 간 기존 관계가 존재하는지 확인
-function hasEdgeBetween(hyperedges: Record<string, any>, id1: string, id2: string): boolean {
-  return Object.values(hyperedges).some((edge: any) =>
+function hasEdgeBetween(hyperedges: Record<string, HyperEdge>, id1: string, id2: string): boolean {
+  return Object.values(hyperedges).some((edge) =>
     edge.entities.includes(id1) && edge.entities.includes(id2)
   );
 }
@@ -443,16 +457,16 @@ function sceneIdToReadable(sceneId: string): string {
 
 // description에서 다른 엔티티 언급을 찾아 자동 관계 생성
 function inferDescriptionBasedEdges(
-  entities: Record<string, any>,
-  hyperedges: Record<string, any>,
+  entities: Record<string, Entity>,
+  hyperedges: Record<string, HyperEdge>,
   edgeCounter: { value: number }
 ): void {
-  for (const entity of Object.values(entities) as any[]) {
+  for (const entity of Object.values(entities)) {
     if (!entity.description) continue;
 
     const descLower = entity.description.toLowerCase();
 
-    for (const otherEntity of Object.values(entities) as any[]) {
+    for (const otherEntity of Object.values(entities)) {
       if (entity.id === otherEntity.id) continue;
 
       const namesToCheck = [otherEntity.name, ...(otherEntity.aliases || [])];
@@ -469,7 +483,7 @@ function inferDescriptionBasedEdges(
       let relationType = '관련';
       if (entity.category === 'location' || otherEntity.category === 'location') {
         relationType = '위치';
-      } else if (entity.category === 'object' || otherEntity.category === 'object' || entity.category === 'item' || otherEntity.category === 'item') {
+      } else if (entity.category === 'item' || otherEntity.category === 'item') {
         relationType = '소유';
       }
 
@@ -506,11 +520,11 @@ function inferDescriptionBasedEdges(
 
 // 같은 장면에 등장하는 엔티티 쌍에 대해 자동 관계 생성
 function inferCoOccurrenceEdges(
-  entities: Record<string, any>,
-  hyperedges: Record<string, any>,
+  entities: Record<string, Entity>,
+  hyperedges: Record<string, HyperEdge>,
   edgeCounter: { value: number }
 ): void {
-  const allEntities = Object.values(entities) as any[];
+  const allEntities = Object.values(entities);
   const characterEntities = allEntities.filter(e => e.category === 'character');
   const nonCharacterEntities = allEntities.filter(e => e.category !== 'character');
 
@@ -523,7 +537,7 @@ function inferCoOccurrenceEdges(
       const char2 = characterEntities[j];
       if (!char2.scenes?.length) continue;
 
-      const commonScenes = char1.scenes.filter((s: string) => char2.scenes.includes(s));
+      const commonScenes = char1.scenes.filter((s: string) => char2.scenes!.includes(s));
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
 
@@ -556,7 +570,7 @@ function inferCoOccurrenceEdges(
     for (const char of characterEntities) {
       if (!char.scenes?.length) continue;
 
-      const commonScenes = entity.scenes.filter((s: string) => char.scenes.includes(s));
+      const commonScenes = entity.scenes.filter((s: string) => char.scenes!.includes(s));
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, entity.id, char.id)) continue;
 
@@ -586,14 +600,14 @@ function inferCoOccurrenceEdges(
 
 // 장면(Scene)을 snapshots로 변환, 추가 분석 시 번호 이어가기
 function buildSnapshots(
-  extracted: any,
-  entities: Record<string, any>,
-  hyperedges: Record<string, any>,
+  extracted: MergedExtraction,
+  entities: Record<string, Entity>,
+  hyperedges: Record<string, HyperEdge>,
   existingGraph?: NovelKnowledgeGraph,
   fileNames?: string[],
-): Record<string, any> {
-  const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
-  const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
+): Record<string, SceneSnapshot> {
+  const snapshots: Record<string, SceneSnapshot> = existingGraph ? { ...existingGraph.snapshots } : {};
+  const sortedScenes = [...(extracted.scenes || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
   const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
   const defaultChapterNumber = 0;
 
@@ -607,20 +621,20 @@ function buildSnapshots(
 
     // 이 장면에 등장하는 엔티티/관계 찾기
     const entitiesInScene = Object.values(entities)
-      .filter((e: any) => e.scenes?.includes(originalSceneId))
-      .map((e: any) => e.id);
+      .filter((e) => e.scenes?.includes(originalSceneId))
+      .map((e) => e.id);
 
     const activeEdges = Object.values(hyperedges)
-      .filter((e: any) => e.scenes?.includes(originalSceneId))
-      .map((e: any) => e.id);
+      .filter((e) => e.scenes?.includes(originalSceneId))
+      .map((e) => e.id);
 
     // 엔티티와 관계의 scenes 배열에서 원래 ID를 새 ID로 교체
-    for (const e of Object.values(entities) as any[]) {
+    for (const e of Object.values(entities)) {
       if (e.scenes?.includes(originalSceneId)) {
         e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
       }
     }
-    for (const e of Object.values(hyperedges) as any[]) {
+    for (const e of Object.values(hyperedges)) {
       if (e.scenes?.includes(originalSceneId)) {
         e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
       }
@@ -638,8 +652,8 @@ function buildSnapshots(
       chapterNumber: actualChapterNum,
       time: s.time || `장면 ${s.id}`,
       timeMarker: s.time_marker || null,
-      location: s.location,
-      summary: s.summary,
+      location: s.location || '',
+      summary: s.summary || '',
       events: s.events || [],
       mood: s.mood,
       charactersPresent: entitiesInScene,
@@ -651,16 +665,16 @@ function buildSnapshots(
   return snapshots;
 }
 
-export function buildKnowledgeGraph(extracted: any, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
+export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
   // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
-  const entities: Record<string, any> = existingGraph ? { ...existingGraph.entities } : {};
-  const hyperedges: Record<string, any> = existingGraph ? { ...existingGraph.hyperedges } : {};
+  const entities: Record<string, Entity> = existingGraph ? { ...existingGraph.entities } : {};
+  const hyperedges: Record<string, HyperEdge> = existingGraph ? { ...existingGraph.hyperedges } : {};
   const nameToId: Record<string, string> = {};
 
   // 기존 엔티티의 이름 매핑 초기화
-  for (const e of Object.values(entities) as any[]) {
+  for (const e of Object.values(entities)) {
     registerNameMapping(nameToId, e.name, e.id);
     for (const alias of (e.aliases || [])) {
       registerNameMapping(nameToId, alias, e.id);
@@ -671,7 +685,7 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   const edgeCounter = { value: Object.keys(hyperedges).length };
 
   // 엔티티 등록
-  for (const e of (extracted.entities || []) as any[]) {
+  for (const e of extracted.entities) {
     const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
 
     if (existingId && entities[existingId]) {
@@ -679,7 +693,7 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
       const existing = entities[existingId];
       existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
       if (e.description && !existing.description?.includes(e.description)) {
-        existing.description = (existing.description + ' ' + e.description).slice(0, 500);
+        existing.description = ((existing.description || '') + ' ' + e.description).slice(0, 500);
       }
       continue;
     }
@@ -690,10 +704,10 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
     entities[id] = {
       id,
       name: e.name,
-      category: e.category || 'character',
+      category: (e.category || 'character') as EntityCategory,
       aliases: e.aliases || [],
       description: e.description || '',
-      attributes: e.attributes || {},
+      attributes: (e.attributes || {}) as Record<string, unknown>,
       scenes: sceneIds,
       firstMention: { chapter: 1 },
       importance: e.importance || 5,
@@ -705,7 +719,7 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   }
 
   // 관계 등록
-  for (const r of (extracted.relationships || []) as any[]) {
+  for (const r of extracted.relationships) {
     const fromId = findEntityId(r.from, nameToId);
     const toId = findEntityId(r.to, nameToId);
     if (!fromId || !toId) {
@@ -719,7 +733,7 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
     }
 
     // 기존에 같은 관계가 있는지 확인
-    const existingEdge = Object.values(hyperedges).find((e: any) =>
+    const existingEdge = Object.values(hyperedges).find((e) =>
       e.type === r.type && e.entities.includes(fromId) && e.entities.includes(toId)
     );
 
@@ -737,10 +751,10 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
       type: r.type,
       subtype: r.subtype,
       entities: [fromId, toId],
-      statement: r.description,
+      statement: r.description || '',
       quote: r.quote,
       timeline: { start: r.start_time, chapter: 1 },
-      sentiment: r.sentiment,
+      sentiment: r.sentiment as HyperEdge['sentiment'],
       strength: r.strength,
       bidirectional: r.bidirectional,
       fromPerspective: r.from_perspective,
@@ -755,20 +769,20 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   inferCoOccurrenceEdges(entities, hyperedges, edgeCounter);
 
   // 타임라인 등록
-  const timeline = (extracted.timeline || []).map((t: any) => ({
-    id: t.time_id,
-    name: t.events?.[0] || t.time_expression,
+  const timeline = (extracted.timeline || []).map((t: MergedTimelinePoint) => ({
+    id: t.time_id || '',
+    name: t.events?.[0] || t.time_expression || '',
     description: (t.events || []).join(', '),
-    storyTime: t.time_expression,
+    storyTime: t.time_expression || '',
     order: t.order,
     chapter: 1,
     entities: (t.characters || []).map((name: string) => nameToId[name]).filter(Boolean),
     edges: [],
-  })).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  })).sort((a, b) => (a.order || 0) - (b.order || 0));
 
   // 장(Chapter) 정보 처리
-  const chapters: Record<string, any> = existingGraph ? { ...existingGraph.chapters } : {};
-  for (const c of (extracted.chapters || []) as any[]) {
+  const chapters: Record<string, Chapter> = existingGraph ? { ...existingGraph.chapters } : {};
+  for (const c of extracted.chapters) {
     let actualNumber = c.id;
     if (c.title) {
       const numMatch = c.title.match(/(\d+)/);
@@ -791,20 +805,21 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   const snapshots = buildSnapshots(extracted, entities, hyperedges, existingGraph, fileNames);
 
   // 통계
-  const entitiesByCategory: Record<string, number> = {};
-  const edgesByType: Record<string, number> = {};
+  const entitiesByCategory: Partial<Record<EntityCategory, number>> = {};
+  const edgesByType: Partial<Record<RelationType, number>> = {};
 
-  for (const e of Object.values(entities) as any[]) {
+  for (const e of Object.values(entities)) {
     entitiesByCategory[e.category] = (entitiesByCategory[e.category] || 0) + 1;
   }
-  for (const e of Object.values(hyperedges) as any[]) {
-    edgesByType[e.type] = (edgesByType[e.type] || 0) + 1;
+  for (const e of Object.values(hyperedges)) {
+    const t = e.type as RelationType;
+    edgesByType[t] = (edgesByType[t] || 0) + 1;
   }
 
   // 소스 파일 정보 생성 - 기존 파일 목록에 새 파일 추가
   const existingSourceFiles = existingGraph?.metadata?.sourceFiles || [];
-  const existingFileNameSet = new Set(existingSourceFiles.map((sf: any) => sf.fileName));
-  const newSourceFiles: any[] = [];
+  const existingFileNameSet = new Set(existingSourceFiles.map((sf) => sf.fileName));
+  const newSourceFiles: SourceFile[] = [];
 
   if (fileNames && originalText) {
     for (const fileName of fileNames) {
@@ -826,11 +841,11 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   // sourceFileId 매핑: 파일명으로 ID 찾기
   const fileNameToId: Record<string, string> = {};
   for (const sf of sourceFiles) {
-    fileNameToId[(sf as any).fileName] = (sf as any).id;
+    fileNameToId[sf.fileName] = sf.id;
   }
 
   // 장면에 sourceFileId 추가 (fileNameToId 생성 이후에 실행)
-  for (const snap of Object.values(snapshots) as any[]) {
+  for (const snap of Object.values(snapshots)) {
     if (snap.sourceFile && !snap.sourceFileId) {
       snap.sourceFileId = fileNameToId[snap.sourceFile];
     }
@@ -858,8 +873,8 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
       totalEntities: Object.keys(entities).length,
       totalEdges: Object.keys(hyperedges).length,
       totalChapters: Object.keys(chapters).length,
-      entitiesByCategory: entitiesByCategory as any,
-      edgesByType: edgesByType as any,
+      entitiesByCategory: entitiesByCategory as Record<EntityCategory, number>,
+      edgesByType: edgesByType as Record<RelationType, number>,
     },
   };
 }

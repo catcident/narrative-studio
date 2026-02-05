@@ -2,8 +2,8 @@
  * 지식 그래프 추출 서비스 — 엔티티 선별 (청크 컨텍스트 구성)
  */
 
-import type { NovelKnowledgeGraph } from '../../types';
-import type { KnownEntity, EntitySummary, ChunkBilling, ChunkExtractedData } from './types';
+import type { Entity, HyperEdge, EntityCategory } from '../../types';
+import type { KnownEntity, EntitySummary, ChunkBilling, ChunkExtractedData, AccumulatedGraph } from './types';
 import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
 
@@ -11,7 +11,7 @@ import { ENTITY_SELECTION_PROMPT } from './prompts';
  * 지식그래프에서 엔티티 요약 목록 생성
  * 각 노드의 이름, 카테고리, 설명, 연결된 관계들을 한 줄씩 요약
  */
-export function buildEntitySummaries(graph: NovelKnowledgeGraph): EntitySummary[] {
+export function buildEntitySummaries(graph: AccumulatedGraph): EntitySummary[] {
   const summaries: EntitySummary[] = [];
 
   for (const entity of Object.values(graph.entities)) {
@@ -64,7 +64,7 @@ export interface SelectionResult {
 }
 
 /** 그래프의 모든 엔티티 이름 목록 반환 (선별 스킵/실패 시 폴백용) */
-function allEntityNames(graph: NovelKnowledgeGraph): string[] {
+function allEntityNames(graph: AccumulatedGraph): string[] {
   return Object.values(graph.entities).map((e) => e.name);
 }
 
@@ -73,7 +73,7 @@ function allEntityNames(graph: NovelKnowledgeGraph): string[] {
  */
 export async function selectRelevantEntities(
   chunkText: string,
-  graph: NovelKnowledgeGraph,
+  graph: AccumulatedGraph,
   model?: string,
 ): Promise<SelectionResult> {
   // 엔티티가 1개 이하면 선별 없이 전체 반환
@@ -158,7 +158,7 @@ export async function selectRelevantEntities(
  * 선택된 엔티티 이름으로 KnownEntity 목록 필터링
  */
 export function filterEntitiesByNames(
-  graph: NovelKnowledgeGraph,
+  graph: AccumulatedGraph,
   selectedNames: string[]
 ): KnownEntity[] {
   const selectedSet = new Set(selectedNames.map(n => n.toLowerCase()));
@@ -187,9 +187,9 @@ export function filterEntitiesByNames(
  * allExtracted에서 축적 그래프 생성 (엔티티 + 관계 정보 포함)
  * 한번에 올리기/따로 올리기 모두 동일한 방식으로 처리
  */
-export function buildAccumulatedGraph(allExtracted: ChunkExtractedData[], existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
-  const entities: Record<string, any> = {};
-  const hyperedges: Record<string, any> = {};
+export function buildAccumulatedGraph(allExtracted: ChunkExtractedData[], existingGraph?: { entities: Record<string, Entity>; hyperedges: Record<string, HyperEdge> }): AccumulatedGraph {
+  const entities: Record<string, Entity> = {};
+  const hyperedges: Record<string, HyperEdge> = {};
 
   // existingGraph가 있으면 그것을 기반으로 시작
   if (existingGraph) {
@@ -203,8 +203,8 @@ export function buildAccumulatedGraph(allExtracted: ChunkExtractedData[], existi
   // 이름 → ID 매핑 (중복 체크용)
   const nameToId = new Map<string, string>();
   for (const [id, entity] of Object.entries(entities)) {
-    nameToId.set((entity as any).name.toLowerCase(), id);
-    for (const alias of ((entity as any).aliases || [])) {
+    nameToId.set(entity.name.toLowerCase(), id);
+    for (const alias of (entity.aliases || [])) {
       nameToId.set(alias.toLowerCase(), id);
     }
   }
@@ -220,7 +220,7 @@ export function buildAccumulatedGraph(allExtracted: ChunkExtractedData[], existi
         entities[id] = {
           id,
           name: entity.name,
-          category: entity.category || 'character',
+          category: (entity.category || 'character') as EntityCategory,
           description: entity.description || '',
           aliases: entity.aliases || [],
         };
@@ -240,27 +240,12 @@ export function buildAccumulatedGraph(allExtracted: ChunkExtractedData[], existi
       hyperedges[edgeId] = {
         id: edgeId,
         type: rel.type || '관련',
-        entities: [fromId, toId].filter(Boolean),
+        entities: [fromId, toId].filter(Boolean) as string[],
         statement: rel.description || '',
-        scenes: rel.scenes || [],
+        scenes: (rel.scenes || []).map(String),
       };
     }
   }
 
-  return {
-    metadata: { title: '', createdAt: '', updatedAt: '', version: '1.0.0' },
-    entities,
-    hyperedges,
-    chapters: existingGraph?.chapters || {},
-    timeline: existingGraph?.timeline || [],
-    snapshots: existingGraph?.snapshots || {},
-    stats: {
-      totalEntities: Object.keys(entities).length,
-      totalEdges: Object.keys(hyperedges).length,
-      totalChapters: 0,
-      entitiesByCategory: {} as any,
-      edgesByType: {} as any
-    }
-  };
+  return { entities, hyperedges };
 }
-

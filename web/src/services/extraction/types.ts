@@ -2,7 +2,7 @@
  * 지식 그래프 추출 서비스 — 내부 타입 및 상수
  */
 
-import type { NovelKnowledgeGraph } from '../../types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge } from '../../types';
 
 export const CATEGORY_NAMES: Record<string, string> = {
   character: '인물',
@@ -96,6 +96,76 @@ export interface ExtractionOptions {
   fileNames?: string[];  // 원본 파일명 배열
   existingGraph?: NovelKnowledgeGraph;
   onChunkBilling?: ChunkBillingCallback;
+}
+
+// --- 병합 타입 (merger.ts 내부 전용) ---
+
+/** mergeExtractions() 반환 — 청크 병합 결과 (buildKnowledgeGraph 입력) */
+export interface MergedEntity {
+  name: string;
+  category: string;
+  description: string;
+  aliases: string[];
+  scenes: number[];
+  attributes?: Record<string, unknown>;
+  importance?: number;
+}
+
+export interface MergedRelationship {
+  from: string;
+  to: string;
+  type: string;
+  description?: string;
+  scenes: number[];
+  sentiment?: string;
+  strength?: number;
+  quote?: string;
+  subtype?: string;
+  start_time?: string;
+  bidirectional?: boolean;
+  from_perspective?: string;
+  to_perspective?: string;
+}
+
+export interface MergedScene {
+  id: number;
+  chapter?: number;
+  location?: string;
+  summary?: string;
+  events?: string[];
+  mood?: string;
+  time?: string;
+  time_marker?: string | null;
+  chunkNum: number;
+  sourceFileIndex: number;
+}
+
+export interface MergedChapter {
+  id: number;
+  title?: string;
+  summary?: string;
+}
+
+export interface MergedTimelinePoint {
+  time_id?: string;
+  time_expression?: string;
+  events?: string[];
+  characters?: string[];
+  order?: number;
+}
+
+export interface MergedExtraction {
+  entities: MergedEntity[];
+  relationships: MergedRelationship[];
+  scenes: MergedScene[];
+  chapters: MergedChapter[];
+  timeline?: MergedTimelinePoint[];
+}
+
+/** buildAccumulatedGraph() 반환 — 경량 축적 그래프 (orchestrator/selector 내부 전용) */
+export interface AccumulatedGraph {
+  entities: Record<string, Entity>;
+  hyperedges: Record<string, HyperEdge>;
 }
 
 // --- API 키 유틸리티 (순환 의존 방지를 위해 여기에 배치) ---

@@ -23,9 +23,7 @@ import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
-import { extractKnowledgeGraph } from './services/extraction';
-import { readFileAsText } from './services/fileReader';
-import { createBillingCallback, ensureSufficientBalance } from './services/billing';
+import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -54,16 +52,10 @@ function App() {
   const selectSceneRange = useStore((s) => s.selectSceneRange);
   const selectedEntityId = useStore((s) => s.selectedEntityId);
   const loadSubscription = useStore((s) => s.loadSubscription);
-  const subscription = useStore((s) => s.subscription);
-  const addChunkUsage = useStore((s) => s.addChunkUsage);
-  const resetCurrentUsage = useStore((s) => s.resetCurrentUsage);
-  const updateCreditBalance = useStore((s) => s.updateCreditBalance);
-  const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const [showDataManager, setShowDataManager] = useState(false);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [isAddingFile, setIsAddingFile] = useState(false);
-  const [addProgress, setAddProgress] = useState('');
+  const { addFile, isAdding: isAddingFile, progress: addProgress } = useAddFileAnalysis();
 
   // 로그인 시 구독 정보 로드
   useEffect(() => {
@@ -115,54 +107,6 @@ function App() {
   const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph, dataId?: string) => {
     setKnowledgeGraph(loaded, undefined, dataId);
     setShowDataManager(false);
-  };
-
-  // 파일 추가 (기존 결과에 병합)
-  const handleAddFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !knowledgeGraph) return;
-
-    setIsAddingFile(true);
-    setAddProgress('파일 읽는 중...');
-    resetCurrentUsage();
-
-    try {
-      const text = await readFileAsText(file, setAddProgress);
-
-      if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
-
-      // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
-      const existingModel = knowledgeGraph.metadata.model;
-
-      await ensureSufficientBalance(subscription);
-
-      // 기존 지식그래프를 전달하여 이어서 분석
-      const updatedKnowledgeGraph = await extractKnowledgeGraph({
-        text,
-        title: knowledgeGraph.metadata.title,
-        onProgress: (msg) => setAddProgress(msg),
-        model: existingModel,
-        fileNames: [file.name],
-        existingGraph: knowledgeGraph,
-        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-      });
-
-      // DB에 저장 (기존 ID 사용하여 업데이트)
-      setAddProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
-
-      setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
-      setAddProgress('');
-      setShowUsageSummary(true);
-      loadSubscription();
-    } catch (err: unknown) {
-      console.error('[extraction] 파일 추가 오류:', err);
-      setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
-      loadSubscription();
-    } finally {
-      setIsAddingFile(false);
-      e.target.value = '';  // input 초기화
-    }
   };
 
   // 업로드 화면
@@ -425,7 +369,11 @@ function App() {
               <input
                 type="file"
                 accept=".txt,.pdf,.md,text/plain,text/markdown,application/pdf"
-                onChange={handleAddFile}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) addFile(file);
+                  e.target.value = '';
+                }}
                 className="hidden"
                 disabled={isAddingFile}
               />

@@ -77,6 +77,10 @@ export interface HyperEdge {
   entities: string[];
   statement: string;
   quote?: string;  // 원문 인용
+  subtype?: string;
+  bidirectional?: boolean;
+  fromPerspective?: string;
+  toPerspective?: string;
   timeline?: {
     start?: string;
     end?: string;

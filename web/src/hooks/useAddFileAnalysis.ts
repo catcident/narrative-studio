@@ -1,0 +1,100 @@
+/**
+ * 파일 추가 분석 공유 훅
+ * App.tsx (헤더 "파일 추가" 버튼)과 FileUpload (ResumePanel) 양쪽에서 사용
+ */
+
+import { useCallback, useState } from 'react';
+import { useStore, useBillingSubscription } from '../store';
+import { extractKnowledgeGraph } from '../services/extraction';
+import { saveKnowledgeGraph } from '../services/storage';
+import { createBillingCallback, ensureSufficientBalance } from '../services/billing';
+import { readFileAsText } from '../services/fileReader';
+
+export function useAddFileAnalysis() {
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const currentDataId = useStore((s) => s.currentDataId);
+  const subscription = useBillingSubscription();
+  const addChunkUsage = useStore((s) => s.addChunkUsage);
+  const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
+  const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
+  const setError = useStore((s) => s.setError);
+  const resetCurrentUsage = useStore((s) => s.resetCurrentUsage);
+  const setLoading = useStore((s) => s.setLoading);
+  const loadSubscription = useStore((s) => s.loadSubscription);
+
+  const [isAdding, setIsAdding] = useState(false);
+  const [progress, setProgress] = useState('');
+
+  const execute = useCallback(async (text: string, fileName: string) => {
+    if (!knowledgeGraph) return;
+
+    setIsAdding(true);
+    setLoading(true);
+    setError(null);
+    resetCurrentUsage();
+
+    try {
+      await ensureSufficientBalance(subscription);
+
+      setProgress('추가 분석 중...');
+      const updated = await extractKnowledgeGraph({
+        text,
+        title: knowledgeGraph.metadata.title,
+        onProgress: (msg) => setProgress(msg),
+        model: knowledgeGraph.metadata.model,
+        fileNames: [fileName],
+        existingGraph: knowledgeGraph,
+        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
+      });
+
+      setProgress('저장 중...');
+      const saved = await saveKnowledgeGraph(
+        updated, undefined, undefined, currentDataId || undefined,
+      );
+      setKnowledgeGraph(updated, undefined, saved.id);
+      setProgress('');
+      setShowUsageSummary(true);
+    } catch (err: unknown) {
+      console.error('[extraction] 파일 추가 오류:', err);
+      setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
+    } finally {
+      setIsAdding(false);
+      setLoading(false);
+      loadSubscription();
+    }
+  }, [knowledgeGraph, currentDataId, subscription, addChunkUsage,
+      updateCreditBalance, setKnowledgeGraph, setShowUsageSummary,
+      setError, resetCurrentUsage, setLoading, loadSubscription]);
+
+  const addFile = useCallback(async (
+    file: File,
+    onDuplicate?: (fileName: string, text: string) => void,
+  ) => {
+    if (!knowledgeGraph) return;
+
+    setProgress('파일 읽는 중...');
+    try {
+      const text = await readFileAsText(file, setProgress);
+      if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
+
+      const existingFileNames = (knowledgeGraph.metadata.sourceFiles || [])
+        .map(f => f.fileName);
+      if (existingFileNames.includes(file.name)) {
+        setProgress('');
+        if (onDuplicate) {
+          onDuplicate(file.name, text);
+          return;
+        }
+      }
+
+      await execute(text, file.name);
+    } catch (err: unknown) {
+      console.error('[extraction] 추가 분석 오류:', err);
+      setError(err instanceof Error ? err.message : '추가 분석 중 오류가 발생했습니다.');
+      setProgress('');
+    }
+  }, [knowledgeGraph, execute, setError]);
+
+  return { addFile, execute, isAdding, progress };
+}

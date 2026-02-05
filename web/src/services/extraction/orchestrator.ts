@@ -164,7 +164,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         console.log(`[extraction] 청크 ${i + 1}: LLM 선별: 축적 그래프 ${totalKnownCount}개 중 ${entitiesToUse.length}개 선택`);
       } else {
         // 알려진 엔티티가 1개 이하면 그냥 전체 사용 (accumulatedGraph에서 가져옴)
-        entitiesToUse = filterEntitiesByNames(accumulatedGraph, Object.values(accumulatedGraph.entities).map((e: any) => e.name));
+        entitiesToUse = filterEntitiesByNames(accumulatedGraph, Object.values(accumulatedGraph.entities).map((e) => e.name));
         console.log(`[extraction] 청크 ${i + 1}: 선별 스킵 (알려진 엔티티 ${totalKnownCount}개)`);
       }
 
@@ -215,8 +215,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
             newEntities.push(`${entity.name}(${entity.category})`);
           }
         }
-        const extractedCharacters = (extracted.entities || []).filter((e: any) => e.category === 'character');
-        console.log(`[extraction] 청크 ${i + 1}: 추출된 인물: ${extractedCharacters.map((e: any) => e.name).join(', ')}`);
+        const extractedCharacters = (extracted.entities || []).filter((e) => e.category === 'character');
+        console.log(`[extraction] 청크 ${i + 1}: 추출된 인물: ${extractedCharacters.map((e) => e.name).join(', ')}`);
         console.log(`[extraction] 청크 ${i + 1}: 새로 발견된 엔티티: ${newEntities.join(', ') || '없음'}`);
         console.log(`[extraction] 청크 ${i + 1}: 누적 엔티티 수: ${knownEntities.length}개`);
 
