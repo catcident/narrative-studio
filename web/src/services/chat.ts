@@ -57,6 +57,43 @@ function findMentionedEntityIds(
 }
 
 /**
+ * 유사어/동의어 매핑 (질문 키워드 확장용)
+ */
+const SYNONYM_MAP: Record<string, string[]> = {
+  '동전': ['돈', '오원', '은화', '화폐', '금전', '현금', '엽전', '백동화'],
+  '돈': ['동전', '오원', '은화', '화폐', '금전', '현금'],
+  '날개': ['날개', '비상', '날다'],
+  '사랑': ['애정', '연애', '좋아하다'],
+  '죽음': ['사망', '죽다', '자살'],
+  '집': ['방', '거처', '주거', '33번지'],
+  '아내': ['아내', '부인', '처', '여자'],
+  '남편': ['남편', '화자', '나'],
+};
+
+/**
+ * 키워드를 유사어로 확장
+ */
+function expandKeywords(keywords: string[]): string[] {
+  const expanded = new Set(keywords);
+
+  keywords.forEach(keyword => {
+    // 직접 매핑된 유사어 추가
+    if (SYNONYM_MAP[keyword]) {
+      SYNONYM_MAP[keyword].forEach(syn => expanded.add(syn));
+    }
+    // 역방향 매핑도 확인
+    Object.entries(SYNONYM_MAP).forEach(([key, synonyms]) => {
+      if (synonyms.includes(keyword)) {
+        expanded.add(key);
+        synonyms.forEach(syn => expanded.add(syn));
+      }
+    });
+  });
+
+  return Array.from(expanded);
+}
+
+/**
  * 일반적인 질문 패턴 감지 및 관련 컨텍스트 생성
  */
 function detectQueryIntent(query: string): {
@@ -65,6 +102,7 @@ function detectQueryIntent(query: string): {
   wantsItems: boolean;
   wantsSummary: boolean;
   keywords: string[];
+  expandedKeywords: string[];
 } {
   const queryLower = query.toLowerCase();
 
@@ -77,7 +115,7 @@ function detectQueryIntent(query: string): {
   const wantsRelationships = relationshipKeywords.some(k => queryLower.includes(k));
 
   // 아이템/사물 관련 키워드
-  const itemKeywords = ['의미', '상징', '뭐야', '무엇', '동전', '돈', '물건', '아이템'];
+  const itemKeywords = ['의미', '상징', '뭐야', '무엇', '물건', '아이템'];
   const wantsItems = itemKeywords.some(k => queryLower.includes(k));
 
   // 요약/전체 관련 키워드
@@ -88,9 +126,12 @@ function detectQueryIntent(query: string): {
   const keywords = queryLower
     .replace(/[?!.,]/g, '')
     .split(/\s+/)
-    .filter(w => w.length >= 2 && !['의미', '뭐야', '무엇', '어떤', '어떻게'].includes(w));
+    .filter(w => w.length >= 2 && !['의미', '뭐야', '무엇', '어떤', '어떻게', '가', '이', '를', '의'].includes(w));
 
-  return { wantsCharacters, wantsRelationships, wantsItems, wantsSummary, keywords };
+  // 유사어로 확장
+  const expandedKeywords = expandKeywords(keywords);
+
+  return { wantsCharacters, wantsRelationships, wantsItems, wantsSummary, keywords, expandedKeywords };
 }
 
 /**
@@ -139,13 +180,13 @@ function extractRelevantContext(
   // 1. 질문에서 언급된 엔티티 찾기
   let mentionedEntityIds = findMentionedEntityIds(query, knowledgeGraph.entities);
 
-  // 1-1. 키워드로 엔티티 이름/설명에서 검색 (부분 매칭)
-  if (mentionedEntityIds.length === 0 && intent.keywords.length > 0) {
+  // 1-1. 확장된 키워드로 엔티티 이름/설명에서 검색 (부분 매칭)
+  if (mentionedEntityIds.length === 0 && intent.expandedKeywords.length > 0) {
     Object.entries(knowledgeGraph.entities).forEach(([id, entity]) => {
       const nameLower = entity.name.toLowerCase();
       const descLower = (entity.description || '').toLowerCase();
 
-      for (const keyword of intent.keywords) {
+      for (const keyword of intent.expandedKeywords) {
         if (nameLower.includes(keyword) || descLower.includes(keyword)) {
           if (!mentionedEntityIds.includes(id)) {
             mentionedEntityIds.push(id);
@@ -156,12 +197,39 @@ function extractRelevantContext(
     });
   }
 
-  // 1-2. 아이템 관련 질문이면 item 카테고리 검색
+  // 1-1-2. 여전히 못 찾았으면 hyperedge statement에서도 검색
+  if (mentionedEntityIds.length === 0 && intent.expandedKeywords.length > 0) {
+    const relatedEntityIds = new Set<string>();
+    Object.values(knowledgeGraph.hyperedges).forEach(edge => {
+      const statementLower = edge.statement.toLowerCase();
+      if (intent.expandedKeywords.some(kw => statementLower.includes(kw))) {
+        edge.entities.forEach(id => relatedEntityIds.add(id));
+      }
+    });
+    mentionedEntityIds.push(...Array.from(relatedEntityIds).slice(0, 15));
+  }
+
+  // 1-2. 아이템 관련 질문인데 아직 못 찾았으면 item 카테고리에서 키워드 매칭
   if (intent.wantsItems && mentionedEntityIds.length === 0) {
+    // 키워드와 관련된 아이템만 가져오기
     const itemEntities = Object.entries(knowledgeGraph.entities)
-      .filter(([, e]) => e.category === 'item')
+      .filter(([, e]) => {
+        if (e.category !== 'item') return false;
+        const nameLower = e.name.toLowerCase();
+        const descLower = (e.description || '').toLowerCase();
+        return intent.expandedKeywords.some(kw => nameLower.includes(kw) || descLower.includes(kw));
+      })
       .slice(0, 10);
-    mentionedEntityIds.push(...itemEntities.map(([id]) => id));
+
+    // 키워드 매칭된 아이템이 없으면 전체 아이템 중 일부
+    if (itemEntities.length === 0) {
+      const allItems = Object.entries(knowledgeGraph.entities)
+        .filter(([, e]) => e.category === 'item')
+        .slice(0, 5);
+      mentionedEntityIds.push(...allItems.map(([id]) => id));
+    } else {
+      mentionedEntityIds.push(...itemEntities.map(([id]) => id));
+    }
   }
 
   // 1-3. 캐릭터 관련 질문이면 character 카테고리 추가
@@ -417,6 +485,7 @@ export async function sendChatMessage(
     아이템질문: logIntent.wantsItems,
     요약질문: logIntent.wantsSummary,
     추출키워드: logIntent.keywords,
+    확장키워드: logIntent.expandedKeywords,
   } : '(없음)');
 
   console.log('📊 지식 그래프 정보:', {
