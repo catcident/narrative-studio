@@ -408,66 +408,74 @@ function extractRelevantContext(
 }
 
 /**
- * 시스템 프롬프트 생성 (엔티티/관계 목록 포함)
+ * 시스템 프롬프트 생성 (관련 엔티티만 포함)
+ * @param foundEntityIds 검색으로 찾은 엔티티 ID들 (임베딩 + 키워드 매칭)
  */
-function buildSystemPrompt(context: ChatContext): string {
+function buildSystemPrompt(context: ChatContext, foundEntityIds: string[] = []): string {
   const { knowledgeGraph, originalText } = context;
   const title = knowledgeGraph.metadata.title;
-
-  // 엔티티를 카테고리별로 그룹화
-  const entitiesByCategory: Record<string, string[]> = {};
-  Object.values(knowledgeGraph.entities).forEach(entity => {
-    if (!entitiesByCategory[entity.category]) {
-      entitiesByCategory[entity.category] = [];
-    }
-    entitiesByCategory[entity.category].push(entity.name);
-  });
-
-  // 카테고리별 엔티티 목록 생성
-  const entityListStr = Object.entries(entitiesByCategory)
-    .map(([category, names]) => `- ${category}: ${names.slice(0, 20).join(', ')}${names.length > 20 ? ` 외 ${names.length - 20}개` : ''}`)
-    .join('\n');
-
-  // 주요 관계 목록 (강도 높은 순)
-  const topRelations = Object.values(knowledgeGraph.hyperedges)
-    .filter(e => e.strength && e.strength >= 6)
-    .sort((a, b) => (b.strength || 0) - (a.strength || 0))
-    .slice(0, 30)
-    .map(edge => {
-      const names = edge.entities.map(id => knowledgeGraph.entities[id]?.name || id).join(' ↔ ');
-      return `- [${edge.type}] ${names}: ${edge.statement.slice(0, 80)}${edge.statement.length > 80 ? '...' : ''}`;
-    })
-    .join('\n');
 
   const entityCount = Object.keys(knowledgeGraph.entities).length;
   const characterCount = Object.values(knowledgeGraph.entities)
     .filter(e => e.category === 'character').length;
-  const sceneCount = Object.keys(knowledgeGraph.snapshots).length;
-  const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
 
-  return `당신은 소설 "${title}"의 전문가입니다. 아래 지식 그래프 정보를 참고하여 질문에 답변하세요.
+  // 찾은 엔티티가 있으면 해당 엔티티 정보만 상세히 제공
+  let entitySection = '';
+  let relationSection = '';
+
+  if (foundEntityIds.length > 0) {
+    // 찾은 엔티티들의 상세 정보
+    const foundEntities = foundEntityIds
+      .map(id => knowledgeGraph.entities[id])
+      .filter(Boolean);
+
+    entitySection = foundEntities.map(entity => {
+      const lines = [`### ${entity.name} (${entity.category})`];
+      if (entity.description) lines.push(`설명: ${entity.description}`);
+      if (entity.aliases?.length) lines.push(`별칭: ${entity.aliases.join(', ')}`);
+      return lines.join('\n');
+    }).join('\n\n');
+
+    // 찾은 엔티티들과 관련된 관계만
+    const entityIdSet = new Set(foundEntityIds);
+    const relatedEdges = Object.values(knowledgeGraph.hyperedges)
+      .filter(edge => edge.entities.some(id => entityIdSet.has(id)))
+      .slice(0, 30);
+
+    relationSection = relatedEdges.map(edge => {
+      const names = edge.entities.map(id => knowledgeGraph.entities[id]?.name || id).join(' ↔ ');
+      return `- [${edge.type}] ${names}: ${edge.statement}`;
+    }).join('\n');
+  } else {
+    // 찾은 엔티티가 없으면 주요 인물만 간략히
+    const mainCharacters = Object.values(knowledgeGraph.entities)
+      .filter(e => e.category === 'character')
+      .slice(0, 10)
+      .map(e => e.name)
+      .join(', ');
+    entitySection = `주요 등장인물: ${mainCharacters}`;
+    relationSection = '(질문과 관련된 정보를 찾지 못했습니다)';
+  }
+
+  return `당신은 소설 "${title}"의 전문가입니다.
 
 ## 소설 정보
 - 제목: ${title}
 - 등장 인물: ${characterCount}명
 - 총 엔티티: ${entityCount}개
-- 관계: ${edgeCount}개
-- 장면: ${sceneCount}개
 
-## 엔티티 목록 (카테고리별)
-${entityListStr}
+## 질문과 관련된 엔티티
+${entitySection}
 
-## 주요 관계
-${topRelations}
+## 관련 관계
+${relationSection}
 
 ## 답변 규칙
-1. **반드시 위 엔티티/관계 목록에서 관련 정보를 찾아 답변하세요**
-2. 질문에 직접 언급되지 않아도, 관련된 엔티티가 있으면 함께 설명하세요
-3. 관련 장면이 있으면 언급해주세요
-4. 위 목록에 없는 정보로 답변하지 마세요 (할루시네이션 금지)
-5. 답변은 한국어로 해주세요
+1. **위에 제공된 엔티티와 관계 정보만 사용하여 답변하세요**
+2. 제공된 정보에 없는 내용은 "해당 정보가 없습니다"라고 답변하세요
+3. 답변은 한국어로 해주세요
 
-${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자 있습니다.` : '원본 텍스트는 제공되지 않았습니다.'}`;
+${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자 있습니다.` : ''}`;
 }
 
 /**
@@ -550,7 +558,7 @@ export async function sendChatMessage(
   console.groupEnd();
 
   const apiMessages = [
-    { role: 'system', content: buildSystemPrompt(context) },
+    { role: 'system', content: buildSystemPrompt(context, foundEntityIds) },
     ...messages.map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.role === 'user' && m === lastUserMessage
