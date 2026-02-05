@@ -178,10 +178,14 @@ export function hasProgress(): ExtractionProgress | null {
   return loadProgress();
 }
 
+// 파일 구분선 상수
+const FILE_SEPARATOR = '\n\n--- 파일 구분 ---\n\n';
+
 /**
  * 스마트 청크 분할
  *
  * ⚠️ 중요: 청크는 반드시 "화/장" 단위로 분할해야 함!
+ * ⚠️ 중요: 다른 파일의 내용은 절대 하나의 청크에 합쳐지면 안 됨!
  *
  * 잘못된 분할 (씬/구분선 단위):
  *   - 청크1: 1화 씬1 → LLM: "1화: 아침"
@@ -199,6 +203,32 @@ export function hasProgress(): ExtractionProgress | null {
  *   - ## 또는 ### 헤딩 → 씬 제목일 수 있음
  */
 function splitIntoSmartChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
+  // 🔥 먼저 파일 구분선으로 분리 (다른 파일끼리 절대 합치지 않음)
+  const fileParts = text.split(FILE_SEPARATOR).filter(part => part.trim());
+
+  // 단일 파일이면 기존 로직 그대로
+  if (fileParts.length <= 1) {
+    return splitSingleFileIntoChunks(text, targetSize, overlapSize);
+  }
+
+  // 여러 파일이면 각 파일을 독립적으로 청크 분할 후 합침
+  console.log(`[청크 분할] ${fileParts.length}개 파일 독립 분할`);
+  const allChunks: string[] = [];
+
+  for (let i = 0; i < fileParts.length; i++) {
+    const filePart = fileParts[i];
+    const fileChunks = splitSingleFileIntoChunks(filePart, targetSize, overlapSize);
+    console.log(`[청크 분할] 파일 ${i + 1}: ${fileChunks.length}개 청크`);
+    allChunks.push(...fileChunks);
+  }
+
+  return allChunks;
+}
+
+/**
+ * 단일 파일 청크 분할 (기존 로직)
+ */
+function splitSingleFileIntoChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
   const chunks: string[] = [];
 
   // ⚠️ 화/장 단위로만 분할! 씬 단위로 분할하면 안 됨!
