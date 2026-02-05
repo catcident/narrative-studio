@@ -43,8 +43,6 @@ function App() {
   const setViewMode = useStore((s) => s.setViewMode);
   const reset = useStore((s) => s.reset);
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
-  const error = useStore((s) => s.error);
-  const setError = useStore((s) => s.setError);
   const selectedSceneId = useStore((s) => s.selectedSceneId);
   const selectScene = useStore((s) => s.selectScene);
   const sceneRangeStart = useStore((s) => s.sceneRangeStart);
@@ -132,12 +130,6 @@ function App() {
           </div>
 
           <FileUpload />
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-              {error}
-            </div>
-          )}
 
           <div className="mt-6 text-center text-xs text-gray-400">
             지원 형식: .txt, .pdf, .md

@@ -3,7 +3,7 @@
  */
 
 import type { NovelKnowledgeGraph } from '../../types';
-import { DEFAULT_MODEL } from '../../types';
+import { DEFAULT_MODEL, AVAILABLE_MODELS } from '../../types';
 import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions } from './types';
 import { EMPTY_CHUNK_DATA } from './types';
 import { splitIntoSmartChunksWithSource } from './chunker';
@@ -51,7 +51,7 @@ export function clearProgress(): void {
 }
 
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
-  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling } = options;
+  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling, availableModelIds } = options;
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
@@ -60,8 +60,22 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
 
-  // 사용할 모델 결정: 이어하기면 저장된 모델, 아니면 파라미터 또는 기본값
-  const useModel = resumeFrom?.model || model || DEFAULT_MODEL;
+  // 모델 유효성 검증: availableModelIds 우선, 없으면 AVAILABLE_MODELS 정적 폴백
+  const validModelIds = availableModelIds ?? AVAILABLE_MODELS.map((m) => m.id);
+  const candidateModel = resumeFrom?.model || model || DEFAULT_MODEL;
+  const isValidModel = validModelIds.includes(candidateModel);
+
+  let useModel: string;
+  if (isValidModel) {
+    useModel = candidateModel;
+  } else if (resumeFrom) {
+    // 이어하기 시 만료 모델 → 사용자 선택 유도를 위해 throw
+    throw new Error(`모델 "${candidateModel}"이(가) 더 이상 사용할 수 없습니다. 현재 선택된 모델로 이어하기를 다시 시도해주세요.`);
+  } else {
+    // 새 분석 시 유효하지 않으면 DEFAULT_MODEL로 폴백 + 경고
+    useModel = DEFAULT_MODEL;
+    console.warn(`[extraction] 모델 "${candidateModel}"이(가) 유효하지 않음, "${DEFAULT_MODEL}"로 대체`);
+  }
 
   // 이어하기인 경우
   if (resumeFrom) {
@@ -97,6 +111,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
   let chunkTimes: number[] = [];
   let chunkStartTime = Date.now();
+  let failedChunkCount = 0;
+  let lastFailureReason = '';
 
   const saveCurrentProgress = (processedChunks: number) => {
     saveProgress({
@@ -187,6 +203,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
           onChunkBilling(i, billing);
         }
         allExtracted.push(extracted);
+        failedChunkCount = 0; // 성공 시 연속 실패 카운터 초기화
 
         // 이 청크에서 발견된 모든 엔티티를 다음 청크를 위해 저장
         const newEntities: string[] = [];
@@ -236,7 +253,9 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       const isApiError = errMsg.includes('API');
 
       if (isTimeout || isApiError) {
-        console.warn(`[extraction] 청크 ${i + 1} 스킵 (타임아웃/API 오류), 계속 진행...`);
+        failedChunkCount++;
+        lastFailureReason = errMsg;
+        console.warn(`[extraction] 청크 ${i + 1} 스킵 (타임아웃/API 오류), 연속 실패: ${failedChunkCount}회`);
         onProgress?.(`청크 ${i + 1} 스킵 (오류), 계속 진행...`);
 
         // 빈 결과로 추가 (장면 번호 유지를 위해)
@@ -244,6 +263,14 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
         // 진행상황 저장 (실패한 청크도 처리됨으로 표시)
         saveCurrentProgress(i + 1);
+
+        // 연속 3회 이상 실패 시 조기 중단 (동일 오류 반복 방지)
+        if (failedChunkCount >= 3) {
+          console.error(`[extraction] 연속 ${failedChunkCount}회 실패, 분석 중단. 원인: ${errMsg}`);
+          loopCompleted = false;
+          break;
+        }
+
         continue; // 다음 청크로 계속
       }
 
@@ -263,7 +290,14 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     (ext.entities?.length ?? 0) > 0 || (ext.scenes?.length ?? 0) > 0
   );
   if (allExtracted.length > 0 && !hasAnyData) {
-    throw new Error(`모든 청크(${totalChunks}개) 분석에 실패했습니다. API 연결 상태를 확인해주세요.`);
+    const attempted = allExtracted.length;
+    const countInfo = attempted < totalChunks
+      ? `${totalChunks}개 중 ${attempted}개 시도 모두`
+      : `${totalChunks}개 모두`;
+    const reason = lastFailureReason
+      ? `\n원인: ${lastFailureReason}`
+      : '';
+    throw new Error(`청크 ${countInfo} 분석에 실패했습니다.${reason}`);
   }
 
   onProgress?.('인물 정보 병합 중...');

@@ -27,13 +27,14 @@ import {
   type SavedKnowledgeGraphMeta,
 } from '../services/storage';
 import type { NovelKnowledgeGraph } from '../types';
-import { AVAILABLE_MODELS } from '../types';
+import { useModels } from '../store';
 
 interface Props {
   onLoad: (data: NovelKnowledgeGraph, dataId?: string) => void;
 }
 
 export function SavedDataGrid({ onLoad }: Props) {
+  const models = useModels();
   const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
@@ -211,7 +212,7 @@ export function SavedDataGrid({ onLoad }: Props) {
               {/* 모델 정보 */}
               {item.model && (
                 <div className="mt-2 text-xs text-purple-500 truncate" title={item.model}>
-                  {AVAILABLE_MODELS.find(m => m.id === item.model)?.name || item.model.split('/')[1]}
+                  {models.find(m => m.id === item.model)?.name || item.model.split('/')[1]}
                 </div>
               )}
             </button>

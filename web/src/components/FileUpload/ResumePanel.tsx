@@ -2,7 +2,7 @@
  * 이어하기, 추가 분석, 중복 파일명 대화상자, 에러 표시 컴포넌트
  */
 
-import { Plus, RotateCcw, Play, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, RotateCcw, Play, Trash2, AlertCircle, AlertTriangle } from 'lucide-react';
 import type { ExtractionProgress } from '../../services/extraction';
 import type { NovelKnowledgeGraph } from '../../types';
 import { ModalOverlay } from '../ModalOverlay';
@@ -20,6 +20,9 @@ interface ResumePanelProps {
   handleConfirmNewFileName: () => void;
   handleCancelDuplicate: () => void;
   error: string | null;
+  invalidSavedModel?: boolean;
+  savedModelName?: string;
+  currentModelName?: string;
 }
 
 export function ResumePanel({
@@ -35,6 +38,9 @@ export function ResumePanel({
   handleConfirmNewFileName,
   handleCancelDuplicate,
   error,
+  invalidSavedModel,
+  savedModelName,
+  currentModelName,
 }: ResumePanelProps) {
   return (
     <>
@@ -75,6 +81,14 @@ export function ResumePanel({
               <p className="text-sm text-amber-700 mt-1">
                 "{savedProgress.title}" - {savedProgress.processedChunks}/{savedProgress.totalChunks} 청크 완료
               </p>
+              {invalidSavedModel && savedModelName && currentModelName && (
+                <div className="flex items-start gap-2 mt-2 p-2 bg-amber-100 rounded-lg">
+                  <AlertTriangle aria-hidden="true" className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800">
+                    모델 "{savedModelName}"이(가) 더 이상 사용할 수 없습니다. 현재 선택된 "{currentModelName}"로 이어서 진행합니다.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={handleResume}

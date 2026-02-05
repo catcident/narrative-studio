@@ -96,6 +96,7 @@ export interface ExtractionOptions {
   fileNames?: string[];  // 원본 파일명 배열
   existingGraph?: NovelKnowledgeGraph;
   onChunkBilling?: ChunkBillingCallback;
+  availableModelIds?: string[];  // 현재 사용 가능한 모델 ID 목록 (만료 모델 검증용)
 }
 
 // --- 병합 타입 (merger.ts 내부 전용) ---

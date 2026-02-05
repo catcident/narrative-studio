@@ -7,7 +7,7 @@
  * 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
  */
 
-import { AVAILABLE_MODELS } from '@/types';
+import { AVAILABLE_MODELS, type ModelInfo } from '@/types';
 
 // 상수 (catcident-backend StorygraphEstimator와 동기화)
 export const MARGIN = 3.0;
@@ -22,9 +22,10 @@ export const OUTPUT_RATIO = 0.45;
 export const DEFAULT_INPUT_COST = 1.0; // per 1M tokens
 export const DEFAULT_OUTPUT_COST = 5.0; // per 1M tokens
 
-/** AVAILABLE_MODELS에서 모델 비용 조회 (없으면 기본값) */
-export function getModelCosts(model: string): { inputCost: number; outputCost: number } {
-  const found = AVAILABLE_MODELS.find((m) => m.id === model);
+/** 모델 비용 조회: dynamicModels 우선, 없으면 AVAILABLE_MODELS, 없으면 기본값 */
+export function getModelCosts(model: string, dynamicModels?: ModelInfo[]): { inputCost: number; outputCost: number } {
+  const found = dynamicModels?.find((m) => m.id === model)
+    ?? AVAILABLE_MODELS.find((m) => m.id === model);
   return found
     ? { inputCost: found.inputCost, outputCost: found.outputCost }
     : { inputCost: DEFAULT_INPUT_COST, outputCost: DEFAULT_OUTPUT_COST };

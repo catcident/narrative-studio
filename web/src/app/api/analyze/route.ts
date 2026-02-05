@@ -4,6 +4,7 @@ import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache'
 import { checkRateLimit } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { CHARS_PER_TOKEN, getModelCosts, tokenCostUsd, costUsdToCredits } from '@/lib/modelCosts';
+import { getCachedModels } from '@/lib/modelCache';
 import { proxyToCatcident } from '@/services/billingProxy';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -140,7 +141,19 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorBody = await response.text();
       console.error(`[analyze] API 오류: ${response.status} - ${errorBody.slice(0, 500)}`);
-      return NextResponse.json({ error: 'Analysis API request failed' }, { status: response.status });
+
+      // OpenRouter 에러 상세를 클라이언트에 전달
+      let detail = '';
+      try {
+        const parsed = JSON.parse(errorBody);
+        detail = parsed?.error?.message || parsed?.error || '';
+      } catch {
+        detail = errorBody.slice(0, 200);
+      }
+      const message = detail
+        ? `AI API 오류 (${response.status}): ${detail}`
+        : `AI API 오류 (${response.status})`;
+      return NextResponse.json({ error: message }, { status: response.status });
     }
 
     const data = await response.json();
@@ -153,7 +166,8 @@ export async function POST(request: NextRequest) {
     let insufficientBalance = false;
 
     if (userId && userId !== 'anonymous' && billing) {
-      const { inputCost, outputCost } = getModelCosts(model);
+      const dynamicModels = await getCachedModels();
+      const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
       const credits = costUsdToCredits(
         tokenCostUsd(billing.prompt_tokens, billing.completion_tokens, inputCost, outputCost)
       );

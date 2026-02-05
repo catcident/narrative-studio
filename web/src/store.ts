@@ -3,7 +3,8 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode } from './types';
+import { AVAILABLE_MODELS } from './types';
 import { getSubscription } from './services/billing';
 
 interface AppState {
@@ -29,6 +30,11 @@ interface AppState {
   subscription: BillingSubscription | null;
   currentUsage: CurrentUsage;
   showUsageSummary: boolean;
+
+  // Models (앱 수준 — reset()에서 유지)
+  models: ModelInfo[];
+  modelsLoaded: boolean;
+  loadModels: () => Promise<void>;
 
   // Config (앱 수준 — reset()에서 유지)
   authEnabled: boolean | null;
@@ -76,6 +82,22 @@ export const useStore = create<AppState>((set, get) => ({
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
+  models: AVAILABLE_MODELS,
+  modelsLoaded: false,
+  loadModels: async () => {
+    try {
+      const res = await fetch('/api/models');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (Array.isArray(json.models) && json.models.length > 0) {
+        set({ models: json.models, modelsLoaded: true });
+      }
+    } catch (err: unknown) {
+      console.warn('[models] 동적 모델 로딩 실패, 정적 목록 유지:', err instanceof Error ? err.message : err);
+      set({ modelsLoaded: true });
+    }
+  },
+
   authEnabled: null,
 
   setAuthEnabled: (authEnabled) => set({ authEnabled }),
@@ -163,6 +185,8 @@ export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
 export const useBillingSubscription = () => useStore((s) => s.subscription);
 export const useCreditBalance = () => useStore((s) => s.subscription?.creditBalance ?? null);
 export const useAuthEnabled = () => useStore((s) => s.authEnabled);
+export const useModels = () => useStore((s) => s.models);
+export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);
 
 export const useCharacters = (): Entity[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);

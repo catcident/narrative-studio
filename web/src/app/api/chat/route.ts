@@ -4,9 +4,9 @@
  */
 
 import { NextRequest } from 'next/server';
+import { DEFAULT_MODEL } from '@/types';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
-const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
         'Connection': 'keep-alive',
       },
     });
-  } catch (err) {
-    console.error('[chat] 서버 오류:', err);
+  } catch (err: unknown) {
+    console.error('[chat] 서버 오류:', err instanceof Error ? err.message : err);
     return new Response(
       JSON.stringify({ error: '서버 오류가 발생했습니다.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
