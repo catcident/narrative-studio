@@ -37,7 +37,8 @@ function App() {
   const {
     knowledgeGraph, originalText, currentDataId, viewMode, setViewMode, reset, setKnowledgeGraph, error,
     selectedSceneId, selectScene,
-    sceneRangeStart, sceneRangeEnd, selectSceneRange
+    sceneRangeStart, sceneRangeEnd, selectSceneRange,
+    selectedEntityId
   } = useStore();
   const [showDataManager, setShowDataManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -457,7 +458,7 @@ function App() {
 
         {/* 오른쪽: 상세 패널 */}
         <div className="w-96 border-l border-gray-200 flex-shrink-0 overflow-hidden">
-          {viewMode === 'chat' ? <ChatMentionedPanel /> : <DetailPanel />}
+          {viewMode === 'chat' && !selectedEntityId ? <ChatMentionedPanel /> : <DetailPanel />}
         </div>
       </main>
 
