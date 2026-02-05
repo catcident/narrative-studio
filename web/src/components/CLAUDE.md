@@ -110,13 +110,16 @@ NextAuth.js SessionProvider 래퍼
 ### UsageEstimate.tsx
 
 분석 전 예상 비용 표시. Props: `{ charCount, model }`.
-- 300ms 디바운스로 API 호출 최적화
-- charCount 또는 model 변경 시 재계산
+- `estimateUsageLocally()` 로컬 동기 계산 (API 호출 없음, `useMemo`)
+- 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
+- 잔액 비교: `creditBalance !== null`일 때만 분석 가능/불가 표시
 - **주의**: charCount는 반드시 문자 수 (file.size bytes가 아님)
 
 ### UsageSummary.tsx
 
 분석 완료 후 사용량 요약 모달. `store.showUsageSummary`로 표시 제어.
+- `calculateCreditsFromTokens()`로 실제 토큰 → 크레딧 역산 표시
+- 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
 
 ### SubscriptionPage.tsx
 

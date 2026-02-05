@@ -8,6 +8,7 @@ import type {
   CreditTransaction,
   PlanFeatures,
 } from '../types';
+import { AVAILABLE_MODELS } from '../types';
 
 const BASE = '/api/billing';
 
@@ -167,4 +168,64 @@ export interface CreditPackage {
 
 export async function getCreditPackages(): Promise<CreditPackage[]> {
   return billingFetchList<CreditPackage>('/packages');
+}
+
+// ==================== 로컬 추정 (순수 함수) ====================
+// 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
+
+const CHARS_PER_TOKEN = 1.5;
+const CHUNK_SIZE = 5000;
+const CHUNK_OVERLAP = 300;
+const OUTPUT_RATIO = 0.45;
+const MARGIN = 3.0;
+const USD_TO_KRW = 1400;
+const KRW_PER_CREDIT = 10;
+const DEFAULT_INPUT_COST = 1.0;  // per 1M tokens
+const DEFAULT_OUTPUT_COST = 5.0; // per 1M tokens
+
+function getModelCosts(model: string): { inputCost: number; outputCost: number } {
+  const found = AVAILABLE_MODELS.find((m) => m.id === model);
+  return found
+    ? { inputCost: found.inputCost, outputCost: found.outputCost }
+    : { inputCost: DEFAULT_INPUT_COST, outputCost: DEFAULT_OUTPUT_COST };
+}
+
+/**
+ * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
+ * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
+ */
+export function estimateUsageLocally(charCount: number, model: string): UsageEstimate {
+  if (charCount <= 0) {
+    return { estimated_credits: 0, estimated_input_tokens: 0, estimated_output_tokens: 0, estimated_cost_usd: 0, chunks: 0 };
+  }
+
+  const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
+  const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
+  const totalTokens = Math.ceil(charCount / CHARS_PER_TOKEN);
+  const inputTokens = Math.ceil(totalTokens * (1 / (1 + OUTPUT_RATIO)));
+  const outputTokens = totalTokens - inputTokens;
+
+  const { inputCost, outputCost } = getModelCosts(model);
+  const costUsd = (inputTokens / 1_000_000) * inputCost + (outputTokens / 1_000_000) * outputCost;
+  const credits = Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
+
+  return {
+    estimated_credits: credits,
+    estimated_input_tokens: inputTokens,
+    estimated_output_tokens: outputTokens,
+    estimated_cost_usd: costUsd,
+    chunks,
+  };
+}
+
+/**
+ * 실제 토큰 사용량에서 크레딧 역산 (UsageSummary용)
+ * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
+ */
+export function calculateCreditsFromTokens(promptTokens: number, completionTokens: number, model: string): number {
+  if (promptTokens <= 0 && completionTokens <= 0) return 0;
+
+  const { inputCost, outputCost } = getModelCosts(model);
+  const costUsd = (promptTokens / 1_000_000) * inputCost + (completionTokens / 1_000_000) * outputCost;
+  return Math.max(1, Math.ceil(costUsd * USD_TO_KRW * MARGIN / KRW_PER_CREDIT));
 }

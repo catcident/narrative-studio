@@ -2,5 +2,6 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const hasEnvKey = !!process.env.OPENROUTER_API_KEY;
-  return NextResponse.json({ hasEnvKey });
+  const authEnabled = process.env.AUTH_ENABLED === 'true';
+  return NextResponse.json({ hasEnvKey, authEnabled });
 }

@@ -150,14 +150,26 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 ### 주요 함수
 
 ```typescript
+// API 함수 (서버 프록시 경유)
 getSubscription()           // 구독 정보 (plan, balance, features)
 getCreditBalance()          // 잔액만 조회
-estimateCredits(charCount, model)  // 분석 전 예상 비용
+estimateCredits(charCount, model)  // 분석 전 예상 비용 (API)
 deductCredits(amount, desc, metadata?, idempotencyKey?)  // 차감
 getUsageHistory(page)       // 거래 내역 (페이지네이션)
 getPlans()                  // 요금제 목록
 getCreditPackages()         // 크레딧 상품 목록
+
+// 로컬 순수 함수 (API 호출 없음)
+estimateUsageLocally(charCount, model)  // 로컬 예상 비용 계산 (UsageEstimate용)
+calculateCreditsFromTokens(promptTokens, completionTokens, model)  // 실제 토큰→크레딧 역산 (UsageSummary용)
 ```
+
+### 로컬 추정 함수 동기화
+
+`estimateUsageLocally()`와 `calculateCreditsFromTokens()`는 catcident-backend의 `StorygraphEstimator`와 동일한 상수를 사용.
+상수 변경 시 양쪽 모두 수정 필요:
+- `CHARS_PER_TOKEN`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `OUTPUT_RATIO`, `MARGIN`, `USD_TO_KRW`, `KRW_PER_CREDIT`
+- 모델 단가는 `AVAILABLE_MODELS` (types.ts)에서 조회
 
 ### 중요 규칙
 

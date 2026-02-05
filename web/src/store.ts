@@ -27,6 +27,10 @@ interface AppState {
   currentUsage: CurrentUsage;
   showUsageSummary: boolean;
 
+  // Config (앱 수준 — reset()에서 유지)
+  authEnabled: boolean | null;
+  setAuthEnabled: (enabled: boolean) => void;
+
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
   setLoading: (loading: boolean) => void;
@@ -67,7 +71,9 @@ export const useStore = create<AppState>((set, get) => ({
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
+  authEnabled: null,
 
+  setAuthEnabled: (authEnabled) => set({ authEnabled }),
   setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set({
     knowledgeGraph,
     originalText: originalText || null,
@@ -146,6 +152,7 @@ export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
 
 export const useBillingSubscription = () => useStore((s) => s.subscription);
 export const useCreditBalance = () => useStore((s) => s.subscription?.creditBalance ?? null);
+export const useAuthEnabled = () => useStore((s) => s.authEnabled);
 
 export const useCharacters = (): Entity[] => {
   const { knowledgeGraph } = useStore();
