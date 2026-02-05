@@ -4,55 +4,70 @@
  * 각 파일에서 추출된 장면 목록도 표시
  */
 
-import { useState, useMemo } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { useStore } from '../store';
-import type { SceneSnapshot } from '../types';
+import { updateKnowledgeGraph } from '../services/storage';
+import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile } from '../types';
 
 export function SourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const currentDataId = useStore((s) => s.currentDataId);
+  const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [movingFileId, setMovingFileId] = useState<string | null>(null);
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
   }, [knowledgeGraph]);
 
-  // 파일별 장면 매핑
+  // 파일별 장면 매핑 (파일 ID 기준으로 일관되게 매핑)
   const scenesByFile = useMemo(() => {
     const map: Record<string, SceneSnapshot[]> = {};
     if (!knowledgeGraph?.snapshots) return map;
 
+    // 파일명 → 파일 ID 매핑 생성
+    const fileNameToId: Record<string, string> = {};
+    sourceFiles.forEach(f => {
+      fileNameToId[f.fileName] = f.id;
+    });
+
     // 파일이 1개뿐이면 모든 장면이 그 파일에서 온 것
     const singleFileMode = sourceFiles.length === 1;
-    const singleFileName = singleFileMode ? sourceFiles[0].fileName : null;
+    const singleFileId = singleFileMode ? sourceFiles[0].id : null;
 
     Object.values(knowledgeGraph.snapshots).forEach(scene => {
-      // sourceFile이 있으면 그걸 사용
-      let key = scene.sourceFile || scene.sourceFileId;
+      let fileId: string | null = null;
 
-      // sourceFile이 없는 경우 (기존 데이터)
-      if (!key) {
-        if (singleFileName) {
-          // 파일 1개면 모든 장면이 그 파일
-          key = singleFileName;
-        } else if (scene.chapterNumber && sourceFiles.length > 0) {
-          // 여러 파일인 경우: chapterNumber로 파일 매핑 시도
-          // 파일명에서 숫자 추출해서 매칭 (01화.md → 1, 02화.md → 2)
-          const targetChapter = scene.chapterNumber;
-          const matchedFile = sourceFiles.find(f => {
-            const match = f.fileName.match(/(\d+)/);
-            return match && parseInt(match[1]) === targetChapter;
-          });
-          if (matchedFile) {
-            key = matchedFile.fileName;
-          }
+      // 1. sourceFileId가 있으면 그걸 사용
+      if (scene.sourceFileId) {
+        fileId = scene.sourceFileId;
+      }
+      // 2. sourceFile(파일명)이 있으면 ID로 변환
+      else if (scene.sourceFile && fileNameToId[scene.sourceFile]) {
+        fileId = fileNameToId[scene.sourceFile];
+      }
+      // 3. 파일 1개면 모든 장면이 그 파일
+      else if (singleFileId) {
+        fileId = singleFileId;
+      }
+      // 4. chapterNumber로 파일 매핑 시도 (하위 호환)
+      else if (scene.chapterNumber && sourceFiles.length > 0) {
+        const targetChapter = scene.chapterNumber;
+        const matchedFile = sourceFiles.find(f => {
+          const match = f.fileName.match(/(\d+)/);
+          return match && parseInt(match[1]) === targetChapter;
+        });
+        if (matchedFile) {
+          fileId = matchedFile.id;
         }
       }
 
-      if (!key) key = '_unknown';
-
+      const key = fileId || '_unknown';
       if (!map[key]) map[key] = [];
       map[key].push(scene);
     });
@@ -115,6 +130,208 @@ export function SourceTextView() {
       f.text.toLowerCase().includes(query)
     );
   }, [sourceFiles, searchQuery]);
+
+  // 파일 삭제 핸들러
+  const handleDeleteFile = useCallback(async (fileId: string, fileName: string) => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    setDeletingFileId(fileId);
+    try {
+      // 1. 삭제할 파일과 관련된 장면 ID 찾기
+      const scenesToDelete = new Set<string>();
+      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
+        const matchByName = scene.sourceFile === fileName;
+        const matchById = scene.sourceFileId === fileId;
+        if (matchByName || matchById) {
+          scenesToDelete.add(sceneId);
+          console.log(`[SourceTextView] 삭제 대상 장면: ${sceneId}, sourceFile=${scene.sourceFile}, sourceFileId=${scene.sourceFileId}`);
+        }
+      });
+
+      console.log(`[SourceTextView] 삭제할 장면들: ${[...scenesToDelete].join(', ')} (총 ${scenesToDelete.size}개)`);
+      console.log(`[SourceTextView] 전체 장면: ${Object.keys(knowledgeGraph.snapshots).join(', ')}`);
+
+      // 2. 새 snapshots 객체 생성 (삭제된 장면 제외)
+      const newSnapshots: Record<string, SceneSnapshot> = {};
+      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
+        if (!scenesToDelete.has(sceneId)) {
+          newSnapshots[sceneId] = scene;
+        }
+      });
+
+      // 3. 남은 장면들의 order 재정렬 (기존 order 순으로 1부터 다시 번호 매기기)
+      const remainingSourceFiles = knowledgeGraph.metadata.sourceFiles?.filter(f => f.id !== fileId) || [];
+      const sortedScenes = Object.values(newSnapshots).sort((a, b) => a.order - b.order);
+      let newOrder = 1;
+      sortedScenes.forEach(scene => {
+        newSnapshots[scene.sceneId] = { ...scene, order: newOrder++ };
+      });
+
+      // 4. entities의 scenes 배열에서 삭제된 장면 제거
+      const newEntities = { ...knowledgeGraph.entities };
+      Object.keys(newEntities).forEach(entityId => {
+        const entity = newEntities[entityId];
+        if (entity.scenes) {
+          newEntities[entityId] = {
+            ...entity,
+            scenes: entity.scenes.filter(sceneId => !scenesToDelete.has(sceneId)),
+          };
+        }
+      });
+
+      // 5. hyperedges의 scenes 배열에서 삭제된 장면 제거 + 빈 관계 삭제
+      const newHyperedges: typeof knowledgeGraph.hyperedges = {};
+      Object.entries(knowledgeGraph.hyperedges).forEach(([edgeId, edge]) => {
+        const filteredScenes = edge.scenes?.filter(sceneId => !scenesToDelete.has(sceneId)) || [];
+        // 장면이 남아있는 관계만 유지
+        if (filteredScenes.length > 0) {
+          newHyperedges[edgeId] = {
+            ...edge,
+            scenes: filteredScenes,
+          };
+        }
+      });
+
+      // 6. 관계가 있는 엔티티 ID 수집 (양쪽 노드)
+      const entitiesWithRelations = new Set<string>();
+      Object.values(newHyperedges).forEach(edge => {
+        edge.entities.forEach(entityId => entitiesWithRelations.add(entityId));
+      });
+
+      // 7. entities에서 관계가 없는 엔티티 삭제
+      const finalEntities: typeof knowledgeGraph.entities = {};
+      Object.entries(newEntities).forEach(([entityId, entity]) => {
+        // 관계가 있거나 장면이 남아있는 엔티티만 유지
+        const hasRelations = entitiesWithRelations.has(entityId);
+        const hasScenes = entity.scenes && entity.scenes.length > 0;
+        if (hasRelations || hasScenes) {
+          finalEntities[entityId] = entity;
+        }
+      });
+
+      // 8. sourceFiles에서 해당 파일 제거
+      const newSourceFiles = remainingSourceFiles;
+
+      // 9. 새 지식 그래프 생성
+      const updatedGraph: NovelKnowledgeGraph = {
+        ...knowledgeGraph,
+        metadata: {
+          ...knowledgeGraph.metadata,
+          sourceFiles: newSourceFiles,
+          updatedAt: new Date().toISOString(),
+        },
+        entities: finalEntities,
+        hyperedges: newHyperedges,
+        snapshots: newSnapshots,
+        stats: {
+          ...knowledgeGraph.stats,
+          totalEntities: Object.keys(finalEntities).length,
+          totalEdges: Object.keys(newHyperedges).length,
+        },
+      };
+
+      // 8. 서버에 업데이트
+      await updateKnowledgeGraph(currentDataId, updatedGraph);
+
+      // 9. 스토어 업데이트
+      setKnowledgeGraph(updatedGraph, undefined, currentDataId);
+
+      const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
+      const deletedEdges = Object.keys(knowledgeGraph.hyperedges).length - Object.keys(newHyperedges).length;
+      console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개, 삭제된 엔티티: ${deletedEntities}개, 삭제된 관계: ${deletedEdges}개`);
+    } catch (error) {
+      console.error('[SourceTextView] 파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    } finally {
+      setDeletingFileId(null);
+      setConfirmDeleteId(null);
+    }
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
+
+  // 파일 순서 변경 핸들러 (위로/아래로 이동)
+  const handleMoveFile = useCallback(async (fileIndex: number, direction: 'up' | 'down') => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    const currentFiles = knowledgeGraph.metadata.sourceFiles || [];
+    if (currentFiles.length < 2) return;
+
+    const targetIndex = direction === 'up' ? fileIndex - 1 : fileIndex + 1;
+    if (targetIndex < 0 || targetIndex >= currentFiles.length) return;
+
+    const fileA = currentFiles[fileIndex];
+    const fileB = currentFiles[targetIndex];
+
+    setMovingFileId(fileA.id);
+    try {
+      console.log(`[SourceTextView] 파일 순서 변경: ${fileA.fileName} ↔ ${fileB.fileName}`);
+
+      // 1. sourceFiles 배열 순서 변경
+      const newSourceFiles: SourceFile[] = [...currentFiles];
+      newSourceFiles[fileIndex] = fileB;
+      newSourceFiles[targetIndex] = fileA;
+
+      // 2. 각 파일의 장면들 찾기
+      const scenesA: SceneSnapshot[] = [];
+      const scenesB: SceneSnapshot[] = [];
+
+      Object.values(knowledgeGraph.snapshots).forEach(scene => {
+        const matchA = scene.sourceFile === fileA.fileName || scene.sourceFileId === fileA.id;
+        const matchB = scene.sourceFile === fileB.fileName || scene.sourceFileId === fileB.id;
+        if (matchA) scenesA.push(scene);
+        if (matchB) scenesB.push(scene);
+      });
+
+      console.log(`[SourceTextView] 파일A 장면: ${scenesA.map(s => s.sceneId).join(', ')}`);
+      console.log(`[SourceTextView] 파일B 장면: ${scenesB.map(s => s.sceneId).join(', ')}`);
+
+      // 3. 장면 order 재계산
+      // 모든 장면을 order 순으로 정렬 후 sourceFiles 순서대로 재배치
+      const newSnapshots = { ...knowledgeGraph.snapshots };
+
+      // 새 sourceFiles 순서대로 모든 장면 수집
+      const allScenesInNewOrder: SceneSnapshot[] = [];
+      for (const file of newSourceFiles) {
+        const fileScenes = Object.values(knowledgeGraph.snapshots)
+          .filter(scene => scene.sourceFile === file.fileName || scene.sourceFileId === file.id)
+          .sort((a, b) => a.order - b.order);
+        allScenesInNewOrder.push(...fileScenes);
+      }
+
+      // 연속된 order 재부여 (1부터 시작)
+      allScenesInNewOrder.forEach((scene, idx) => {
+        newSnapshots[scene.sceneId] = {
+          ...newSnapshots[scene.sceneId],
+          order: idx + 1,
+        };
+      });
+
+      console.log(`[SourceTextView] 새 장면 순서: ${allScenesInNewOrder.map(s => `${s.sceneId}(${s.order}→${allScenesInNewOrder.indexOf(s) + 1})`).join(', ')}`)
+
+      // 4. 새 지식 그래프 생성
+      const updatedGraph: NovelKnowledgeGraph = {
+        ...knowledgeGraph,
+        metadata: {
+          ...knowledgeGraph.metadata,
+          sourceFiles: newSourceFiles,
+          updatedAt: new Date().toISOString(),
+        },
+        snapshots: newSnapshots,
+      };
+
+      // 5. 서버에 업데이트
+      await updateKnowledgeGraph(currentDataId, updatedGraph);
+
+      // 6. 스토어 업데이트
+      setKnowledgeGraph(updatedGraph, undefined, currentDataId);
+
+      console.log(`[SourceTextView] 파일 순서 변경 완료`);
+    } catch (error) {
+      console.error('[SourceTextView] 파일 순서 변경 실패:', error);
+      alert('파일 순서 변경에 실패했습니다.');
+    } finally {
+      setMovingFileId(null);
+    }
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
   if (sourceFiles.length === 0) {
     return (
@@ -203,6 +420,30 @@ export function SourceTextView() {
                   </div>
                 </div>
 
+                {/* 순서 이동 버튼 */}
+                {sourceFiles.length > 1 && (
+                  <div className="flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleMoveFile(index, 'up')}
+                      disabled={index === 0 || movingFileId === file.id}
+                      className="p-0.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="위로 이동"
+                      aria-label="위로 이동"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveFile(index, 'down')}
+                      disabled={index === sourceFiles.length - 1 || movingFileId === file.id}
+                      className="p-0.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="아래로 이동"
+                      aria-label="아래로 이동"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+
                 {/* 복사 버튼 */}
                 <button
                   onClick={(e) => {
@@ -219,6 +460,37 @@ export function SourceTextView() {
                     <Copy className="w-4 h-4 text-gray-400" aria-hidden="true" />
                   )}
                 </button>
+
+                {/* 삭제 버튼 */}
+                {confirmDeleteId === file.id ? (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleDeleteFile(file.id, file.fileName)}
+                      disabled={deletingFileId === file.id}
+                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deletingFileId === file.id ? '삭제 중...' : '확인'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDeleteId(file.id);
+                    }}
+                    className="p-1.5 hover:bg-red-100 rounded transition-colors"
+                    title="파일 삭제"
+                    aria-label="파일 삭제"
+                  >
+                    <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" aria-hidden="true" />
+                  </button>
+                )}
               </button>
 
               {/* 파일 내용 */}
@@ -226,7 +498,7 @@ export function SourceTextView() {
                 <div className="border-t">
                   {/* 이 파일에서 추출된 장면들 */}
                   {(() => {
-                    const scenes = scenesByFile[file.fileName] || scenesByFile[file.id] || [];
+                    const scenes = scenesByFile[file.id] || [];
                     if (scenes.length > 0) {
                       return (
                         <div className="bg-blue-50 border-b p-3">

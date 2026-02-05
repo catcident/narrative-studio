@@ -64,14 +64,10 @@ export function TimelineView() {
     const snapshots = knowledgeGraph.snapshots || {};
     const chapters = knowledgeGraph.chapters || {};
 
-    // ⚠️ 장면 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
+    // 장면 정렬: order 필드 기준 (파일 순서 반영)
+    // chapterNumber는 표시용으로만 사용하고 정렬에는 order를 사용
     const sortedScenes = Object.values(snapshots)
-      .sort((a: any, b: any) => {
-        const chapterA = a.chapterNumber || 0;
-        const chapterB = b.chapterNumber || 0;
-        if (chapterA !== chapterB) return chapterA - chapterB;
-        return (a.order || 0) - (b.order || 0);
-      });
+      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
     return sortedScenes.map((scene: any) => {
       const sceneId = scene.sceneId;

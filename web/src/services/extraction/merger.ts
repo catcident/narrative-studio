@@ -456,10 +456,12 @@ function sceneIdToReadable(sceneId: string): string {
 }
 
 // description에서 다른 엔티티 언급을 찾아 자동 관계 생성
+// newSceneIds: 이번에 새로 추가된 장면 ID들 (기존 그래프와 병합 시 새 장면만 전달)
 function inferDescriptionBasedEdges(
   entities: Record<string, Entity>,
   hyperedges: Record<string, HyperEdge>,
-  edgeCounter: { value: number }
+  edgeCounter: { value: number },
+  newSceneIds?: Set<string>
 ): void {
   for (const entity of Object.values(entities)) {
     if (!entity.description) continue;
@@ -475,6 +477,36 @@ function inferDescriptionBasedEdges(
       );
       if (!isMentioned) continue;
       if (hasEdgeBetween(hyperedges, entity.id, otherEntity.id)) continue;
+
+      // 두 엔티티의 공통 장면 계산
+      let commonScenes: string[] = [];
+      const entityScenes = entity.scenes || [];
+      const otherScenes = otherEntity.scenes || [];
+
+      if (newSceneIds && newSceneIds.size > 0) {
+        // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
+        commonScenes = entityScenes.filter(s =>
+          newSceneIds.has(s) && otherScenes.includes(s)
+        );
+        // 공통 장면이 없으면 각자의 새 장면만이라도 사용
+        if (commonScenes.length === 0) {
+          const entityNewScenes = entityScenes.filter(s => newSceneIds.has(s));
+          const otherNewScenes = otherScenes.filter(s => newSceneIds.has(s));
+          // 둘 다 새 장면이 있어야 관계 생성
+          if (entityNewScenes.length === 0 || otherNewScenes.length === 0) {
+            continue; // 기존 엔티티와 새 엔티티 간 관계는 새 장면 기준으로만
+          }
+          commonScenes = [...new Set([...entityNewScenes, ...otherNewScenes])];
+        }
+      } else {
+        // 새로 생성하는 경우: 공통 장면 또는 entity의 장면 사용
+        commonScenes = entityScenes.filter(s => otherScenes.includes(s));
+        if (commonScenes.length === 0) {
+          commonScenes = entityScenes;
+        }
+      }
+
+      if (commonScenes.length === 0) continue;
 
       edgeCounter.value++;
       const id = formatId('H', edgeCounter.value);
@@ -509,20 +541,22 @@ function inferDescriptionBasedEdges(
         sentiment: 'neutral',
         strength: 3,
         bidirectional: true,
-        scenes: entity.scenes || [],
+        scenes: commonScenes,
         sourceRef: { chapter: 1 },
       };
 
-      console.log(`[extraction] 자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반)`);
+      console.log(`[extraction] 자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반, 장면: ${commonScenes.join(', ')})`);
     }
   }
 }
 
 // 같은 장면에 등장하는 엔티티 쌍에 대해 자동 관계 생성
+// newSceneIds: 이번에 새로 추가된 장면 ID들 (기존 그래프와 병합 시 새 장면만 전달)
 function inferCoOccurrenceEdges(
   entities: Record<string, Entity>,
   hyperedges: Record<string, HyperEdge>,
-  edgeCounter: { value: number }
+  edgeCounter: { value: number },
+  newSceneIds?: Set<string>
 ): void {
   const allEntities = Object.values(entities);
   const characterEntities = allEntities.filter(e => e.category === 'character');
@@ -537,7 +571,14 @@ function inferCoOccurrenceEdges(
       const char2 = characterEntities[j];
       if (!char2.scenes?.length) continue;
 
-      const commonScenes = char1.scenes.filter((s: string) => char2.scenes!.includes(s));
+      // 공통 장면 계산
+      let commonScenes = char1.scenes.filter((s: string) => char2.scenes!.includes(s));
+
+      // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
+      if (newSceneIds && newSceneIds.size > 0) {
+        commonScenes = commonScenes.filter(s => newSceneIds.has(s));
+      }
+
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
 
@@ -570,7 +611,14 @@ function inferCoOccurrenceEdges(
     for (const char of characterEntities) {
       if (!char.scenes?.length) continue;
 
-      const commonScenes = entity.scenes.filter((s: string) => char.scenes!.includes(s));
+      // 공통 장면 계산
+      let commonScenes = entity.scenes.filter((s: string) => char.scenes!.includes(s));
+
+      // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
+      if (newSceneIds && newSceneIds.size > 0) {
+        commonScenes = commonScenes.filter(s => newSceneIds.has(s));
+      }
+
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, entity.id, char.id)) continue;
 
@@ -603,42 +651,44 @@ function buildSnapshots(
   extracted: MergedExtraction,
   entities: Record<string, Entity>,
   hyperedges: Record<string, HyperEdge>,
+  sceneIdMapping: Record<number, string>,
   existingGraph?: NovelKnowledgeGraph,
   fileNames?: string[],
 ): Record<string, SceneSnapshot> {
   const snapshots: Record<string, SceneSnapshot> = existingGraph ? { ...existingGraph.snapshots } : {};
   const sortedScenes = [...(extracted.scenes || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
-  const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
   const defaultChapterNumber = 0;
 
-  for (const s of sortedScenes) {
-    const actualSceneNum = existingSceneCount + s.id;
-    const sceneId = formatId('S', actualSceneNum);
-    const originalSceneId = formatId('S', s.id);
+  // 기존 장면의 최대 order 추출
+  let maxOrder = 0;
+  if (existingGraph?.snapshots) {
+    for (const scene of Object.values(existingGraph.snapshots)) {
+      maxOrder = Math.max(maxOrder, scene.order || 0);
+    }
+  }
+
+  for (let idx = 0; idx < sortedScenes.length; idx++) {
+    const s = sortedScenes[idx];
+    // sceneIdMapping에서 실제 장면 ID 가져오기
+    const sceneId = sceneIdMapping[s.id];
+    if (!sceneId) {
+      console.warn(`[extraction] 장면 ID 매핑 없음: ${s.id}`);
+      continue;
+    }
+    // order는 기존 최대 order + 1부터 시작
+    const actualOrder = maxOrder + idx + 1;
 
     const actualChapterNum = s.chapter || defaultChapterNumber;
     const chapterId = actualChapterNum ? formatId('C', actualChapterNum) : null;
 
-    // 이 장면에 등장하는 엔티티/관계 찾기
+    // 이 장면에 등장하는 엔티티/관계 찾기 (이미 매핑된 sceneId 사용)
     const entitiesInScene = Object.values(entities)
-      .filter((e) => e.scenes?.includes(originalSceneId))
+      .filter((e) => e.scenes?.includes(sceneId))
       .map((e) => e.id);
 
     const activeEdges = Object.values(hyperedges)
-      .filter((e) => e.scenes?.includes(originalSceneId))
+      .filter((e) => e.scenes?.includes(sceneId))
       .map((e) => e.id);
-
-    // 엔티티와 관계의 scenes 배열에서 원래 ID를 새 ID로 교체
-    for (const e of Object.values(entities)) {
-      if (e.scenes?.includes(originalSceneId)) {
-        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
-      }
-    }
-    for (const e of Object.values(hyperedges)) {
-      if (e.scenes?.includes(originalSceneId)) {
-        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
-      }
-    }
 
     // 장면이 추출된 원본 파일명 결정
     const sceneSourceFile = (s.sourceFileIndex !== undefined && fileNames && fileNames[s.sourceFileIndex])
@@ -647,7 +697,7 @@ function buildSnapshots(
 
     snapshots[sceneId] = {
       sceneId,
-      order: actualSceneNum,
+      order: actualOrder,
       chapter: chapterId,
       chapterNumber: actualChapterNum,
       time: s.time || `장면 ${s.id}`,
@@ -673,6 +723,28 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   const hyperedges: Record<string, HyperEdge> = existingGraph ? { ...existingGraph.hyperedges } : {};
   const nameToId: Record<string, string> = {};
 
+  // 기존 장면의 최대 번호 추출 (새 장면 ID 계산용)
+  let maxSceneNum = 0;
+  if (existingGraph?.snapshots) {
+    for (const sceneId of Object.keys(existingGraph.snapshots)) {
+      const numMatch = sceneId.match(/S0*(\d+)/);
+      if (numMatch) {
+        maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
+      }
+    }
+  }
+
+  // 새로 추출된 장면 ID를 실제 ID로 매핑하는 맵 생성
+  // 예: extracted.scenes의 id=1 → S0005 (maxSceneNum + 1)
+  const sceneIdMapping: Record<number, string> = {};
+  const sortedScenes = [...(extracted.scenes || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
+  for (let idx = 0; idx < sortedScenes.length; idx++) {
+    const s = sortedScenes[idx];
+    const actualSceneNum = maxSceneNum + idx + 1;
+    sceneIdMapping[s.id] = formatId('S', actualSceneNum);
+  }
+  console.log('[extraction] 장면 ID 매핑:', sceneIdMapping);
+
   // 기존 엔티티의 이름 매핑 초기화
   for (const e of Object.values(entities)) {
     registerNameMapping(nameToId, e.name, e.id);
@@ -687,20 +759,23 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   // 엔티티 등록
   for (const e of extracted.entities) {
     const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
+    // 새 장면 ID로 변환 (sceneIdMapping 사용)
+    const newSceneIds = (e.scenes || []).map((s: number) => sceneIdMapping[s] || formatId('S', s));
 
     if (existingId && entities[existingId]) {
-      // 기존 엔티티에 정보 추가
+      // 기존 엔티티에 정보 추가 - 새 장면 ID만 추가
       const existing = entities[existingId];
       existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
       if (e.description && !existing.description?.includes(e.description)) {
         existing.description = ((existing.description || '') + ' ' + e.description).slice(0, 500);
       }
+      // 기존 scenes에 새 장면 ID 추가 (중복 제거)
+      existing.scenes = [...new Set([...(existing.scenes || []), ...newSceneIds])];
       continue;
     }
 
     entityCounter++;
     const id = formatId('E', entityCounter);
-    const sceneIds = (e.scenes || []).map((s: number) => formatId('S', s));
     entities[id] = {
       id,
       name: e.name,
@@ -708,7 +783,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       aliases: e.aliases || [],
       description: e.description || '',
       attributes: (e.attributes || {}) as Record<string, unknown>,
-      scenes: sceneIds,
+      scenes: newSceneIds,
       firstMention: { chapter: 1 },
       importance: e.importance || 5,
     };
@@ -737,7 +812,8 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       e.type === r.type && e.entities.includes(fromId) && e.entities.includes(toId)
     );
 
-    const sceneIds = (r.scenes || []).map((s: number) => formatId('S', s));
+    // 새 장면 ID로 변환 (sceneIdMapping 사용)
+    const sceneIds = (r.scenes || []).map((s: number) => sceneIdMapping[s] || formatId('S', s));
 
     if (existingEdge) {
       existingEdge.scenes = [...new Set([...(existingEdge.scenes || []), ...sceneIds])];
@@ -765,8 +841,14 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   }
 
   // 자동 관계 생성: description 기반 + 장면 동시 등장
-  inferDescriptionBasedEdges(entities, hyperedges, edgeCounter);
-  inferCoOccurrenceEdges(entities, hyperedges, edgeCounter);
+  // 기존 그래프가 있으면 새로 추가된 장면 ID만 전달 (기존 장면과의 관계 생성 방지)
+  const newSceneIds = existingGraph
+    ? new Set(Object.values(sceneIdMapping))
+    : undefined;
+  console.log('[extraction] 새 장면 ID:', newSceneIds ? [...newSceneIds].join(', ') : '(전체)');
+
+  inferDescriptionBasedEdges(entities, hyperedges, edgeCounter, newSceneIds);
+  inferCoOccurrenceEdges(entities, hyperedges, edgeCounter, newSceneIds);
 
   // 타임라인 등록
   const timeline = (extracted.timeline || []).map((t: MergedTimelinePoint) => ({
@@ -802,7 +884,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   }
 
   // 장면(Scene)을 snapshots로 변환
-  const snapshots = buildSnapshots(extracted, entities, hyperedges, existingGraph, fileNames);
+  const snapshots = buildSnapshots(extracted, entities, hyperedges, sceneIdMapping, existingGraph, fileNames);
 
   // 통계
   const entitiesByCategory: Partial<Record<EntityCategory, number>> = {};
@@ -821,10 +903,20 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   const existingFileNameSet = new Set(existingSourceFiles.map((sf) => sf.fileName));
   const newSourceFiles: SourceFile[] = [];
 
+  // 기존 파일 ID에서 최대 번호 추출 (삭제 후 재추가 시 충돌 방지)
+  let maxFileNum = 0;
+  for (const sf of existingSourceFiles) {
+    const numMatch = sf.id.match(/F0*(\d+)/);
+    if (numMatch) {
+      maxFileNum = Math.max(maxFileNum, parseInt(numMatch[1], 10));
+    }
+  }
+
   if (fileNames && originalText) {
     for (const fileName of fileNames) {
       if (!existingFileNameSet.has(fileName)) {
-        const newId = formatId('F', existingSourceFiles.length + newSourceFiles.length + 1);
+        maxFileNum++;
+        const newId = formatId('F', maxFileNum);
         newSourceFiles.push({
           id: newId,
           fileName,
