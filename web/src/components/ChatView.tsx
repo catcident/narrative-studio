@@ -292,8 +292,8 @@ export function ChatView() {
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
               AI
             </div>
-            <div className="flex-1 bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
-              <div className="prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-2">
+            <div className="flex-1 bg-white rounded-2xl rounded-tl-none px-5 py-4 shadow-sm">
+              <div className="chat-markdown text-gray-800 leading-relaxed">
                 <ReactMarkdown>{streamingContent}</ReactMarkdown>
                 <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
               </div>
@@ -374,10 +374,10 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         {isUser ? '나' : 'AI'}
       </div>
       <div
-        className={`flex-1 max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
+        className={`flex-1 max-w-[85%] rounded-2xl shadow-sm ${
           isUser
-            ? 'bg-green-500 text-white rounded-tr-none'
-            : 'bg-white rounded-tl-none'
+            ? 'bg-green-500 text-white rounded-tr-none px-4 py-3'
+            : 'bg-white rounded-tl-none px-5 py-4'
         }`}
       >
         {isUser ? (
@@ -385,11 +385,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             {message.content}
           </div>
         ) : (
-          <div className="prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-2">
+          <div className="chat-markdown text-gray-800 leading-relaxed">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         )}
-        <div className={`text-xs mt-1 ${isUser ? 'text-green-100' : 'text-gray-400'}`}>
+        <div className={`text-xs mt-2 ${isUser ? 'text-green-100' : 'text-gray-400'}`}>
           {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>

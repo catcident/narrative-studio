@@ -458,7 +458,7 @@ function App() {
 
         {/* 오른쪽: 상세 패널 */}
         <div className={`border-l border-gray-200 flex-shrink-0 overflow-hidden ${
-          viewMode === 'chat' ? 'w-[480px]' : 'w-96'
+          viewMode === 'chat' ? 'w-[520px]' : 'w-96'
         }`}>
           {viewMode === 'chat' && !selectedEntityId ? <ChatMentionedPanel /> : <DetailPanel />}
         </div>

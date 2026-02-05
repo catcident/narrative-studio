@@ -1,23 +1,26 @@
 /**
  * 채팅에서 언급된 엔티티 패널
- * 채팅 답변에서 언급된 인물/엔티티 목록 + 미니 관계도
+ * 채팅 답변에서 언급된 인물/엔티티 목록 + 인터랙티브 관계도
  */
 
-import { useMemo } from 'react';
-import { User, MapPin, Building, Sword, Clock, Zap, Info, Heart, MessageCircle } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { User, MapPin, Building, Sword, Clock, Zap, Info, Heart, MessageCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   ReactFlow,
   Background,
+  Controls,
   Node,
   Edge,
   Position,
+  useNodesState,
+  useEdgesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useStore } from '../store';
 import type { EntityCategory, Entity, HyperEdge } from '../types';
 
 // 카테고리 아이콘
-const CATEGORY_ICONS: Record<EntityCategory, any> = {
+const CATEGORY_ICONS: Record<EntityCategory, React.ComponentType<{ className?: string }>> = {
   character: User,
   location: MapPin,
   organization: Building,
@@ -56,47 +59,47 @@ const CATEGORY_COLORS: Record<EntityCategory, { bg: string; border: string; text
   emotion: { bg: '#f43f5e', border: '#e11d48', text: '#ffffff' },
 };
 
-const CATEGORY_BG_CLASSES: Record<EntityCategory, string> = {
-  character: 'bg-blue-500',
-  location: 'bg-green-500',
-  organization: 'bg-purple-500',
-  item: 'bg-amber-500',
-  creature: 'bg-red-500',
-  event: 'bg-pink-500',
-  concept: 'bg-indigo-500',
-  time_period: 'bg-teal-500',
-  status: 'bg-slate-500',
-  emotion: 'bg-rose-500',
-};
+// 툴팁 정보 타입
+interface TooltipInfo {
+  type: 'node' | 'edge';
+  x: number;
+  y: number;
+  data: Entity | HyperEdge;
+}
 
 export function ChatMentionedPanel() {
   const { knowledgeGraph, chatMentionedEntities, selectEntity } = useStore();
+  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const [showEntityList, setShowEntityList] = useState(true);
 
   // 언급된 엔티티 목록 가져오기
-  const mentionedEntities: Entity[] = chatMentionedEntities
-    .map(id => knowledgeGraph?.entities[id])
-    .filter((e): e is Entity => !!e);
+  const mentionedEntities: Entity[] = useMemo(() => {
+    return chatMentionedEntities
+      .map(id => knowledgeGraph?.entities[id])
+      .filter((e): e is Entity => !!e);
+  }, [knowledgeGraph, chatMentionedEntities]);
 
   // 언급된 엔티티들 간의 관계만 필터링
   const relevantEdges: HyperEdge[] = useMemo(() => {
     if (!knowledgeGraph) return [];
     const mentionedIds = new Set(chatMentionedEntities);
     return Object.values(knowledgeGraph.hyperedges).filter(edge =>
-      // 엣지의 모든 엔티티가 언급된 엔티티에 포함되어야 함
       edge.entities.every(id => mentionedIds.has(id))
     );
   }, [knowledgeGraph, chatMentionedEntities]);
 
   // 미니 그래프용 노드/엣지 생성
-  const { nodes, edges } = useMemo(() => {
-    if (mentionedEntities.length === 0) return { nodes: [], edges: [] };
+  const { initialNodes, initialEdges, edgeDataMap } = useMemo(() => {
+    if (mentionedEntities.length === 0) {
+      return { initialNodes: [], initialEdges: [], edgeDataMap: new Map<string, HyperEdge>() };
+    }
 
-    // 원형 배치
-    const centerX = 150;
-    const centerY = 120;
-    const radius = Math.min(100, 40 + mentionedEntities.length * 15);
+    // 원형 배치 - 더 넓게
+    const centerX = 200;
+    const centerY = 150;
+    const radius = Math.min(120, 50 + mentionedEntities.length * 20);
 
-    const nodes: Node[] = mentionedEntities.map((entity, index) => {
+    const initialNodes: Node[] = mentionedEntities.map((entity, index) => {
       const angle = (2 * Math.PI * index) / mentionedEntities.length - Math.PI / 2;
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
@@ -105,57 +108,106 @@ export function ChatMentionedPanel() {
       return {
         id: entity.id,
         position: { x, y },
-        data: { label: entity.name },
+        data: {
+          label: entity.name,
+          entity,
+        },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         style: {
           background: colors.bg,
           color: colors.text,
-          border: `2px solid ${colors.border}`,
+          border: `3px solid ${colors.border}`,
           borderRadius: '50%',
-          width: 60,
-          height: 60,
+          width: 70,
+          height: 70,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '11px',
+          fontSize: '12px',
           fontWeight: 'bold',
           textAlign: 'center' as const,
-          padding: '4px',
+          padding: '6px',
           cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
         },
       };
     });
 
-    const edges: Edge[] = relevantEdges.map((edge, index) => {
+    const edgeDataMap = new Map<string, HyperEdge>();
+    const initialEdges: Edge[] = relevantEdges.map((edge, index) => {
       const [source, target] = edge.entities;
+      const edgeId = `edge-${index}`;
+      edgeDataMap.set(edgeId, edge);
+
       return {
-        id: `edge-${index}`,
+        id: edgeId,
         source,
         target,
         label: edge.type,
-        labelStyle: { fontSize: '9px', fill: '#666' },
+        labelStyle: {
+          fontSize: '11px',
+          fill: '#374151',
+          fontWeight: 500,
+        },
+        labelBgStyle: {
+          fill: '#ffffff',
+          fillOpacity: 0.9,
+        },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 4,
         style: {
           stroke: edge.sentiment === 'positive' ? '#22c55e' :
-                  edge.sentiment === 'negative' ? '#ef4444' : '#94a3b8',
-          strokeWidth: 2,
+                  edge.sentiment === 'negative' ? '#ef4444' : '#6b7280',
+          strokeWidth: 3,
+          cursor: 'pointer',
         },
         animated: edge.sentiment === 'positive',
+        data: { edge },
       };
     });
 
-    return { nodes, edges };
+    return { initialNodes, initialEdges, edgeDataMap };
   }, [mentionedEntities, relevantEdges]);
 
-  // 카테고리별로 그룹화
-  const groupedEntities = mentionedEntities.reduce((acc, entity) => {
-    const category = entity.category;
-    if (!acc[category]) {
-      acc[category] = [];
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // 노드/엣지 변경 시 업데이트
+  useMemo(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  // 노드 클릭 핸들러
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    const entity = node.data.entity as Entity;
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    setTooltip({
+      type: 'node',
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+      data: entity,
+    });
+  }, []);
+
+  // 엣지 클릭 핸들러
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    const edgeData = edge.data?.edge as HyperEdge;
+    if (edgeData) {
+      setTooltip({
+        type: 'edge',
+        x: event.clientX,
+        y: event.clientY,
+        data: edgeData,
+      });
     }
-    acc[category].push(entity);
-    return acc;
-  }, {} as Record<EntityCategory, Entity[]>);
+  }, []);
+
+  // 배경 클릭 시 툴팁 닫기
+  const onPaneClick = useCallback(() => {
+    setTooltip(null);
+  }, []);
 
   if (mentionedEntities.length === 0) {
     return (
@@ -171,135 +223,159 @@ export function ChatMentionedPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white relative">
       {/* 헤더 */}
-      <div className="p-4 border-b border-gray-200 flex-shrink-0">
+      <div className="p-3 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-blue-500" />
-          <h2 className="text-lg font-semibold text-gray-800">
+          <h2 className="text-base font-semibold text-gray-800">
             답변에서 언급된 항목
           </h2>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-xs text-gray-500 mt-1">
           {mentionedEntities.length}개 엔티티 · {relevantEdges.length}개 관계
         </p>
       </div>
 
-      {/* 미니 관계도 */}
-      {mentionedEntities.length >= 2 && (
-        <div className="flex-shrink-0 h-64 border-b border-gray-200 bg-gray-50">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            fitView
-            fitViewOptions={{ padding: 0.3 }}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable={false}
-            panOnDrag={false}
-            zoomOnScroll={false}
-            zoomOnPinch={false}
-            zoomOnDoubleClick={false}
-            preventScrolling={false}
-            onNodeClick={(_, node) => selectEntity(node.id)}
-          >
-            <Background color="#e5e7eb" gap={16} />
-          </ReactFlow>
-        </div>
-      )}
+      {/* 인터랙티브 관계도 */}
+      <div className="flex-1 min-h-[300px] border-b border-gray-200 bg-gray-50">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onPaneClick={onPaneClick}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          nodesDraggable={true}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          minZoom={0.5}
+          maxZoom={2}
+        >
+          <Background color="#d1d5db" gap={20} />
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      </div>
 
-      {/* 엔티티 목록 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {Object.entries(groupedEntities).map(([category, entities]) => {
-          const Icon = CATEGORY_ICONS[category as EntityCategory] || Info;
-          const label = CATEGORY_LABELS[category as EntityCategory] || category;
-          const bgClass = CATEGORY_BG_CLASSES[category as EntityCategory] || 'bg-gray-500';
+      {/* 엔티티 목록 (접기/펼치기) */}
+      <div className="flex-shrink-0">
+        <button
+          onClick={() => setShowEntityList(!showEntityList)}
+          className="w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 border-b border-gray-200 flex items-center justify-between text-sm font-medium text-gray-700"
+        >
+          <span>엔티티 목록</span>
+          {showEntityList ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
 
-          return (
-            <div key={category}>
-              {/* 카테고리 헤더 */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className={`p-1.5 rounded ${bgClass} text-white`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700">
-                  {label} ({entities.length})
-                </span>
-              </div>
-
-              {/* 엔티티 목록 */}
-              <div className="space-y-2">
-                {entities.map(entity => (
-                  <button
-                    key={entity.id}
-                    onClick={() => selectEntity(entity.id)}
-                    className="w-full p-4 bg-gray-50 hover:bg-blue-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-all text-left shadow-sm hover:shadow"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-800 text-base">{entity.name}</span>
-                      {entity.aliases && entity.aliases.length > 0 && (
-                        <span className="text-sm text-gray-400">
-                          ({entity.aliases[0]})
-                        </span>
-                      )}
-                    </div>
-                    {entity.description && (
-                      <p className="text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">
-                        {entity.description}
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* 관계 목록 */}
-        {relevantEdges.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded bg-gray-600 text-white">
-                <Info className="w-4 h-4" />
-              </div>
-              <span className="text-sm font-semibold text-gray-700">
-                관계 ({relevantEdges.length})
-              </span>
-            </div>
-            <div className="space-y-2">
-              {relevantEdges.map((edge, idx) => {
-                const entityNames = edge.entities
-                  .map(id => knowledgeGraph?.entities[id]?.name || id)
-                  .join(' ↔ ');
-                return (
+        {showEntityList && (
+          <div className="max-h-[200px] overflow-y-auto p-3 space-y-2">
+            {mentionedEntities.map(entity => {
+              const colors = CATEGORY_COLORS[entity.category] || CATEGORY_COLORS.concept;
+              const Icon = CATEGORY_ICONS[entity.category] || Info;
+              return (
+                <button
+                  key={entity.id}
+                  onClick={() => selectEntity(entity.id)}
+                  className="w-full p-2 bg-white hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-all text-left flex items-center gap-2"
+                >
                   <div
-                    key={idx}
-                    className={`p-3 rounded-lg border ${
-                      edge.sentiment === 'positive' ? 'bg-green-50 border-green-200' :
-                      edge.sentiment === 'negative' ? 'bg-red-50 border-red-200' :
-                      'bg-gray-50 border-gray-200'
-                    }`}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                    style={{ backgroundColor: colors.bg }}
                   >
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        edge.sentiment === 'positive' ? 'bg-green-200 text-green-800' :
-                        edge.sentiment === 'negative' ? 'bg-red-200 text-red-800' :
-                        'bg-gray-200 text-gray-700'
-                      }`}>
-                        {edge.type}
-                      </span>
-                      <span className="text-gray-700 font-medium">{entityNames}</span>
-                    </div>
-                    {edge.statement && (
-                      <p className="text-sm text-gray-600 mt-2">{edge.statement}</p>
-                    )}
+                    <Icon className="w-4 h-4" />
                   </div>
-                );
-              })}
-            </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-800 text-sm truncate">{entity.name}</div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {CATEGORY_LABELS[entity.category]} · 클릭하여 상세보기
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* 툴팁 */}
+      {tooltip && (
+        <div
+          className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3 max-w-[300px]"
+          style={{
+            left: Math.min(tooltip.x, window.innerWidth - 320),
+            top: tooltip.y + 10,
+          }}
+        >
+          <button
+            onClick={() => setTooltip(null)}
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {tooltip.type === 'node' ? (
+            // 엔티티 툴팁
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white"
+                  style={{ backgroundColor: CATEGORY_COLORS[(tooltip.data as Entity).category]?.bg || '#6b7280' }}
+                >
+                  {(() => {
+                    const Icon = CATEGORY_ICONS[(tooltip.data as Entity).category] || Info;
+                    return <Icon className="w-4 h-4" />;
+                  })()}
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-800">{(tooltip.data as Entity).name}</div>
+                  <div className="text-xs text-gray-500">
+                    {CATEGORY_LABELS[(tooltip.data as Entity).category]}
+                  </div>
+                </div>
+              </div>
+              {(tooltip.data as Entity).description && (
+                <p className="text-sm text-gray-600 mb-2">{(tooltip.data as Entity).description}</p>
+              )}
+              <button
+                onClick={() => {
+                  selectEntity((tooltip.data as Entity).id);
+                  setTooltip(null);
+                }}
+                className="w-full mt-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
+              >
+                상세 보기
+              </button>
+            </div>
+          ) : (
+            // 관계 툴팁
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  (tooltip.data as HyperEdge).sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                  (tooltip.data as HyperEdge).sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {(tooltip.data as HyperEdge).type}
+                </span>
+              </div>
+              <div className="text-sm font-medium text-gray-800 mb-1">
+                {(tooltip.data as HyperEdge).entities
+                  .map(id => knowledgeGraph?.entities[id]?.name || id)
+                  .join(' ↔ ')}
+              </div>
+              {(tooltip.data as HyperEdge).statement && (
+                <p className="text-sm text-gray-600">{(tooltip.data as HyperEdge).statement}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
