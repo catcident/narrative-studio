@@ -1,11 +1,13 @@
 /**
  * 원본 텍스트 보기 컴포넌트
  * 업로드된 소스 파일들의 원문을 볼 수 있음
+ * 각 파일에서 추출된 장면 목록도 표시
  */
 
 import { useState, useMemo } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film } from 'lucide-react';
 import { useStore } from '../store';
+import type { SceneSnapshot } from '../types';
 
 export function SourceTextView() {
   const { knowledgeGraph } = useStore();
@@ -16,6 +18,25 @@ export function SourceTextView() {
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
   }, [knowledgeGraph]);
+
+  // 파일별 장면 매핑
+  const scenesByFile = useMemo(() => {
+    const map: Record<string, SceneSnapshot[]> = {};
+    if (!knowledgeGraph?.snapshots) return map;
+
+    Object.values(knowledgeGraph.snapshots).forEach(scene => {
+      const key = scene.sourceFile || scene.sourceFileId || '_unknown';
+      if (!map[key]) map[key] = [];
+      map[key].push(scene);
+    });
+
+    // 각 파일의 장면들을 order 순으로 정렬
+    Object.keys(map).forEach(key => {
+      map[key].sort((a, b) => a.order - b.order);
+    });
+
+    return map;
+  }, [knowledgeGraph?.snapshots]);
 
   // 검색 결과 하이라이트
   const highlightText = (text: string, query: string) => {
@@ -174,10 +195,44 @@ export function SourceTextView() {
 
               {/* 파일 내용 */}
               {isExpanded && (
-                <div className="border-t bg-gray-50">
-                  <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
-                    {searchQuery ? highlightText(file.text, searchQuery) : file.text}
-                  </pre>
+                <div className="border-t">
+                  {/* 이 파일에서 추출된 장면들 */}
+                  {(() => {
+                    const scenes = scenesByFile[file.fileName] || scenesByFile[file.id] || [];
+                    if (scenes.length > 0) {
+                      return (
+                        <div className="bg-blue-50 border-b p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Film className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">
+                              추출된 장면 ({scenes.length}개)
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {scenes.map(scene => (
+                              <div
+                                key={scene.sceneId}
+                                className="text-xs bg-white border border-blue-200 rounded px-2 py-1 text-blue-700"
+                                title={scene.summary}
+                              >
+                                <span className="font-medium">{scene.sceneId}</span>
+                                {scene.location && (
+                                  <span className="text-blue-500 ml-1">@ {scene.location}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <div className="bg-gray-50">
+                    <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
+                      {searchQuery ? highlightText(file.text, searchQuery) : file.text}
+                    </pre>
+                  </div>
                 </div>
               )}
             </div>

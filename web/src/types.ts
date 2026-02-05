@@ -68,6 +68,7 @@ export interface Entity {
   mentions?: SourceRef[];
   scenes?: string[];  // 등장 장면 ID 목록
   importance?: number;  // 중요도 1~10 (10이 가장 중요)
+  sourceFile?: string;  // 엔티티가 처음 등장한 파일명
 }
 
 export interface HyperEdge {
@@ -85,6 +86,7 @@ export interface HyperEdge {
   strength?: number;
   sourceRef?: SourceRef;
   scenes?: string[];  // 등장 장면 ID 목록
+  sourceFile?: string;  // 관계가 발생한 파일명
 }
 
 export interface TimelinePoint {
@@ -151,6 +153,8 @@ export interface SceneSnapshot {
   mood?: string;
   charactersPresent: string[];
   activeEdges: string[];
+  sourceFile?: string;  // 이 장면이 추출된 원본 파일명
+  sourceFileId?: string;  // 원본 파일 ID (F0001 형식)
 }
 
 export interface NovelKnowledgeGraph {

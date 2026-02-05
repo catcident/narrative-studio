@@ -5,7 +5,89 @@
 
 import type { NovelKnowledgeGraph, Entity, HyperEdge } from '../types';
 import { DEFAULT_MODEL } from '../types';
-import { searchSimilarEntities, extractKeywords } from './embedding';
+import { searchSimilarEntities, searchSimilarChunks, type ChunkSearchResult } from './embedding';
+
+/**
+ * LLM을 사용하여 질문에서 검색 키워드 추출
+ */
+async function extractKeywordsWithLLM(
+  query: string,
+  apiKey?: string
+): Promise<string[]> {
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-001',  // 빠르고 저렴한 모델
+        messages: [
+          {
+            role: 'system',
+            content: `당신은 소설 검색을 위한 키워드 추출기입니다.
+사용자 질문에서 검색에 필요한 핵심 키워드를 추출하세요.
+
+규칙:
+1. 인물 이름, 물건 이름, 장소 이름, 사건명 등 명사 위주로 추출
+2. "뭐야", "알려줘", "어떻게" 같은 질문 표현은 제외
+3. JSON 배열 형식으로만 응답: ["키워드1", "키워드2", ...]
+4. 최대 5개까지만 추출
+5. 질문에 고유명사가 없으면 핵심 개념어를 추출
+
+예시:
+- "주인공이 얻은 검이 뭐야?" → ["주인공", "검"]
+- "천마신공이 뭐야?" → ["천마신공"]
+- "무림맹과 사파의 관계는?" → ["무림맹", "사파", "관계"]`
+          },
+          { role: 'user', content: query }
+        ],
+        apiKey,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[extractKeywords] API 오류, 폴백 사용');
+      return fallbackExtractKeywords(query);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    // JSON 파싱 시도
+    const match = content.match(/\[[\s\S]*\]/);
+    if (match) {
+      const keywords = JSON.parse(match[0]);
+      if (Array.isArray(keywords)) {
+        console.log('[extractKeywords] LLM 추출:', keywords);
+        return keywords.slice(0, 5);
+      }
+    }
+
+    return fallbackExtractKeywords(query);
+  } catch (err) {
+    console.warn('[extractKeywords] 오류, 폴백 사용:', err);
+    return fallbackExtractKeywords(query);
+  }
+}
+
+/**
+ * 폴백: 단순 키워드 추출 (LLM 실패 시)
+ */
+function fallbackExtractKeywords(query: string): string[] {
+  const stopWords = new Set([
+    '이', '가', '을', '를', '의', '에', '에서', '로', '으로', '와', '과', '도', '만', '까지',
+    '은', '는', '뭐', '뭘', '무엇', '어떤', '어떻게', '왜', '누구', '언제', '어디',
+    '해줘', '해', '줘', '알려줘', '설명해', '말해', '보여', '찾아',
+    '있어', '없어', '하는', '되는', '인가', '인지', '뭐야', '거야',
+  ]);
+
+  const words = query
+    .replace(/[?!.,]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length >= 2 && !stopWords.has(w));
+
+  return [...new Set(words)].slice(0, 5);
+}
 
 export interface ChatMessage {
   id: string;
@@ -668,13 +750,25 @@ export async function sendChatMessage(
 
   // 임베딩 기반 유사 엔티티 검색 (graphId가 있고, 기존 방식으로 못 찾았으면)
   let embeddingResults: { entityId: string; entityName: string; similarity: number }[] = [];
+  let chunkResults: ChunkSearchResult[] = [];
+
   if (graphId && lastUserMessage && foundEntityIds.length === 0) {
-    const keywords = extractKeywords(lastUserMessage.content);
-    console.log('🔎 임베딩 검색 키워드:', keywords);
+    // LLM으로 키워드 추출
+    const keywords = await extractKeywordsWithLLM(lastUserMessage.content, userApiKey || undefined);
+    console.log('🔎 LLM 추출 키워드:', keywords);
 
     if (keywords.length > 0) {
-      embeddingResults = await searchSimilarEntities(graphId, keywords, userApiKey || undefined, 10);
+      // 엔티티 임베딩 검색 + 청크 임베딩 검색 병렬 실행
+      const [entityResults, chunks] = await Promise.all([
+        searchSimilarEntities(graphId, keywords, userApiKey || undefined, 10),
+        searchSimilarChunks(graphId, lastUserMessage.content, userApiKey || undefined, 3),
+      ]);
+
+      embeddingResults = entityResults;
+      chunkResults = chunks;
+
       console.log('🎯 임베딩 검색 결과:', embeddingResults.map(r => `${r.entityName} (${(r.similarity * 100).toFixed(1)}%)`));
+      console.log('📄 청크 검색 결과:', chunkResults.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
 
       // 유사도 높은 엔티티 ID 추가
       embeddingResults.forEach(result => {
@@ -695,9 +789,24 @@ export async function sendChatMessage(
     : '(없음)');
 
   // 컨텍스트 생성 (임베딩으로 찾은 엔티티도 포함)
-  const relevantContext = lastUserMessage
+  let relevantContext = lastUserMessage
     ? extractRelevantContext(lastUserMessage.content, context.knowledgeGraph, context.originalText, foundEntityIds)
     : '';
+
+  // 청크 검색 결과 추가
+  if (chunkResults.length > 0) {
+    relevantContext += '\n\n## 관련 원본 텍스트 (임베딩 검색)\n';
+    chunkResults.forEach((chunk, i) => {
+      const sourceInfo = chunk.sourceFile ? ` (${chunk.sourceFile})` : '';
+      const chapterInfo = chunk.chapterTitle ? ` [${chunk.chapterTitle}]` : '';
+      relevantContext += `\n### 발췌 ${i + 1}${sourceInfo}${chapterInfo}\n`;
+      relevantContext += '```\n';
+      // 청크 내용 (너무 길면 자름)
+      relevantContext += chunk.content.slice(0, 1000);
+      if (chunk.content.length > 1000) relevantContext += '\n... (생략)';
+      relevantContext += '\n```\n';
+    });
+  }
 
   console.log('📄 생성된 컨텍스트 (LLM에 전달):\n', relevantContext || '(컨텍스트 없음)');
   console.groupEnd();

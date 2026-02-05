@@ -1,10 +1,26 @@
 /**
- * 엔티티 임베딩 서비스
+ * 임베딩 서비스
  * - 그래프 저장 시 엔티티 임베딩 생성
- * - 채팅 시 키워드로 유사 엔티티 검색
+ * - 문서 청크 임베딩 생성
+ * - 채팅 시 키워드로 유사 엔티티/청크 검색
  */
 
 import type { Entity } from '../types';
+
+export interface ChunkData {
+  index: number;
+  content: string;
+  sourceFile?: string;
+  chapterTitle?: string;
+}
+
+export interface ChunkSearchResult {
+  chunkIndex: number;
+  content: string;
+  sourceFile?: string;
+  chapterTitle?: string;
+  similarity: number;
+}
 
 /**
  * 엔티티 임베딩 생성 및 저장
@@ -93,4 +109,69 @@ export function extractKeywords(query: string): string[] {
     .filter(w => w.length >= 2 && !stopWords.has(w));
 
   return [...new Set(words)];
+}
+
+/**
+ * 문서 청크 임베딩 생성 및 저장
+ */
+export async function createChunkEmbeddings(
+  graphId: string,
+  chunks: ChunkData[],
+  apiKey?: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const response = await fetch('/api/chunk-embeddings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        graphId,
+        chunks,
+        apiKey,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, count: 0, error: data.error };
+    }
+
+    return { success: true, count: data.count };
+  } catch (err) {
+    return { success: false, count: 0, error: (err as Error).message };
+  }
+}
+
+/**
+ * 질문으로 유사 청크 검색
+ */
+export async function searchSimilarChunks(
+  graphId: string,
+  query: string,
+  apiKey?: string,
+  topK: number = 3
+): Promise<ChunkSearchResult[]> {
+  try {
+    const params = new URLSearchParams({
+      graphId,
+      query,
+      topK: topK.toString(),
+    });
+    if (apiKey) {
+      params.set('apiKey', apiKey);
+    }
+
+    const response = await fetch(`/api/chunk-embeddings?${params}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('[chunk-embedding] 검색 실패:', data.error);
+      return [];
+    }
+
+    return data.results || [];
+  } catch (err) {
+    console.error('[chunk-embedding] 검색 오류:', err);
+    return [];
+  }
 }

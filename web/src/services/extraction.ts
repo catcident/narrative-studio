@@ -1978,6 +1978,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       mood: s.mood,
       charactersPresent: entitiesInScene,
       activeEdges,
+      sourceFile: fileName || undefined,  // 이 장면이 추출된 원본 파일명
     };
   });
 
@@ -1995,14 +1996,24 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
   // 소스 파일 정보 생성 - 기존 파일 목록에 추가
   const existingSourceFiles = existingGraph?.metadata?.sourceFiles || [];
+  const newSourceFileId = `F${String(existingSourceFiles.length + 1).padStart(4, '0')}`;
   const newSourceFile = (fileName && originalText) ? {
-    id: `F${String(existingSourceFiles.length + 1).padStart(4, '0')}`,
+    id: newSourceFileId,
     fileName,
     uploadedAt: now,
     text: originalText,
     charCount: originalText.length,
   } : null;
   const sourceFiles = newSourceFile ? [...existingSourceFiles, newSourceFile] : existingSourceFiles;
+
+  // 새로 생성된 장면들에 sourceFileId 추가
+  if (newSourceFile) {
+    Object.values(snapshots).forEach((snap: any) => {
+      if (snap.sourceFile === fileName && !snap.sourceFileId) {
+        snap.sourceFileId = newSourceFileId;
+      }
+    });
+  }
 
   // 기존 타임라인과 병합
   const mergedTimeline = existingGraph ? [...(existingGraph.timeline || []), ...timeline] : timeline;
