@@ -111,15 +111,10 @@ export function DetailPanel() {
 
   // 현재 장면 정보
   const currentScene = selectedSceneId && knowledgeGraph?.snapshots ? knowledgeGraph.snapshots[selectedSceneId] : null;
-  // ⚠️ 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
+  // ⚠️ 정렬: order 필드 기준 (파일 순서 변경 시 업데이트됨)
   const sceneIndex = selectedSceneId && knowledgeGraph?.snapshots
     ? Object.values(knowledgeGraph.snapshots)
-        .sort((a, b) => {
-          const chapterA = a.chapterNumber || 0;
-          const chapterB = b.chapterNumber || 0;
-          if (chapterA !== chapterB) return chapterA - chapterB;
-          return (a.order || 0) - (b.order || 0);
-        })
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
         .findIndex(s => s.sceneId === selectedSceneId) + 1
     : 0;
 
@@ -282,9 +277,6 @@ export function DetailPanel() {
                     .sort((a, b) => {
                       const snapshotA = knowledgeGraph.snapshots[a];
                       const snapshotB = knowledgeGraph.snapshots[b];
-                      const chapterA = snapshotA?.chapterNumber || 0;
-                      const chapterB = snapshotB?.chapterNumber || 0;
-                      if (chapterA !== chapterB) return chapterA - chapterB;
                       return (snapshotA?.order || 0) - (snapshotB?.order || 0);
                     })
                     .map((sceneId) => {
