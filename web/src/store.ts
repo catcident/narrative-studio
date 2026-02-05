@@ -22,6 +22,9 @@ interface AppState {
   sceneRangeEnd: string | null;    // 범위 선택 끝
   viewMode: ViewMode;
 
+  // 채팅 관련
+  chatMentionedEntities: string[];  // 채팅에서 언급된 엔티티 ID 목록
+
   // Billing
   subscription: BillingSubscription | null;
   currentUsage: CurrentUsage;
@@ -40,6 +43,7 @@ interface AppState {
   selectScene: (sceneId: string | null) => void;
   selectSceneRange: (start: string | null, end: string | null) => void;
   setViewMode: (mode: ViewMode) => void;
+  setChatMentionedEntities: (entityIds: string[]) => void;
   reset: () => void;
 
   // Billing 액션
@@ -68,6 +72,7 @@ export const useStore = create<AppState>((set, get) => ({
   sceneRangeStart: null,
   sceneRangeEnd: null,
   viewMode: 'graph',
+  chatMentionedEntities: [],
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
@@ -87,6 +92,7 @@ export const useStore = create<AppState>((set, get) => ({
   selectScene: (selectedSceneId) => set({ selectedSceneId, sceneRangeStart: null, sceneRangeEnd: null }),
   selectSceneRange: (sceneRangeStart, sceneRangeEnd) => set({ sceneRangeStart, sceneRangeEnd, selectedSceneId: null }),
   setViewMode: (viewMode) => set({ viewMode }),
+  setChatMentionedEntities: (chatMentionedEntities) => set({ chatMentionedEntities }),
   reset: () => set({
     knowledgeGraph: null,
     originalText: null,
@@ -96,6 +102,7 @@ export const useStore = create<AppState>((set, get) => ({
     selectedSceneId: null,
     sceneRangeStart: null,
     sceneRangeEnd: null,
+    chatMentionedEntities: [],
     error: null,
     currentUsage: initialUsage,
     showUsageSummary: false,

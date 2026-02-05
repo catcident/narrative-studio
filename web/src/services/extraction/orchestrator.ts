@@ -6,7 +6,7 @@ import type { NovelKnowledgeGraph } from '../../types';
 import { DEFAULT_MODEL } from '../../types';
 import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions } from './types';
 import { EMPTY_CHUNK_DATA } from './types';
-import { splitIntoSmartChunks } from './chunker';
+import { splitIntoSmartChunksWithSource } from './chunker';
 import { selectRelevantEntities, filterEntitiesByNames, buildAccumulatedGraph } from './selector';
 import { extractFromChunk } from './extractor';
 import { mergeExtractions, inferMissingRelationships, buildKnowledgeGraph } from './merger';
@@ -51,10 +51,11 @@ export function clearProgress(): void {
 }
 
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
-  const { text, title, onProgress, resumeFrom, model, fileName, existingGraph, onChunkBilling } = options;
+  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling } = options;
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
+  let chunkSourceFileIndices: number[] = [];  // 각 청크가 어느 파일에서 왔는지 추적
   let allExtracted: ChunkExtractedData[] = [];
   let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
@@ -65,14 +66,17 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   // 이어하기인 경우
   if (resumeFrom) {
     chunks = resumeFrom.chunks;
+    chunkSourceFileIndices = resumeFrom.chunkSourceFileIndices || chunks.map(() => 0);
     allExtracted = resumeFrom.allExtracted;
     knownEntities = [...resumeFrom.knownEntities];
     startChunk = resumeFrom.processedChunks;
     console.log(`[extraction] 이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
   } else {
-    // 새로 시작: 스마트 청크 분할 사용
-    chunks = splitIntoSmartChunks(text, CHUNK_SIZE);
+    // 새로 시작: 스마트 청크 분할 사용 (파일 인덱스 추적 포함)
+    const chunksWithSource = splitIntoSmartChunksWithSource(text, CHUNK_SIZE);
+    chunks = chunksWithSource.map(c => c.content);
+    chunkSourceFileIndices = chunksWithSource.map(c => c.sourceFileIndex);
 
     // 기존 지식그래프가 있으면 LLM 선별 방식 사용 예정
     // knownEntities는 비워두고, 각 청크 처리 시 선별하여 전달
@@ -102,10 +106,11 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       allExtracted,
       knownEntities,
       chunks,
+      chunkSourceFileIndices,
       timestamp: Date.now(),
       model: useModel,
       originalText: resumeFrom?.originalText || text,
-      fileName: resumeFrom?.fileName || fileName,
+      fileNames: resumeFrom?.fileNames || fileNames,
     });
   };
 
@@ -254,8 +259,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   }
   onProgress?.('인물 정보 병합 중...');
 
-  // 결과 병합
-  const merged = mergeExtractions(allExtracted);
+  // 결과 병합 (청크별 파일 인덱스 전달)
+  const merged = mergeExtractions(allExtracted, chunkSourceFileIndices);
 
   // 후처리: 누락된 관계 자동 생성
   onProgress?.('관계 검증 및 보완 중...');
@@ -263,6 +268,6 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
   // 이어하기인 경우 저장된 원본 텍스트/파일명 사용
   const finalText = resumeFrom?.originalText || text;
-  const finalFileName = resumeFrom?.fileName || fileName;
-  return buildKnowledgeGraph(validated, title, useModel, finalFileName, finalText, existingGraph);
+  const finalFileNames = resumeFrom?.fileNames || fileNames;
+  return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph);
 }

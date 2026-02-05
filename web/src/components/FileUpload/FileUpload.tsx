@@ -4,9 +4,10 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
-import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
+import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
+import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
@@ -288,7 +289,7 @@ export function FileUpload() {
         title: combinedTitle,
         onProgress: makeProgressCallback(),
         model: currentModel,
-        fileName: sortedFiles[0].name,
+        fileNames: sortedFiles.map(f => f.name),
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
@@ -380,7 +381,7 @@ export function FileUpload() {
         title: knowledgeGraph.metadata.title,
         onProgress: makeProgressCallback('추가'),
         model: currentModel,
-        fileName: finalFileName,
+        fileNames: [finalFileName],
         existingGraph: knowledgeGraph,
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
@@ -496,7 +497,9 @@ export function FileUpload() {
         title,
         onProgress: makeProgressCallback(),
         model: currentModel,
-        fileName: sourceFileName,
+        fileNames: fileInfos.length > 0
+          ? fileInfos.map(f => f.fileName)
+          : (sourceFileName ? [sourceFileName] : undefined),
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
       });
 
@@ -509,6 +512,52 @@ export function FileUpload() {
 
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 엔티티 임베딩 + 청크 임베딩 생성 (백그라운드)
+      setProgress('임베딩 생성 중...');
+      const embeddingEntities = Object.values(newKnowledgeGraph.entities);
+
+      if (embeddingEntities.length > 0) {
+        createEntityEmbeddings(saved.id, embeddingEntities, getApiKey() || undefined)
+          .then(result => {
+            if (result.success) {
+              console.log(`[embedding] ${result.count}개 엔티티 임베딩 완료`);
+            } else {
+              console.warn('[embedding] 임베딩 생성 실패:', result.error);
+            }
+          })
+          .catch(err => console.warn('[embedding] 임베딩 오류:', err));
+      }
+
+      if (text.length > 0) {
+        const fileParts = text.split(FILE_SEPARATOR);
+        const chunks: ChunkData[] = [];
+        let chunkIndex = 0;
+
+        fileParts.forEach((filePart, fileIdx) => {
+          const fileName = fileInfos.length > fileIdx ? fileInfos[fileIdx].fileName : undefined;
+          const chunkSize = 5000;
+          for (let ci = 0; ci < filePart.length; ci += chunkSize) {
+            chunks.push({
+              index: chunkIndex++,
+              content: filePart.slice(ci, ci + chunkSize),
+              sourceFile: fileName,
+            });
+          }
+        });
+
+        if (chunks.length > 0) {
+          createChunkEmbeddings(saved.id, chunks, getApiKey() || undefined)
+            .then(result => {
+              if (result.success) {
+                console.log(`[chunk-embedding] ${result.count}개 청크 임베딩 완료`);
+              } else {
+                console.warn('[chunk-embedding] 청크 임베딩 실패:', result.error);
+              }
+            })
+            .catch(err => console.warn('[chunk-embedding] 청크 임베딩 오류:', err));
+        }
+      }
 
       setExistingTitles(prev => [...prev, title]);
       setBookTitle('');

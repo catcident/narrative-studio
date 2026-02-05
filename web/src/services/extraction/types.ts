@@ -77,10 +77,11 @@ export interface ExtractionProgress {
   allExtracted: ChunkExtractedData[];
   knownEntities: KnownEntity[];
   chunks: string[];
+  chunkSourceFileIndices?: number[];  // 각 청크가 어느 파일에서 왔는지
   timestamp: number;
   model?: string;  // 사용된 모델
   originalText?: string;  // 원본 텍스트
-  fileName?: string;  // 원본 파일명
+  fileNames?: string[];  // 원본 파일명 배열
 }
 
 export type ProgressCallback = (msg: string, current?: number, total?: number, estimatedMinutes?: number | null) => void;
@@ -92,7 +93,7 @@ export interface ExtractionOptions {
   onProgress?: ProgressCallback;
   resumeFrom?: ExtractionProgress;
   model?: string;
-  fileName?: string;
+  fileNames?: string[];  // 원본 파일명 배열
   existingGraph?: NovelKnowledgeGraph;
   onChunkBilling?: ChunkBillingCallback;
 }
