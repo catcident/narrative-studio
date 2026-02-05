@@ -92,9 +92,9 @@ export function ChatMentionedPanel() {
       return { initialNodes: [], initialEdges: [] };
     }
 
-    // 배치 영역
+    // 배치 영역 - 높이 두 배
     const width = 480;
-    const height = 200;
+    const height = 380;
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -108,44 +108,45 @@ export function ChatMentionedPanel() {
         x = centerX;
         y = centerY;
       } else if (count === 2) {
-        x = index === 0 ? centerX - 120 : centerX + 120;
+        x = index === 0 ? centerX - 140 : centerX + 140;
         y = centerY;
       } else if (count <= 4) {
-        // 가로 일렬
-        const spacing = width / (count + 1);
-        x = spacing * (index + 1);
-        y = centerY;
+        // 2x2 그리드
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        x = centerX + (col === 0 ? -100 : 100);
+        y = centerY + (row === 0 ? -80 : 80);
       } else {
-        // 타원형 배치
+        // 원형 배치
         const angle = (2 * Math.PI * index) / count - Math.PI / 2;
-        const radiusX = 180;
-        const radiusY = 70;
-        x = centerX + radiusX * Math.cos(angle);
-        y = centerY + radiusY * Math.sin(angle);
+        const radius = Math.min(160, 80 + count * 12);
+        x = centerX + radius * Math.cos(angle);
+        y = centerY + radius * Math.sin(angle);
       }
 
       const color = CATEGORY_COLORS[entity.category] || '#6b7280';
 
       return {
         id: entity.id,
-        position: { x: x - 20, y: y - 20 },
-        data: { label: entity.name.slice(0, 4), entity },
+        position: { x: x - 30, y: y - 30 },
+        data: { label: entity.name.slice(0, 6), entity },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         style: {
           background: color,
           color: '#fff',
-          border: `2px solid ${color}`,
+          border: `3px solid ${color}`,
           borderRadius: '50%',
-          width: 40,
-          height: 40,
+          width: 60,
+          height: 60,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '10px',
+          fontSize: '11px',
           fontWeight: 600,
-          padding: '2px',
+          padding: '4px',
           cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
         },
       };
     });
@@ -156,10 +157,22 @@ export function ChatMentionedPanel() {
         id: `edge-${index}`,
         source,
         target,
+        label: edge.type,
+        labelStyle: {
+          fontSize: '10px',
+          fontWeight: 500,
+          fill: '#374151',
+        },
+        labelBgStyle: {
+          fill: '#ffffff',
+          fillOpacity: 0.85,
+        },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 3,
         style: {
           stroke: edge.sentiment === 'positive' ? '#22c55e' :
-                  edge.sentiment === 'negative' ? '#ef4444' : '#94a3b8',
-          strokeWidth: 1.5,
+                  edge.sentiment === 'negative' ? '#ef4444' : '#6b7280',
+          strokeWidth: 2,
         },
         data: { edge },
       };
@@ -233,9 +246,9 @@ export function ChatMentionedPanel() {
         </div>
       </div>
 
-      {/* 미니 관계도 - 적당한 높이 */}
+      {/* 미니 관계도 - 넉넉한 높이 */}
       {mentionedEntities.length >= 2 && (
-        <div className="flex-shrink-0 h-[220px] border-b border-gray-100 bg-gray-50/50">
+        <div className="flex-shrink-0 h-[400px] border-b border-gray-100 bg-gray-50/50">
           <ReactFlow
             nodes={nodes}
             edges={edges}
