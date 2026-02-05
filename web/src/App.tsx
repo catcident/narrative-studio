@@ -17,6 +17,9 @@ import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
 import { UserMenu } from './components/UserMenu';
+import { CreditBadge } from './components/CreditBadge';
+import { UsageSummary } from './components/UsageSummary';
+import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
 import type { NovelKnowledgeGraph } from './types';
@@ -37,10 +40,17 @@ function App() {
     selectedSceneId, selectScene,
     sceneRangeStart, sceneRangeEnd, selectSceneRange
   } = useStore();
+  const { loadSubscription } = useStore();
   const [showDataManager, setShowDataManager] = useState(false);
+  const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [isAddingFile, setIsAddingFile] = useState(false);
   const [addProgress, setAddProgress] = useState('');
+
+  // 로그인 시 구독 정보 로드
+  useEffect(() => {
+    loadSubscription();
+  }, [loadSubscription]);
 
   // 지식 그래프가 변경되면 자동 저장
   // FileUpload에서 저장한 경우 currentDataId가 이미 있으므로 중복 저장 방지
@@ -150,8 +160,11 @@ function App() {
   if (!knowledgeGraph) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6 relative">
-        {/* 로그아웃 버튼 (우상단) */}
-        <UserMenu className="absolute top-4 right-4" />
+        {/* 우상단: 크레딧 + 유저메뉴 */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <CreditBadge onClick={() => setShowSubscriptionPage(true)} />
+          <UserMenu />
+        </div>
 
         {/* 상단: 업로드 영역 */}
         <div className="w-full max-w-xl">
@@ -182,6 +195,12 @@ function App() {
         <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
           <SavedDataGrid onLoad={handleLoadKnowledgeGraph} />
         </div>
+
+        {/* 모달 (업로드 화면에서도 접근 가능) */}
+        {showSubscriptionPage && (
+          <SubscriptionPage onClose={() => setShowSubscriptionPage(false)} />
+        )}
+        <UsageSummary />
       </div>
     );
   }
@@ -365,6 +384,9 @@ function App() {
               </span>
             )}
 
+            {/* 크레딧 배지 */}
+            <CreditBadge onClick={() => setShowSubscriptionPage(true)} />
+
             {/* 데이터 관리 */}
             <button
               onClick={() => setShowDataManager(true)}
@@ -470,6 +492,14 @@ function App() {
           onLoad={handleLoadKnowledgeGraph}
         />
       )}
+
+      {/* 구독 관리 모달 */}
+      {showSubscriptionPage && (
+        <SubscriptionPage onClose={() => setShowSubscriptionPage(false)} />
+      )}
+
+      {/* 사용량 요약 모달 */}
+      <UsageSummary />
     </div>
   );
 }

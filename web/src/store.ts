@@ -3,7 +3,8 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, BillingSubscription, CurrentUsage, ChunkUsage } from './types';
+import { getSubscription } from './services/billing';
 
 interface AppState {
   // 데이터
@@ -21,6 +22,11 @@ interface AppState {
   sceneRangeEnd: string | null;    // 범위 선택 끝
   viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
 
+  // Billing
+  subscription: BillingSubscription | null;
+  currentUsage: CurrentUsage;
+  showUsageSummary: boolean;
+
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
   setLoading: (loading: boolean) => void;
@@ -31,9 +37,22 @@ interface AppState {
   selectSceneRange: (start: string | null, end: string | null) => void;
   setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source') => void;
   reset: () => void;
+
+  // Billing 액션
+  loadSubscription: () => Promise<void>;
+  updateCreditBalance: (n: number) => void;
+  addChunkUsage: (chunk: ChunkUsage) => void;
+  resetCurrentUsage: () => void;
+  setShowUsageSummary: (show: boolean) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
+const initialUsage: CurrentUsage = {
+  totalPromptTokens: 0,
+  totalCompletionTokens: 0,
+  chunks: [],
+};
+
+export const useStore = create<AppState>((set, get) => ({
   knowledgeGraph: null,
   originalText: null,
   currentDataId: null,
@@ -45,6 +64,9 @@ export const useStore = create<AppState>((set) => ({
   sceneRangeStart: null,
   sceneRangeEnd: null,
   viewMode: 'graph',
+  subscription: null,
+  currentUsage: initialUsage,
+  showUsageSummary: false,
 
   setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set({
     knowledgeGraph,
@@ -70,6 +92,35 @@ export const useStore = create<AppState>((set) => ({
     sceneRangeEnd: null,
     error: null,
   }),
+
+  // Billing 액션
+  loadSubscription: async () => {
+    const info = await getSubscription();
+    if (info) {
+      set({
+        subscription: {
+          plan: info.plan.code,
+          planName: info.plan.name,
+          creditBalance: info.credit_balance,
+          features: info.features,
+          creditResetAt: info.credit_reset_at,
+          status: info.status,
+        },
+      });
+    }
+  },
+  updateCreditBalance: (n) => set((state) => ({
+    subscription: state.subscription ? { ...state.subscription, creditBalance: n } : null,
+  })),
+  addChunkUsage: (chunk) => set((state) => ({
+    currentUsage: {
+      totalPromptTokens: state.currentUsage.totalPromptTokens + chunk.promptTokens,
+      totalCompletionTokens: state.currentUsage.totalCompletionTokens + chunk.completionTokens,
+      chunks: [...state.currentUsage.chunks, chunk],
+    },
+  })),
+  resetCurrentUsage: () => set({ currentUsage: initialUsage }),
+  setShowUsageSummary: (show) => set({ showUsageSummary: show }),
 }));
 
 // 셀렉터 헬퍼
@@ -86,6 +137,9 @@ export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
     (edge) => edge.entities.includes(entityId)
   );
 };
+
+export const useBillingSubscription = () => useStore((s) => s.subscription);
+export const useCreditBalance = () => useStore((s) => s.subscription?.creditBalance ?? null);
 
 export const useCharacters = (): Entity[] => {
   const { knowledgeGraph } = useStore();

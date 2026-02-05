@@ -75,6 +75,15 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+
+    // usage 데이터를 _billing 필드로 클라이언트에 전달
+    if (data.usage) {
+      data._billing = {
+        prompt_tokens: data.usage.prompt_tokens || 0,
+        completion_tokens: data.usage.completion_tokens || 0,
+      };
+    }
+
     console.log(`[analyze] 응답 성공`);
     return NextResponse.json(data);
   } catch (err) {

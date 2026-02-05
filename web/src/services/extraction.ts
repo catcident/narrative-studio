@@ -666,7 +666,8 @@ export async function extractKnowledgeGraph(
   resumeFrom?: ExtractionProgress,
   model?: string,  // 사용할 모델 ID
   fileName?: string,  // 원본 파일명
-  existingGraph?: NovelKnowledgeGraph  // 기존 지식그래프 (파일 추가 시)
+  existingGraph?: NovelKnowledgeGraph,  // 기존 지식그래프 (파일 추가 시)
+  onChunkBilling?: (chunkIndex: number, billing: { prompt_tokens: number; completion_tokens: number; model: string }) => void
 ): Promise<NovelKnowledgeGraph> {
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
@@ -755,6 +756,15 @@ export async function extractKnowledgeGraph(
       console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
       const extracted = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
       if (extracted) {
+        // _billing 정보를 콜백으로 전달
+        if (extracted._billing && onChunkBilling) {
+          onChunkBilling(i, {
+            prompt_tokens: extracted._billing.prompt_tokens || 0,
+            completion_tokens: extracted._billing.completion_tokens || 0,
+            model: useModel,
+          });
+        }
+        delete extracted._billing;
         allExtracted.push(extracted);
 
         // 이 청크에서 발견된 모든 엔티티를 다음 청크를 위해 저장
@@ -1002,6 +1012,8 @@ ${limitedCategoryEntities.map(e => {
     }
   }
 
+  // _billing 정보 포함하여 반환
+  extracted._billing = data._billing || null;
   return extracted;
 }
 

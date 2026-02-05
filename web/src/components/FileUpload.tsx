@@ -4,9 +4,11 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck, ChevronUp, ChevronDown } from 'lucide-react';
-import { useStore } from '../store';
+import { useStore, useBillingSubscription, useCreditBalance } from '../store';
 import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
+import { deductCredits, getCreditBalance as fetchCreditBalance, estimateCredits } from '../services/billing';
+import { UsageEstimate } from './UsageEstimate';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
 // 텍스트 파일 인코딩 감지 및 디코딩
@@ -56,7 +58,8 @@ async function readTextFileWithEncoding(file: File): Promise<string> {
 }
 
 export function FileUpload() {
-  const { knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, error } = useStore();
+  const { knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, error, addChunkUsage, resetCurrentUsage, setShowUsageSummary, updateCreditBalance } = useStore();
+  const subscription = useBillingSubscription();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -87,6 +90,11 @@ export function FileUpload() {
   // 기존 지식그래프가 있으면 해당 모델로 고정
   const lockedModel = knowledgeGraph?.metadata?.model;
   const currentModel = lockedModel || selectedModel;
+
+  // 플랜에 따른 모델 필터링
+  const availableModels = subscription?.features?.models && subscription.features.models !== 'all'
+    ? AVAILABLE_MODELS.filter(m => (subscription.features.models as string[]).includes(m.id))
+    : AVAILABLE_MODELS;
 
   // 등록 가능 여부: 제목 + 작가 + (파일 또는 텍스트) 모두 필요 + 중복 아님
   const fullTitle = bookTitle.trim() && bookAuthor.trim()
@@ -584,12 +592,22 @@ export function FileUpload() {
   const handleRegister = useCallback(async () => {
     if (!canRegister) return;
 
+    // 잔액 확인
+    if (subscription) {
+      const balanceInfo = await fetchCreditBalance();
+      if (balanceInfo && balanceInfo.balance <= 0) {
+        setError('크레딧이 부족합니다. 크레딧을 충전해주세요.');
+        return;
+      }
+    }
+
     // 타이틀 형식: "제목 - 작가"
     const title = `${bookTitle.trim()} - ${bookAuthor.trim()}`;
 
     setLocalLoading(true);
     setLoading(true);
     setError(null);
+    resetCurrentUsage();
 
     try {
       let text = '';
@@ -644,7 +662,16 @@ export function FileUpload() {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, sourceFileName);
+      }, undefined, currentModel, sourceFileName, undefined,
+      // onChunkBilling: 각 청크의 billing 정보를 store에 누적
+      (chunkIndex, billing) => {
+        addChunkUsage({
+          chunkIndex,
+          promptTokens: billing.prompt_tokens,
+          completionTokens: billing.completion_tokens,
+          model: billing.model,
+        });
+      });
 
       // 작가 정보 추가
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
@@ -659,6 +686,27 @@ export function FileUpload() {
           text: f.text,
           charCount: f.text.length,
         }));
+      }
+
+      // 크레딧 차감 (구독이 있는 경우)
+      if (subscription) {
+        setProgress('크레딧 차감 중...');
+        const { currentUsage } = useStore.getState();
+        const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
+        if (totalTokens > 0) {
+          // estimateCredits로 실제 차감량 계산
+          const estimate = await estimateCredits(text.length, currentModel);
+          if (estimate) {
+            const result = await deductCredits(
+              estimate.estimated_credits,
+              `소설 분석: ${title}`,
+              { model: currentModel, chunks: currentUsage.chunks.length, totalTokens },
+            );
+            if (result) {
+              updateCreditBalance(result.balance_after);
+            }
+          }
+        }
       }
 
       // 저장하고 ID 받기
@@ -677,6 +725,9 @@ export function FileUpload() {
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
       setProgress(''); setProgressCurrent(0); setProgressTotal(0);       setSavedProgress(null);
+
+      // 사용량 요약 표시
+      setShowUsageSummary(true);
     } catch (err: any) {
       console.error('Extraction error:', err);
       setError(err.message || '처리 중 오류가 발생했습니다.');
@@ -685,7 +736,7 @@ export function FileUpload() {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, setKnowledgeGraph, setLoading, setError]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, setKnowledgeGraph, setLoading, setError, subscription, addChunkUsage, resetCurrentUsage, setShowUsageSummary, updateCreditBalance]);
 
   return (
     <div className="space-y-4">
@@ -784,7 +835,7 @@ export function FileUpload() {
                   : 'bg-white border-purple-300 text-gray-800'
               }`}
             >
-              {AVAILABLE_MODELS.map((model) => (
+              {availableModels.map((model) => (
                 <option key={model.id} value={model.id}>
                   {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
                 </option>
@@ -1040,6 +1091,14 @@ export function FileUpload() {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* 예상 사용량 */}
+          {(selectedFiles.length > 0 || directText.trim()) && (
+            <UsageEstimate
+              charCount={directText.trim() ? directText.length : selectedFiles.reduce((sum, f) => sum + f.size, 0)}
+              model={currentModel}
+            />
           )}
 
           {/* 등록 버튼 */}
