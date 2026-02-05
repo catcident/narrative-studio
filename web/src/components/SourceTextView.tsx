@@ -163,22 +163,40 @@ export function SourceTextView() {
         }
       });
 
-      // 5. hyperedges의 scenes 배열에서 삭제된 장면 제거
-      const newHyperedges = { ...knowledgeGraph.hyperedges };
-      Object.keys(newHyperedges).forEach(edgeId => {
-        const edge = newHyperedges[edgeId];
-        if (edge.scenes) {
+      // 5. hyperedges의 scenes 배열에서 삭제된 장면 제거 + 빈 관계 삭제
+      const newHyperedges: typeof knowledgeGraph.hyperedges = {};
+      Object.entries(knowledgeGraph.hyperedges).forEach(([edgeId, edge]) => {
+        const filteredScenes = edge.scenes?.filter(sceneId => !scenesToDelete.has(sceneId)) || [];
+        // 장면이 남아있는 관계만 유지
+        if (filteredScenes.length > 0) {
           newHyperedges[edgeId] = {
             ...edge,
-            scenes: edge.scenes.filter(sceneId => !scenesToDelete.has(sceneId)),
+            scenes: filteredScenes,
           };
         }
       });
 
-      // 6. sourceFiles에서 해당 파일 제거
+      // 6. 관계가 있는 엔티티 ID 수집 (양쪽 노드)
+      const entitiesWithRelations = new Set<string>();
+      Object.values(newHyperedges).forEach(edge => {
+        edge.nodes.forEach(nodeId => entitiesWithRelations.add(nodeId));
+      });
+
+      // 7. entities에서 관계가 없는 엔티티 삭제
+      const finalEntities: typeof knowledgeGraph.entities = {};
+      Object.entries(newEntities).forEach(([entityId, entity]) => {
+        // 관계가 있거나 장면이 남아있는 엔티티만 유지
+        const hasRelations = entitiesWithRelations.has(entityId);
+        const hasScenes = entity.scenes && entity.scenes.length > 0;
+        if (hasRelations || hasScenes) {
+          finalEntities[entityId] = entity;
+        }
+      });
+
+      // 8. sourceFiles에서 해당 파일 제거
       const newSourceFiles = remainingSourceFiles;
 
-      // 7. 새 지식 그래프 생성
+      // 9. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -186,12 +204,12 @@ export function SourceTextView() {
           sourceFiles: newSourceFiles,
           updatedAt: new Date().toISOString(),
         },
-        entities: newEntities,
+        entities: finalEntities,
         hyperedges: newHyperedges,
         snapshots: newSnapshots,
         stats: {
           ...knowledgeGraph.stats,
-          totalEntities: Object.keys(newEntities).length,
+          totalEntities: Object.keys(finalEntities).length,
           totalEdges: Object.keys(newHyperedges).length,
         },
       };
@@ -202,7 +220,9 @@ export function SourceTextView() {
       // 9. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
-      console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개`);
+      const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
+      const deletedEdges = Object.keys(knowledgeGraph.hyperedges).length - Object.keys(newHyperedges).length;
+      console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개, 삭제된 엔티티: ${deletedEntities}개, 삭제된 관계: ${deletedEdges}개`);
     } catch (error) {
       console.error('[SourceTextView] 파일 삭제 실패:', error);
       alert('파일 삭제에 실패했습니다.');
