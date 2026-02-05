@@ -106,7 +106,3 @@ export function updateBalanceCache(userId: string, balance: number): void {
   balanceCache.set(userId, { balance, cachedAt: Date.now() });
 }
 
-/** Invalidate cached balance for a user (call after balance changes) */
-export function invalidateBalanceCache(userId: string): void {
-  balanceCache.delete(userId);
-}

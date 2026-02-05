@@ -169,7 +169,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       if (billing?.insufficient_balance) {
         console.warn(`[extraction] 잔액 소진 (extractor): 청크 ${i + 1}에서 중단`);
         onProgress?.(`크레딧 부족으로 중단 (${i}/${totalChunks} 완료). 이어하기로 재개할 수 있습니다.`);
-        if (onChunkBilling) onChunkBilling(i, billing);
+        if (billing && onChunkBilling) onChunkBilling(i, billing);
         saveCurrentProgress(i);
         loopCompleted = false;
         break;

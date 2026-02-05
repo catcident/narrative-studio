@@ -174,9 +174,6 @@ if (balanceError) return NextResponse.json({ error: balanceError }, { status: 40
 
 // 차감 후 캐시 갱신
 updateBalanceCache(userId, balance_after);
-
-// 캐시 무효화 (필요 시)
-invalidateBalanceCache(userId);
 ```
 
 **⚠️ 주의**: `checkAnalyzeEligibility()`는 내부적으로 `requireAuth()`를 호출하지 않음.
