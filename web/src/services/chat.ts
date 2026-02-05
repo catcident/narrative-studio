@@ -161,6 +161,7 @@ ${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자
 
 /**
  * 채팅 메시지 전송 (스트리밍)
+ * 서버 API를 통해 호출 (환경변수 API 키 사용)
  */
 export async function sendChatMessage(
   messages: ChatMessage[],
@@ -168,10 +169,10 @@ export async function sendChatMessage(
   model: string = DEFAULT_MODEL,
   onChunk?: (chunk: string) => void
 ): Promise<string> {
-  const apiKey = localStorage.getItem('OPENROUTER_API_KEY');
-  if (!apiKey) {
-    throw new Error('API 키가 설정되지 않았습니다.');
-  }
+  // localStorage에서 사용자 API 키 가져오기 (없으면 서버 환경변수 사용)
+  const userApiKey = typeof window !== 'undefined'
+    ? localStorage.getItem('OPENROUTER_API_KEY') || ''
+    : '';
 
   // 마지막 사용자 메시지에서 관련 컨텍스트 추출
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
@@ -190,20 +191,16 @@ export async function sendChatMessage(
     }))
   ];
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  // 서버 API를 통해 호출 (환경변수 API 키 사용 가능)
+  const response = await fetch('/api/chat', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'StoryGraph Chat',
     },
     body: JSON.stringify({
       model,
       messages: apiMessages,
-      stream: !!onChunk,
-      temperature: 0.7,
-      max_tokens: 2000,
+      apiKey: userApiKey,  // 사용자 키가 있으면 전달, 없으면 서버 환경변수 사용
     }),
   });
 
