@@ -14,6 +14,53 @@ import { mergeExtractions, inferMissingRelationships, buildKnowledgeGraph } from
 // localStorage 키
 const PROGRESS_KEY = 'novel-extraction-progress';
 
+/**
+ * 남은 시간 추정.
+ * - 1~2개 데이터: 평균 청크 시간 × 남은 청크 수 (단순 추정)
+ * - 3개 이상: 선형 회귀 t(i) = a + b·i 모델로 남은 청크별 시간 합산
+ *
+ * @returns 남은 시간(ms) 또는 null (데이터 없음)
+ */
+function estimateRemainingMs(chunkTimes: number[], startChunkIndex: number, totalChunks: number): number | null {
+  const n = chunkTimes.length;
+  if (n === 0) return null;
+
+  const nextAbsIndex = startChunkIndex + n;
+  const remainingChunks = totalChunks - nextAbsIndex;
+  if (remainingChunks <= 0) return 0;
+
+  // 1~2개: 평균 기반 단순 추정
+  if (n < 3) {
+    const avg = chunkTimes.reduce((a, b) => a + b, 0) / n;
+    return Math.max(0, avg * remainingChunks);
+  }
+
+  // 3개 이상: 선형 회귀
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let k = 0; k < n; k++) {
+    const x = startChunkIndex + k;
+    sumX += x;
+    sumY += chunkTimes[k];
+    sumXY += x * chunkTimes[k];
+    sumX2 += x * x;
+  }
+
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return null;
+
+  const slope = Math.max(0, (n * sumXY - sumX * sumY) / denom);
+  const intercept = (sumY - slope * sumX) / n;
+
+  const lastObserved = chunkTimes[n - 1];
+  let remainingMs = 0;
+  for (let j = nextAbsIndex; j < totalChunks; j++) {
+    const predicted = intercept + slope * j;
+    remainingMs += Math.max(predicted, lastObserved);
+  }
+
+  return Math.max(0, remainingMs);
+}
+
 // 중간 결과 저장
 export function saveProgress(progress: ExtractionProgress): void {
   try {
@@ -111,7 +158,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   }
 
   let chunkTimes: number[] = [];
-  let chunkStartTime = Date.now();
+  let chunkStartTime = 0;
   let failedChunkCount = 0;
   let lastFailureReason = '';
 
@@ -134,17 +181,19 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   let loopCompleted = true;
 
   for (let i = startChunk; i < chunks.length; i++) {
-    const remaining = totalChunks - i;
-    // 최근 3개 청크의 평균 사용 — 축적 그래프 성장에 따른 시간 증가를 더 정확히 반영
-    const recentTimes = chunkTimes.slice(-3);
-    const avgTime = recentTimes.length > 0 ? recentTimes.reduce((a, b) => a + b, 0) / recentTimes.length : 0;
-    const estimatedRemaining = avgTime > 0 ? Math.ceil((remaining * avgTime) / 60000) : null;
-    const timeText = estimatedRemaining !== null ? ` (예상 ${estimatedRemaining}분 남음)` : '';
+    // 남은 시간 추정 (1개 이상 완료 시부터 표시, 3개 이상이면 선형 회귀)
+    const estimatedRemainingMs = estimateRemainingMs(chunkTimes, startChunk, totalChunks);
+    const estimatedRemainingSeconds = estimatedRemainingMs !== null ? Math.round(estimatedRemainingMs / 1000) : null;
+    const timeText = estimatedRemainingSeconds !== null
+      ? estimatedRemainingSeconds < 60
+        ? ` (예상 ${estimatedRemainingSeconds}초 남음)`
+        : ` (예상 ${Math.floor(estimatedRemainingSeconds / 60)}분 ${estimatedRemainingSeconds % 60}초 남음)`
+      : '';
     const msg = `청크 ${i + 1}/${totalChunks} 분석 중...${timeText}`;
     console.log(`[extraction] ${msg}`);
     const characterCount = knownEntities.filter(e => e.category === 'character').length;
     console.log(`[extraction] 청크 ${i + 1}: 현재까지 알려진 엔티티: ${knownEntities.length}개 (인물 ${characterCount}명)`);
-    onProgress?.(msg, i + 1, totalChunks, estimatedRemaining);
+    onProgress?.(msg, i + 1, totalChunks, estimatedRemainingSeconds);
 
     chunkStartTime = Date.now();
 
@@ -158,7 +207,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
       // 2개 이상의 알려진 엔티티가 있으면 LLM 선별 사용
       if (totalKnownCount > 1) {
-        onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemaining);
+        onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemainingSeconds);
 
         // LLM으로 관련 엔티티 선별
         const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);

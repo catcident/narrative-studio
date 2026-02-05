@@ -2,7 +2,7 @@
  * 파일 업로드 컴포넌트
  */
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useStore, useBillingSubscription, useModels } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
@@ -80,6 +80,7 @@ export function FileUpload() {
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedSecondsRef = useRef(0);
   const [estimatedTotalSeconds, setEstimatedTotalSeconds] = useState<number | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
@@ -140,10 +141,17 @@ export function FileUpload() {
   // 프로그레스 콜백 생성 헬퍼
   const makeProgressCallback = useCallback(
     (prefix?: string) =>
-      (msg: string, current?: number, total?: number) => {
+      (msg: string, current?: number, total?: number, estimatedRemainingSeconds?: number | null) => {
         setProgress(prefix ? `${prefix}: ${msg}` : msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
+        if (estimatedRemainingSeconds !== undefined) {
+          setEstimatedTotalSeconds(
+            estimatedRemainingSeconds !== null
+              ? Math.round(elapsedSecondsRef.current + estimatedRemainingSeconds)
+              : null
+          );
+        }
       },
     [],
   );
@@ -215,22 +223,19 @@ export function FileUpload() {
   useEffect(() => {
     if (!localLoading) {
       setElapsedSeconds(0);
+      elapsedSecondsRef.current = 0;
       setEstimatedTotalSeconds(null);
       return;
     }
     const timer = setInterval(() => {
-      setElapsedSeconds(s => s + 1);
+      setElapsedSeconds(s => {
+        const next = s + 1;
+        elapsedSecondsRef.current = next;
+        return next;
+      });
     }, 1000);
     return () => clearInterval(timer);
   }, [localLoading]);
-
-  // 청크가 바뀔 때만 전체 예상 시간 계산
-  useEffect(() => {
-    if (progressCurrent > 0 && progressTotal > 0 && elapsedSeconds > 0) {
-      const estimated = Math.round((elapsedSeconds / progressCurrent) * progressTotal);
-      setEstimatedTotalSeconds(estimated);
-    }
-  }, [progressCurrent, progressTotal, elapsedSeconds]);
 
   // ==================== 단순 핸들러 ====================
 
