@@ -287,6 +287,32 @@ export async function sendChatMessage(
     ? extractRelevantContext(lastUserMessage.content, context.knowledgeGraph, context.originalText)
     : '';
 
+  // 🔍 사고 과정 로깅 (개발자 도구에서 확인 가능)
+  console.group('🧠 채팅 사고 과정');
+  console.log('📝 사용자 질문:', lastUserMessage?.content);
+  console.log('📊 지식 그래프 정보:', {
+    제목: context.knowledgeGraph.metadata.title,
+    엔티티수: Object.keys(context.knowledgeGraph.entities).length,
+    관계수: Object.keys(context.knowledgeGraph.hyperedges).length,
+    장면수: Object.keys(context.knowledgeGraph.snapshots).length,
+  });
+
+  // 질문에서 찾은 엔티티
+  const foundEntityIds = lastUserMessage
+    ? findMentionedEntityIds(lastUserMessage.content, context.knowledgeGraph.entities)
+    : [];
+  const foundEntities = foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean);
+  console.log('🔍 질문에서 찾은 엔티티:', foundEntities.length > 0 ? foundEntities : '(없음)');
+
+  // 관련 관계
+  const relatedEdges = findConnectedEdges(foundEntityIds, context.knowledgeGraph.hyperedges);
+  console.log('🔗 관련 관계:', relatedEdges.length > 0
+    ? relatedEdges.slice(0, 10).map(e => `[${e.type}] ${e.entities.map(id => context.knowledgeGraph.entities[id]?.name || id).join(' ↔ ')}`)
+    : '(없음)');
+
+  console.log('📄 생성된 컨텍스트 (LLM에 전달):\n', relevantContext || '(컨텍스트 없음)');
+  console.groupEnd();
+
   const apiMessages = [
     { role: 'system', content: buildSystemPrompt(context) },
     ...messages.map(m => ({
