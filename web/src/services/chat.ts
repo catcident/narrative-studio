@@ -595,7 +595,9 @@ function extractRelevantContext(
       if (edge.scenes?.length) {
         const sceneInfo = edge.scenes.slice(0, 3).map(sceneId => {
           const scene = knowledgeGraph.snapshots[sceneId];
-          return scene ? `${sceneId}(${scene.location || '?'})` : sceneId;
+          // order 필드 사용 (파일 순서 변경 시 업데이트됨)
+          const sceneNum = scene?.order || sceneId.replace('S', '').replace(/^0+/, '');
+          return scene ? `장면 ${sceneNum} (${scene.location || '?'})` : `장면 ${sceneNum}`;
         }).join(', ');
         contexts.push(`- 등장 장면: ${sceneInfo}`);
       }
@@ -651,7 +653,9 @@ function extractRelevantContext(
         const chars = scene.charactersPresent
           .map(id => knowledgeGraph.entities[id]?.name || id)
           .join(', ');
-        contexts.push(`### ${scene.sceneId} (${scene.location || '?'}, ${scene.time || '?'})`);
+        // order 필드 사용 (파일 순서 변경 시 업데이트됨)
+        const sceneNum = scene.order || scene.sceneId.replace('S', '').replace(/^0+/, '');
+        contexts.push(`### 장면 ${sceneNum} (${scene.location || '?'}, ${scene.time || '?'})`);
         contexts.push(`- 등장: ${chars}`);
         if (scene.summary) {
           contexts.push(`- 요약: ${scene.summary}`);
