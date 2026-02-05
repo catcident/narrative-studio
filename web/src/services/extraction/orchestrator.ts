@@ -50,7 +50,7 @@ export function clearProgress(): void {
 }
 
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
-  const { text, title, onProgress, resumeFrom, model, fileName, existingGraph, onChunkBilling } = options;
+  const { text, title, onProgress, resumeFrom, model, fileName, existingGraph, onChunkBilling, sessionId } = options;
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
@@ -134,7 +134,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemaining);
 
         // LLM으로 관련 엔티티 선별
-        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
+        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel, sessionId);
 
         // selector billing 추적
         if (selectionBilling && onChunkBilling) {
@@ -152,7 +152,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       }
 
       console.log(`[extraction] 청크 ${i + 1}: 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
-      const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
+      const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, sessionId);
       if (extracted) {
         // billing 정보를 콜백으로 전달
         if (billing && onChunkBilling) {

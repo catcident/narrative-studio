@@ -70,6 +70,8 @@ export interface ExtractionOptions {
   fileName?: string;
   existingGraph?: NovelKnowledgeGraph;
   onChunkBilling?: ChunkBillingCallback;
+  /** 분석 세션 ID (서버 측 토큰 추적용) */
+  sessionId?: string;
 }
 
 // --- API 키 유틸리티 (순환 의존 방지를 위해 여기에 배치) ---

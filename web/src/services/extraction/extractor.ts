@@ -10,7 +10,8 @@ export async function extractFromChunk(
   chunkText: string,
   chunkNum: number,
   knownEntities: KnownEntity[] = [],
-  model?: string
+  model?: string,
+  sessionId?: string,
 ): Promise<ChunkExtractionResult> {
   // 이전에 발견된 엔티티 정보를 프롬프트에 추가 (카테고리별로 구분)
   let previousEntitiesText = '';
@@ -59,7 +60,7 @@ ${limitedCategoryEntities.map(e => {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model }),
+    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model, sessionId }),
   }, 150000); // 2.5분 타임아웃
 
   if (!response.ok) {

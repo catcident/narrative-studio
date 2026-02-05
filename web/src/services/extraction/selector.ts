@@ -73,7 +73,8 @@ function allEntityNames(graph: NovelKnowledgeGraph): string[] {
 export async function selectRelevantEntities(
   chunkText: string,
   graph: NovelKnowledgeGraph,
-  model?: string
+  model?: string,
+  sessionId?: string,
 ): Promise<SelectionResult> {
   // 엔티티가 1개 이하면 선별 없이 전체 반환
   const entityCount = Object.keys(graph.entities).length;
@@ -106,7 +107,8 @@ export async function selectRelevantEntities(
       body: JSON.stringify({
         prompt,
         apiKey: userApiKey || undefined,
-        model: selectionModel
+        model: selectionModel,
+        sessionId,
       }),
     }, 30000);  // 30초 타임아웃 (빠른 작업)
 
