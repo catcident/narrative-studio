@@ -179,7 +179,7 @@ export function SourceTextView() {
       // 6. 관계가 있는 엔티티 ID 수집 (양쪽 노드)
       const entitiesWithRelations = new Set<string>();
       Object.values(newHyperedges).forEach(edge => {
-        edge.nodes.forEach(nodeId => entitiesWithRelations.add(nodeId));
+        edge.entities.forEach(entityId => entitiesWithRelations.add(entityId));
       });
 
       // 7. entities에서 관계가 없는 엔티티 삭제
