@@ -7,7 +7,7 @@ import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files,
 import { useStore, useBillingSubscription, useCreditBalance } from '../store';
 import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
-import { deductCredits, getCreditBalance as fetchCreditBalance, estimateCredits } from '../services/billing';
+import { getCreditBalance as fetchCreditBalance, estimateCredits, createBillingCallback, deductAfterSave, deductPartial } from '../services/billing';
 import { UsageEstimate } from './UsageEstimate';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
@@ -174,6 +174,7 @@ export function FileUpload() {
     setLocalLoading(true);
     setLoading(true);
     setError(null);
+    resetCurrentUsage();
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
@@ -181,23 +182,35 @@ export function FileUpload() {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, savedProgress);
+      }, savedProgress, undefined, undefined, undefined,
+      createBillingCallback(addChunkUsage));
 
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
+      if (subscription) {
+        setProgress('크레딧 차감 중...');
+        const { currentUsage } = useStore.getState();
+        await deductAfterSave(saved.id, savedProgress.title, currentModel, currentUsage, updateCreditBalance);
+      }
+
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
       resetProgressState();
+      setShowUsageSummary(true);
     } catch (err: any) {
       console.error('Resume error:', err);
+      if (subscription) {
+        const { currentUsage } = useStore.getState();
+        await deductPartial(savedProgress.title, currentModel, currentUsage, updateCreditBalance);
+      }
       setError(err.message || '이어하기 중 오류가 발생했습니다.');
       resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [savedProgress, setKnowledgeGraph, setLoading, setError, resetProgressState]);
+  }, [savedProgress, setKnowledgeGraph, setLoading, setError, resetProgressState, currentModel, subscription, addChunkUsage, resetCurrentUsage, updateCreditBalance, setShowUsageSummary]);
 
   // 저장된 진행상황 삭제
   const handleClearProgress = useCallback(() => {
@@ -247,6 +260,7 @@ export function FileUpload() {
     setLocalLoading(true);
     setLoading(true);
     setError(null);
+    resetCurrentUsage();
     setProgress(`${sortedFiles.length}개 파일 읽는 중...`);
 
     try {
@@ -301,7 +315,8 @@ export function FileUpload() {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, sortedFiles[0].name);
+      }, undefined, currentModel, sortedFiles[0].name, undefined,
+      createBillingCallback(addChunkUsage));
 
       // 여러 파일인 경우 sourceFiles에 모든 파일 정보 추가
       if (sortedFiles.length > 1) {
@@ -324,6 +339,12 @@ export function FileUpload() {
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
+      if (subscription) {
+        setProgress('크레딧 차감 중...');
+        const { currentUsage } = useStore.getState();
+        await deductAfterSave(saved.id, combinedTitle, currentModel, currentUsage, updateCreditBalance);
+      }
+
       // 입력 필드 초기화
       setBookTitle('');
       setBookAuthor('');
@@ -331,21 +352,28 @@ export function FileUpload() {
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
       resetProgressState();
+      setShowUsageSummary(true);
     } catch (err: any) {
       console.error('Extraction error:', err);
+      if (subscription) {
+        const combinedTitle = bookTitle.trim() || 'unknown';
+        const { currentUsage } = useStore.getState();
+        await deductPartial(combinedTitle, currentModel, currentUsage, updateCreditBalance);
+      }
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
       resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState]);
+  }, [setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState, subscription, addChunkUsage, resetCurrentUsage, updateCreditBalance, setShowUsageSummary]);
 
   const handleFile = useCallback(async (file: File) => {
     console.log('파일 업로드 시작:', file.name);
     setLocalLoading(true);
     setLoading(true);
     setError(null);
+    resetCurrentUsage();
     setProgress('파일 읽는 중...');
 
     try {
@@ -387,7 +415,8 @@ export function FileUpload() {
         setProgress(msg);
         if (current !== undefined) setProgressCurrent(current);
         if (total !== undefined) setProgressTotal(total);
-              }, undefined, currentModel, file.name);  // 원본 파일명 전달
+      }, undefined, currentModel, file.name, undefined,
+      createBillingCallback(addChunkUsage));
 
       // 작가 정보 추가
       if (bookAuthor.trim()) {
@@ -407,6 +436,12 @@ export function FileUpload() {
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
+      if (subscription) {
+        setProgress('크레딧 차감 중...');
+        const { currentUsage } = useStore.getState();
+        await deductAfterSave(saved.id, title, currentModel, currentUsage, updateCreditBalance);
+      }
+
       // 입력 필드 초기화
       setBookTitle('');
       setBookAuthor('');
@@ -414,15 +449,21 @@ export function FileUpload() {
       // 원본 텍스트와 함께 저장 (ID도 함께)
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
       resetProgressState();
+      setShowUsageSummary(true);
     } catch (err: any) {
       console.error('Extraction error:', err);
+      if (subscription) {
+        const title = bookTitle.trim() || file.name;
+        const { currentUsage } = useStore.getState();
+        await deductPartial(title, currentModel, currentUsage, updateCreditBalance);
+      }
       setError(err.message || '파일 처리 중 오류가 발생했습니다.');
       resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState]);
+  }, [setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState, subscription, addChunkUsage, resetCurrentUsage, updateCreditBalance, setShowUsageSummary]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -477,6 +518,7 @@ export function FileUpload() {
     setLocalLoading(true);
     setLoading(true);
     setError(null);
+    resetCurrentUsage();
 
     try {
       setProgress('추가 분석 중...');
@@ -488,7 +530,8 @@ export function FileUpload() {
         undefined,
         currentModel,
         finalFileName,
-        knowledgeGraph  // 기존 지식그래프 전달
+        knowledgeGraph,  // 기존 지식그래프 전달
+        createBillingCallback(addChunkUsage),
       );
 
       console.log('분석 완료:', updatedKnowledgeGraph.metadata.title);
@@ -499,17 +542,28 @@ export function FileUpload() {
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
 
+      if (subscription) {
+        setProgress('크레딧 차감 중...');
+        const { currentUsage } = useStore.getState();
+        await deductAfterSave(saved.id, knowledgeGraph.metadata.title, currentModel, currentUsage, updateCreditBalance);
+      }
+
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       resetProgressState();
+      setShowUsageSummary(true);
     } catch (err: any) {
       console.error('추가 분석 오류:', err);
+      if (subscription) {
+        const { currentUsage } = useStore.getState();
+        await deductPartial(knowledgeGraph.metadata.title, currentModel, currentUsage, updateCreditBalance);
+      }
       setError(err.message || '추가 분석 중 오류가 발생했습니다.');
       resetProgressState(true);
     } finally {
       setLocalLoading(false);
       setLoading(false);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setLoading, setError, currentModel, resetProgressState, subscription, addChunkUsage, resetCurrentUsage, updateCreditBalance, setShowUsageSummary]);
 
   // 추가 분석 (기존 결과에 새 파일 병합)
   const handleAddFile = useCallback(async (file: File) => {
@@ -716,26 +770,11 @@ export function FileUpload() {
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
-      // 크레딧 차감 (구독이 있는 경우, 저장 후 실행하여 saved.id를 idempotency key에 사용)
+      // 실제 토큰 기반 크레딧 차감 (구독이 있는 경우)
       if (subscription) {
         setProgress('크레딧 차감 중...');
         const { currentUsage } = useStore.getState();
-        const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
-        if (totalTokens > 0) {
-          const estimate = await estimateCredits(text.length, currentModel);
-          if (estimate) {
-            const idempotencyKey = `storygraph-${saved.id}-${currentUsage.chunks.length}`;
-            const result = await deductCredits(
-              estimate.estimated_credits,
-              `소설 분석: ${title}`,
-              { model: currentModel, chunks: currentUsage.chunks.length, totalTokens },
-              idempotencyKey,
-            );
-            if (result) {
-              updateCreditBalance(result.balance_after);
-            }
-          }
-        }
+        await deductAfterSave(saved.id, title, currentModel, currentUsage, updateCreditBalance);
       }
 
       // 타이틀 목록 업데이트
@@ -755,6 +794,11 @@ export function FileUpload() {
       setShowUsageSummary(true);
     } catch (err: any) {
       console.error('Extraction error:', err);
+      // 부분 차감: 이미 사용한 API 비용 처리
+      if (subscription) {
+        const { currentUsage } = useStore.getState();
+        await deductPartial(title, currentModel, currentUsage, updateCreditBalance);
+      }
       setError(err.message || '처리 중 오류가 발생했습니다.');
       resetProgressState(true);
     } finally {

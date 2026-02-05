@@ -83,6 +83,20 @@ session.user.memberType // 회원 등급
 session.user.roles      // 권한 배열
 ```
 
+### ⚠️ 보안 규칙
+
+- **Access Token은 클라이언트 세션에 노출 금지**: `accessToken`은 JWT 토큰 내부에서만 사용하고, `session` 콜백에서 클라이언트로 전달하지 않아야 함. XSS 공격 시 토큰 유출 위험.
+- **OAuth token 갱신**: `accessTokenExpires` 만료 시 `refreshToken`으로 갱신 로직 필요 (현재 미구현 → TODO)
+- **API 에러 메시지 sanitization**: 서버 API 라우트에서 클라이언트로 내부 에러 메시지를 그대로 전달하지 않음. 항상 generic 에러 반환.
+
+```typescript
+// ❌ 내부 에러 노출
+return NextResponse.json({ error: error.message }, { status: 500 });
+
+// ✅ 제네릭 에러 반환
+return NextResponse.json({ error: 'Request failed' }, { status: 500 });
+```
+
 ---
 
 ## useShowTokenDetails.ts - 토큰 상세 표시 훅

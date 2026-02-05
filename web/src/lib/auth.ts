@@ -1,9 +1,21 @@
 import NextAuth from 'next-auth';
 import type { NextAuthConfig } from 'next-auth';
 import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+import { headers } from 'next/headers';
 
 // 환경 변수로 인증 활성화 여부 결정
 export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
+
+// Catcident OIDC profile shape
+interface CatcidentProfile {
+  sub: string;
+  email: string;
+  name?: string;
+  nickname?: string;
+  member_type?: string;
+  roles?: string[];
+}
 
 declare module 'next-auth' {
   interface Session {
@@ -14,7 +26,6 @@ declare module 'next-auth' {
       nickname?: string | null;
       memberType?: string | null;
       roles?: string[];
-      accessToken?: string;
     };
   }
 }
@@ -70,10 +81,11 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account && profile) {
-        token.id = profile.sub as string;
-        token.nickname = (profile as any).nickname;
-        token.memberType = (profile as any).member_type;
-        token.roles = (profile as any).roles || [];
+        const p = profile as CatcidentProfile;
+        token.id = p.sub;
+        token.nickname = p.nickname;
+        token.memberType = p.member_type;
+        token.roles = p.roles || [];
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.accessTokenExpires = account.expires_at
@@ -87,7 +99,6 @@ export const authConfig: NextAuthConfig = {
       session.user.nickname = token.nickname;
       session.user.memberType = token.memberType;
       session.user.roles = token.roles;
-      session.user.accessToken = token.accessToken;
       return session;
     },
   },
@@ -117,5 +128,11 @@ export async function requireAuth(): Promise<{ userId: string; accessToken?: str
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
-  return { userId: session.user.id, accessToken: session.user.accessToken };
+  // JWT에서 직접 accessToken 읽기 (클라이언트 세션에 노출하지 않음)
+  const headerStore = await headers();
+  const token = await getToken({
+    req: { headers: headerStore },
+    secureCookie: process.env.AUTH_URL?.startsWith('https://'),
+  });
+  return { userId: session.user.id, accessToken: token?.accessToken };
 }

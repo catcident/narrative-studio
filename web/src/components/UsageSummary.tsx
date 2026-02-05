@@ -8,7 +8,9 @@ import { calculateCreditsFromTokens } from '../services/billing';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 
 export function UsageSummary() {
-  const { currentUsage, showUsageSummary, setShowUsageSummary } = useStore();
+  const currentUsage = useStore((s) => s.currentUsage);
+  const showUsageSummary = useStore((s) => s.showUsageSummary);
+  const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
 
@@ -26,7 +28,7 @@ export function UsageSummary() {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && setShowUsageSummary(false)}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -36,6 +38,7 @@ export function UsageSummary() {
           </div>
           <button
             onClick={() => setShowUsageSummary(false)}
+            aria-label="닫기"
             className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X aria-hidden="true" className="w-5 h-5 text-gray-400" />

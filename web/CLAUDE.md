@@ -76,6 +76,12 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 - idempotency key로 중복 차감 방지 (`storygraph-{savedId}-{chunks}`)
 - 잔액 확인은 예상 비용과 비교 (단순 `> 0` 체크 불가)
 - file.size(bytes)와 charCount(문자수) 구분 필수 (UTF-8 한글 ~3bytes/char)
+- **모든** `extractKnowledgeGraph` 호출에 `onChunkBilling` 콜백 전달 필수 (누락 시 무료 사용 발생)
+- 차감 금액은 실제 토큰 사용량 기반 계산 (`calculateCreditsFromTokens`), 서버 추정치 사용 금지
+
+**AUTH_ENABLED=false 배포** (Railway 등):
+- billing API 프록시에 OAuth 토큰 없이 요청 → billing 기능 비활성화됨
+- 공개 데모에서는 billing 없이 무료 사용 가능 (의도된 동작)
 
 **프록시 라우트 패턴** (`billingProxy.ts` 팩토리 사용):
 ```typescript

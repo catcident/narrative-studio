@@ -69,9 +69,9 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error(`[analyze] API 오류: ${response.status} - ${error.slice(0, 500)}`);
-      return NextResponse.json({ error: `API error: ${response.status} - ${error}` }, { status: response.status });
+      const errorBody = await response.text();
+      console.error(`[analyze] API 오류: ${response.status} - ${errorBody.slice(0, 500)}`);
+      return NextResponse.json({ error: 'Analysis API request failed' }, { status: response.status });
     }
 
     const data = await response.json();
@@ -93,6 +93,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API request timed out (2 minutes). Try with a smaller text.' }, { status: 504 });
     }
     console.error(`[analyze] 오류: ${error.message}`);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

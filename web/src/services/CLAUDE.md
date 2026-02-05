@@ -57,7 +57,7 @@
 
 ```typescript
 // 메인 추출 함수 (파일 추가 시 existingGraph 전달하여 이어서 분석)
-extractKnowledgeGraph(text, title, onProgress?, resumeFrom?, model?, fileName?, existingGraph?)
+extractKnowledgeGraph(text, title, onProgress?, resumeFrom?, model?, fileName?, existingGraph?, onChunkBilling?)
 
 // 진행상황 관리
 saveProgress(), loadProgress(), clearProgress(), hasProgress()
@@ -65,6 +65,18 @@ saveProgress(), loadProgress(), clearProgress(), hasProgress()
 // API 키 관리
 setApiKey(), hasApiKey(), getApiKey()
 ```
+
+### ⚠️ Billing 콜백 필수 규칙
+
+**모든 `extractKnowledgeGraph` 호출에 `onChunkBilling` 콜백을 전달해야 합니다.**
+콜백 누락 시 해당 분석 경로에서 토큰 사용량이 추적되지 않아 무료 사용이 됩니다.
+
+새로운 분석 경로를 추가할 때 체크리스트:
+- [ ] `onChunkBilling` 콜백 전달
+- [ ] 분석 완료 후 `deductCredits()` 호출
+- [ ] 분석 전 잔액 확인 (`estimateCredits` + balance 비교)
+
+> TODO: 8개 positional 파라미터를 `ExtractionOptions` 객체로 전환하면 누락 방지에 효과적
 
 ### 파일 추가 분석
 
@@ -174,8 +186,11 @@ calculateCreditsFromTokens(promptTokens, completionTokens, model)  // 실제 토
 ### 중요 규칙
 
 - **charCount vs bytes**: `estimateCredits()`에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
-- **idempotency key**: `deductCredits()` 호출 시 반드시 고유 키 전달하여 중복 차감 방지
+- **idempotency key**: `deductCredits()` 호출 시 반드시 고유 키 전달하여 중복 차감 방지. timestamp/UUID 포함 권장
 - **차감 시점**: 분석 완료 + 저장 후 1회만 (`saved.id`를 idempotency key에 포함)
+- **차감 금액**: 실제 토큰 사용량 기반으로 계산해야 함 (서버 추정치가 아닌 `calculateCreditsFromTokens` 사용)
+- **부분 실패**: 분석 도중 실패해도 이미 소비한 API 호출 비용이 있으므로 부분 차감 처리 필요
+- **에러 로깅**: `billingFetch` 실패 시 HTTP 상태 코드와 에러 본문을 로그에 포함하여 디버깅 용이하게
 
 ---
 
