@@ -8,12 +8,16 @@ export async function GET(request: NextRequest) {
     if ('error' in authResult) return authResult.error;
 
     const { searchParams } = new URL(request.url);
-    const page = searchParams.get('page') || '1';
+    const pageRaw = searchParams.get('page') || '1';
+    const pageNum = parseInt(pageRaw, 10);
+    if (isNaN(pageNum) || pageNum < 1 || pageNum > 10000) {
+      return NextResponse.json({ error: 'Invalid page parameter' }, { status: 400 });
+    }
     const response = await proxyToCatcident(
-      `/credits/transactions/?service=storygraph&page=${page}`,
+      `/credits/transactions/?service=storygraph&page=${pageNum}`,
       authResult.accessToken
     );
-    const data = await response.json();
+    const data = await response.json().catch(() => ({ error: 'Invalid response from billing service' }));
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('[billing] credits/transactions GET error:', error);

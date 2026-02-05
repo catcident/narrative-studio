@@ -91,22 +91,28 @@ export const useStore = create<AppState>((set, get) => ({
     sceneRangeStart: null,
     sceneRangeEnd: null,
     error: null,
+    currentUsage: initialUsage,
+    showUsageSummary: false,
   }),
 
   // Billing 액션
   loadSubscription: async () => {
-    const info = await getSubscription();
-    if (info) {
-      set({
-        subscription: {
-          plan: info.plan.code,
-          planName: info.plan.name,
-          creditBalance: info.credit_balance,
-          features: info.features,
-          creditResetAt: info.credit_reset_at,
-          status: info.status,
-        },
-      });
+    try {
+      const info = await getSubscription();
+      if (info) {
+        set({
+          subscription: {
+            plan: info.plan.code,
+            planName: info.plan.name,
+            creditBalance: info.credit_balance,
+            features: info.features,
+            creditResetAt: info.credit_reset_at,
+            status: info.status,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('[billing] loadSubscription error:', error);
     }
   },
   updateCreditBalance: (n) => set((state) => ({

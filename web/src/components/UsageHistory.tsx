@@ -20,10 +20,15 @@ export function UsageHistory() {
   const [data, setData] = useState<TransactionsResponse | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setError(false);
     getUsageHistory(page).then(result => {
+      if (!result) {
+        setError(true);
+      }
       setData(result);
       setLoading(false);
     });
@@ -33,7 +38,11 @@ export function UsageHistory() {
     return <div className="text-center text-gray-400 py-8">로딩 중...</div>;
   }
 
-  if (!data || data.results.length === 0) {
+  if (error || !data) {
+    return <div className="text-center text-red-400 py-8">사용 내역을 불러올 수 없습니다.</div>;
+  }
+
+  if (data.results.length === 0) {
     return <div className="text-center text-gray-400 py-8">사용 내역이 없습니다.</div>;
   }
 

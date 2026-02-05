@@ -38,9 +38,9 @@ function App() {
   const {
     knowledgeGraph, originalText, currentDataId, viewMode, setViewMode, reset, setKnowledgeGraph, error,
     selectedSceneId, selectScene,
-    sceneRangeStart, sceneRangeEnd, selectSceneRange
+    sceneRangeStart, sceneRangeEnd, selectSceneRange,
+    loadSubscription,
   } = useStore();
-  const { loadSubscription } = useStore();
   const [showDataManager, setShowDataManager] = useState(false);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -170,7 +170,7 @@ function App() {
         <div className="w-full max-w-xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
-              <Network className="w-8 h-8 text-blue-600" />
+              <Network aria-hidden="true" className="w-8 h-8 text-blue-600" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800">인물 관계도</h1>
             <p className="text-gray-500 mt-2">
@@ -317,7 +317,7 @@ function App() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Network className="w-6 h-6 text-blue-600" />
+              <Network aria-hidden="true" className="w-6 h-6 text-blue-600" />
               <h1 className="font-bold text-gray-800">인물 관계도</h1>
             </div>
             <span className="text-sm text-gray-500">
@@ -346,7 +346,7 @@ function App() {
                     }
                   `}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon aria-hidden="true" className="w-4 h-4" />
                   {label}
                 </button>
               ))}
@@ -358,7 +358,7 @@ function App() {
             )}
             {saveStatus === 'saved' && (
               <span className="flex items-center gap-1 text-xs text-green-600">
-                <Save className="w-3 h-3" />
+                <Save aria-hidden="true" className="w-3 h-3" />
                 저장됨
               </span>
             )}
@@ -371,7 +371,7 @@ function App() {
               onClick={() => setShowDataManager(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <Database className="w-4 h-4" />
+              <Database aria-hidden="true" className="w-4 h-4" />
               데이터 관리
             </button>
 
@@ -383,12 +383,12 @@ function App() {
             }`}>
               {isAddingFile ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
                   {addProgress || '추가 중...'}
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
+                  <Plus aria-hidden="true" className="w-4 h-4" />
                   파일 추가
                 </>
               )}
@@ -406,7 +406,7 @@ function App() {
               onClick={reset}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw aria-hidden="true" className="w-4 h-4" />
               새 파일
             </button>
 

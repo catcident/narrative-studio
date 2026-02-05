@@ -41,7 +41,7 @@ export function UsageSummary() {
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">사용 토큰</span>
               <span className="font-medium text-gray-800">
-                {currentUsage.totalPromptTokens.toLocaleString()} input + {currentUsage.totalCompletionTokens.toLocaleString()} output
+                {totalTokens.toLocaleString()} ({currentUsage.totalPromptTokens.toLocaleString()} in + {currentUsage.totalCompletionTokens.toLocaleString()} out)
               </span>
             </div>
             {creditBalance !== null && (

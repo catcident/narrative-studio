@@ -103,6 +103,29 @@ NextAuth.js SessionProvider 래퍼
 
 전체 세계관 개요 뷰
 
+### CreditBadge.tsx
+
+헤더에 표시되는 크레딧 잔액 배지. 클릭 시 SubscriptionPage 모달 열기.
+
+### UsageEstimate.tsx
+
+분석 전 예상 비용 표시. Props: `{ charCount, model }`.
+- 300ms 디바운스로 API 호출 최적화
+- charCount 또는 model 변경 시 재계산
+- **주의**: charCount는 반드시 문자 수 (file.size bytes가 아님)
+
+### UsageSummary.tsx
+
+분석 완료 후 사용량 요약 모달. `store.showUsageSummary`로 표시 제어.
+
+### SubscriptionPage.tsx
+
+구독 관리 모달 (탭: 플랜 비교 | 크레딧 구매 | 사용 내역).
+
+### UsageHistory.tsx
+
+크레딧 거래 내역 테이블 (페이지네이션). SubscriptionPage의 "사용 내역" 탭에서 사용.
+
 ---
 
 ## 접근성 패턴
@@ -161,6 +184,67 @@ React Flow `dagre` 레이아웃 사용:
 - 방향: TB (위→아래)
 - 노드 간격: 50px
 - 랭크 간격: 100px
+
+---
+
+## 에러 처리 패턴
+
+### API 호출
+
+```tsx
+// ✅ try-catch + [prefix] 로깅 + graceful fallback
+try {
+  const data = await apiCall();
+  // ...
+} catch (error) {
+  console.error('[billing] operation error:', error);
+  // UI에 에러 상태 표시 또는 null 반환
+}
+
+// ✅ Promise.all에서도 .catch + .finally
+Promise.all([getPlans(), getCreditPackages()])
+  .then(([p, pkg]) => { setPlans(p); setPackages(pkg); })
+  .catch((error) => console.error('[billing] load error:', error))
+  .finally(() => setLoading(false));
+```
+
+### JSON 파싱
+
+```tsx
+// ✅ 서버 프록시에서 response.json() 실패 대비
+const data = await response.json()
+  .catch(() => ({ error: 'Invalid response from billing service' }));
+```
+
+### 프로그레스 상태 초기화
+
+FileUpload에서 `resetProgressState()` 헬퍼 사용:
+```tsx
+// 성공 경로: savedProgress를 null로 설정
+resetProgressState();
+
+// 에러 경로: savedProgress를 다시 확인
+resetProgressState(true);
+```
+
+---
+
+## Zustand Billing 상태
+
+### Store 필드
+
+```typescript
+subscription: BillingSubscription | null;  // 계정 수준 (reset()에서 유지)
+currentUsage: CurrentUsage;                // 분석 세션 수준 (reset()에서 초기화)
+showUsageSummary: boolean;                 // 분석 세션 수준 (reset()에서 초기화)
+```
+
+### 셀렉터 훅
+
+```typescript
+useBillingSubscription()  // subscription 객체
+useCreditBalance()        // creditBalance 또는 null
+```
 
 ---
 

@@ -60,8 +60,31 @@ AUTH_ENABLED=false  # 익명 모드 (userId='anonymous')
 
 **Catcident OAuth 연동**:
 - OIDC 프로토콜 + PKCE
-- 커스텀 스코프: `openid profile email member`
-- JWT claims: `member_type`, `roles`
+- 커스텀 스코프: `openid profile email member billing`
+- JWT claims: `member_type`, `roles`, `accessToken` (서버 프록시용)
+
+### 과금 시스템 (Billing)
+
+catcident-backend의 billing API를 서버 사이드 프록시로 연동:
+
+```
+클라이언트 → /api/billing/* → billingProxy.ts → catcident-backend
+```
+
+**핵심 원칙**:
+- 크레딧 차감은 분석 완료 + 저장 후 1회만 실행 (청크별 차감 X)
+- idempotency key로 중복 차감 방지 (`storygraph-{savedId}-{chunks}`)
+- 잔액 확인은 예상 비용과 비교 (단순 `> 0` 체크 불가)
+- file.size(bytes)와 charCount(문자수) 구분 필수 (UTF-8 한글 ~3bytes/char)
+
+**프록시 라우트 패턴** (`billingProxy.ts` 팩토리 사용):
+```typescript
+// GET 프록시: billingGetHandler(path, logLabel)
+export const GET = billingGetHandler('/plans/?service=storygraph', 'plans GET');
+
+// POST 프록시: billingPostHandler(path, logLabel)
+export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST');
+```
 
 ### 스토리지 (Dual Layer)
 
@@ -96,6 +119,13 @@ AUTH_ENABLED=false  # 익명 모드 (userId='anonymous')
 | `DELETE /api/knowledge-graphs/[id]` | 그래프 삭제 |
 | `GET /api/knowledge-graphs/[id]/versions` | 버전 히스토리 |
 | `POST /api/knowledge-graphs/[id]/restore/[version]` | 특정 버전 복원 |
+| `GET /api/billing/subscription` | 구독 정보 조회 (catcident 프록시) |
+| `GET /api/billing/credits/balance` | 크레딧 잔액 조회 |
+| `POST /api/billing/credits/estimate` | 분석 예상 비용 |
+| `POST /api/billing/credits/deduct` | 크레딧 차감 |
+| `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
+| `GET /api/billing/plans` | 요금제 목록 |
+| `GET /api/billing/packages` | 크레딧 상품 목록 |
 
 ## 환경 변수
 
@@ -111,6 +141,10 @@ AUTH_URL=https://storygraph.catcident.com
 AUTH_CATCIDENT_ISSUER=https://catcident.com
 AUTH_CATCIDENT_ID=your_client_id
 AUTH_CATCIDENT_SECRET=            # 공개 클라이언트는 빈 값
+
+# 과금 연동
+CATCIDENT_API_URL=https://catcident.com   # catcident-backend URL
+CATCIDENT_SERVICE_KEY=sk-svc-...          # 서비스 간 인증 키
 ```
 
 ## 하위 문서
