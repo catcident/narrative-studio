@@ -143,31 +143,12 @@ export function SourceTextView() {
         }
       });
 
-      // 3. 남은 장면들의 order 재정렬 (파일 순서대로)
+      // 3. 남은 장면들의 order 재정렬 (기존 order 순으로 1부터 다시 번호 매기기)
       const remainingSourceFiles = knowledgeGraph.metadata.sourceFiles?.filter(f => f.id !== fileId) || [];
-      const fileOrder = new Map(remainingSourceFiles.map((f, idx) => [f.fileName, idx]));
-      const fileIdOrder = new Map(remainingSourceFiles.map((f, idx) => [f.id, idx]));
-
-      // 파일별로 장면 그룹화
-      const scenesByFileIdx: Map<number, SceneSnapshot[]> = new Map();
-      Object.values(newSnapshots).forEach(scene => {
-        const fileIdx = fileOrder.get(scene.sourceFile || '') ?? fileIdOrder.get(scene.sourceFileId || '') ?? 999;
-        if (!scenesByFileIdx.has(fileIdx)) {
-          scenesByFileIdx.set(fileIdx, []);
-        }
-        scenesByFileIdx.get(fileIdx)!.push(scene);
-      });
-
-      // 파일 순서대로 정렬 후 order 재할당
-      const sortedFileIdxs = Array.from(scenesByFileIdx.keys()).sort((a, b) => a - b);
+      const sortedScenes = Object.values(newSnapshots).sort((a, b) => a.order - b.order);
       let newOrder = 1;
-      sortedFileIdxs.forEach(fileIdx => {
-        const scenes = scenesByFileIdx.get(fileIdx)!;
-        // 파일 내에서는 기존 order 순으로 정렬
-        scenes.sort((a, b) => a.order - b.order);
-        scenes.forEach(scene => {
-          newSnapshots[scene.sceneId] = { ...scene, order: newOrder++ };
-        });
+      sortedScenes.forEach(scene => {
+        newSnapshots[scene.sceneId] = { ...scene, order: newOrder++ };
       });
 
       // 4. entities의 scenes 배열에서 삭제된 장면 제거
