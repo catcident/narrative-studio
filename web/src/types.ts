@@ -77,6 +77,10 @@ export interface HyperEdge {
   entities: string[];
   statement: string;
   quote?: string;  // 원문 인용
+  subtype?: string;
+  bidirectional?: boolean;
+  fromPerspective?: string;
+  toPerspective?: string;
   timeline?: {
     start?: string;
     end?: string;
@@ -191,4 +195,51 @@ export interface ChronicleEvent {
   relatedEntities: Entity[];
   edges: HyperEdge[];
   sentiment?: string;
+}
+
+// ==================== UI ====================
+
+export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
+
+// ==================== Billing ====================
+
+/** API 응답(snake_case)을 그대로 사용 — 변환 비용 대비 이점 없음 */
+export interface PlanFeatures {
+  byok: boolean;
+  models: string[] | 'all';
+  max_file_size_mb: number;
+  can_purchase_credits: boolean;
+}
+
+export interface BillingSubscription {
+  plan: string;
+  planName: string;
+  creditBalance: number;
+  features: PlanFeatures;
+  creditResetAt: string | null;
+  status: string;
+}
+
+export interface ChunkUsage {
+  chunkIndex: number;
+  promptTokens: number;
+  completionTokens: number;
+  model: string;
+}
+
+export interface CurrentUsage {
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  chunks: ChunkUsage[];
+}
+
+export interface CreditTransaction {
+  id: number;
+  amount: number;
+  balance_after: number;
+  tx_type: string;
+  tx_type_display: string;
+  description: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
 }

@@ -3,7 +3,8 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode } from './types';
+import { getSubscription } from './services/billing';
 
 interface AppState {
   // 데이터
@@ -19,10 +20,19 @@ interface AppState {
   selectedSceneId: string | null;
   sceneRangeStart: string | null;  // 범위 선택 시작
   sceneRangeEnd: string | null;    // 범위 선택 끝
-  viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
+  viewMode: ViewMode;
 
   // 채팅 관련
   chatMentionedEntities: string[];  // 채팅에서 언급된 엔티티 ID 목록
+
+  // Billing
+  subscription: BillingSubscription | null;
+  currentUsage: CurrentUsage;
+  showUsageSummary: boolean;
+
+  // Config (앱 수준 — reset()에서 유지)
+  authEnabled: boolean | null;
+  setAuthEnabled: (enabled: boolean) => void;
 
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
@@ -32,12 +42,25 @@ interface AppState {
   selectTimePoint: (time: string | null) => void;
   selectScene: (sceneId: string | null) => void;
   selectSceneRange: (start: string | null, end: string | null) => void;
-  setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat') => void;
+  setViewMode: (mode: ViewMode) => void;
   setChatMentionedEntities: (entityIds: string[]) => void;
   reset: () => void;
+
+  // Billing 액션
+  loadSubscription: () => Promise<void>;
+  updateCreditBalance: (n: number) => void;
+  addChunkUsage: (chunk: ChunkUsage) => void;
+  resetCurrentUsage: () => void;
+  setShowUsageSummary: (show: boolean) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
+const initialUsage: CurrentUsage = {
+  totalPromptTokens: 0,
+  totalCompletionTokens: 0,
+  chunks: [],
+};
+
+export const useStore = create<AppState>((set, get) => ({
   knowledgeGraph: null,
   originalText: null,
   currentDataId: null,
@@ -50,7 +73,12 @@ export const useStore = create<AppState>((set) => ({
   sceneRangeEnd: null,
   viewMode: 'graph',
   chatMentionedEntities: [],
+  subscription: null,
+  currentUsage: initialUsage,
+  showUsageSummary: false,
+  authEnabled: null,
 
+  setAuthEnabled: (authEnabled) => set({ authEnabled }),
   setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set({
     knowledgeGraph,
     originalText: originalText || null,
@@ -76,26 +104,68 @@ export const useStore = create<AppState>((set) => ({
     sceneRangeEnd: null,
     chatMentionedEntities: [],
     error: null,
+    currentUsage: initialUsage,
+    showUsageSummary: false,
   }),
+
+  // Billing 액션
+  loadSubscription: async () => {
+    try {
+      const result = await getSubscription();
+      if (result.ok && result.data.plan) {
+        const info = result.data;
+        set({
+          subscription: {
+            plan: info.plan.code,
+            planName: info.plan.name,
+            creditBalance: info.credit_balance,
+            features: info.features,
+            creditResetAt: info.credit_reset_at,
+            status: info.status,
+          },
+        });
+      }
+      // !result.ok → subscription null 유지 (billing 미사용)
+    } catch (err: unknown) {
+      console.error('[billing] loadSubscription error:', err);
+    }
+  },
+  updateCreditBalance: (n) => set((state) => ({
+    subscription: state.subscription ? { ...state.subscription, creditBalance: n } : null,
+  })),
+  addChunkUsage: (chunk) => set((state) => ({
+    currentUsage: {
+      totalPromptTokens: state.currentUsage.totalPromptTokens + chunk.promptTokens,
+      totalCompletionTokens: state.currentUsage.totalCompletionTokens + chunk.completionTokens,
+      chunks: [...state.currentUsage.chunks, chunk],
+    },
+  })),
+  resetCurrentUsage: () => set({ currentUsage: initialUsage }),
+  setShowUsageSummary: (show) => set({ showUsageSummary: show }),
 }));
 
 // 셀렉터 헬퍼
 export const useSelectedEntity = (): Entity | null => {
-  const { knowledgeGraph, selectedEntityId } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
   if (!knowledgeGraph || !selectedEntityId) return null;
   return knowledgeGraph.entities[selectedEntityId] || null;
 };
 
 export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
-  const { knowledgeGraph } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   if (!knowledgeGraph || !entityId) return [];
   return Object.values(knowledgeGraph.hyperedges).filter(
     (edge) => edge.entities.includes(entityId)
   );
 };
 
+export const useBillingSubscription = () => useStore((s) => s.subscription);
+export const useCreditBalance = () => useStore((s) => s.subscription?.creditBalance ?? null);
+export const useAuthEnabled = () => useStore((s) => s.authEnabled);
+
 export const useCharacters = (): Entity[] => {
-  const { knowledgeGraph } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   if (!knowledgeGraph) return [];
   return Object.values(knowledgeGraph.entities).filter(
     (e) => e.category === 'character'

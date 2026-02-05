@@ -1,5 +1,4 @@
 import './globals.css'
-import { AUTH_ENABLED } from '@/lib/auth'
 import { AuthProvider } from '@/components/AuthProvider'
 
 export const metadata = {
@@ -15,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        {AUTH_ENABLED ? <AuthProvider>{children}</AuthProvider> : children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )

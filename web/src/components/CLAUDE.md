@@ -103,6 +103,32 @@ NextAuth.js SessionProvider 래퍼
 
 전체 세계관 개요 뷰
 
+### CreditBadge.tsx
+
+헤더에 표시되는 크레딧 잔액 배지. 클릭 시 SubscriptionPage 모달 열기.
+
+### UsageEstimate.tsx
+
+분석 전 예상 비용 표시. Props: `{ charCount, model }`.
+- `estimateUsageLocally()` 로컬 동기 계산 (API 호출 없음, `useMemo`)
+- 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
+- 잔액 비교: `creditBalance !== null`일 때만 분석 가능/불가 표시
+- **주의**: charCount는 반드시 문자 수 (file.size bytes가 아님)
+
+### UsageSummary.tsx
+
+분석 완료 후 사용량 요약 모달. `store.showUsageSummary`로 표시 제어.
+- `calculateCreditsFromTokens()`로 실제 토큰 → 크레딧 역산 표시
+- 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
+
+### SubscriptionPage.tsx
+
+구독 관리 모달 (탭: 플랜 비교 | 크레딧 구매 | 사용 내역).
+
+### UsageHistory.tsx
+
+크레딧 거래 내역 테이블 (페이지네이션). SubscriptionPage의 "사용 내역" 탭에서 사용.
+
 ---
 
 ## 접근성 패턴
@@ -124,11 +150,60 @@ NextAuth.js SessionProvider 래퍼
 <div className="w-1.5 h-1.5 rounded-full bg-blue-500" aria-hidden="true" />
 ```
 
+### 모달 접근성
+
+**규칙**: 모든 모달은 키보드 접근성을 제공해야 함
+
+```tsx
+// ✅ 모달 필수 요소 (tabIndex={-1} 필수 — 없으면 Escape 키 미작동)
+<div
+  role="dialog"
+  aria-modal="true"
+  tabIndex={-1}
+  onKeyDown={(e) => e.key === 'Escape' && onClose()}
+>
+  <button onClick={onClose} aria-label="닫기">
+    <X aria-hidden="true" className="w-5 h-5" />
+  </button>
+</div>
+
+// ❌ tabIndex 없는 모달 — div는 기본적으로 포커스 불가, onKeyDown 미작동
+<div role="dialog" aria-modal="true" onKeyDown={...}>
+
+// ❌ 키보드 접근성 없는 모달
+<div className="fixed inset-0">
+  <button onClick={onClose}>
+    <X aria-hidden="true" />  {/* aria-label 없음 */}
+  </button>
+</div>
+```
+
+### 버튼 접근성
+
+**규칙**: 텍스트 없는 아이콘 버튼은 반드시 `aria-label` 제공
+
+```tsx
+// ✅ 아이콘 + 텍스트: aria-label 불필요
+<button><Coins aria-hidden="true" /> 크레딧</button>
+
+// ✅ 아이콘만: aria-label 필수
+<button aria-label="구독 관리"><Coins aria-hidden="true" /></button>
+
+// ❌ title만으로는 부족 — 스크린 리더가 title을 일관되게 읽지 않음
+<button title="삭제"><X aria-hidden="true" /></button>
+
+// ✅ aria-label 사용 (title은 선택적 추가)
+<button aria-label="삭제" title="삭제"><X aria-hidden="true" /></button>
+```
+
 **체크리스트** (새 UI 컴포넌트 작성 시):
 - [ ] lucide-react 아이콘에 `aria-hidden="true"` 추가
 - [ ] 인라인 SVG에 `aria-hidden="true"` 추가
 - [ ] 장식용 요소(불릿, 구분선 등)에 `aria-hidden="true"` 추가
 - [ ] 기능적 아이콘(버튼 없는 독립 아이콘)은 `aria-label` 제공
+- [ ] 모달: `tabIndex={-1}` + Escape 키 닫기 + `role="dialog"` + `aria-modal="true"`
+- [ ] 모달 닫기 버튼: `aria-label="닫기"` 추가
+- [ ] 아이콘 전용 버튼: `aria-label` 필수 (`title`만으로는 부족)
 
 ### 타입 안전성
 
@@ -142,7 +217,57 @@ NextAuth.js SessionProvider 래퍼
 {session.user.nickname}
 ```
 
-**참조**: `lib/auth.ts`의 `declare module 'next-auth'` 타입 확장
+**참조**: `types/next-auth.d.ts`의 `declare module 'next-auth'` 타입 확장 (단일 정의 위치)
+
+### 에러 타입
+
+**규칙**: `catch` 블록에서 `err: any` 대신 `err: unknown` 사용
+
+```tsx
+// ❌ any → 타입 안전성 우회
+catch (err: any) {
+  setError(err.message);
+}
+
+// ✅ unknown → 타입 가드 필수
+catch (err: unknown) {
+  const message = err instanceof Error ? err.message : '알 수 없는 오류';
+  setError(message);
+}
+```
+
+### Discriminated Union 반환 타입 사용
+
+**규칙**: 성공/실패를 구분하는 함수는 discriminated union 반환 타입을 사용하고, 호출부에서 type narrowing 후 접근
+
+```tsx
+// ✅ 함수 정의 — 성공/실패 분기
+async function checkSomething(): Promise<{ ok: true } | { ok: false; error: string }> { ... }
+
+// ✅ 호출부 — type narrowing 후 접근
+const result = await checkSomething();
+if (!result.ok) throw new Error(result.error);  // result.error 안전 접근
+
+// ❌ destructuring → 모든 프로퍼티가 존재한다고 가정
+const { ok, error } = await checkSomething();
+if (!ok) throw new Error(error);  // TS2339: Property 'error' does not exist
+```
+
+### useCallback 의존성 완전성
+
+**규칙**: `useCallback` 내에서 참조하는 모든 클로저 변수는 의존성 배열에 포함
+
+```tsx
+// ❌ bookTitle을 내부에서 사용하지만 deps에 누락 → stale closure
+const handleSubmit = useCallback(() => {
+  console.log(bookTitle);  // 항상 초기값만 캡처
+}, []);
+
+// ✅ 사용하는 모든 변수 포함
+const handleSubmit = useCallback(() => {
+  console.log(bookTitle);
+}, [bookTitle]);
+```
 
 ---
 
@@ -161,6 +286,99 @@ React Flow `dagre` 레이아웃 사용:
 - 방향: TB (위→아래)
 - 노드 간격: 50px
 - 랭크 간격: 100px
+
+---
+
+## 에러 처리 패턴
+
+### API 호출
+
+```tsx
+// ✅ try-catch + [prefix] 로깅 + graceful fallback
+try {
+  const data = await apiCall();
+  // ...
+} catch (error) {
+  console.error('[billing] operation error:', error);
+  // UI에 에러 상태 표시 또는 null 반환
+}
+
+// ✅ Promise.all에서도 .catch + .finally
+Promise.all([getPlans(), getCreditPackages()])
+  .then(([p, pkg]) => { setPlans(p); setPackages(pkg); })
+  .catch((error) => console.error('[billing] load error:', error))
+  .finally(() => setLoading(false));
+```
+
+### JSON 파싱
+
+```tsx
+// ✅ 서버 프록시에서 response.json() 실패 대비
+const data = await response.json()
+  .catch(() => ({ error: 'Invalid response from billing service' }));
+```
+
+### 프로그레스 상태 초기화
+
+FileUpload에서 `resetProgressState()` 헬퍼 사용:
+```tsx
+// 성공 경로: savedProgress를 null로 설정
+resetProgressState();
+
+// 에러 경로: savedProgress를 다시 확인
+resetProgressState(true);
+```
+
+---
+
+## Zustand Billing 상태
+
+### Store 필드
+
+```typescript
+subscription: BillingSubscription | null;  // 계정 수준 (reset()에서 유지)
+currentUsage: CurrentUsage;                // 분석 세션 수준 (reset()에서 초기화)
+showUsageSummary: boolean;                 // 분석 세션 수준 (reset()에서 초기화)
+```
+
+### 셀렉터 훅
+
+```typescript
+useBillingSubscription()  // subscription 객체
+useCreditBalance()        // creditBalance 또는 null
+```
+
+### ⚠️ Zustand 셀렉터 규칙
+
+**규칙**: 컴포넌트에서 `useStore()` 호출 시 반드시 개별 셀렉터 사용
+
+```tsx
+// ❌ 전체 스토어 구독 → 불필요한 리렌더링
+const { currentUsage, showUsageSummary } = useStore();
+
+// ✅ 개별 셀렉터 → 해당 필드 변경 시에만 리렌더링
+const currentUsage = useStore((s) => s.currentUsage);
+const showUsageSummary = useStore((s) => s.showUsageSummary);
+
+// ✅ 전용 셀렉터 훅 사용
+const subscription = useBillingSubscription();
+const balance = useCreditBalance();
+```
+
+### useEffect 클린업 규칙
+
+**규칙**: 비동기 데이터 로딩 useEffect는 반드시 언마운트 대비
+
+```tsx
+// ✅ cancelled flag로 stale update 방지
+useEffect(() => {
+  let cancelled = false;
+  fetchData().then(data => {
+    if (!cancelled) setData(data);
+  });
+  return () => { cancelled = true; };
+}, [deps]);
+```
 
 ---
 

@@ -307,8 +307,9 @@ function SceneInfoPopup({
           <button
             onClick={onClose}
             className="p-1 hover:bg-white/20 rounded transition-colors"
+            aria-label="닫기"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -412,8 +413,9 @@ function EdgeDetailPopup({
         <button
           onClick={onClose}
           className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="닫기"
         >
-          <X className="w-4 h-4 text-gray-400" />
+          <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
         </button>
       </div>
 
@@ -455,7 +457,8 @@ function EdgeDetailPopup({
 const NODE_THRESHOLD = 100;
 
 export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene, sceneIndex }: Props) {
-  const { selectedEntityId, selectEntity } = useStore();
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
+  const selectEntity = useStore((s) => s.selectEntity);
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharIds, setFocusedCharIds] = useState<string[]>([]);
@@ -1021,11 +1024,12 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
           onClick={() => setShowSidebar(!showSidebar)}
           className="absolute top-3 left-3 z-10 bg-white rounded-lg shadow-lg p-2 hover:bg-gray-50"
           title={showSidebar ? '사이드바 닫기' : '사이드바 열기'}
+          aria-label={showSidebar ? '사이드바 닫기' : '사이드바 열기'}
         >
           {showSidebar ? (
-            <PanelLeftClose className="w-4 h-4 text-gray-600" />
+            <PanelLeftClose className="w-4 h-4 text-gray-600" aria-hidden="true" />
           ) : (
-            <PanelLeftOpen className="w-4 h-4 text-gray-600" />
+            <PanelLeftOpen className="w-4 h-4 text-gray-600" aria-hidden="true" />
           )}
         </button>
 
@@ -1048,7 +1052,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             }`}
             title="전체 보기"
           >
-            <Eye className="w-3 h-3" />
+            <Eye className="w-3 h-3" aria-hidden="true" />
             전체
           </button>
           <button
@@ -1060,7 +1064,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             }`}
             title="간소화 (인물만)"
           >
-            <EyeOff className="w-3 h-3" />
+            <EyeOff className="w-3 h-3" aria-hidden="true" />
             간소화
           </button>
           <button
@@ -1072,7 +1076,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             }`}
             title="인물 중심"
           >
-            <Focus className="w-3 h-3" />
+            <Focus className="w-3 h-3" aria-hidden="true" />
             인물 중심
           </button>
           </div>
@@ -1128,7 +1132,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
         {selectedEntityIds.length > 0 && (
           <div className="border-t border-gray-100 pt-2 mt-2">
             <div className="flex items-center gap-2">
-              <Filter className="w-3 h-3 text-gray-400" />
+              <Filter className="w-3 h-3 text-gray-400" aria-hidden="true" />
               <span className="text-[10px] text-gray-400">연결</span>
               <input
                 type="range"

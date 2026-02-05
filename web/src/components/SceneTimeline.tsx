@@ -272,8 +272,8 @@ export function SceneTimeline({
             }`}
             title="범위 선택 모드"
           >
-            <Minus className="w-3 h-3" />
-            {isRangeMode ? '범위' : '범위'}
+            <Minus className="w-3 h-3" aria-hidden="true" />
+            범위
           </button>
 
           {/* 점프 입력 */}
@@ -299,8 +299,9 @@ export function SceneTimeline({
               <button
                 onClick={handleJumpSubmit}
                 className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                aria-label="이동"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
               <button
                 onClick={() => {
@@ -308,8 +309,9 @@ export function SceneTimeline({
                   setJumpValue('');
                 }}
                 className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                aria-label="닫기"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           ) : (
@@ -317,8 +319,9 @@ export function SceneTimeline({
               onClick={() => setShowJumpInput(true)}
               className="p-1 text-gray-600 hover:bg-gray-100 rounded"
               title="장면으로 이동"
+              aria-label="장면으로 이동"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
 
@@ -330,8 +333,9 @@ export function SceneTimeline({
                 isPlaying ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-600'
               }`}
               title={isPlaying ? '정지' : '자동 재생'}
+              aria-label={isPlaying ? '정지' : '자동 재생'}
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isPlaying ? <Pause className="w-4 h-4" aria-hidden="true" /> : <Play className="w-4 h-4" aria-hidden="true" />}
             </button>
           )}
 
@@ -342,15 +346,17 @@ export function SceneTimeline({
                 onClick={prevScene}
                 disabled={currentIndex <= 0}
                 className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="이전 장면"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
               <button
                 onClick={nextScene}
                 disabled={currentIndex >= scenes.length - 1}
                 className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="다음 장면"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           )}
@@ -375,16 +381,18 @@ export function SceneTimeline({
           <button
             onClick={() => scroll('left')}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-white shadow-md rounded-full hover:bg-gray-50"
+            aria-label="왼쪽으로 스크롤"
           >
-            <ChevronLeft className="w-4 h-4 text-gray-600" />
+            <ChevronLeft className="w-4 h-4 text-gray-600" aria-hidden="true" />
           </button>
         )}
         {canScrollRight && (
           <button
             onClick={() => scroll('right')}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-white shadow-md rounded-full hover:bg-gray-50"
+            aria-label="오른쪽으로 스크롤"
           >
-            <ChevronRight className="w-4 h-4 text-gray-600" />
+            <ChevronRight className="w-4 h-4 text-gray-600" aria-hidden="true" />
           </button>
         )}
 

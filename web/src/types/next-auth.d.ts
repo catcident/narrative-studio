@@ -11,6 +11,7 @@ declare module 'next-auth' {
       memberType?: string | null;
       roles?: string[];
     };
+    error?: string;
   }
 
   interface User {
@@ -29,5 +30,9 @@ declare module 'next-auth/jwt' {
     nickname?: string | null;
     memberType?: string | null;
     roles?: string[];
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
+    error?: string;
   }
 }

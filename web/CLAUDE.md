@@ -25,6 +25,7 @@ web/
 │   │   ├── api/
 │   │   │   ├── analyze/        # AI 분석 프록시
 │   │   │   ├── auth/           # NextAuth.js 핸들러
+│   │   │   ├── billing/        # Billing 프록시
 │   │   │   ├── config/         # 런타임 설정
 │   │   │   ├── knowledge-graphs/ # 그래프 CRUD
 │   │   │   └── novels/         # 소설 원본 CRUD
@@ -60,8 +61,50 @@ AUTH_ENABLED=false  # 익명 모드 (userId='anonymous')
 
 **Catcident OAuth 연동**:
 - OIDC 프로토콜 + PKCE
-- 커스텀 스코프: `openid profile email member`
-- JWT claims: `member_type`, `roles`
+- 커스텀 스코프: `openid profile email member billing`
+- JWT claims: `member_type`, `roles`, `accessToken` (서버 프록시용)
+
+### 과금 시스템 (Billing)
+
+catcident-backend의 billing API를 서버 사이드 프록시로 연동:
+
+```
+클라이언트 → /api/billing/* → billingProxy.ts → catcident-backend
+```
+
+**과금 흐름 (청크별 실시간 차감)**:
+
+1. `checkSufficientBalance()` → 잔액 > 0 확인
+2. `extractKnowledgeGraph({ onChunkBilling })` → 청크별 분석
+3. `/api/analyze`가 OpenRouter 호출 후 즉시 크레딧 차감 (`proxyToCatcident('/credits/deduct/')`)
+4. 클라이언트가 `balance_after`로 CreditBadge 실시간 갱신
+5. 잔액 소진 시 `insufficient_balance` 플래그로 분석 중단 → 부분 결과 반환
+
+**핵심 원칙**:
+- **서버가 각 청크의 실제 토큰 사용량으로 즉시 차감** — 선차감/정산 없음
+- **클라이언트는 `balance_after`로 잔액 실시간 동기화** — 별도 잔액 조회 불필요
+- 잔액 부족 시 분석 즉시 중단 + 이미 완료된 청크까지 부분 결과 반환
+
+> 상세 흐름도: [services/CLAUDE.md](src/services/CLAUDE.md#billing-추적-필수-규칙)
+> 서버 모듈 상세: [lib/CLAUDE.md](src/lib/CLAUDE.md#modelcoststs--모델-비용-공유-모듈)
+
+**서버 측 방어선**:
+- 잔액 체크 (`balanceCache.ts`) + Rate Limiting (`rateLimit.ts`)
+- 크레딧 차감 금액 서버 계산 (`modelCosts.ts`) — 실제 토큰 사용량 기반
+- OpenRouter usage 누락 시 토큰 추정 폴백
+
+**AUTH_ENABLED=false 배포** (Railway 등):
+- billing API 프록시에 OAuth 토큰 없이 요청 → billing 기능 비활성화됨
+- 공개 데모에서는 billing 없이 무료 사용 가능 (의도된 동작)
+
+**프록시 라우트 패턴** (`billingProxy.ts` 팩토리 사용):
+```typescript
+// GET 프록시: billingGetHandler(path, logLabel)
+export const GET = billingGetHandler('/plans/?service=storygraph', 'plans GET');
+
+// POST 프록시: billingPostHandler(path, logLabel)
+export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST');
+```
 
 ### 스토리지 (Dual Layer)
 
@@ -96,6 +139,12 @@ AUTH_ENABLED=false  # 익명 모드 (userId='anonymous')
 | `DELETE /api/knowledge-graphs/[id]` | 그래프 삭제 |
 | `GET /api/knowledge-graphs/[id]/versions` | 버전 히스토리 |
 | `POST /api/knowledge-graphs/[id]/restore/[version]` | 특정 버전 복원 |
+| `GET /api/billing/subscription` | 구독 정보 조회 (catcident 프록시) |
+| `GET /api/billing/credits/balance` | 크레딧 잔액 조회 |
+| `POST /api/billing/credits/deduct` | 크레딧 차감 |
+| `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
+| `GET /api/billing/plans` | 요금제 목록 |
+| `GET /api/billing/packages` | 크레딧 상품 목록 |
 
 ## 환경 변수
 
@@ -111,6 +160,10 @@ AUTH_URL=https://storygraph.catcident.com
 AUTH_CATCIDENT_ISSUER=https://catcident.com
 AUTH_CATCIDENT_ID=your_client_id
 AUTH_CATCIDENT_SECRET=            # 공개 클라이언트는 빈 값
+
+# 과금 연동
+CATCIDENT_API_URL=https://catcident.com   # catcident-backend URL
+CATCIDENT_SERVICE_KEY=sk-svc-...          # 서비스 간 인증 키
 ```
 
 ## 하위 문서

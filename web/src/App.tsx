@@ -19,11 +19,12 @@ import { DataManager } from './components/DataManager';
 import { SceneTimeline } from './components/SceneTimeline';
 import { SavedDataGrid } from './components/SavedDataGrid';
 import { UserMenu } from './components/UserMenu';
+import { CreditBadge } from './components/CreditBadge';
+import { UsageSummary } from './components/UsageSummary';
+import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
-import { extractKnowledgeGraph } from './services/extraction';
-import type { NovelKnowledgeGraph } from './types';
-
-type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
+import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
+import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'graph', label: '관계도', icon: Network },
@@ -35,55 +36,71 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
 ];
 
 function App() {
-  const {
-    knowledgeGraph, originalText, currentDataId, viewMode, setViewMode, reset, setKnowledgeGraph, error,
-    selectedSceneId, selectScene,
-    sceneRangeStart, sceneRangeEnd, selectSceneRange,
-    selectedEntityId
-  } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const originalText = useStore((s) => s.originalText);
+  const currentDataId = useStore((s) => s.currentDataId);
+  const viewMode = useStore((s) => s.viewMode);
+  const setViewMode = useStore((s) => s.setViewMode);
+  const reset = useStore((s) => s.reset);
+  const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
+  const error = useStore((s) => s.error);
+  const setError = useStore((s) => s.setError);
+  const selectedSceneId = useStore((s) => s.selectedSceneId);
+  const selectScene = useStore((s) => s.selectScene);
+  const sceneRangeStart = useStore((s) => s.sceneRangeStart);
+  const sceneRangeEnd = useStore((s) => s.sceneRangeEnd);
+  const selectSceneRange = useStore((s) => s.selectSceneRange);
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
+  const loadSubscription = useStore((s) => s.loadSubscription);
   const [showDataManager, setShowDataManager] = useState(false);
+  const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [isAddingFile, setIsAddingFile] = useState(false);
-  const [addProgress, setAddProgress] = useState('');
+  const { addFile, isAdding: isAddingFile, progress: addProgress } = useAddFileAnalysis();
+
+  // 로그인 시 구독 정보 로드
+  useEffect(() => {
+    loadSubscription();
+  }, [loadSubscription]);
 
   // 지식 그래프가 변경되면 자동 저장
   // FileUpload에서 저장한 경우 currentDataId가 이미 있으므로 중복 저장 방지
   useEffect(() => {
+    let cancelled = false;
+
     if (knowledgeGraph && !currentDataId) {
-      // currentDataId가 없으면 아직 저장되지 않은 것이므로 저장
       setSaveStatus('saving');
 
       const saveData = async () => {
         try {
-          // 1. 원본 텍스트가 있으면 novels 컬렉션에 먼저 저장
           let novelId: string | undefined;
           if (originalText) {
             const novelSaved = await saveNovelText(knowledgeGraph.metadata.title, originalText);
+            if (cancelled) return;
             novelId = novelSaved.id;
-            console.log('소설 텍스트 저장 완료:', novelSaved.title, `(${originalText.length}자)`);
+            console.log('[storage] 소설 텍스트 저장 완료:', novelSaved.title, `(${originalText.length}자)`);
           }
 
-          // 2. 지식 그래프 저장 (novelId 연결)
           const saved = await saveKnowledgeGraph(knowledgeGraph, novelId);
-          console.log('지식그래프 저장 완료:', saved.title, 'v' + saved.version);
+          if (cancelled) return;
+          console.log('[storage] 지식그래프 저장 완료:', saved.title, 'v' + saved.version);
           setSaveStatus('saved');
-        } catch (err) {
-          console.error('자동 저장 실패:', err);
-          setSaveStatus('idle');
+        } catch (err: unknown) {
+          console.error('[storage] 자동 저장 실패:', err);
+          if (!cancelled) setSaveStatus('idle');
         }
       };
 
       saveData();
 
-      // 2초 후 상태 초기화
-      const timer = setTimeout(() => setSaveStatus('idle'), 2000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => { if (!cancelled) setSaveStatus('idle'); }, 2000);
+      return () => { cancelled = true; clearTimeout(timer); };
     } else if (currentDataId) {
-      // 이미 저장된 상태면 저장됨 표시만
       setSaveStatus('saved');
-      const timer = setTimeout(() => setSaveStatus('idle'), 2000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => { if (!cancelled) setSaveStatus('idle'); }, 2000);
+      return () => { cancelled = true; clearTimeout(timer); };
     }
+
+    return () => { cancelled = true; };
   }, [knowledgeGraph, originalText, currentDataId]);
 
   // 데이터 관리자에서 불러오기 (ID 포함)
@@ -92,76 +109,21 @@ function App() {
     setShowDataManager(false);
   };
 
-  // 파일 추가 (기존 결과에 병합)
-  const handleAddFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !knowledgeGraph) return;
-
-    setIsAddingFile(true);
-    setAddProgress('파일 읽는 중...');
-
-    try {
-      let text = '';
-      if (file.type === 'application/pdf') {
-        setAddProgress('PDF 파싱 중...');
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const textParts: string[] = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          setAddProgress(`PDF ${i}/${pdf.numPages}...`);
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          textParts.push(content.items.map((item: any) => item.str).join(' '));
-        }
-        text = textParts.join('\n\n');
-      } else {
-        text = await file.text();
-      }
-
-      if (!text.trim()) throw new Error('파일 내용이 비어있습니다.');
-
-      // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
-      const existingModel = knowledgeGraph.metadata.model;
-      // 기존 지식그래프를 전달하여 이어서 분석
-      const updatedKnowledgeGraph = await extractKnowledgeGraph(
-        text,
-        knowledgeGraph.metadata.title,  // 기존 제목 유지
-        (msg) => setAddProgress(msg),
-        undefined,
-        existingModel,
-        [file.name],  // 원본 파일명 배열로 전달
-        knowledgeGraph  // 기존 지식그래프 전달
-      );
-
-      // DB에 저장 (기존 ID 사용하여 업데이트)
-      setAddProgress('저장 중...');
-      const saved = await saveKnowledgeGraph(updatedKnowledgeGraph, undefined, undefined, currentDataId || undefined);
-
-      setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
-      setAddProgress('');
-    } catch (err: any) {
-      console.error('파일 추가 오류:', err);
-      alert(err.message || '파일 추가 중 오류가 발생했습니다.');
-    } finally {
-      setIsAddingFile(false);
-      e.target.value = '';  // input 초기화
-    }
-  };
-
   // 업로드 화면
   if (!knowledgeGraph) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6 relative">
-        {/* 로그아웃 버튼 (우상단) */}
-        <UserMenu className="absolute top-4 right-4" />
+        {/* 우상단: 크레딧 + 유저메뉴 */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <CreditBadge onClick={() => setShowSubscriptionPage(true)} />
+          <UserMenu />
+        </div>
 
         {/* 상단: 업로드 영역 */}
         <div className="w-full max-w-xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
-              <Network className="w-8 h-8 text-blue-600" />
+              <Network aria-hidden="true" className="w-8 h-8 text-blue-600" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800">인물 관계도</h1>
             <p className="text-gray-500 mt-2">
@@ -186,6 +148,12 @@ function App() {
         <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
           <SavedDataGrid onLoad={handleLoadKnowledgeGraph} />
         </div>
+
+        {/* 모달 (업로드 화면에서도 접근 가능) */}
+        {showSubscriptionPage && (
+          <SubscriptionPage onClose={() => setShowSubscriptionPage(false)} />
+        )}
+        <UsageSummary />
       </div>
     );
   }
@@ -323,7 +291,7 @@ function App() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Network className="w-6 h-6 text-blue-600" />
+              <Network aria-hidden="true" className="w-6 h-6 text-blue-600" />
               <h1 className="font-bold text-gray-800">인물 관계도</h1>
             </div>
             <span className="text-sm text-gray-500">
@@ -352,7 +320,7 @@ function App() {
                     }
                   `}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon aria-hidden="true" className="w-4 h-4" />
                   {label}
                 </button>
               ))}
@@ -364,17 +332,20 @@ function App() {
             )}
             {saveStatus === 'saved' && (
               <span className="flex items-center gap-1 text-xs text-green-600">
-                <Save className="w-3 h-3" />
+                <Save aria-hidden="true" className="w-3 h-3" />
                 저장됨
               </span>
             )}
+
+            {/* 크레딧 배지 */}
+            <CreditBadge onClick={() => setShowSubscriptionPage(true)} />
 
             {/* 데이터 관리 */}
             <button
               onClick={() => setShowDataManager(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <Database className="w-4 h-4" />
+              <Database aria-hidden="true" className="w-4 h-4" />
               데이터 관리
             </button>
 
@@ -386,19 +357,23 @@ function App() {
             }`}>
               {isAddingFile ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
                   {addProgress || '추가 중...'}
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
+                  <Plus aria-hidden="true" className="w-4 h-4" />
                   파일 추가
                 </>
               )}
               <input
                 type="file"
                 accept=".txt,.pdf,.md,text/plain,text/markdown,application/pdf"
-                onChange={handleAddFile}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) addFile(file);
+                  e.target.value = '';
+                }}
                 className="hidden"
                 disabled={isAddingFile}
               />
@@ -409,7 +384,7 @@ function App() {
               onClick={reset}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw aria-hidden="true" className="w-4 h-4" />
               새 파일
             </button>
 
@@ -445,7 +420,7 @@ function App() {
                 <RelationshipGraph
                   entities={entitiesWithOpacity}
                   edges={edgesWithOpacity}
-                  selectedScene={currentScene ? { sceneId: selectedSceneId!, ...currentScene } : null}
+                  selectedScene={currentScene ? { ...currentScene, sceneId: selectedSceneId! } : null}
                   sceneIndex={selectedSceneIndex + 1}
                 />
               </div>
@@ -478,6 +453,14 @@ function App() {
           onLoad={handleLoadKnowledgeGraph}
         />
       )}
+
+      {/* 구독 관리 모달 */}
+      {showSubscriptionPage && (
+        <SubscriptionPage onClose={() => setShowSubscriptionPage(false)} />
+      )}
+
+      {/* 사용량 요약 모달 */}
+      <UsageSummary />
     </div>
   );
 }

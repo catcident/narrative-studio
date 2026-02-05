@@ -168,7 +168,8 @@ interface SceneInfo {
 }
 
 export function CharacterChronicle() {
-  const { knowledgeGraph, selectEntity } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectEntity = useStore((s) => s.selectEntity);
   const characters = useCharacters();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -422,7 +423,7 @@ export function CharacterChronicle() {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 text-gray-400">
         <div className="text-center">
-          <User className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <User className="w-12 h-12 mx-auto mb-2 opacity-50" aria-hidden="true" />
           <p>캐릭터가 없습니다</p>
         </div>
       </div>
@@ -436,7 +437,7 @@ export function CharacterChronicle() {
       {/* 헤더 */}
       <div className="p-3 bg-white border-b border-gray-200 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-gray-500" />
+          <Clock className="w-4 h-4 text-gray-500" aria-hidden="true" />
           <span className="text-sm font-medium text-gray-700">캐릭터 연대기</span>
           <span className="text-xs text-gray-400">
             {characters.length}명 · {allScenes.length}개 장면
@@ -466,8 +467,9 @@ export function CharacterChronicle() {
               <button
                 onClick={() => { setShowJumpInput(false); setJumpValue(''); }}
                 className="p-1 text-gray-400 hover:text-gray-600"
+                aria-label="닫기"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3 h-3" aria-hidden="true" />
               </button>
             </div>
           ) : (
@@ -476,7 +478,7 @@ export function CharacterChronicle() {
               className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors"
               title="장면으로 이동"
             >
-              <Search className="w-3 h-3" />
+              <Search className="w-3 h-3" aria-hidden="true" />
               장면 이동
             </button>
           )}
@@ -495,8 +497,9 @@ export function CharacterChronicle() {
               disabled={zoomIndex === 0}
               className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="축소"
+              aria-label="축소"
             >
-              <ZoomOut className="w-4 h-4 text-gray-600" />
+              <ZoomOut className="w-4 h-4 text-gray-600" aria-hidden="true" />
             </button>
             <span className="text-xs text-gray-600 min-w-[40px] text-center">
               {Math.round(zoomLevel * 100)}%
@@ -506,8 +509,9 @@ export function CharacterChronicle() {
               disabled={zoomIndex === ZOOM_LEVELS.length - 1}
               className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="확대"
+              aria-label="확대"
             >
-              <ZoomIn className="w-4 h-4 text-gray-600" />
+              <ZoomIn className="w-4 h-4 text-gray-600" aria-hidden="true" />
             </button>
           </div>
           {selectedCharId && (
@@ -515,7 +519,7 @@ export function CharacterChronicle() {
               onClick={() => setSelectedCharId(null)}
               className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3 h-3" aria-hidden="true" />
               선택 해제
             </button>
           )}
@@ -763,9 +767,10 @@ export function CharacterChronicle() {
               disabled={pageStart === 0}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="처음으로"
+              aria-label="처음으로"
             >
-              <ChevronLeft className="w-4 h-4" />
-              <ChevronLeft className="w-4 h-4 -ml-2.5" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+              <ChevronLeft className="w-4 h-4 -ml-2.5" aria-hidden="true" />
             </button>
 
             {/* 이전 */}
@@ -775,7 +780,7 @@ export function CharacterChronicle() {
               className="px-3 py-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
               title="이전 페이지"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               <span className="text-sm">이전</span>
             </button>
 
@@ -797,7 +802,7 @@ export function CharacterChronicle() {
               title="다음 페이지"
             >
               <span className="text-sm">다음</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
 
             {/* 끝으로 */}
@@ -806,9 +811,10 @@ export function CharacterChronicle() {
               disabled={pageStart >= allScenes.length - PAGE_SIZE}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex"
               title="끝으로"
+              aria-label="끝으로"
             >
-              <ChevronRight className="w-4 h-4" />
-              <ChevronRight className="w-4 h-4 -ml-2.5" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
+              <ChevronRight className="w-4 h-4 -ml-2.5" aria-hidden="true" />
             </button>
           </div>
         </div>

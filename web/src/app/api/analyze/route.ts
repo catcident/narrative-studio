@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEFAULT_MODEL } from '@/types';
+import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
+import { CHARS_PER_TOKEN, getModelCosts, tokenCostUsd, costUsdToCredits } from '@/lib/modelCosts';
+import { proxyToCatcident } from '@/services/billingProxy';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
-const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
 
 const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍스트에서 인물, 장소, 물건, 세계관, 배경 정보를 빠짐없이 추출하여 "설정집"을 만듭니다.
 
@@ -31,6 +36,42 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
+interface TokenBilling {
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
+interface DeductResult {
+  balance_after: number;
+  amount_deducted: number;
+}
+
+/** usage 필드가 있으면 그대로 사용, 없으면 텍스트 길이에서 토큰 추정 */
+function resolveTokenBilling(
+  data: Record<string, unknown>,
+  promptLength: number,
+): TokenBilling | null {
+  if (data.usage) {
+    const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number };
+    return {
+      prompt_tokens: usage.prompt_tokens ?? 0,
+      completion_tokens: usage.completion_tokens ?? 0,
+    };
+  }
+
+  const content = (data.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content;
+  if (!content) return null;
+
+  const estimatedPrompt = Math.ceil(promptLength / CHARS_PER_TOKEN);
+  const estimatedCompletion = Math.ceil(content.length / CHARS_PER_TOKEN);
+  console.warn(`[analyze] usage 데이터 누락, 추정값 사용: prompt~${estimatedPrompt}, completion~${estimatedCompletion}`);
+
+  return {
+    prompt_tokens: estimatedPrompt,
+    completion_tokens: estimatedCompletion,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { prompt, apiKey: userApiKey, model: userModel } = await request.json();
@@ -42,6 +83,34 @@ export async function POST(request: NextRequest) {
 
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
+    }
+
+    // 인증 + 잔액 확인 + Rate Limit (AUTH_ENABLED=true 시에만 활성)
+    let userId: string | null = null;
+    let accessToken: string | undefined;
+    if (AUTH_ENABLED) {
+      const authResult = await requireAuth();
+      if ('error' in authResult) {
+        return authResult.error;
+      }
+      userId = authResult.userId;
+      accessToken = authResult.accessToken;
+
+      const balanceError = await checkAnalyzeEligibility(userId, accessToken);
+      if (balanceError) {
+        return NextResponse.json({ error: balanceError }, { status: 402 });
+      }
+
+      const limited = checkRateLimit(userId);
+      if (limited) {
+        return NextResponse.json(
+          { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+          {
+            status: 429,
+            headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) },
+          },
+        );
+      }
     }
 
     // 프롬프트 크기 로깅
@@ -56,7 +125,7 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: model,
+          model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: prompt },
@@ -69,21 +138,73 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error(`[analyze] API 오류: ${response.status} - ${error.slice(0, 500)}`);
-      return NextResponse.json({ error: `API error: ${response.status} - ${error}` }, { status: response.status });
+      const errorBody = await response.text();
+      console.error(`[analyze] API 오류: ${response.status} - ${errorBody.slice(0, 500)}`);
+      return NextResponse.json({ error: 'Analysis API request failed' }, { status: response.status });
     }
 
     const data = await response.json();
+
+    // 토큰 사용량 결정: usage 필드 우선, 없으면 텍스트 길이에서 추정
+    const billing = resolveTokenBilling(data, prompt.length);
+
+    // 청크별 실시간 크레딧 차감
+    let deductResult: DeductResult | null = null;
+    let insufficientBalance = false;
+
+    if (userId && userId !== 'anonymous' && billing) {
+      const { inputCost, outputCost } = getModelCosts(model);
+      const credits = costUsdToCredits(
+        tokenCostUsd(billing.prompt_tokens, billing.completion_tokens, inputCost, outputCost)
+      );
+
+      if (credits > 0) {
+        try {
+          const deductResponse = await proxyToCatcident('/credits/deduct/', accessToken, {
+            method: 'POST',
+            body: JSON.stringify({
+              service: 'storygraph',
+              amount: credits,
+              description: '소설 분석 (청크)',
+              metadata: { model, prompt_tokens: billing.prompt_tokens, completion_tokens: billing.completion_tokens },
+            }),
+          });
+
+          if (deductResponse.ok) {
+            const result: DeductResult = await deductResponse.json();
+            deductResult = result;
+            updateBalanceCache(userId, result.balance_after);
+          } else if (deductResponse.status === 402) {
+            insufficientBalance = true;
+            console.warn(`[analyze] 잔액 부족으로 차감 실패 (사용량: ${credits}cr)`);
+          } else {
+            // Fail-open: 차감 실패해도 분석 데이터는 반환
+            console.error(`[analyze] 차감 실패 (${deductResponse.status}), fail-open`);
+          }
+        } catch (err: unknown) {
+          console.error('[analyze] 차감 네트워크 오류, fail-open:', err instanceof Error ? err.message : err);
+        }
+      }
+    }
+
+    // 클라이언트 UI용 billing 정보
+    if (billing) {
+      data._billing = {
+        ...billing,
+        credits_deducted: deductResult?.amount_deducted ?? 0,
+        balance_after: deductResult?.balance_after ?? null,
+        insufficient_balance: insufficientBalance,
+      };
+    }
+
     console.log(`[analyze] 응답 성공`);
     return NextResponse.json(data);
-  } catch (err) {
-    const error = err as Error;
-    if (error.name === 'AbortError') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
       console.error(`[analyze] 타임아웃 (2분 초과)`);
       return NextResponse.json({ error: 'API request timed out (2 minutes). Try with a smaller text.' }, { status: 504 });
     }
-    console.error(`[analyze] 오류: ${error.message}`);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[analyze] 오류:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

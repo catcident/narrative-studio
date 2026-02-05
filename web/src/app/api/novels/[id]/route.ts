@@ -34,7 +34,8 @@ export async function GET(
       knowledgeGraphId: item.knowledgeGraphId || null,
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] novels/[id] GET error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -57,6 +58,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: result.deletedCount > 0 });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[api] novels/[id] DELETE error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
