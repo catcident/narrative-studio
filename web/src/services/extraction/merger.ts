@@ -456,10 +456,12 @@ function sceneIdToReadable(sceneId: string): string {
 }
 
 // description에서 다른 엔티티 언급을 찾아 자동 관계 생성
+// newSceneIds: 이번에 새로 추가된 장면 ID들 (기존 그래프와 병합 시 새 장면만 전달)
 function inferDescriptionBasedEdges(
   entities: Record<string, Entity>,
   hyperedges: Record<string, HyperEdge>,
-  edgeCounter: { value: number }
+  edgeCounter: { value: number },
+  newSceneIds?: Set<string>
 ): void {
   for (const entity of Object.values(entities)) {
     if (!entity.description) continue;
@@ -475,6 +477,36 @@ function inferDescriptionBasedEdges(
       );
       if (!isMentioned) continue;
       if (hasEdgeBetween(hyperedges, entity.id, otherEntity.id)) continue;
+
+      // 두 엔티티의 공통 장면 계산
+      let commonScenes: string[] = [];
+      const entityScenes = entity.scenes || [];
+      const otherScenes = otherEntity.scenes || [];
+
+      if (newSceneIds && newSceneIds.size > 0) {
+        // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
+        commonScenes = entityScenes.filter(s =>
+          newSceneIds.has(s) && otherScenes.includes(s)
+        );
+        // 공통 장면이 없으면 각자의 새 장면만이라도 사용
+        if (commonScenes.length === 0) {
+          const entityNewScenes = entityScenes.filter(s => newSceneIds.has(s));
+          const otherNewScenes = otherScenes.filter(s => newSceneIds.has(s));
+          // 둘 다 새 장면이 있어야 관계 생성
+          if (entityNewScenes.length === 0 || otherNewScenes.length === 0) {
+            continue; // 기존 엔티티와 새 엔티티 간 관계는 새 장면 기준으로만
+          }
+          commonScenes = [...new Set([...entityNewScenes, ...otherNewScenes])];
+        }
+      } else {
+        // 새로 생성하는 경우: 공통 장면 또는 entity의 장면 사용
+        commonScenes = entityScenes.filter(s => otherScenes.includes(s));
+        if (commonScenes.length === 0) {
+          commonScenes = entityScenes;
+        }
+      }
+
+      if (commonScenes.length === 0) continue;
 
       edgeCounter.value++;
       const id = formatId('H', edgeCounter.value);
@@ -509,20 +541,22 @@ function inferDescriptionBasedEdges(
         sentiment: 'neutral',
         strength: 3,
         bidirectional: true,
-        scenes: entity.scenes || [],
+        scenes: commonScenes,
         sourceRef: { chapter: 1 },
       };
 
-      console.log(`[extraction] 자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반)`);
+      console.log(`[extraction] 자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반, 장면: ${commonScenes.join(', ')})`);
     }
   }
 }
 
 // 같은 장면에 등장하는 엔티티 쌍에 대해 자동 관계 생성
+// newSceneIds: 이번에 새로 추가된 장면 ID들 (기존 그래프와 병합 시 새 장면만 전달)
 function inferCoOccurrenceEdges(
   entities: Record<string, Entity>,
   hyperedges: Record<string, HyperEdge>,
-  edgeCounter: { value: number }
+  edgeCounter: { value: number },
+  newSceneIds?: Set<string>
 ): void {
   const allEntities = Object.values(entities);
   const characterEntities = allEntities.filter(e => e.category === 'character');
@@ -537,7 +571,14 @@ function inferCoOccurrenceEdges(
       const char2 = characterEntities[j];
       if (!char2.scenes?.length) continue;
 
-      const commonScenes = char1.scenes.filter((s: string) => char2.scenes!.includes(s));
+      // 공통 장면 계산
+      let commonScenes = char1.scenes.filter((s: string) => char2.scenes!.includes(s));
+
+      // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
+      if (newSceneIds && newSceneIds.size > 0) {
+        commonScenes = commonScenes.filter(s => newSceneIds.has(s));
+      }
+
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
 
@@ -570,7 +611,14 @@ function inferCoOccurrenceEdges(
     for (const char of characterEntities) {
       if (!char.scenes?.length) continue;
 
-      const commonScenes = entity.scenes.filter((s: string) => char.scenes!.includes(s));
+      // 공통 장면 계산
+      let commonScenes = entity.scenes.filter((s: string) => char.scenes!.includes(s));
+
+      // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
+      if (newSceneIds && newSceneIds.size > 0) {
+        commonScenes = commonScenes.filter(s => newSceneIds.has(s));
+      }
+
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, entity.id, char.id)) continue;
 
@@ -793,8 +841,14 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   }
 
   // 자동 관계 생성: description 기반 + 장면 동시 등장
-  inferDescriptionBasedEdges(entities, hyperedges, edgeCounter);
-  inferCoOccurrenceEdges(entities, hyperedges, edgeCounter);
+  // 기존 그래프가 있으면 새로 추가된 장면 ID만 전달 (기존 장면과의 관계 생성 방지)
+  const newSceneIds = existingGraph
+    ? new Set(Object.values(sceneIdMapping))
+    : undefined;
+  console.log('[extraction] 새 장면 ID:', newSceneIds ? [...newSceneIds].join(', ') : '(전체)');
+
+  inferDescriptionBasedEdges(entities, hyperedges, edgeCounter, newSceneIds);
+  inferCoOccurrenceEdges(entities, hyperedges, edgeCounter, newSceneIds);
 
   // 타임라인 등록
   const timeline = (extracted.timeline || []).map((t: MergedTimelinePoint) => ({
