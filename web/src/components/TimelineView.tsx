@@ -71,7 +71,8 @@ export function TimelineView() {
 
     return sortedScenes.map((scene: any) => {
       const sceneId = scene.sceneId;
-      const sceneNum = parseInt(sceneId.replace('S', '').replace(/^0+/, '') || '0');
+      // order 필드 사용 (파일 순서 변경 시 업데이트됨), 없으면 sceneId에서 추출
+      const sceneNum = scene.order || parseInt(sceneId.replace('S', '').replace(/^0+/, '') || '0');
 
       // 이 장면의 관계들
       const edges = Object.values(knowledgeGraph.hyperedges)
