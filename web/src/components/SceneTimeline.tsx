@@ -65,6 +65,7 @@ export function SceneTimeline({
   const [rangeSelecting, setRangeSelecting] = useState<'start' | 'end' | null>(null);
   const [showJumpInput, setShowJumpInput] = useState(false);
   const [jumpValue, setJumpValue] = useState('');
+  const [scrollPercent, setScrollPercent] = useState(0);
 
   // 현재 선택된 장면 인덱스
   const currentIndex = selectedSceneId
@@ -85,6 +86,9 @@ export function SceneTimeline({
     const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
     setCanScrollLeft(scrollLeft > 0);
     setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    // 스크롤바 위치 업데이트
+    const maxScroll = scrollWidth - clientWidth;
+    setScrollPercent(maxScroll > 0 ? (scrollLeft / maxScroll) * 100 : 0);
   };
 
   useEffect(() => {
@@ -387,8 +391,8 @@ export function SceneTimeline({
         {/* 타임라인 */}
         <div
           ref={scrollRef}
-          className="overflow-x-auto scrollbar-hide"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="overflow-x-auto"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}
         >
           <div className="flex items-center min-w-max px-6">
             {/* 시작 마커 */}
@@ -514,6 +518,25 @@ export function SceneTimeline({
             </div>
           </div>
         </div>
+
+        {/* 스크롤바 (장면이 많을 때 이동용) */}
+        {scenes.length > 10 && (
+          <div className="mt-2 px-6">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={scrollPercent}
+              onChange={(e) => {
+                if (scrollRef.current) {
+                  const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth;
+                  scrollRef.current.scrollLeft = (parseInt(e.target.value) / 100) * maxScroll;
+                }
+              }}
+              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
