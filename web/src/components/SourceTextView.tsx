@@ -5,10 +5,10 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2 } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { useStore } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
-import type { SceneSnapshot, NovelKnowledgeGraph } from '../types';
+import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile } from '../types';
 
 export function SourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
@@ -19,6 +19,7 @@ export function SourceTextView() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [movingFileId, setMovingFileId] = useState<string | null>(null);
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
@@ -238,6 +239,101 @@ export function SourceTextView() {
     }
   }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
+  // 파일 순서 변경 핸들러 (위로/아래로 이동)
+  const handleMoveFile = useCallback(async (fileIndex: number, direction: 'up' | 'down') => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    const currentFiles = knowledgeGraph.metadata.sourceFiles || [];
+    if (currentFiles.length < 2) return;
+
+    const targetIndex = direction === 'up' ? fileIndex - 1 : fileIndex + 1;
+    if (targetIndex < 0 || targetIndex >= currentFiles.length) return;
+
+    const fileA = currentFiles[fileIndex];
+    const fileB = currentFiles[targetIndex];
+
+    setMovingFileId(fileA.id);
+    try {
+      console.log(`[SourceTextView] 파일 순서 변경: ${fileA.fileName} ↔ ${fileB.fileName}`);
+
+      // 1. sourceFiles 배열 순서 변경
+      const newSourceFiles: SourceFile[] = [...currentFiles];
+      newSourceFiles[fileIndex] = fileB;
+      newSourceFiles[targetIndex] = fileA;
+
+      // 2. 각 파일의 장면들 찾기
+      const scenesA: SceneSnapshot[] = [];
+      const scenesB: SceneSnapshot[] = [];
+
+      Object.values(knowledgeGraph.snapshots).forEach(scene => {
+        const matchA = scene.sourceFile === fileA.fileName || scene.sourceFileId === fileA.id;
+        const matchB = scene.sourceFile === fileB.fileName || scene.sourceFileId === fileB.id;
+        if (matchA) scenesA.push(scene);
+        if (matchB) scenesB.push(scene);
+      });
+
+      console.log(`[SourceTextView] 파일A 장면: ${scenesA.map(s => s.sceneId).join(', ')}`);
+      console.log(`[SourceTextView] 파일B 장면: ${scenesB.map(s => s.sceneId).join(', ')}`);
+
+      // 3. 장면 order 재계산
+      // 두 파일의 장면 order 범위를 swap
+      const newSnapshots = { ...knowledgeGraph.snapshots };
+
+      // 각 파일 장면들의 현재 order 범위 확인
+      const ordersA = scenesA.map(s => s.order).sort((a, b) => a - b);
+      const ordersB = scenesB.map(s => s.order).sort((a, b) => a - b);
+
+      if (ordersA.length > 0 && ordersB.length > 0) {
+        // 두 파일의 order를 swap
+        // A의 장면들은 B의 시작 order부터, B의 장면들은 A의 시작 order부터
+        const minOrderA = ordersA[0];
+        const minOrderB = ordersB[0];
+
+        // 파일 A의 장면들에 새 order 부여 (B의 시작 위치부터)
+        const sortedScenesA = [...scenesA].sort((a, b) => a.order - b.order);
+        sortedScenesA.forEach((scene, idx) => {
+          newSnapshots[scene.sceneId] = {
+            ...newSnapshots[scene.sceneId],
+            order: minOrderB + idx,
+          };
+        });
+
+        // 파일 B의 장면들에 새 order 부여 (A의 시작 위치부터)
+        const sortedScenesB = [...scenesB].sort((a, b) => a.order - b.order);
+        sortedScenesB.forEach((scene, idx) => {
+          newSnapshots[scene.sceneId] = {
+            ...newSnapshots[scene.sceneId],
+            order: minOrderA + idx,
+          };
+        });
+      }
+
+      // 4. 새 지식 그래프 생성
+      const updatedGraph: NovelKnowledgeGraph = {
+        ...knowledgeGraph,
+        metadata: {
+          ...knowledgeGraph.metadata,
+          sourceFiles: newSourceFiles,
+          updatedAt: new Date().toISOString(),
+        },
+        snapshots: newSnapshots,
+      };
+
+      // 5. 서버에 업데이트
+      await updateKnowledgeGraph(currentDataId, updatedGraph);
+
+      // 6. 스토어 업데이트
+      setKnowledgeGraph(updatedGraph, undefined, currentDataId);
+
+      console.log(`[SourceTextView] 파일 순서 변경 완료`);
+    } catch (error) {
+      console.error('[SourceTextView] 파일 순서 변경 실패:', error);
+      alert('파일 순서 변경에 실패했습니다.');
+    } finally {
+      setMovingFileId(null);
+    }
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
+
   if (sourceFiles.length === 0) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 text-gray-400">
@@ -324,6 +420,30 @@ export function SourceTextView() {
                     })}
                   </div>
                 </div>
+
+                {/* 순서 이동 버튼 */}
+                {sourceFiles.length > 1 && (
+                  <div className="flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleMoveFile(index, 'up')}
+                      disabled={index === 0 || movingFileId === file.id}
+                      className="p-0.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="위로 이동"
+                      aria-label="위로 이동"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveFile(index, 'down')}
+                      disabled={index === sourceFiles.length - 1 || movingFileId === file.id}
+                      className="p-0.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="아래로 이동"
+                      aria-label="아래로 이동"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
 
                 {/* 복사 버튼 */}
                 <button
