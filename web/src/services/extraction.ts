@@ -1870,26 +1870,57 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
   const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
 
+  /**
+   * ⚠️ 중요: 추가 분석 시 장면 번호 이어가기
+   *
+   * 문제 상황:
+   *   - 1화 분석: s.id = 1,2,3 → S0001, S0002, S0003
+   *   - 2화 추가 분석: s.id = 1,2,3 → S0001, S0002, S0003 (덮어쓰기!)
+   *
+   * 해결:
+   *   - 기존 스냅샷의 마지막 번호를 확인
+   *   - 새 장면 번호 = 기존 마지막 번호 + s.id
+   *   - 2화 분석: s.id = 1,2,3 → S0004, S0005, S0006 (이어가기!)
+   */
+  const existingSceneCount = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
+
   sortedScenes.forEach((s: any) => {
-    const sceneId = `S${String(s.id).padStart(4, '0')}`;
+    // 새 장면 번호 = 기존 마지막 번호 + 현재 장면 번호
+    const actualSceneNum = existingSceneCount + s.id;
+    const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
 
     // 장 번호도 기존 것에 이어서
     const actualChapterNum = s.chapter ? (s.chapter + (existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0)) : newChapterNumber;
     const chapterId = actualChapterNum ? `C${String(actualChapterNum).padStart(4, '0')}` : null;
 
-    // 이 장면에 등장하는 엔티티들 (scenes 배열에 sceneId가 포함된 것)
+    // 이 장면에 등장하는 엔티티들 - 원래 장면 ID로 찾아서 새 ID로 매핑
+    const originalSceneId = `S${String(s.id).padStart(4, '0')}`;
     const entitiesInScene = Object.values(entities)
-      .filter((e: any) => e.scenes?.includes(sceneId))
+      .filter((e: any) => e.scenes?.includes(originalSceneId))
       .map((e: any) => e.id);
 
-    // 이 장면에 해당하는 관계들
+    // 엔티티의 scenes 배열도 새 ID로 업데이트
+    Object.values(entities).forEach((e: any) => {
+      if (e.scenes?.includes(originalSceneId)) {
+        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
+      }
+    });
+
+    // 이 장면에 해당하는 관계들 - 원래 장면 ID로 찾아서 새 ID로 매핑
     const activeEdges = Object.values(hyperedges)
-      .filter((e: any) => e.scenes?.includes(sceneId))
+      .filter((e: any) => e.scenes?.includes(originalSceneId))
       .map((e: any) => e.id);
+
+    // hyperedges의 scenes 배열도 새 ID로 업데이트
+    Object.values(hyperedges).forEach((e: any) => {
+      if (e.scenes?.includes(originalSceneId)) {
+        e.scenes = e.scenes.map((sid: string) => sid === originalSceneId ? sceneId : sid);
+      }
+    });
 
     snapshots[sceneId] = {
       sceneId,
-      order: s.id,  // 서술 순서 (청크 병합에서 부여된 글로벌 번호)
+      order: actualSceneNum,  // 서술 순서 (기존 + 새 번호)
       chapter: chapterId,
       chapterNumber: actualChapterNum,
       time: s.time || `장면 ${s.id}`,
