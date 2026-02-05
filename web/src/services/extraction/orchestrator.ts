@@ -257,6 +257,15 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   if (loopCompleted) {
     clearProgress();
   }
+
+  // 모든 청크가 실패(빈 결과)인 경우 에러로 처리
+  const hasAnyData = allExtracted.some(ext =>
+    (ext.entities?.length ?? 0) > 0 || (ext.scenes?.length ?? 0) > 0
+  );
+  if (allExtracted.length > 0 && !hasAnyData) {
+    throw new Error(`모든 청크(${totalChunks}개) 분석에 실패했습니다. API 연결 상태를 확인해주세요.`);
+  }
+
   onProgress?.('인물 정보 병합 중...');
 
   // 결과 병합 (청크별 파일 인덱스 전달)
