@@ -84,7 +84,7 @@ export interface ExtractionProgress {
   fileNames?: string[];  // 원본 파일명 배열
 }
 
-export type ProgressCallback = (msg: string, current?: number, total?: number, estimatedMinutes?: number | null) => void;
+export type ProgressCallback = (msg: string, current?: number, total?: number, estimatedRemainingSeconds?: number | null) => void;
 export type ChunkBillingCallback = (chunkIndex: number, billing: ChunkBilling) => void;
 
 export interface ExtractionOptions {
