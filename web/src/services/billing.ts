@@ -7,6 +7,7 @@
  */
 
 import type {
+  BillingSubscription,
   CreditTransaction,
   PlanFeatures,
   ChunkUsage,
@@ -133,14 +134,20 @@ export interface UsageEstimate {
   chunks: number;
 }
 
+const ZERO_ESTIMATE: UsageEstimate = {
+  estimated_credits: 0,
+  estimated_input_tokens: 0,
+  estimated_output_tokens: 0,
+  estimated_cost_usd: 0,
+  chunks: 0,
+};
+
 /**
  * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
  * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
  */
 export function estimateUsageLocally(charCount: number, model: string): UsageEstimate {
-  if (charCount <= 0) {
-    return { estimated_credits: 0, estimated_input_tokens: 0, estimated_output_tokens: 0, estimated_cost_usd: 0, chunks: 0 };
-  }
+  if (charCount <= 0) return ZERO_ESTIMATE;
 
   const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
   const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
@@ -183,6 +190,16 @@ export async function checkSufficientBalance(): Promise<
     return { sufficient: false, error: '크레딧이 부족합니다.' };
   }
   return { sufficient: true };
+}
+
+/**
+ * 구독이 활성화된 경우 잔액 부족 시 에러를 throw.
+ * 구독이 없으면 (billing 비활성) 아무 동작 없이 통과.
+ */
+export async function ensureSufficientBalance(subscription: BillingSubscription | null): Promise<void> {
+  if (!subscription) return;
+  const result = await checkSufficientBalance();
+  if (!result.sufficient) throw new Error(result.error);
 }
 
 // ==================== Billing 콜백 ====================

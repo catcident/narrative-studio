@@ -6,7 +6,7 @@
  * Only active when AUTH_ENABLED=true.
  */
 
-import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
+import { AUTH_ENABLED } from '@/lib/auth';
 import { proxyToCatcident } from '@/services/billingProxy';
 
 interface CacheEntry {
@@ -40,21 +40,15 @@ function evictStaleEntries(): void {
 }
 
 /**
- * Check whether the current user is eligible to run analysis.
+ * Check whether the given user is eligible to run analysis.
  * Returns `null` if OK, or an error message string if blocked.
+ * Requires pre-resolved auth (avoids double requireAuth() call in route).
  */
-export async function checkAnalyzeEligibility(): Promise<string | null> {
+export async function checkAnalyzeEligibility(userId: string, accessToken: string | undefined): Promise<string | null> {
   // Skip check entirely when auth is disabled (public demo)
   if (!AUTH_ENABLED) {
     return null;
   }
-
-  const authResult = await requireAuth();
-  if ('error' in authResult) {
-    return 'Authentication required';
-  }
-
-  const { userId, accessToken } = authResult;
 
   // Check cache first
   const cached = balanceCache.get(userId);

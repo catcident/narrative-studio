@@ -140,8 +140,10 @@ extractKnowledgeGraph({ onChunkBilling })
 
 새로운 분석 경로를 추가할 때 체크리스트:
 - [ ] `onChunkBilling` 콜백 전달 — 실시간 잔액 갱신 + UI 표시
-- [ ] `checkSufficientBalance()` 분석 시작 전 호출
+- [ ] `ensureSufficientBalance(subscription)` 분석 시작 전 호출
 - [ ] `insufficient_balance` 응답 시 분석 중단 + 부분 결과 반환 처리
+- [ ] 402 응답 명시 처리 (selector, extractor 모두) — generic error에 흡수 금지
+- [ ] `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
 
 ### 파일 추가 분석
@@ -240,11 +242,12 @@ estimateUsageLocally(charCount, model)  // 로컬 예상 비용 계산 (UsageEst
 calculateCreditsFromTokens(prompt, completion, model)  // 단일 모델 토큰→크레딧
 calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합산
 
-// 잔액 확인 (discriminated union 반환)
+// 잔액 확인
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
+ensureSufficientBalance(subscription)  // subscription 있으면 잔액 확인, 없으면 통과
 
 // Billing 콜백 생성
-createBillingCallback(updateCreditBalance?)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백
+createBillingCallback(addChunkUsage, updateCreditBalance?)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백
 ```
 
 ### 로컬 추정 함수 동기화

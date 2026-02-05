@@ -108,6 +108,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     });
   };
 
+  let loopCompleted = true;
+
   for (let i = startChunk; i < chunks.length; i++) {
     const remaining = totalChunks - i;
     const avgTime = chunkTimes.length > 0 ? chunkTimes.reduce((a, b) => a + b, 0) / chunkTimes.length : 0;
@@ -146,6 +148,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
           console.warn(`[extraction] 잔액 소진 (selector): 청크 ${i + 1}에서 중단`);
           onProgress?.(`크레딧 부족으로 중단 (${i}/${totalChunks} 완료). 이어하기로 재개할 수 있습니다.`);
           saveCurrentProgress(i);
+          loopCompleted = false;
           break;
         }
 
@@ -165,9 +168,10 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       // 잔액 소진 체크 (extractor에서 감지)
       if (billing?.insufficient_balance) {
         console.warn(`[extraction] 잔액 소진 (extractor): 청크 ${i + 1}에서 중단`);
-        onProgress?.(`크레딧 부족으로 중단 (${i + 1}/${totalChunks} 완료). 이어하기로 재개할 수 있습니다.`);
-        if (billing && onChunkBilling) onChunkBilling(i, billing);
-        saveCurrentProgress(i + 1);
+        onProgress?.(`크레딧 부족으로 중단 (${i}/${totalChunks} 완료). 이어하기로 재개할 수 있습니다.`);
+        if (onChunkBilling) onChunkBilling(i, billing);
+        saveCurrentProgress(i);
+        loopCompleted = false;
         break;
       }
 
@@ -243,8 +247,10 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     }
   }
 
-  // 완료되면 진행상황 삭제
-  clearProgress();
+  // 완전히 완료된 경우에만 진행상황 삭제 (잔액 부족 중단 시 이어하기 위해 보존)
+  if (loopCompleted) {
+    clearProgress();
+  }
   onProgress?.('인물 정보 병합 중...');
 
   // 결과 병합

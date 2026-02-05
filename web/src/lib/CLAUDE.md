@@ -168,8 +168,8 @@ const body = JSON.stringify({ amount, description, metadata, idempotency_key, se
 - `AUTH_ENABLED=false`이면 항상 통과
 
 ```typescript
-// /api/analyze에서 사용
-const balanceError = await checkAnalyzeEligibility();
+// /api/analyze에서 사용 (사전 해결된 auth 정보 전달 — requireAuth() 중복 호출 방지)
+const balanceError = await checkAnalyzeEligibility(userId, accessToken);
 if (balanceError) return NextResponse.json({ error: balanceError }, { status: 402 });
 
 // 차감 후 캐시 갱신
@@ -178,6 +178,9 @@ updateBalanceCache(userId, balance_after);
 // 캐시 무효화 (필요 시)
 invalidateBalanceCache(userId);
 ```
+
+**⚠️ 주의**: `checkAnalyzeEligibility()`는 내부적으로 `requireAuth()`를 호출하지 않음.
+동일 request 내 `requireAuth()` 중복 호출을 방지하기 위해, 호출자가 사전 해결한 `userId`와 `accessToken`을 전달해야 함.
 
 ---
 

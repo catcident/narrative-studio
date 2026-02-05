@@ -48,9 +48,9 @@ export async function proxyToCatcident(
     });
 
     return response;
-  } catch (error) {
-    console.error(`[billing] Proxy error: ${path}`, error);
-    throw error;
+  } catch (err: unknown) {
+    console.error(`[billing] Proxy error: ${path}`, err instanceof Error ? err.message : err);
+    throw err;
   }
 }
 
@@ -83,8 +83,8 @@ export function billingGetHandler(billingPath: string, logLabel: string) {
 
       const response = await proxyToCatcident(billingPath, authResult.accessToken);
       return handleUpstreamResponse(response, logLabel);
-    } catch (error) {
-      console.error(`[billing] ${logLabel} error:`, error);
+    } catch (err: unknown) {
+      console.error(`[billing] ${logLabel} error:`, err instanceof Error ? err.message : err);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   };
@@ -132,8 +132,8 @@ export function billingPostHandler(billingPath: string, logLabel: string) {
       const body = JSON.stringify(filtered);
       const response = await proxyToCatcident(billingPath, authResult.accessToken, { method: 'POST', body });
       return handleUpstreamResponse(response, logLabel);
-    } catch (error) {
-      console.error(`[billing] ${logLabel} error:`, error);
+    } catch (err: unknown) {
+      console.error(`[billing] ${logLabel} error:`, err instanceof Error ? err.message : err);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   };

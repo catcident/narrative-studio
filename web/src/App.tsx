@@ -23,7 +23,7 @@ import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
 import { extractKnowledgeGraph } from './services/extraction';
 import { readFileAsText } from './services/fileReader';
-import { createBillingCallback, checkSufficientBalance } from './services/billing';
+import { createBillingCallback, ensureSufficientBalance } from './services/billing';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -130,11 +130,7 @@ function App() {
       // 기존 데이터에 사용된 모델로 분석 (일관성 유지)
       const existingModel = knowledgeGraph.metadata.model;
 
-      // 잔액 사전 확인
-      if (subscription) {
-        const balanceCheck = await checkSufficientBalance();
-        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
-      }
+      await ensureSufficientBalance(subscription);
 
       // 기존 지식그래프를 전달하여 이어서 분석
       const updatedKnowledgeGraph = await extractKnowledgeGraph({

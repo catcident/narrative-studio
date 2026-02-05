@@ -111,6 +111,13 @@ export async function selectRelevantEntities(
     }, 30000);  // 30초 타임아웃 (빠른 작업)
 
     if (!response.ok) {
+      // 잔액 부족 (402): 빈 선별 결과 + insufficient_balance 플래그 반환
+      if (response.status === 402) {
+        return {
+          names: [],
+          billing: { prompt_tokens: 0, completion_tokens: 0, model: selectionModel, insufficient_balance: true },
+        };
+      }
       console.warn('[extraction] 선별 API 오류, 전체 엔티티 사용');
       return { names: allEntityNames(graph), billing: null };
     }

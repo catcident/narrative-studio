@@ -41,6 +41,11 @@ interface TokenBilling {
   completion_tokens: number;
 }
 
+interface DeductResult {
+  balance_after: number;
+  amount_deducted: number;
+}
+
 /** usage 필드가 있으면 그대로 사용, 없으면 텍스트 길이에서 토큰 추정 */
 function resolveTokenBilling(
   data: Record<string, unknown>,
@@ -80,30 +85,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
     }
 
-    // 서버 측 잔액 확인 (AUTH_ENABLED=true 시에만 활성)
-    const balanceError = await checkAnalyzeEligibility();
-    if (balanceError) {
-      return NextResponse.json({ error: balanceError }, { status: 402 });
-    }
-
-    // userId + accessToken 조회 (rate limit + deduct 프록시 공용)
+    // 인증 + 잔액 확인 + Rate Limit (AUTH_ENABLED=true 시에만 활성)
     let userId: string | null = null;
     let accessToken: string | undefined;
     if (AUTH_ENABLED) {
       const authResult = await requireAuth();
-      if (!('error' in authResult)) {
-        userId = authResult.userId;
-        accessToken = authResult.accessToken;
-        const limited = checkRateLimit(userId);
-        if (limited) {
-          return NextResponse.json(
-            { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-            {
-              status: 429,
-              headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) },
-            },
-          );
-        }
+      if ('error' in authResult) {
+        return authResult.error;
+      }
+      userId = authResult.userId;
+      accessToken = authResult.accessToken;
+
+      const balanceError = await checkAnalyzeEligibility(userId, accessToken);
+      if (balanceError) {
+        return NextResponse.json({ error: balanceError }, { status: 402 });
+      }
+
+      const limited = checkRateLimit(userId);
+      if (limited) {
+        return NextResponse.json(
+          { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+          {
+            status: 429,
+            headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) },
+          },
+        );
       }
     }
 
@@ -143,7 +149,7 @@ export async function POST(request: NextRequest) {
     const billing = resolveTokenBilling(data, prompt.length);
 
     // 청크별 실시간 크레딧 차감
-    let deductResult: { balance_after: number; amount_deducted: number } | null = null;
+    let deductResult: DeductResult | null = null;
     let insufficientBalance = false;
 
     if (userId && userId !== 'anonymous' && billing) {
@@ -165,8 +171,9 @@ export async function POST(request: NextRequest) {
           });
 
           if (deductResponse.ok) {
-            deductResult = await deductResponse.json();
-            updateBalanceCache(userId, deductResult!.balance_after);
+            const result: DeductResult = await deductResponse.json();
+            deductResult = result;
+            updateBalanceCache(userId, result.balance_after);
           } else if (deductResponse.status === 402) {
             insufficientBalance = true;
             console.warn(`[analyze] 잔액 부족으로 차감 실패 (사용량: ${credits}cr)`);

@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, checkSufficientBalance } from '../../services/billing';
+import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
 import { readFileAsText } from '../../services/fileReader';
 import { AVAILABLE_MODELS, DEFAULT_MODEL } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
@@ -137,11 +137,10 @@ export function FileUpload() {
   /**
    * 분석 공통 래퍼: loading/billing/error 라이프사이클을 한 곳에서 관리
    *
-   * @param title - 에러 로그에 사용할 제목
    * @param work  - 실제 분석 로직. 성공 시 true 반환
    */
   const runExtraction = useCallback(
-    async (title: string, work: () => Promise<boolean>) => {
+    async (work: () => Promise<boolean>) => {
       setLocalLoading(true);
       setLoading(true);
       setError(null);
@@ -263,9 +262,8 @@ export function FileUpload() {
   const handleFiles = useCallback(async (files: FileList) => {
     if (files.length === 0) return;
     const sortedFiles = Array.from(files).sort((a, b) => a.name.localeCompare(b.name));
-    const title = bookTitle.trim() || sortedFiles[0].name.replace(/\.[^/.]+$/, '');
 
-    await runExtraction(title, async () => {
+    await runExtraction(async () => {
       setProgress(`${sortedFiles.length}개 파일 읽는 중...`);
       const fileInfos = await readFilesToInfos(sortedFiles, setProgress);
       const combinedText = combineFileTexts(fileInfos);
@@ -280,11 +278,7 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      // 잔액 사전 확인
-      if (subscription) {
-        const balanceCheck = await checkSufficientBalance();
-        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
-      }
+      await ensureSufficientBalance(subscription);
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: combinedText,
@@ -350,12 +344,8 @@ export function FileUpload() {
 
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
-    await runExtraction(savedProgress.title, async () => {
-      // 잔액 사전 확인
-      if (subscription) {
-        const balanceCheck = await checkSufficientBalance();
-        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
-      }
+    await runExtraction(async () => {
+      await ensureSufficientBalance(subscription);
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: '',
@@ -378,12 +368,8 @@ export function FileUpload() {
   const executeAddFile = useCallback(async (file: File, text: string, finalFileName: string) => {
     if (!knowledgeGraph) return;
 
-    await runExtraction(knowledgeGraph.metadata.title, async () => {
-      // 잔액 사전 확인
-      if (subscription) {
-        const balanceCheck = await checkSufficientBalance();
-        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
-      }
+    await runExtraction(async () => {
+      await ensureSufficientBalance(subscription);
 
       setProgress('추가 분석 중...');
       const updatedKnowledgeGraph = await extractKnowledgeGraph({
@@ -480,7 +466,7 @@ export function FileUpload() {
 
     const title = `${bookTitle.trim()} - ${bookAuthor.trim()}`;
 
-    await runExtraction(title, async () => {
+    await runExtraction(async () => {
       let text = '';
       let sourceFileName = `${bookTitle.trim()}.txt`;
       const fileInfos: FileInfo[] = [];
@@ -499,11 +485,7 @@ export function FileUpload() {
         throw new Error('내용이 비어있습니다.');
       }
 
-      // 잔액 사전 확인
-      if (subscription) {
-        const balanceCheck = await checkSufficientBalance();
-        if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
-      }
+      await ensureSufficientBalance(subscription);
 
       setProgress('분석 중...');
       const newKnowledgeGraph = await extractKnowledgeGraph({
