@@ -86,7 +86,6 @@ session.user.roles      // 권한 배열
 ### ⚠️ 보안 규칙
 
 - **Access Token은 클라이언트 세션에 노출 금지**: `accessToken`은 JWT 토큰 내부에서만 사용하고, `session` 콜백에서 클라이언트로 전달하지 않아야 함. XSS 공격 시 토큰 유출 위험.
-- **OAuth token 갱신**: `accessTokenExpires` 만료 시 `refreshToken`으로 갱신 로직 필요 (현재 미구현 → TODO)
 - **API 에러 메시지 sanitization**: 서버 API 라우트에서 클라이언트로 내부 에러 메시지를 그대로 전달하지 않음. 항상 generic 에러 반환.
 
 ```typescript
@@ -95,6 +94,36 @@ return NextResponse.json({ error: error.message }, { status: 500 });
 
 // ✅ 제네릭 에러 반환
 return NextResponse.json({ error: 'Request failed' }, { status: 500 });
+```
+
+### OAuth 토큰 갱신
+
+JWT 콜백에서 access token 만료 60초 전 자동 갱신:
+
+```typescript
+// jwt callback 내부 흐름:
+// 1. 초기 로그인 → accessToken, refreshToken, accessTokenExpires 저장
+// 2. 만료 60초 전 → refreshAccessToken() 호출
+// 3. 실패 시 → token.error = REFRESH_TOKEN_ERROR
+```
+
+**`refreshAccessToken()` 헬퍼**:
+- `${OIDC_ISSUER}/token/` 엔드포인트에 `grant_type=refresh_token` POST
+- `client_id` + `client_secret` + `refresh_token` 전달 필수
+- 성공 시 `accessToken`, `refreshToken`, `accessTokenExpires` 갱신
+- 실패 시 `REFRESH_TOKEN_ERROR` 마킹
+
+**⚠️ 주의사항**:
+- `OIDC_ISSUER` 상수 사용 필수 (issuer + `/oauth` 접두사 포함). 직접 URL 조합 금지.
+- `client_secret` 누락 시 `token_endpoint_auth_method: 'client_secret_post'` 프로바이더에서 실패.
+- `session.error`로 클라이언트에 갱신 실패 전달 (재로그인 유도용).
+
+```typescript
+// ❌ 직접 URL 조합 → 경로 불일치 위험
+const tokenUrl = `${process.env.AUTH_CATCIDENT_ISSUER}/o/token/`;
+
+// ✅ OIDC_ISSUER 상수 사용 (이미 /oauth 포함)
+const tokenUrl = `${OIDC_ISSUER}/token/`;
 ```
 
 ### ⚠️ 프록시 보안 규칙

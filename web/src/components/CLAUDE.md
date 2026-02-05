@@ -236,6 +236,23 @@ catch (err: unknown) {
 }
 ```
 
+### Discriminated Union 반환 타입 사용
+
+**규칙**: 성공/실패를 구분하는 함수는 discriminated union 반환 타입을 사용하고, 호출부에서 type narrowing 후 접근
+
+```tsx
+// ✅ 함수 정의 — 성공/실패 분기
+async function checkSomething(): Promise<{ ok: true } | { ok: false; error: string }> { ... }
+
+// ✅ 호출부 — type narrowing 후 접근
+const result = await checkSomething();
+if (!result.ok) throw new Error(result.error);  // result.error 안전 접근
+
+// ❌ destructuring → 모든 프로퍼티가 존재한다고 가정
+const { ok, error } = await checkSomething();
+if (!ok) throw new Error(error);  // TS2339: Property 'error' does not exist
+```
+
 ### useCallback 의존성 완전성
 
 **규칙**: `useCallback` 내에서 참조하는 모든 클로저 변수는 의존성 배열에 포함

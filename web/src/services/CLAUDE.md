@@ -18,16 +18,17 @@
 | `orchestrator.ts` | 메인 파이프라인 + 진행상황 저장/복원 |
 | `index.ts` | Public API re-export |
 
-### ⚠️ 모듈 의존성 규칙
+### 모듈 의존성 규칙
 
-`extractor.ts` ↔ `selector.ts` 간 순환 의존이 존재 (TODO: 해소 필요).
-공유 유틸리티는 `types.ts`에 배치하여 순환 방지.
+공유 유틸리티는 `types.ts`에 배치하여 순환 방지. `fetchWithClientTimeout`은 `types.ts`에 위치.
 
 ```
-orchestrator → extractor → selector (✅ 단방향)
+orchestrator → extractor → types (✅ 단방향)
+orchestrator → selector → types (✅ 단방향)
 orchestrator → merger (✅ 단방향)
-extractor ← → selector (⚠️ 순환 — fetchWithClientTimeout를 types.ts로 이동 필요)
 ```
+
+**규칙**: 새 공유 유틸리티는 반드시 `types.ts`에 배치. `extractor.ts`나 `selector.ts` 간 직접 import 금지.
 
 ### 분석 파이프라인
 
@@ -105,7 +106,7 @@ interface ExtractionOptions {
   model?: string;
   fileName?: string;
   existingGraph?: NovelKnowledgeGraph;
-  onChunkBilling?: (billing: ChunkBillingData) => void;
+  onChunkBilling?: (chunkIndex: number, billing: ChunkBilling) => void;
 }
 
 // 진행상황 관리
@@ -121,11 +122,12 @@ setApiKey(), hasApiKey(), getApiKey()
 `extractKnowledgeGraph`의 `onChunkBilling` 콜백뿐 아니라, 내부에서 발생하는 모든 LLM 호출 (예: `selectRelevantEntities`의 엔티티 선별 호출)도 포함됩니다.
 
 새로운 분석 경로를 추가할 때 체크리스트:
-- [ ] `onChunkBilling` 콜백 전달
+- [ ] `onChunkBilling` 콜백 전달 — `ChunkBilling` 타입에 반드시 `model` 포함
 - [ ] 내부 LLM 호출 (`selectRelevantEntities` 등)의 billing 데이터도 수집
-- [ ] 분석 완료 후 `deductCredits()` 호출
-- [ ] 분석 전 잔액 확인 (`estimateCredits` + balance 비교) — **모든** 진입점에서
+- [ ] 분석 완료 후 `deductAfterSave()` 또는 `deductPartial()` 호출
+- [ ] 분석 전 잔액 확인 — `checkSufficientBalance(charCount, model)` 사용 (**모든** 진입점)
 - [ ] `idempotencyKey`는 결정론적 값 사용 (타임스탬프/`Date.now()` 금지)
+- [ ] 혼합 모델 사용 시 `calculateCreditsFromChunks()`로 청크별 개별 계산
 
 ### ⚠️ Idempotency Key 규칙
 
@@ -225,15 +227,25 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 // API 함수 (서버 프록시 경유)
 getSubscription()           // 구독 정보 (plan, balance, features)
 getCreditBalance()          // 잔액만 조회
-estimateCredits(charCount, model)  // 분석 전 예상 비용 (API)
-deductCredits(amount, desc, metadata?, idempotencyKey?)  // 차감
+deductCredits(amount, desc, metadata?, idempotencyKey)  // 차감 (idempotencyKey 필수)
 getUsageHistory(page)       // 거래 내역 (페이지네이션)
 getPlans()                  // 요금제 목록
 getCreditPackages()         // 크레딧 상품 목록
 
 // 로컬 순수 함수 (API 호출 없음)
 estimateUsageLocally(charCount, model)  // 로컬 예상 비용 계산 (UsageEstimate용)
-calculateCreditsFromTokens(promptTokens, completionTokens, model)  // 실제 토큰→크레딧 역산 (UsageSummary용)
+calculateCreditsFromTokens(prompt, completion, model)  // 단일 모델 토큰→크레딧
+calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합산
+
+// 잔액 확인 (discriminated union 반환)
+checkSufficientBalance(charCount, model)  // → { sufficient: true } | { sufficient: false; error: string }
+
+// 차감 헬퍼 (deductCredits 래퍼)
+deductAfterSave(savedId, title, currentUsage, updateCreditBalance, onDeductFailed?)
+deductPartial(title, currentUsage, updateCreditBalance, onDeductFailed?)
+
+// Billing 콜백 생성
+createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜백
 ```
 
 ### 로컬 추정 함수 동기화
@@ -245,12 +257,46 @@ calculateCreditsFromTokens(promptTokens, completionTokens, model)  // 실제 토
 
 ### 중요 규칙
 
-- **charCount vs bytes**: `estimateCredits()`에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
-- **idempotency key**: `deductCredits()` 호출 시 반드시 고유 키 전달하여 중복 차감 방지. timestamp/UUID 포함 권장
-- **차감 시점**: 분석 완료 + 저장 후 1회만 (`saved.id`를 idempotency key에 포함)
-- **차감 금액**: 실제 토큰 사용량 기반으로 계산해야 함 (서버 추정치가 아닌 `calculateCreditsFromTokens` 사용)
-- **부분 실패**: 분석 도중 실패해도 이미 소비한 API 호출 비용이 있으므로 부분 차감 처리 필요
-- **에러 로깅**: `billingFetch` 실패 시 HTTP 상태 코드와 에러 본문을 로그에 포함하여 디버깅 용이하게
+- **charCount vs bytes**: 분석 함수에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
+- **idempotency key**: `deductCredits()` 호출 시 결정론적 키 필수. `Date.now()`, UUID 금지 → `storygraph-{savedId}-{chunks.length}` 패턴
+- **차감 시점**: 분석 완료 + 저장 후 1회만 (`deductAfterSave` 사용)
+- **차감 금액**: `calculateCreditsFromChunks()`로 청크별 개별 계산 후 합산 (혼합 모델 대응)
+- **부분 실패**: 분석 도중 실패해도 이미 소비한 API 호출 비용이 있으므로 `deductPartial` 처리 필요
+- **차감 실패**: `onDeductFailed` 콜백으로 subscription 재동기화 처리
+- **잔액 확인**: 모든 분석 진입점에서 `checkSufficientBalance()` 호출 필수
+
+### ⚠️ ChunkBilling 타입 일관성
+
+`ChunkBilling` 인터페이스는 반드시 `model` 필드를 포함해야 합니다.
+이는 혼합 모델 크레딧 계산 (`calculateCreditsFromChunks`)의 정확성을 보장합니다.
+
+```typescript
+// types.ts — 정본
+interface ChunkBilling {
+  prompt_tokens: number;
+  completion_tokens: number;
+  model: string;  // ← 필수! 누락하면 크레딧 계산 불가
+}
+
+// ❌ model 없이 billing 반환
+return { data, billing: { prompt_tokens: 100, completion_tokens: 50 } };
+
+// ✅ model 포함 필수
+return { data, billing: { prompt_tokens: 100, completion_tokens: 50, model } };
+```
+
+### ⚠️ checkSufficientBalance 사용 패턴
+
+Discriminated union 반환이므로 type narrowing 필수:
+
+```typescript
+// ❌ destructuring → sufficient: true일 때 error 프로퍼티 없음
+const { sufficient, error } = await checkSufficientBalance(charCount, model);
+
+// ✅ type narrowing 패턴
+const balanceCheck = await checkSufficientBalance(charCount, model);
+if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
+```
 
 ---
 
@@ -261,8 +307,9 @@ catcident-backend billing API로의 서버 사이드 프록시 유틸리티
 ### 구성
 
 - `proxyToCatcident(path, accessToken, options?)` - 저수준 fetch 래퍼 (15초 타임아웃)
+- `handleUpstreamResponse(response, logLabel)` - 업스트림 응답 처리 (에러 차단 + JSON 파싱)
 - `billingGetHandler(path, logLabel)` - GET 라우트 핸들러 팩토리
-- `billingPostHandler(path, logLabel)` - POST 라우트 핸들러 팩토리
+- `billingPostHandler(path, logLabel)` - POST 라우트 핸들러 팩토리 (화이트리스트 + service 강제)
 
 ### 새 billing 라우트 추가 시
 
@@ -272,6 +319,20 @@ catcident-backend billing API로의 서버 사이드 프록시 유틸리티
 import { billingGetHandler } from '@/services/billingProxy';
 export const GET = billingGetHandler('/new-endpoint/?service=storygraph', 'new-endpoint GET');
 ```
+
+**POST 라우트 추가 시 반드시 `ALLOWED_POST_FIELDS`에 화이트리스트 등록:**
+
+```typescript
+// billingProxy.ts 내부
+const ALLOWED_POST_FIELDS: Record<string, string[]> = {
+  '/credits/deduct/': ['amount', 'description', 'metadata', 'idempotency_key'],
+  '/credits/estimate/': ['char_count', 'model'],
+  '/new-endpoint/': ['field1', 'field2'],  // ← 새 라우트 추가
+};
+```
+
+미등록 경로는 fail-open 설계로 `service`만 강제 주입하고 나머지는 통과합니다.
+새 POST 라우트는 반드시 화이트리스트에 등록하여 의도한 필드만 전달되도록 해야 합니다.
 
 ### 환경 변수
 
