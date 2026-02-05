@@ -3,6 +3,7 @@ import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { AUTH_ENABLED, getAuthUserId } from '@/lib/auth';
+import { addSessionTokens } from '@/lib/analysisSession';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -36,7 +37,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, apiKey: userApiKey, model: userModel } = await request.json();
+    const { prompt, apiKey: userApiKey, model: userModel, sessionId } = await request.json();
 
     // 사용자가 제공한 키 우선, 없으면 환경변수 키 사용
     const apiKey = userApiKey || ENV_API_KEY;
@@ -108,6 +109,15 @@ export async function POST(request: NextRequest) {
         prompt_tokens: data.usage.prompt_tokens || 0,
         completion_tokens: data.usage.completion_tokens || 0,
       };
+    }
+
+    // 서버 측 토큰 누적 (분석 세션이 있을 때만)
+    if (sessionId && data.usage) {
+      addSessionTokens(sessionId, {
+        promptTokens: data.usage.prompt_tokens ?? 0,
+        completionTokens: data.usage.completion_tokens ?? 0,
+        model,
+      });
     }
 
     console.log(`[analyze] 응답 성공`);
