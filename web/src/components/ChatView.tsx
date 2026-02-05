@@ -47,6 +47,13 @@ const saveChatSessions = (sessions: ChatSession[]) => {
   localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
 };
 
+// 그래프 식별자 생성 (id 우선, 없으면 title 해시)
+const getGraphIdentifier = (id?: string, title?: string): string => {
+  if (id) return id;
+  if (title) return `title_${title.replace(/\s+/g, '_').slice(0, 50)}`;
+  return 'unknown';
+};
+
 // 특정 그래프의 세션 목록
 const getSessionsForGraph = (graphId: string): ChatSession[] => {
   return getChatSessions().filter(s => s.graphId === graphId);
@@ -131,12 +138,17 @@ export function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // 그래프 식별자
+  const graphIdentifier = knowledgeGraph
+    ? getGraphIdentifier(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title)
+    : null;
+
   // 세션 목록 로드
   const loadSessions = useCallback(() => {
-    if (!knowledgeGraph?.metadata.id) return;
-    const graphSessions = getSessionsForGraph(knowledgeGraph.metadata.id);
+    if (!graphIdentifier) return;
+    const graphSessions = getSessionsForGraph(graphIdentifier);
     setSessions(graphSessions);
-  }, [knowledgeGraph?.metadata.id]);
+  }, [graphIdentifier]);
 
   // 세션 메시지 로드
   const loadSessionMessages = useCallback((session: ChatSession) => {
@@ -169,10 +181,10 @@ export function ChatView() {
 
   // 지식 그래프 변경 시: 가장 최근 세션 로드 또는 새 세션 생성
   useEffect(() => {
-    if (!knowledgeGraph?.metadata.id) return;
+    if (!graphIdentifier || !knowledgeGraph) return;
 
     loadSessions();
-    const graphSessions = getSessionsForGraph(knowledgeGraph.metadata.id);
+    const graphSessions = getSessionsForGraph(graphIdentifier);
 
     if (graphSessions.length > 0) {
       // 가장 최근 세션 로드
@@ -181,13 +193,13 @@ export function ChatView() {
       loadSessionMessages(latestSession);
     } else {
       // 새 세션 생성
-      const newSession = createSession(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
+      const newSession = createSession(graphIdentifier, knowledgeGraph.metadata.title);
       setCurrentSession(newSession);
       setMessages([]);
       setChatMentionedEntities([]);
       loadSessions();
     }
-  }, [knowledgeGraph?.metadata.id, knowledgeGraph?.metadata.title]);
+  }, [graphIdentifier, knowledgeGraph?.metadata.title]);
 
   // 메시지 변경 시 저장
   useEffect(() => {
@@ -288,8 +300,8 @@ export function ChatView() {
 
   // 새 대화 시작
   const handleNewChat = () => {
-    if (!knowledgeGraph?.metadata.id) return;
-    const newSession = createSession(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title);
+    if (!graphIdentifier || !knowledgeGraph) return;
+    const newSession = createSession(graphIdentifier, knowledgeGraph.metadata.title);
     setCurrentSession(newSession);
     setMessages([]);
     setChatMentionedEntities([]);
@@ -314,13 +326,13 @@ export function ChatView() {
 
     // 현재 세션이 삭제된 경우
     if (currentSession?.id === sessionId) {
-      const remaining = getSessionsForGraph(knowledgeGraph?.metadata.id || '');
+      const remaining = getSessionsForGraph(graphIdentifier || '');
       if (remaining.length > 0) {
         setCurrentSession(remaining[0]);
         loadSessionMessages(remaining[0]);
-      } else if (knowledgeGraph) {
+      } else if (knowledgeGraph && graphIdentifier) {
         // 새 세션 생성
-        const newSession = createSession(knowledgeGraph.metadata.id!, knowledgeGraph.metadata.title);
+        const newSession = createSession(graphIdentifier, knowledgeGraph.metadata.title);
         setCurrentSession(newSession);
         setMessages([]);
         setChatMentionedEntities([]);
