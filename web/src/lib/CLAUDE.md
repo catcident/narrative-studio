@@ -158,6 +158,77 @@ const body = JSON.stringify({ amount, description, metadata, idempotency_key, se
 
 ---
 
+## balanceCache.ts — 서버 측 잔액 캐시
+
+`/api/analyze`에서 사용하는 사용자별 잔액 캐시.
+
+- 잔액 0 사용자의 OpenRouter 호출을 서버 측에서 차단
+- 5분 TTL, 최대 100 엔트리
+- Fail-open: billing 서비스 장애 시 분석 허용
+- `AUTH_ENABLED=false`이면 항상 통과
+
+```typescript
+// /api/analyze에서 사용
+const balanceError = await checkAnalyzeEligibility();
+if (balanceError) return NextResponse.json({ error: balanceError }, { status: 402 });
+
+// hold/settle 후 캐시 무효화
+invalidateBalanceCache(userId);
+```
+
+---
+
+## rateLimit.ts — 슬라이딩 윈도우 Rate Limiter
+
+사용자별 API 호출 제한 (인메모리).
+
+- 분당 60회 제한 (`AUTH_ENABLED=true`일 때만)
+- 슬라이딩 윈도우 방식 (타임스탬프 배열)
+- 최대 10,000 엔트리, 자동 정리
+
+```typescript
+const limited = checkRateLimit(userId);
+if (limited) {
+  return NextResponse.json(
+    { error: '요청이 너무 많습니다.' },
+    { status: 429, headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) } },
+  );
+}
+```
+
+---
+
+## analysisSession.ts — 분석 세션 스토어
+
+서버 사이드 인메모리 분석 세션 관리.
+
+- `/api/analyze` 호출마다 OpenRouter 토큰 사용량을 세션에 누적
+- settle 시 서버가 직접 크레딧 계산 (클라이언트 금액 조작 방지)
+- 30분 TTL, 최대 1,000 세션
+- 서버 재시작 시 세션 소멸 → 만료된 hold는 Celery 태스크가 자동 정산
+
+```typescript
+// 세션 생성 (analysis-session API에서)
+const sessionId = createAnalysisSession(userId, holdToken, model);
+
+// 토큰 누적 (/api/analyze에서)
+addSessionTokens(sessionId, { promptTokens, completionTokens, model });
+
+// 세션 조회 (userId 검증 포함)
+const session = getAnalysisSession(sessionId, userId);
+
+// 세션 삭제 (settle/release 후)
+deleteAnalysisSession(sessionId);
+```
+
+---
+
+## useSessionErrorHandler.ts — 세션 에러 핸들링 훅
+
+`session.error === 'RefreshTokenError'` 감지 시 재로그인 유도.
+
+---
+
 ## useShowTokenDetails.ts - 토큰 상세 표시 훅
 
 토큰 input/output 상세 정보의 UI 표시 여부를 결정하는 클라이언트 훅.

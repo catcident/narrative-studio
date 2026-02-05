@@ -118,26 +118,44 @@ setApiKey(), hasApiKey(), getApiKey()
 
 ### ⚠️ Billing 추적 필수 규칙
 
-**모든 LLM API 호출(`/api/analyze`)은 billing 추적 대상입니다.**
-`extractKnowledgeGraph`의 `onChunkBilling` 콜백뿐 아니라, 내부에서 발생하는 모든 LLM 호출 (예: `selectRelevantEntities`의 엔티티 선별 호출)도 포함됩니다.
+**Hold/Settle 과금 흐름** (Phase 2):
+
+```
+클라이언트                    Next.js 서버                catcident-backend
+────────                    ──────────                ─────────────────
+startAnalysisSession() ──→  POST /api/analysis-session ──→  /credits/hold/
+                            ↓ createAnalysisSession()
+                            ← session_id + hold_token
+
+extractKnowledgeGraph({sessionId})
+  → /api/analyze(sessionId) ──→  addSessionTokens()  (서버 측 토큰 누적)
+  → /api/analyze(sessionId) ──→  addSessionTokens()
+  ...
+
+settleAnalysisSession() ──→  POST /api/analysis-session/settle
+                            ↓ calculateCredits(session.tokens) (서버 측 계산)
+                            ──→  /credits/settle/ (actual_amount)
+
+실패 시:
+releaseAnalysisSession() ──→ POST /api/analysis-session/release ──→ /credits/release/
+```
 
 새로운 분석 경로를 추가할 때 체크리스트:
-- [ ] `onChunkBilling` 콜백 전달 — `ChunkBilling` 타입에 반드시 `model` 포함
-- [ ] 내부 LLM 호출 (`selectRelevantEntities` 등)의 billing 데이터도 수집
-- [ ] 분석 완료 후 `deductAfterSave()` 또는 `deductPartial()` 호출
-- [ ] 분석 전 잔액 확인 — `checkSufficientBalance(charCount, model)` 사용 (**모든** 진입점)
-- [ ] `idempotencyKey`는 결정론적 값 사용 (타임스탬프/`Date.now()` 금지)
-- [ ] 혼합 모델 사용 시 `calculateCreditsFromChunks()`로 청크별 개별 계산
+- [ ] `sessionId`를 `extractKnowledgeGraph()`에 전달
+- [ ] `onChunkBilling` 콜백 전달 — UI 표시용 (서버 측 추적과 별개)
+- [ ] `startHoldSession()` → 분석 → `saveAndSettle()` 패턴 사용
+- [ ] 실패 시 `releaseAnalysisSession()` 호출
+- [ ] `idempotencyKey`는 결정론적 값 사용 (`storygraph-{savedId}-settle`)
+- [ ] `AUTH_ENABLED=false` 환경에서 sessionId=null → 기존 동작 유지
 
 ### ⚠️ Idempotency Key 규칙
 
 ```typescript
-// ❌ Date.now() → 매 호출마다 다른 값 → 중복 차감 방지 실패
+// ❌ Date.now() → 매 호출마다 다른 값 → 중복 정산 방지 실패
 const key = `storygraph-${savedId}-${Date.now()}`;
 
 // ✅ 결정론적 값 → 동일 작업이면 동일 키
-const key = `storygraph-${savedId}-${chunks.length}`;
-const key = `storygraph-partial-${titleHash}-${chunks.length}`;
+const key = `storygraph-${savedId}-settle`;
 ```
 
 ### 파일 추가 분석
@@ -240,9 +258,14 @@ calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합
 // 잔액 확인 (discriminated union 반환)
 checkSufficientBalance(charCount, model)  // → { sufficient: true } | { sufficient: false; error: string }
 
-// 차감 헬퍼 (deductCredits 래퍼)
+// 차감 헬퍼 (레거시 — deductCredits 래퍼, AUTH_ENABLED=false 폴백용)
 deductAfterSave(savedId, title, currentUsage, updateCreditBalance, onDeductFailed?)
 deductPartial(title, currentUsage, updateCreditBalance, onDeductFailed?)
+
+// 분석 세션 (Hold/Settle — 권장)
+startAnalysisSession(estimatedCredits, model, metadata?)  // hold 생성 + sessionId
+settleAnalysisSession(sessionId, title, idempotencyKey)   // 서버 측 정산
+releaseAnalysisSession(sessionId)                          // hold 환불
 
 // Billing 콜백 생성
 createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 콜백

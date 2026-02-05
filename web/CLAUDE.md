@@ -71,14 +71,27 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 클라이언트 → /api/billing/* → billingProxy.ts → catcident-backend
 ```
 
+**과금 흐름 (Hold/Settle)**:
+
+1. `startAnalysisSession(estimatedCredits, model)` → 크레딧 선차감(hold) + `sessionId` 반환
+2. `extractKnowledgeGraph({ ..., sessionId })` → `/api/analyze`에 sessionId 전달
+3. `/api/analyze`: 서버 측에서 OpenRouter 응답 토큰을 세션에 누적 (클라이언트 조작 방지)
+4. `settleAnalysisSession(sessionId, title, idempotencyKey)` → 서버가 실제 크레딧 계산 + 정산
+5. 실패 시: `releaseAnalysisSession(sessionId)` → hold 전액 환불
+
 **핵심 원칙**:
-- 크레딧 차감은 분석 완료 + 저장 후 1회만 실행 (청크별 차감 X)
-- idempotency key로 중복 차감 방지 — **결정론적 값 사용** (`storygraph-{savedId}-{chunks.length}`), `Date.now()` 금지
-- **모든 분석 진입점**에서 잔액 사전 확인 필수 (`checkSufficientBalance()` 사용, 단순 `> 0` 체크 불가)
+- **서버가 크레딧을 계산** — 클라이언트는 차감 금액을 결정하지 않음
+- idempotency key로 중복 정산 방지 — `storygraph-{savedId}-settle` (결정론적 값, `Date.now()` 금지)
+- hold 미정산 시 Celery 태스크(`expire_stale_holds`)가 자동 처리
 - file.size(bytes)와 charCount(문자수) 구분 필수 (UTF-8 한글 ~3bytes/char)
-- **모든** LLM API 호출의 billing 추적 필수 — `extractKnowledgeGraph`의 `onChunkBilling` + `selectRelevantEntities` 등 내부 호출 포함
-- 차감 금액은 실제 토큰 사용량 기반 계산 (`calculateCreditsFromTokens`), 서버 추정치 사용 금지
-- 혼합 모델 사용 시 크레딧은 청크별 개별 계산 후 합산 (단일 모델 기준 일괄 계산 금지)
+- **모든** LLM API 호출의 서버 측 토큰 추적 필수 — `sessionId`를 통해 `/api/analyze` 서버에서 누적
+- `onChunkBilling` 콜백은 UI 표시용으로 유지 (UsageSummary 모달)
+- 혼합 모델 사용 시 크레딧은 청크별 개별 계산 후 합산
+
+**서버 측 방어선**:
+- `/api/analyze`에 잔액 체크 (`balanceCache.ts`) — 잔액 0 사용자 차단
+- 사용자별 Rate Limiting (`rateLimit.ts`) — 분당 60회 제한
+- 분석 세션 스토어 (`analysisSession.ts`) — 서버 측 토큰 누적
 
 **AUTH_ENABLED=false 배포** (Railway 등):
 - billing API 프록시에 OAuth 토큰 없이 요청 → billing 기능 비활성화됨
@@ -132,6 +145,9 @@ export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST'
 | `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
 | `GET /api/billing/plans` | 요금제 목록 |
 | `GET /api/billing/packages` | 크레딧 상품 목록 |
+| `POST /api/analysis-session` | 분석 세션 시작 (크레딧 hold) |
+| `POST /api/analysis-session/settle` | 분석 세션 정산 (서버 측 크레딧 계산) |
+| `POST /api/analysis-session/release` | 분석 세션 취소 (hold 환불) |
 
 ## 환경 변수
 
