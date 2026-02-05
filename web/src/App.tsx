@@ -184,8 +184,6 @@ function App() {
 
   const entities = Object.values(knowledgeGraph.entities);
   const allEdges = Object.values(knowledgeGraph.hyperedges);
-  // ⚠️ 중요: 장면은 반드시 order 필드로 정렬해야 함 (서술 순서 유지)
-  // 문자열 정렬(localeCompare) 절대 사용 금지 - S0001, S0010 등이 잘못 정렬됨
   const scenes = Object.entries(knowledgeGraph.snapshots || {}).sort(([, a], [, b]) => (a.order || 0) - (b.order || 0));
 
   // 선택된 장면에 따른 필터링

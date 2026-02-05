@@ -111,7 +111,6 @@ export function DetailPanel() {
 
   // 현재 장면 정보
   const currentScene = selectedSceneId && knowledgeGraph?.snapshots ? knowledgeGraph.snapshots[selectedSceneId] : null;
-  // ⚠️ 장면 인덱스는 order 필드 기준으로 계산 (문자열 정렬 금지)
   const sceneIndex = selectedSceneId && knowledgeGraph?.snapshots
     ? Object.values(knowledgeGraph.snapshots)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -273,7 +272,6 @@ export function DetailPanel() {
               <div className="mt-3">
                 <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                  {/* ⚠️ 장면은 order 기준 정렬 (문자열 정렬 금지) */}
                   {[...edge.scenes]
                     .sort((a, b) => (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0))
                     .map((sceneId) => {
@@ -397,7 +395,6 @@ export function DetailPanel() {
             </h3>
 
             {/* 첫 등장 */}
-            {/* ⚠️ 장면은 order 기준 정렬 (문자열 정렬 금지) */}
             {(() => {
               const sortedScenes = [...entity.scenes].sort((a, b) =>
                 (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0)
@@ -431,7 +428,6 @@ export function DetailPanel() {
             })()}
 
             {/* 모든 등장 장면 목록 */}
-            {/* ⚠️ 장면은 order 기준 정렬 (문자열 정렬 금지) */}
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {[...entity.scenes]
                 .sort((a, b) => (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0))

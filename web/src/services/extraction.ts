@@ -1516,7 +1516,6 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   let entityCounter = Object.keys(entities).length;
   let edgeCounter = Object.keys(hyperedges).length;
   let chapterCounter = existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0;
-  let sceneCounter = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
 
   // 엔티티 등록
   (extracted.entities || []).forEach((e: any) => {
@@ -1538,8 +1537,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
     entityCounter++;
     const id = `E${String(entityCounter).padStart(4, '0')}`;
-    // scenes를 숫자에서 문자열 ID로 변환 (기존 장면 수에 더해서)
-    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s + sceneCounter).padStart(4, '0')}`);
+    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
     entities[id] = {
       id,
       name: e.name,
@@ -1639,8 +1637,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       e.entities.includes(toId)
     );
 
-    // scenes를 숫자에서 문자열 ID로 변환 (기존 장면 수에 더해서)
-    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s + sceneCounter).padStart(4, '0')}`);
+    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
 
     if (existingEdge) {
       // 기존 관계에 장면만 추가
@@ -1877,15 +1874,10 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
   // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
-
-  // ⚠️ 중요: 장면을 id 순서로 정렬 (청크 병합 과정에서 순서가 뒤섞일 수 있음)
-  // 장면 순서는 서술 순서(narrative order)이므로 절대 틀리면 안 됨
   const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
 
   sortedScenes.forEach((s: any) => {
-    // 장면 번호를 기존 것에 이어서
-    const actualSceneNum = s.id + sceneCounter;
-    const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
+    const sceneId = `S${String(s.id).padStart(4, '0')}`;
 
     // 장 번호도 기존 것에 이어서
     const actualChapterNum = s.chapter ? (s.chapter + (existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0)) : newChapterNumber;
@@ -1903,10 +1895,10 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
     snapshots[sceneId] = {
       sceneId,
-      order: actualSceneNum,  // 서술 순서 (텍스트에 나온 순서)
+      order: s.id,  // 서술 순서 (청크 병합에서 부여된 글로벌 번호)
       chapter: chapterId,
       chapterNumber: actualChapterNum,
-      time: s.time || `장면 ${actualSceneNum}`,
+      time: s.time || `장면 ${s.id}`,
       timeMarker: s.time_marker || null,  // 텍스트에 명시된 시간 표현만 (추측 금지)
       location: s.location,
       summary: s.summary,
