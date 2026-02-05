@@ -80,7 +80,7 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
 
 // --- 비슷한 엔티티 찾기 (mergeExtractions 전용) ---
 
-function findSimilarEntity(name: string, nameMap: Record<string, number>, _entities: any[]): number {
+function findSimilarEntity(name: string, nameMap: Record<string, number>): number {
   // 정확히 일치
   if (nameMap[name] !== undefined) {
     return nameMap[name];
@@ -171,7 +171,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
     // 엔티티 병합
     for (const entity of (ext.entities || [])) {
       const normalizedName = normalizeName(entity.name);
-      const existingIdx = findSimilarEntity(normalizedName, nameMap, entities);
+      const existingIdx = findSimilarEntity(normalizedName, nameMap);
       const globalScenes = (entity.scenes || []).map((s: number) => localToGlobal[s] || s);
 
       if (existingIdx !== -1) {
@@ -790,13 +790,6 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   // 장면(Scene)을 snapshots로 변환
   const snapshots = buildSnapshots(extracted, entities, hyperedges, existingGraph, fileNames);
 
-  // 새로 생성된 장면들에 sourceFileId 추가
-  Object.values(snapshots).forEach((snap: any) => {
-    if (snap.sourceFile && !snap.sourceFileId) {
-      snap.sourceFileId = fileNameToId[snap.sourceFile];
-    }
-  });
-
   // 통계
   const entitiesByCategory: Record<string, number> = {};
   const edgesByType: Record<string, number> = {};
@@ -814,7 +807,7 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
   const newSourceFiles: any[] = [];
 
   if (fileNames && originalText) {
-    fileNames.forEach((fileName) => {
+    for (const fileName of fileNames) {
       if (!existingFileNameSet.has(fileName)) {
         const newId = formatId('F', existingSourceFiles.length + newSourceFiles.length + 1);
         newSourceFiles.push({
@@ -825,16 +818,23 @@ export function buildKnowledgeGraph(extracted: any, title: string, model?: strin
           charCount: originalText.length,
         });
       }
-    });
+    }
   }
 
   const sourceFiles = [...existingSourceFiles, ...newSourceFiles];
 
   // sourceFileId 매핑: 파일명으로 ID 찾기
   const fileNameToId: Record<string, string> = {};
-  sourceFiles.forEach((sf: any) => {
-    fileNameToId[sf.fileName] = sf.id;
-  });
+  for (const sf of sourceFiles) {
+    fileNameToId[(sf as any).fileName] = (sf as any).id;
+  }
+
+  // 장면에 sourceFileId 추가 (fileNameToId 생성 이후에 실행)
+  for (const snap of Object.values(snapshots) as any[]) {
+    if (snap.sourceFile && !snap.sourceFileId) {
+      snap.sourceFileId = fileNameToId[snap.sourceFile];
+    }
+  }
 
   // 기존 타임라인과 병합
   const mergedTimeline = existingGraph ? [...(existingGraph.timeline || []), ...timeline] : timeline;

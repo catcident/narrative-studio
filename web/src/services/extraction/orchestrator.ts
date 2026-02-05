@@ -39,8 +39,8 @@ export function loadProgress(): ExtractionProgress | null {
         return progress;
       }
     }
-  } catch (e) {
-    console.warn('[extraction] 진행상황 불러오기 실패:', e);
+  } catch (err: unknown) {
+    console.warn('[extraction] 진행상황 불러오기 실패:', err);
   }
   return null;
 }
@@ -226,12 +226,12 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         // 매 청크 후 진행상황 저장
         saveCurrentProgress(i + 1);
       }
-    } catch (error: unknown) {
-      console.error(`[extraction] 청크 ${i + 1} 처리 실패:`, error);
+    } catch (err: unknown) {
+      console.error(`[extraction] 청크 ${i + 1} 처리 실패:`, err);
 
       // 타임아웃이나 API 오류는 스킵하고 계속 진행
-      const errMsg = error instanceof Error ? error.message : '';
-      const errName = error instanceof Error ? error.name : '';
+      const errMsg = err instanceof Error ? err.message : '';
+      const errName = err instanceof Error ? err.name : '';
       const isTimeout = errMsg.includes('timeout') || errMsg.includes('AbortError') || errName === 'AbortError';
       const isApiError = errMsg.includes('API');
 

@@ -41,7 +41,7 @@ async function readFilesToInfos(
  * 여러 파일의 텍스트를 구분자로 병합
  */
 function combineFileTexts(fileInfos: FileInfo[]): string {
-  return fileInfos.map(f => f.text).join('\n\n--- 파일 구분 ---\n\n');
+  return fileInfos.map(f => f.text).join(FILE_SEPARATOR);
 }
 
 /**

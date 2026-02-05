@@ -58,9 +58,9 @@ export function splitIntoSmartChunksWithSource(text: string, targetSize: number 
     const filePart = fileParts[i];
     const fileChunks = splitSingleFileIntoChunks(filePart, targetSize, overlapSize);
     console.log(`[청크 분할] 파일 ${i + 1}: ${fileChunks.length}개 청크`);
-    fileChunks.forEach(content => {
+    for (const content of fileChunks) {
       allChunks.push({ content, sourceFileIndex: i });
-    });
+    }
   }
 
   return allChunks;
