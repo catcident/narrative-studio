@@ -900,23 +900,10 @@ export async function sendChatMessage(
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
 
-  // 🔍 사고 과정 로깅 (개발자 도구에서 확인 가능)
-  console.group('🧠 채팅 사고 과정');
-  console.log('📝 사용자 질문:', lastUserMessage?.content);
-
-  console.log('📊 지식 그래프 정보:', {
-    제목: context.knowledgeGraph.metadata.title,
-    엔티티수: Object.keys(context.knowledgeGraph.entities).length,
-    관계수: Object.keys(context.knowledgeGraph.hyperedges).length,
-    장면수: Object.keys(context.knowledgeGraph.snapshots).length,
-  });
-
   // [1단계] LLM 의도 분석 (키워드 + 카테고리 요청 판단)
   const queryAnalysis = lastUserMessage
     ? await analyzeQueryWithLLM(lastUserMessage.content, userApiKey || undefined)
     : { keywords: [], wantsCategoryList: false, targetCategory: null };
-
-  console.log('🎯 LLM 의도 분석:', queryAnalysis);
 
   // [2단계] 데이터 수집
   let foundEntityIds: string[] = [];
@@ -928,7 +915,6 @@ export async function sendChatMessage(
       .filter(([, e]) => e.category === queryAnalysis.targetCategory)
       .map(([id]) => id);
     foundEntityIds = categoryEntities;
-    console.log(`📂 카테고리 "${queryAnalysis.targetCategory}" 전체 로드:`, categoryEntities.length, '개');
   }
 
   // (B) 키워드 기반 검색
@@ -941,7 +927,6 @@ export async function sendChatMessage(
     directMatches.forEach(id => {
       if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
     });
-    console.log('🔎 직접 매칭:', directMatches.length, '개');
 
     // graphId가 있으면 임베딩 검색도 수행
     if (graphId) {
@@ -949,9 +934,6 @@ export async function sendChatMessage(
         searchSimilarEntities(graphId, queryAnalysis.keywords, userApiKey || undefined, 10),
         searchSimilarChunks(graphId, lastUserMessage?.content || '', userApiKey || undefined, 3),
       ]);
-
-      console.log('🎯 임베딩 검색 결과:', entityResults.map(r => `${r.entityName} (${(r.similarity * 100).toFixed(1)}%)`));
-      console.log('📄 청크 검색 결과:', chunks.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
 
       entityResults.forEach(result => {
         if (!foundEntityIds.includes(result.entityId)) {
@@ -965,15 +947,10 @@ export async function sendChatMessage(
   // (C) 키워드도 없고 카테고리 요청도 아닌 경우: 청크 임베딩만 검색
   if (foundEntityIds.length === 0 && graphId && lastUserMessage) {
     chunkResults = await searchSimilarChunks(graphId, lastUserMessage.content, userApiKey || undefined, 3);
-    console.log('📄 폴백 청크 검색:', chunkResults.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
   }
-
-  console.log('📊 데이터 수집 완료:', { 엔티티수: foundEntityIds.length, 청크수: chunkResults.length });
 
   // [3단계] LLM 선별 - 수집된 데이터 중 필요한 것만 선택
   if (lastUserMessage && (foundEntityIds.length > 10 || chunkResults.length > 3)) {
-    console.log('🎯 LLM 선별 시작...');
-
     // 후보 엔티티 목록 생성
     const candidateEntities = foundEntityIds.map(id => {
       const entity = context.knowledgeGraph.entities[id];
@@ -1002,27 +979,12 @@ export async function sendChatMessage(
     const selectedEntitySet = new Set(selectionResult.selectedEntityIds);
     const selectedChunkSet = new Set(selectionResult.selectedChunkIndices);
 
-    const prevEntityCount = foundEntityIds.length;
-    const prevChunkCount = chunkResults.length;
-
     foundEntityIds = foundEntityIds.filter(id => selectedEntitySet.has(id));
     chunkResults = chunkResults.filter(chunk => selectedChunkSet.has(chunk.chunkIndex));
-
-    console.log('✅ LLM 선별 완료:', {
-      엔티티: `${prevEntityCount} → ${foundEntityIds.length}`,
-      청크: `${prevChunkCount} → ${chunkResults.length}`,
-      선택된엔티티: foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean),
-    });
   }
-
-  const foundEntities = foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean);
-  console.log('🔍 최종 찾은 엔티티:', foundEntities.length > 0 ? foundEntities.slice(0, 20) : '(없음)', foundEntities.length > 20 ? `외 ${foundEntities.length - 20}개` : '');
 
   // 관련 관계
   const relatedEdges = findConnectedEdges(foundEntityIds, context.knowledgeGraph.hyperedges);
-  console.log('🔗 관련 관계:', relatedEdges.length > 0
-    ? relatedEdges.slice(0, 10).map(e => `[${e.type}] ${e.entities.map(id => context.knowledgeGraph.entities[id]?.name || id).join(' ↔ ')}`)
-    : '(없음)');
 
   // [4단계] 컨텍스트 생성 - LLM 분석 결과를 intent로 변환
   const intentForContext: QueryIntent = {
@@ -1058,9 +1020,6 @@ export async function sendChatMessage(
       relevantContext += '\n```\n';
     });
   }
-
-  console.log('📄 생성된 컨텍스트 (LLM에 전달):\n', relevantContext || '(컨텍스트 없음)');
-  console.groupEnd();
 
   const apiMessages = [
     { role: 'system', content: buildSystemPrompt(context, foundEntityIds, intentForContext) },
