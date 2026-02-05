@@ -4,7 +4,7 @@
  * 사용 패턴:
  *   - proxyToCatcident(): 저수준 fetch 래퍼 (커스텀 로직 필요 시)
  *   - billingGetHandler(): GET 라우트 핸들러 (대부분의 GET 라우트에 사용)
- *   - billingPostHandler(): POST 라우트 핸들러 (estimate, deduct 등)
+ *   - billingPostHandler(): POST 라우트 핸들러 (deduct 등)
  */
 
 import { NextRequest, NextResponse } from 'next/server';

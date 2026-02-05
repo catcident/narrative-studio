@@ -25,6 +25,7 @@ web/
 │   │   ├── api/
 │   │   │   ├── analyze/        # AI 분석 프록시
 │   │   │   ├── auth/           # NextAuth.js 핸들러
+│   │   │   ├── billing/        # Billing 프록시
 │   │   │   ├── config/         # 런타임 설정
 │   │   │   ├── knowledge-graphs/ # 그래프 CRUD
 │   │   │   └── novels/         # 소설 원본 CRUD

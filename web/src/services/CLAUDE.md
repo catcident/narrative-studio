@@ -63,17 +63,19 @@ relationType = '관련';  // '위치', '소유'
 ### 청크 처리 전략
 
 - **청크 크기**: 5,000자 (한국어 기준)
-- **인물 컨텍스트**: 이전 청크에서 발견된 인물 정보를 다음 청크에 전달 (최대 50명, 프롬프트에는 30명 제한)
+- **인물 컨텍스트**: 이전 청크에서 발견된 인물 정보를 다음 청크에 전달 (최대 100명, 카테고리별 최대 30명)
 - **장면 번호**: 청크별 로컬 → 글로벌 ID로 변환
 
 ### 지원 모델 (OpenRouter)
 
 | 모델 | 특징 |
 |------|------|
-| `deepseek/deepseek-chat` | 기본값. 가성비 최고 |
+| `google/gemini-2.0-flash-001` | **기본값**. 빠르고 저렴 |
+| `deepseek/deepseek-chat` | 가성비 최고 |
 | `anthropic/claude-3.5-sonnet` | 최고 품질 |
 | `openai/gpt-4o` | 고품질 |
-| `google/gemini-2.0-flash-001` | 빠르고 저렴 |
+
+> 전체 모델 목록은 `types.ts`의 `AVAILABLE_MODELS` 참조 (단일 진실 공급원)
 
 ### 프롬프트 엔지니어링 포인트
 
@@ -266,7 +268,7 @@ createBillingCallback(addChunkUsage, updateCreditBalance?)  // extractKnowledgeG
 
 ### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
 
-`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. 서버가 OpenRouter 응답 후 토큰 사용량을 계산하여 즉시 크레딧을 차감하고, 응답에 `billing`, `balance_after`, `insufficient_balance` 필드를 포함하여 반환.
+`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. 서버가 OpenRouter 응답 후 토큰 사용량을 계산하여 즉시 크레딧을 차감하고, 응답의 `_billing` 필드에 `{ prompt_tokens, completion_tokens, credits_deducted, balance_after, insufficient_balance }`를 포함하여 반환.
 
 ### ⚠️ ChunkBilling 타입 일관성
 

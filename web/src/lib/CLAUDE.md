@@ -50,7 +50,7 @@ export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
   type: 'oidc',
   issuer: process.env.AUTH_CATCIDENT_ISSUER,
   authorization: {
-    params: { scope: 'openid profile email member' }
+    params: { scope: 'openid profile email member billing' }
   },
   checks: ['pkce', 'state'],
 }
