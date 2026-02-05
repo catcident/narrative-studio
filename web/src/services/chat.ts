@@ -8,12 +8,27 @@ import { DEFAULT_MODEL } from '../types';
 import { searchSimilarEntities, searchSimilarChunks, type ChunkSearchResult } from './embedding';
 
 /**
- * LLM을 사용하여 질문에서 검색 키워드 추출
+ * LLM 의도 분석 결과 타입
  */
-async function extractKeywordsWithLLM(
+interface LLMQueryAnalysis {
+  keywords: string[];           // 검색 키워드
+  wantsCategoryList: boolean;   // 카테고리 전체 목록 요청 여부
+  targetCategory: string | null; // 요청된 카테고리 (character/item/location/organization/event/concept)
+}
+
+/**
+ * LLM을 사용하여 질문 의도 분석 (키워드 추출 + 카테고리 요청 판단)
+ */
+async function analyzeQueryWithLLM(
   query: string,
   apiKey?: string
-): Promise<string[]> {
+): Promise<LLMQueryAnalysis> {
+  const defaultResult: LLMQueryAnalysis = {
+    keywords: fallbackExtractKeywords(query),
+    wantsCategoryList: false,
+    targetCategory: null,
+  };
+
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -23,20 +38,25 @@ async function extractKeywordsWithLLM(
         messages: [
           {
             role: 'system',
-            content: `당신은 소설 검색을 위한 키워드 추출기입니다.
-사용자 질문에서 검색에 필요한 핵심 키워드를 추출하세요.
+            content: `당신은 소설 Q&A 시스템의 질문 분석기입니다.
+사용자 질문을 분석하여 JSON으로 응답하세요.
 
-규칙:
-1. 인물 이름, 물건 이름, 장소 이름, 사건명 등 명사 위주로 추출
-2. "뭐야", "알려줘", "어떻게" 같은 질문 표현은 제외
-3. JSON 배열 형식으로만 응답: ["키워드1", "키워드2", ...]
-4. 최대 5개까지만 추출
-5. 질문에 고유명사가 없으면 핵심 개념어를 추출
+분석 항목:
+1. keywords: 검색에 필요한 핵심 키워드 (인물명, 물건명, 장소명, 사건명 등). 최대 5개. 질문 표현("뭐야", "알려줘" 등)은 제외.
+2. wantsCategoryList: 특정 카테고리의 전체 목록을 요청하는지 (true/false)
+3. targetCategory: 요청된 카테고리. 다음 중 하나만: character(인물), item(물건/아이템), location(장소), organization(조직/단체), event(사건), concept(개념/설정/무공/기술). 목록 요청이 아니면 null.
+
+응답 형식 (JSON만):
+{"keywords": ["키워드1", "키워드2"], "wantsCategoryList": false, "targetCategory": null}
 
 예시:
-- "주인공이 얻은 검이 뭐야?" → ["주인공", "검"]
-- "천마신공이 뭐야?" → ["천마신공"]
-- "무림맹과 사파의 관계는?" → ["무림맹", "사파", "관계"]`
+- "장소는 뭐뭐가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "location"}
+- "아이템 목록 알려줘" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "item"}
+- "등장인물 누가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "character"}
+- "김철수가 누구야?" → {"keywords": ["김철수"], "wantsCategoryList": false, "targetCategory": null}
+- "주인공이 얻은 검이 뭐야?" → {"keywords": ["주인공", "검"], "wantsCategoryList": false, "targetCategory": null}
+- "What items are there?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "item"}
+- "Who is the main character?" → {"keywords": ["main character"], "wantsCategoryList": false, "targetCategory": null}`
           },
           { role: 'user', content: query }
         ],
@@ -46,27 +66,30 @@ async function extractKeywordsWithLLM(
     });
 
     if (!response.ok) {
-      console.warn('[extractKeywords] API 오류, 폴백 사용');
-      return fallbackExtractKeywords(query);
+      console.warn('[analyzeQuery] API 오류, 폴백 사용');
+      return defaultResult;
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
     // JSON 파싱 시도
-    const match = content.match(/\[[\s\S]*\]/);
+    const match = content.match(/\{[\s\S]*\}/);
     if (match) {
-      const keywords = JSON.parse(match[0]);
-      if (Array.isArray(keywords)) {
-        console.log('[extractKeywords] LLM 추출:', keywords);
-        return keywords.slice(0, 5);
-      }
+      const parsed = JSON.parse(match[0]);
+      const result: LLMQueryAnalysis = {
+        keywords: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 5) : [],
+        wantsCategoryList: !!parsed.wantsCategoryList,
+        targetCategory: parsed.targetCategory || null,
+      };
+      console.log('[analyzeQuery] LLM 분석 결과:', result);
+      return result;
     }
 
-    return fallbackExtractKeywords(query);
+    return defaultResult;
   } catch (err) {
-    console.warn('[extractKeywords] 오류, 폴백 사용:', err);
-    return fallbackExtractKeywords(query);
+    console.warn('[analyzeQuery] 오류, 폴백 사용:', err);
+    return defaultResult;
   }
 }
 
@@ -756,17 +779,6 @@ export async function sendChatMessage(
   console.group('🧠 채팅 사고 과정');
   console.log('📝 사용자 질문:', lastUserMessage?.content);
 
-  // 질문 의도 분석
-  const logIntent = lastUserMessage ? detectQueryIntent(lastUserMessage.content) : null;
-  console.log('🎯 질문 의도 분석:', logIntent ? {
-    캐릭터질문: logIntent.wantsCharacters,
-    관계질문: logIntent.wantsRelationships,
-    아이템질문: logIntent.wantsItems,
-    요약질문: logIntent.wantsSummary,
-    추출키워드: logIntent.keywords,
-    확장키워드: logIntent.expandedKeywords,
-  } : '(없음)');
-
   console.log('📊 지식 그래프 정보:', {
     제목: context.knowledgeGraph.metadata.title,
     엔티티수: Object.keys(context.knowledgeGraph.entities).length,
@@ -774,44 +786,65 @@ export async function sendChatMessage(
     장면수: Object.keys(context.knowledgeGraph.snapshots).length,
   });
 
-  // 질문에서 찾은 엔티티 (기존 방식)
-  let foundEntityIds = lastUserMessage
-    ? findMentionedEntityIds(lastUserMessage.content, context.knowledgeGraph.entities)
-    : [];
+  // [1단계] LLM 의도 분석 (키워드 + 카테고리 요청 판단)
+  const queryAnalysis = lastUserMessage
+    ? await analyzeQueryWithLLM(lastUserMessage.content, userApiKey || undefined)
+    : { keywords: [], wantsCategoryList: false, targetCategory: null };
 
-  // 임베딩 기반 유사 엔티티 검색 (graphId가 있고, 기존 방식으로 못 찾았으면)
-  let embeddingResults: { entityId: string; entityName: string; similarity: number }[] = [];
+  console.log('🎯 LLM 의도 분석:', queryAnalysis);
+
+  // [2단계] 데이터 수집
+  let foundEntityIds: string[] = [];
   let chunkResults: ChunkSearchResult[] = [];
 
-  if (graphId && lastUserMessage && foundEntityIds.length === 0) {
-    // LLM으로 키워드 추출
-    const keywords = await extractKeywordsWithLLM(lastUserMessage.content, userApiKey || undefined);
-    console.log('🔎 LLM 추출 키워드:', keywords);
+  // (A) 카테고리 전체 목록 요청인 경우
+  if (queryAnalysis.wantsCategoryList && queryAnalysis.targetCategory) {
+    const categoryEntities = Object.entries(context.knowledgeGraph.entities)
+      .filter(([, e]) => e.category === queryAnalysis.targetCategory)
+      .map(([id]) => id);
+    foundEntityIds = categoryEntities;
+    console.log(`📂 카테고리 "${queryAnalysis.targetCategory}" 전체 로드:`, categoryEntities.length, '개');
+  }
 
-    if (keywords.length > 0) {
-      // 엔티티 임베딩 검색 + 청크 임베딩 검색 병렬 실행
+  // (B) 키워드 기반 검색
+  if (queryAnalysis.keywords.length > 0) {
+    // 먼저 직접 매칭 시도
+    const directMatches = findMentionedEntityIds(
+      queryAnalysis.keywords.join(' '),
+      context.knowledgeGraph.entities
+    );
+    directMatches.forEach(id => {
+      if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
+    });
+    console.log('🔎 직접 매칭:', directMatches.length, '개');
+
+    // graphId가 있으면 임베딩 검색도 수행
+    if (graphId) {
       const [entityResults, chunks] = await Promise.all([
-        searchSimilarEntities(graphId, keywords, userApiKey || undefined, 10),
-        searchSimilarChunks(graphId, lastUserMessage.content, userApiKey || undefined, 3),
+        searchSimilarEntities(graphId, queryAnalysis.keywords, userApiKey || undefined, 10),
+        searchSimilarChunks(graphId, lastUserMessage?.content || '', userApiKey || undefined, 3),
       ]);
 
-      embeddingResults = entityResults;
-      chunkResults = chunks;
+      console.log('🎯 임베딩 검색 결과:', entityResults.map(r => `${r.entityName} (${(r.similarity * 100).toFixed(1)}%)`));
+      console.log('📄 청크 검색 결과:', chunks.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
 
-      console.log('🎯 임베딩 검색 결과:', embeddingResults.map(r => `${r.entityName} (${(r.similarity * 100).toFixed(1)}%)`));
-      console.log('📄 청크 검색 결과:', chunkResults.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
-
-      // 유사도 높은 엔티티 ID 추가
-      embeddingResults.forEach(result => {
+      entityResults.forEach(result => {
         if (!foundEntityIds.includes(result.entityId)) {
           foundEntityIds.push(result.entityId);
         }
       });
+      chunkResults = chunks;
     }
   }
 
+  // (C) 키워드도 없고 카테고리 요청도 아닌 경우: 청크 임베딩만 검색
+  if (foundEntityIds.length === 0 && graphId && lastUserMessage) {
+    chunkResults = await searchSimilarChunks(graphId, lastUserMessage.content, userApiKey || undefined, 3);
+    console.log('📄 폴백 청크 검색:', chunkResults.map(c => `청크${c.chunkIndex} (${(c.similarity * 100).toFixed(1)}%)`));
+  }
+
   const foundEntities = foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean);
-  console.log('🔍 최종 찾은 엔티티:', foundEntities.length > 0 ? foundEntities : '(없음)');
+  console.log('🔍 최종 찾은 엔티티:', foundEntities.length > 0 ? foundEntities.slice(0, 20) : '(없음)', foundEntities.length > 20 ? `외 ${foundEntities.length - 20}개` : '');
 
   // 관련 관계
   const relatedEdges = findConnectedEdges(foundEntityIds, context.knowledgeGraph.hyperedges);
@@ -819,7 +852,22 @@ export async function sendChatMessage(
     ? relatedEdges.slice(0, 10).map(e => `[${e.type}] ${e.entities.map(id => context.knowledgeGraph.entities[id]?.name || id).join(' ↔ ')}`)
     : '(없음)');
 
-  // 컨텍스트 생성 (임베딩으로 찾은 엔티티도 포함)
+  // [3단계] 컨텍스트 생성 - LLM 분석 결과를 intent로 변환
+  const intentForContext: QueryIntent = {
+    wantsCharacters: queryAnalysis.targetCategory === 'character',
+    wantsRelationships: false,
+    wantsItems: queryAnalysis.targetCategory === 'item',
+    wantsSummary: false,
+    wantsLocations: queryAnalysis.targetCategory === 'location',
+    wantsOrganizations: queryAnalysis.targetCategory === 'organization',
+    wantsEvents: queryAnalysis.targetCategory === 'event',
+    wantsConcepts: queryAnalysis.targetCategory === 'concept',
+    wantsCategoryList: queryAnalysis.wantsCategoryList,
+    targetCategory: queryAnalysis.targetCategory,
+    keywords: queryAnalysis.keywords,
+    expandedKeywords: queryAnalysis.keywords,
+  };
+
   let relevantContext = lastUserMessage
     ? extractRelevantContext(lastUserMessage.content, context.knowledgeGraph, context.originalText, foundEntityIds)
     : '';
@@ -843,7 +891,7 @@ export async function sendChatMessage(
   console.groupEnd();
 
   const apiMessages = [
-    { role: 'system', content: buildSystemPrompt(context, foundEntityIds, logIntent || undefined) },
+    { role: 'system', content: buildSystemPrompt(context, foundEntityIds, intentForContext) },
     ...messages.map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.role === 'user' && m === lastUserMessage
