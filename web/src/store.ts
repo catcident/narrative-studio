@@ -19,7 +19,7 @@ interface AppState {
   selectedSceneId: string | null;
   sceneRangeStart: string | null;  // 범위 선택 시작
   sceneRangeEnd: string | null;    // 범위 선택 끝
-  viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source';
+  viewMode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
 
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
@@ -29,7 +29,7 @@ interface AppState {
   selectTimePoint: (time: string | null) => void;
   selectScene: (sceneId: string | null) => void;
   selectSceneRange: (start: string | null, end: string | null) => void;
-  setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source') => void;
+  setViewMode: (mode: 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat') => void;
   reset: () => void;
 }
 
