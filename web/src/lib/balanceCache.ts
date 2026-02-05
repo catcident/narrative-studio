@@ -99,6 +99,10 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
 
 /** deduct 응답 후 캐시 즉시 갱신 */
 export function updateBalanceCache(userId: string, balance: number): void {
+  if (typeof balance !== 'number' || !Number.isFinite(balance)) {
+    console.warn(`[analyze] Invalid balance value for cache update: ${balance}`);
+    return;
+  }
   balanceCache.set(userId, { balance, cachedAt: Date.now() });
 }
 

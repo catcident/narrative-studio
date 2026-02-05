@@ -175,8 +175,9 @@ export function FileUpload() {
         setHasEnvKey(data.hasEnvKey);
         useStore.getState().setAuthEnabled(data.authEnabled ?? false);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
+        console.error('[config] Failed to load app configuration:', err instanceof Error ? err.message : err);
         setHasEnvKey(false);
         useStore.getState().setAuthEnabled(false);
       });

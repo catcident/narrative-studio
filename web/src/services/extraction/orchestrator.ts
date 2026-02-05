@@ -18,8 +18,8 @@ export function saveProgress(progress: ExtractionProgress): void {
   try {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
     console.log(`[extraction] 진행상황 저장: ${progress.processedChunks}/${progress.totalChunks}`);
-  } catch (e) {
-    console.warn('[extraction] 진행상황 저장 실패:', e);
+  } catch (err: unknown) {
+    console.warn('[extraction] 진행상황 저장 실패:', err instanceof Error ? err.message : err);
   }
 }
 
