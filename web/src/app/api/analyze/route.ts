@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility } from '@/lib/balanceCache';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { AUTH_ENABLED, getAuthUserId } from '@/lib/auth';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -49,6 +51,23 @@ export async function POST(request: NextRequest) {
     const balanceError = await checkAnalyzeEligibility();
     if (balanceError) {
       return NextResponse.json({ error: balanceError }, { status: 402 });
+    }
+
+    // Rate limiting (AUTH_ENABLED=true일 때만)
+    if (AUTH_ENABLED) {
+      const userId = await getAuthUserId();
+      if (userId) {
+        const limited = checkRateLimit(userId);
+        if (limited) {
+          return NextResponse.json(
+            { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+            {
+              status: 429,
+              headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) },
+            },
+          );
+        }
+      }
     }
 
     // 프롬프트 크기 로깅
