@@ -14,6 +14,7 @@ declare module 'next-auth' {
       nickname?: string | null;
       memberType?: string | null;
       roles?: string[];
+      accessToken?: string;
     };
   }
 }
@@ -24,6 +25,9 @@ declare module 'next-auth/jwt' {
     nickname?: string | null;
     memberType?: string | null;
     roles?: string[];
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
   }
 }
 
@@ -47,7 +51,7 @@ export const authConfig: NextAuthConfig = {
       },
       authorization: {
         params: {
-          scope: 'openid profile email member',
+          scope: 'openid profile email member billing',
         },
       },
       checks: ['pkce', 'state'],
@@ -70,6 +74,11 @@ export const authConfig: NextAuthConfig = {
         token.nickname = (profile as any).nickname;
         token.memberType = (profile as any).member_type;
         token.roles = (profile as any).roles || [];
+        token.accessToken = account.access_token;
+        token.refreshToken = account.refresh_token;
+        token.accessTokenExpires = account.expires_at
+          ? account.expires_at * 1000
+          : Date.now() + 3600 * 1000;
       }
       return token;
     },
@@ -78,6 +87,7 @@ export const authConfig: NextAuthConfig = {
       session.user.nickname = token.nickname;
       session.user.memberType = token.memberType;
       session.user.roles = token.roles;
+      session.user.accessToken = token.accessToken;
       return session;
     },
   },
@@ -99,7 +109,7 @@ export async function getAuthUserId(): Promise<string | null> {
   return session?.user?.id || null;
 }
 
-export async function requireAuth(): Promise<{ userId: string } | { error: Response }> {
+export async function requireAuth(): Promise<{ userId: string; accessToken?: string } | { error: Response }> {
   if (!AUTH_ENABLED) {
     return { userId: 'anonymous' };
   }
@@ -107,5 +117,5 @@ export async function requireAuth(): Promise<{ userId: string } | { error: Respo
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
-  return { userId: session.user.id };
+  return { userId: session.user.id, accessToken: session.user.accessToken };
 }

@@ -171,3 +171,45 @@ export interface ChronicleEvent {
   edges: HyperEdge[];
   sentiment?: string;
 }
+
+// ==================== Billing ====================
+
+export interface PlanFeatures {
+  byok: boolean;
+  models: string[] | 'all';
+  max_file_size_mb: number;
+  can_purchase_credits: boolean;
+}
+
+export interface BillingSubscription {
+  plan: string;
+  planName: string;
+  creditBalance: number;
+  features: PlanFeatures;
+  creditResetAt: string | null;
+  status: string;
+}
+
+export interface ChunkUsage {
+  chunkIndex: number;
+  promptTokens: number;
+  completionTokens: number;
+  model: string;
+}
+
+export interface CurrentUsage {
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  chunks: ChunkUsage[];
+}
+
+export interface CreditTransaction {
+  id: number;
+  amount: number;
+  balance_after: number;
+  tx_type: string;
+  tx_type_display: string;
+  description: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
