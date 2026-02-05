@@ -110,7 +110,7 @@ interface ExtractionOptions {
 }
 
 // 진행상황 관리
-saveProgress(), loadProgress(), clearProgress(), hasProgress()
+saveProgress(), loadProgress(), clearProgress()
 
 // API 키 관리
 setApiKey(), hasApiKey(), getApiKey()
@@ -143,7 +143,7 @@ const key = `storygraph-partial-${titleHash}-${chunks.length}`;
 ### 파일 추가 분석
 
 기존 지식그래프가 있을 때 파일을 추가하면:
-1. 기존 entities에서 `knownCharacters` 초기화
+1. 기존 entities에서 `knownEntities` 초기화 (LLM 선별 방식 사용)
 2. 새 파일 텍스트만 청크로 분석 (기존 인물 정보 전달)
 3. 엔티티, 관계, 장면, 챕터 번호를 기존 것에 이어서 부여
 4. 결과를 하나의 지식그래프로 반환
@@ -326,7 +326,6 @@ export const GET = billingGetHandler('/new-endpoint/?service=storygraph', 'new-e
 // billingProxy.ts 내부
 const ALLOWED_POST_FIELDS: Record<string, string[]> = {
   '/credits/deduct/': ['amount', 'description', 'metadata', 'idempotency_key'],
-  '/credits/estimate/': ['char_count', 'model'],
   '/new-endpoint/': ['field1', 'field2'],  // ← 새 라우트 추가
 };
 ```

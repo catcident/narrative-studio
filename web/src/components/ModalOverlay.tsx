@@ -1,10 +1,12 @@
+type MaxWidth = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+
 interface ModalOverlayProps {
   onClose: () => void;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+  maxWidth?: MaxWidth;
   children: React.ReactNode;
 }
 
-const MAX_WIDTH_CLASSES: Record<string, string> = {
+const MAX_WIDTH_CLASSES: Record<MaxWidth, string> = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',

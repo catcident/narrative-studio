@@ -74,7 +74,7 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 **핵심 원칙**:
 - 크레딧 차감은 분석 완료 + 저장 후 1회만 실행 (청크별 차감 X)
 - idempotency key로 중복 차감 방지 — **결정론적 값 사용** (`storygraph-{savedId}-{chunks.length}`), `Date.now()` 금지
-- **모든 분석 진입점**에서 잔액 사전 확인 필수 (estimateCredits + balance 비교, 단순 `> 0` 체크 불가)
+- **모든 분석 진입점**에서 잔액 사전 확인 필수 (`checkSufficientBalance()` 사용, 단순 `> 0` 체크 불가)
 - file.size(bytes)와 charCount(문자수) 구분 필수 (UTF-8 한글 ~3bytes/char)
 - **모든** LLM API 호출의 billing 추적 필수 — `extractKnowledgeGraph`의 `onChunkBilling` + `selectRelevantEntities` 등 내부 호출 포함
 - 차감 금액은 실제 토큰 사용량 기반 계산 (`calculateCreditsFromTokens`), 서버 추정치 사용 금지
@@ -128,7 +128,6 @@ export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST'
 | `POST /api/knowledge-graphs/[id]/restore/[version]` | 특정 버전 복원 |
 | `GET /api/billing/subscription` | 구독 정보 조회 (catcident 프록시) |
 | `GET /api/billing/credits/balance` | 크레딧 잔액 조회 |
-| `POST /api/billing/credits/estimate` | 분석 예상 비용 |
 | `POST /api/billing/credits/deduct` | 크레딧 차감 |
 | `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
 | `GET /api/billing/plans` | 요금제 목록 |

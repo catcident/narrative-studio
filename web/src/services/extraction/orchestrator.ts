@@ -31,6 +31,10 @@ export function loadProgress(): ExtractionProgress | null {
       const progress = JSON.parse(saved) as ExtractionProgress;
       // 24시간 이내의 것만 복원
       if (Date.now() - progress.timestamp < 24 * 60 * 60 * 1000) {
+        // 구 형식 호환: knownEntities가 없으면 빈 배열로 초기화
+        if (!progress.knownEntities) {
+          progress.knownEntities = [];
+        }
         return progress;
       }
     }
