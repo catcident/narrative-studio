@@ -42,8 +42,30 @@ export interface ChunkBilling {
   insufficient_balance?: boolean;
 }
 
+/** LLM이 단일 청크에서 추출한 데이터 */
+export interface ChunkExtractedData {
+  chapters: Array<{ id: number | string; title?: string; summary?: string }>;
+  scenes: Array<{
+    id: number; chapter?: number; location?: string; summary?: string;
+    events?: string[]; mood?: string; time?: string; time_marker?: string | null;
+  }>;
+  entities: Array<{
+    name: string; category?: string; description?: string; aliases?: string[];
+    scenes?: number[]; attributes?: Record<string, unknown>; importance?: number;
+  }>;
+  relationships: Array<{
+    from: string; to: string; type: string; description?: string; scenes?: number[];
+    sentiment?: string; strength?: number; quote?: string; subtype?: string;
+    start_time?: string; bidirectional?: boolean; from_perspective?: string; to_perspective?: string;
+  }>;
+}
+
+export const EMPTY_CHUNK_DATA: ChunkExtractedData = {
+  chapters: [], scenes: [], entities: [], relationships: [],
+};
+
 export interface ChunkExtractionResult {
-  data: any;
+  data: ChunkExtractedData;
   billing: ChunkBilling | null;
 }
 
@@ -52,7 +74,7 @@ export interface ExtractionProgress {
   title: string;
   totalChunks: number;
   processedChunks: number;
-  allExtracted: any[];
+  allExtracted: ChunkExtractedData[];
   knownEntities: KnownEntity[];
   chunks: string[];
   timestamp: number;

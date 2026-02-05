@@ -69,6 +69,7 @@ export function FileUpload() {
   const resetCurrentUsage = useStore((s) => s.resetCurrentUsage);
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const loadSubscription = useStore((s) => s.loadSubscription);
   const subscription = useBillingSubscription();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
@@ -158,9 +159,10 @@ export function FileUpload() {
       } finally {
         setLocalLoading(false);
         setLoading(false);
+        loadSubscription();
       }
     },
-    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState],
+    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState, loadSubscription],
   );
 
   // ==================== 초기화 ====================

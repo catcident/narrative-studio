@@ -28,8 +28,11 @@ export function UsageHistory() {
     setError(false);
     getUsageHistory(page).then(result => {
       if (cancelled) return;
-      if (!result) setError(true);
-      setData(result);
+      if (!result.ok) {
+        setError(true);
+      } else {
+        setData(result.data);
+      }
       setLoading(false);
     });
     return () => { cancelled = true; };

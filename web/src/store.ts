@@ -104,8 +104,9 @@ export const useStore = create<AppState>((set, get) => ({
   // Billing 액션
   loadSubscription: async () => {
     try {
-      const info = await getSubscription();
-      if (info?.plan) {
+      const result = await getSubscription();
+      if (result.ok && result.data.plan) {
+        const info = result.data;
         set({
           subscription: {
             plan: info.plan.code,
@@ -117,8 +118,9 @@ export const useStore = create<AppState>((set, get) => ({
           },
         });
       }
-    } catch (error) {
-      console.error('[billing] loadSubscription error:', error);
+      // !result.ok → subscription null 유지 (billing 미사용)
+    } catch (err: unknown) {
+      console.error('[billing] loadSubscription error:', err);
     }
   },
   updateCreditBalance: (n) => set((state) => ({

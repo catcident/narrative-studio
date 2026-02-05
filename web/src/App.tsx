@@ -150,9 +150,11 @@ function App() {
       setKnowledgeGraph(updatedKnowledgeGraph, undefined, saved.id);
       setAddProgress('');
       setShowUsageSummary(true);
+      loadSubscription();
     } catch (err: unknown) {
       console.error('[extraction] 파일 추가 오류:', err);
       setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
+      loadSubscription();
     } finally {
       setIsAddingFile(false);
       e.target.value = '';  // input 초기화

@@ -3,6 +3,7 @@
  */
 
 import type { NovelKnowledgeGraph } from '../../types';
+import type { ChunkExtractedData } from './types';
 
 // --- ID 포맷 헬퍼 ---
 
@@ -109,7 +110,7 @@ function findSimilarEntity(name: string, nameMap: Record<string, number>, _entit
 
 // --- 청크 결과 병합 ---
 
-export function mergeExtractions(extractions: any[]): any {
+export function mergeExtractions(extractions: ChunkExtractedData[]): any {
   const entities: any[] = [];
   const relationships: any[] = [];
   const scenes: any[] = [];

@@ -4,7 +4,8 @@
 
 import type { NovelKnowledgeGraph } from '../../types';
 import { DEFAULT_MODEL } from '../../types';
-import type { KnownEntity, ExtractionProgress, ExtractionOptions } from './types';
+import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions } from './types';
+import { EMPTY_CHUNK_DATA } from './types';
 import { splitIntoSmartChunks } from './chunker';
 import { selectRelevantEntities, filterEntitiesByNames, buildAccumulatedGraph } from './selector';
 import { extractFromChunk } from './extractor';
@@ -54,7 +55,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
-  let allExtracted: any[] = [];
+  let allExtracted: ChunkExtractedData[] = [];
   let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
 
@@ -234,7 +235,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         onProgress?.(`청크 ${i + 1} 스킵 (오류), 계속 진행...`);
 
         // 빈 결과로 추가 (장면 번호 유지를 위해)
-        allExtracted.push({ chapters: [], scenes: [], entities: [], relationships: [] });
+        allExtracted.push(EMPTY_CHUNK_DATA);
 
         // 진행상황 저장 (실패한 청크도 처리됨으로 표시)
         saveCurrentProgress(i + 1);

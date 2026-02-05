@@ -27,14 +27,14 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   useEffect(() => {
     let cancelled = false;
     Promise.all([getPlans(), getCreditPackages()])
-      .then(([p, pkg]) => {
-        if (!cancelled) {
-          setPlans(p);
-          setPackages(pkg);
-        }
+      .then(([plansResult, packagesResult]) => {
+        if (cancelled) return;
+        if (plansResult.ok) setPlans(plansResult.data);
+        if (packagesResult.ok) setPackages(packagesResult.data);
+        if (!plansResult.ok || !packagesResult.ok) setLoadError(true);
       })
-      .catch((error) => {
-        console.error('[billing] SubscriptionPage load error:', error);
+      .catch((err: unknown) => {
+        console.error('[billing] SubscriptionPage load error:', err);
         if (!cancelled) setLoadError(true);
       })
       .finally(() => {

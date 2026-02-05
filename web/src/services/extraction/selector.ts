@@ -3,7 +3,7 @@
  */
 
 import type { NovelKnowledgeGraph } from '../../types';
-import type { KnownEntity, EntitySummary, ChunkBilling } from './types';
+import type { KnownEntity, EntitySummary, ChunkBilling, ChunkExtractedData } from './types';
 import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
 
@@ -14,14 +14,15 @@ import { ENTITY_SELECTION_PROMPT } from './prompts';
 export function buildEntitySummaries(graph: NovelKnowledgeGraph): EntitySummary[] {
   const summaries: EntitySummary[] = [];
 
-  for (const entity of Object.values(graph.entities) as any[]) {
+  for (const entity of Object.values(graph.entities)) {
     // 이 엔티티와 연결된 관계들 찾기
     const relations: string[] = [];
-    for (const edge of Object.values(graph.hyperedges) as any[]) {
+    for (const edge of Object.values(graph.hyperedges)) {
       if (!edge.entities?.includes(entity.id)) continue;
 
-      const otherId = edge.entities.find((id: string) => id !== entity.id);
-      const other = graph.entities[otherId] as any;
+      const otherId = edge.entities.find((id) => id !== entity.id);
+      if (!otherId) continue;
+      const other = graph.entities[otherId];
       if (!other) continue;
 
       // 관계 방향 결정 (from이 현재 엔티티인지)
@@ -64,7 +65,7 @@ export interface SelectionResult {
 
 /** 그래프의 모든 엔티티 이름 목록 반환 (선별 스킵/실패 시 폴백용) */
 function allEntityNames(graph: NovelKnowledgeGraph): string[] {
-  return Object.values(graph.entities).map((e: any) => e.name);
+  return Object.values(graph.entities).map((e) => e.name);
 }
 
 /**
@@ -147,8 +148,8 @@ export async function selectRelevantEntities(
     console.log(`[extraction] 선별 ${entityCount}개 중 ${selectedNames.length}개 선택: ${selectedNames.slice(0, 10).join(', ')}${selectedNames.length > 10 ? '...' : ''}`);
     return { names: selectedNames, billing };
 
-  } catch (error) {
-    console.warn('[extraction] 선별 오류 발생, 전체 엔티티 사용:', error);
+  } catch (err: unknown) {
+    console.warn('[extraction] 선별 오류 발생, 전체 엔티티 사용:', err);
     return { names: allEntityNames(graph), billing: null };
   }
 }
@@ -163,9 +164,9 @@ export function filterEntitiesByNames(
   const selectedSet = new Set(selectedNames.map(n => n.toLowerCase()));
   const result: KnownEntity[] = [];
 
-  for (const entity of Object.values(graph.entities) as any[]) {
+  for (const entity of Object.values(graph.entities)) {
     const nameLower = entity.name.toLowerCase();
-    const aliasMatch = (entity.aliases || []).some((a: string) =>
+    const aliasMatch = (entity.aliases || []).some((a) =>
       selectedSet.has(a.toLowerCase())
     );
 
@@ -186,7 +187,7 @@ export function filterEntitiesByNames(
  * allExtracted에서 축적 그래프 생성 (엔티티 + 관계 정보 포함)
  * 한번에 올리기/따로 올리기 모두 동일한 방식으로 처리
  */
-export function buildAccumulatedGraph(allExtracted: any[], existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
+export function buildAccumulatedGraph(allExtracted: ChunkExtractedData[], existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const entities: Record<string, any> = {};
   const hyperedges: Record<string, any> = {};
 
@@ -234,11 +235,13 @@ export function buildAccumulatedGraph(allExtracted: any[], existingGraph?: Novel
     for (const rel of (extracted.relationships || [])) {
       edgeCounter++;
       const edgeId = `R${String(edgeCounter).padStart(4, '0')}`;
+      const fromId = nameToId.get(rel.from.toLowerCase());
+      const toId = nameToId.get(rel.to.toLowerCase());
       hyperedges[edgeId] = {
         id: edgeId,
         type: rel.type || '관련',
-        participants: rel.participants || [],
-        description: rel.description || '',
+        entities: [fromId, toId].filter(Boolean),
+        statement: rel.description || '',
         scenes: rel.scenes || [],
       };
     }

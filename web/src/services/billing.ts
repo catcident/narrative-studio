@@ -19,34 +19,50 @@ import {
 
 const BASE = '/api/billing';
 
+// ==================== 공통 타입 ====================
+
+export type BillingResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; reason: 'auth' | 'error'; status?: number; message?: string };
+
+export type BillingListResult<T> =
+  | { ok: true; data: T[] }
+  | { ok: false; reason: 'auth' | 'error'; status?: number; message?: string };
+
 // ==================== 공통 fetcher ====================
 
-async function billingFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
+async function billingFetch<T>(path: string, init?: RequestInit): Promise<BillingResult<T>> {
   try {
     const res = await fetch(`${BASE}${path}`, init);
     if (!res.ok) {
-      console.error(`[billing] ${path} HTTP ${res.status}`);
-      return null;
+      if (res.status === 401) {
+        return { ok: false, reason: 'auth', status: 401 };
+      }
+      return { ok: false, reason: 'error', status: res.status };
     }
-    return await res.json();
-  } catch (error) {
-    console.error(`[billing] ${path} error:`, error);
-    return null;
+    return { ok: true, data: await res.json() };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[billing] ${path} error:`, message);
+    return { ok: false, reason: 'error', message };
   }
 }
 
-async function billingFetchList<T>(path: string): Promise<T[]> {
+async function billingFetchList<T>(path: string): Promise<BillingListResult<T>> {
   try {
     const res = await fetch(`${BASE}${path}`);
     if (!res.ok) {
-      console.error(`[billing] ${path} HTTP ${res.status}`);
-      return [];
+      if (res.status === 401) {
+        return { ok: false, reason: 'auth', status: 401 };
+      }
+      return { ok: false, reason: 'error', status: res.status };
     }
     const data = await res.json();
-    return data.results || data;
-  } catch (error) {
-    console.error(`[billing] ${path} error:`, error);
-    return [];
+    return { ok: true, data: data.results || data };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[billing] ${path} error:`, message);
+    return { ok: false, reason: 'error', message };
   }
 }
 
@@ -69,13 +85,13 @@ export interface SubscriptionInfo {
   expires_at: string | null;
 }
 
-export async function getSubscription(): Promise<SubscriptionInfo | null> {
+export async function getSubscription(): Promise<BillingResult<SubscriptionInfo>> {
   return billingFetch<SubscriptionInfo>('/subscription');
 }
 
 // ==================== 크레딧 ====================
 
-export async function getCreditBalance(): Promise<{ balance: number; plan: string } | null> {
+export async function getCreditBalance(): Promise<BillingResult<{ balance: number; plan: string }>> {
   return billingFetch<{ balance: number; plan: string }>('/credits/balance');
 }
 
@@ -88,7 +104,7 @@ export interface TransactionsResponse {
   results: CreditTransaction[];
 }
 
-export async function getUsageHistory(page: number = 1): Promise<TransactionsResponse | null> {
+export async function getUsageHistory(page: number = 1): Promise<BillingResult<TransactionsResponse>> {
   return billingFetch<TransactionsResponse>(`/credits/transactions?page=${page}`);
 }
 
@@ -106,7 +122,7 @@ export interface ServicePlan {
   is_active: boolean;
 }
 
-export async function getPlans(): Promise<ServicePlan[]> {
+export async function getPlans(): Promise<BillingListResult<ServicePlan>> {
   return billingFetchList<ServicePlan>('/plans');
 }
 
@@ -120,7 +136,7 @@ export interface CreditPackage {
   sort_order: number;
 }
 
-export async function getCreditPackages(): Promise<CreditPackage[]> {
+export async function getCreditPackages(): Promise<BillingListResult<CreditPackage>> {
   return billingFetchList<CreditPackage>('/packages');
 }
 
@@ -184,9 +200,9 @@ export function calculateCreditsFromTokens(promptTokens: number, completionToken
 export async function checkSufficientBalance(): Promise<
   { sufficient: true } | { sufficient: false; error: string }
 > {
-  const balanceInfo = await getCreditBalance();
-  if (!balanceInfo) return { sufficient: true }; // billing 비활성 시 통과
-  if (balanceInfo.balance <= 0) {
+  const result = await getCreditBalance();
+  if (!result.ok) return { sufficient: true }; // billing 비활성/에러 시 fail-open
+  if (result.data.balance <= 0) {
     return { sufficient: false, error: '크레딧이 부족합니다.' };
   }
   return { sufficient: true };

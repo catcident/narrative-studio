@@ -2,8 +2,8 @@
  * 지식 그래프 추출 서비스 — LLM 청크 추출
  */
 
-import type { KnownEntity, ChunkExtractionResult } from './types';
-import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout, trimKnownEntities } from './types';
+import type { KnownEntity, ChunkExtractionResult, ChunkExtractedData } from './types';
+import { CATEGORY_NAMES, EMPTY_CHUNK_DATA, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout, trimKnownEntities } from './types';
 import { USER_PROMPT } from './prompts';
 
 export async function extractFromChunk(
@@ -67,7 +67,7 @@ ${limitedCategoryEntities.map(e => {
     if (response.status === 402) {
       console.warn('[extraction] 402 insufficient balance received');
       return {
-        data: { chapters: [], scenes: [], entities: [], relationships: [] },
+        data: EMPTY_CHUNK_DATA,
         billing: { prompt_tokens: 0, completion_tokens: 0, model: model || '', insufficient_balance: true },
       };
     }
@@ -92,21 +92,21 @@ ${limitedCategoryEntities.map(e => {
 
   console.log('[extraction] LLM 응답 내용:', content.slice(0, 500));
 
-  let extracted;
+  let extracted: ChunkExtractedData;
   try {
     const jsonContent = stripMarkdownCodeBlock(content);
-    extracted = JSON.parse(jsonContent);
+    extracted = JSON.parse(jsonContent) as ChunkExtractedData;
   } catch (parseErr) {
     console.error('[extraction] JSON 파싱 에러, 원본:', content.slice(0, 1000));
     // JSON이 잘린 경우 복구 시도
     const fixedContent = tryFixJson(content);
     if (fixedContent) {
       console.log('[extraction] JSON 복구 성공');
-      extracted = fixedContent;
+      extracted = fixedContent as ChunkExtractedData;
     } else {
       // 파싱 실패 시 빈 결과 반환 (전체 분석을 중단하지 않음)
       console.warn('[extraction] JSON 파싱 실패, 이 청크 건너뜀');
-      extracted = { chapters: [], scenes: [], entities: [], relationships: [] };
+      extracted = EMPTY_CHUNK_DATA;
     }
   }
 
@@ -117,7 +117,7 @@ ${limitedCategoryEntities.map(e => {
 }
 
 // 잘린 JSON 복구 시도
-export function tryFixJson(content: string): any {
+export function tryFixJson(content: string): unknown {
   let fixed = stripMarkdownCodeBlock(content);
 
   // { 로 시작하는 JSON 찾기

@@ -6,172 +6,259 @@
 > 이전 24건 → 모두 해결 (커밋 1fd1ac1, fbddf2a, b2d689c, 4746364, 6980bf4)
 > 추가 11건 → 모두 해결 (커밋 1f89bd4)
 > 리뷰 후 추가 발견 5건 → 모두 해결 (코드 리뷰 반영)
+> 청크별 차감 리팩토링 후 코드 리뷰/심플리파이어 ~25건 → 모두 해결 (커밋 26a355c, 1f7c1aa, 6ef72b7, a124ae4)
+> 추가 6건 해결: SF-1, SF-2, SF-5, SF-7, CS-7(selector), CS-8
 >
-> **현재 미해결 이슈: 0건**
+> **현재 미해결 이슈: 2건** (아키텍처 수준, 향후 별도 PR에서 처리)
 
 ---
 
-## 1. Auth 토큰 갱신 — 3건 (우선순위: 높음)
+## 해결된 이전 이슈 (총 40건+)
 
-### 1-1. `session.error` 소비자 미구현
+<details>
+<summary>클릭하여 펼치기</summary>
 
-**심각도**: Important
-**위치**: 클라이언트 전역 (App.tsx 또는 AuthProvider.tsx)
+### Auth 토큰 갱신 — 3건
 
-**현재 동작**:
-`refreshAccessToken` 실패 시 `session.error = 'RefreshTokenError'`가 설정되지만, 이를 소비하여 재로그인을 유도하는 클라이언트 로직이 없습니다.
+| # | 이슈 | 해결 내용 |
+|---|------|-----------|
+| 1-1 | session.error 소비자 미구현 | `useSessionErrorHandler` 훅 + AuthProvider 통합 |
+| 1-2 | 동시 토큰 갱신 경쟁 조건 | `refreshPromise` 싱글턴 패턴 |
+| 1-3 | 토큰 갱신 fetch timeout | `AbortSignal.timeout(10_000)` 추가 |
 
-**영향**: 토큰 갱신 실패 후 조용히 인증 오류 발생. 사용자에게 피드백 없음.
+### 클린업 & 데드 코드 — 6건
 
-**해결 방법**:
-```typescript
-// App.tsx 또는 전역 컴포넌트에서
-const { data: session } = useSession();
+| # | 이슈 | 해결 내용 |
+|---|------|-----------|
+| 2-1 | DataManager/SavedDataGrid useEffect 클린업 | `cancelled` flag 패턴 적용 |
+| 2-2 | estimateCredits 데드 코드 | 함수 + API 라우트 + 프록시 화이트리스트 제거 |
+| 2-3 | hasProgress 별칭 | 제거, `loadProgress()`로 통합 |
+| 2-4 | knownCharacters 하위 호환 필드 | types.ts + orchestrator.ts에서 완전 제거 |
+| 2-5 | trimKnownEntities 모듈 위치 | selector.ts → types.ts 이동 (extractor↔selector 의존 해소) |
+| 2-6 | merger.ts 불필요 export | `normalizeName`, `findSimilarEntity` private화 |
 
-useEffect(() => {
-  if (session?.error === 'RefreshTokenError') {
-    // 재로그인 다이얼로그 표시 또는 signOut() 호출
-  }
-}, [session?.error]);
+### 리팩터링 — 2건
+
+| # | 이슈 | 해결 내용 |
+|---|------|-----------|
+| 3-1 | ModalOverlay 공통 컴포넌트 | 4개 모달에 적용 |
+| 3-2 | App.tsx handleAddFile 패턴 | 기존 패턴 확인 — 이미 올바름 |
+
+### 청크별 차감 리팩토링 후 코드 리뷰 — ~25건
+
+코드 리뷰(6개 에이전트), 코드 심플리파이어(4개 에이전트), silent failure audit를 통해 발견된 즉시 수정 가능 항목들:
+
+- auth 실패 시 silent bypass → `return authResult.error;` 처리
+- double `requireAuth()` → `checkAnalyzeEligibility(userId, accessToken)` 리팩토링
+- non-null assertion → `DeductResult` 인터페이스 + 로컬 타입 변수
+- `loopCompleted` 플래그로 resume progress 보존
+- `saveCurrentProgress(i)` vs `(i+1)` 인덱스 수정
+- selector 402 명시 처리
+- `catch (err: unknown)` 타입 가드 통일
+- `ensureSufficientBalance()` 헬퍼 추출
+- `updateBalanceCache` NaN/Infinity 방어
+- config fetch 실패 로깅
+- 문서 정확성 수정 7건 (OAuth scope, DEFAULT_MODEL, entity limits 등)
+- dead code 제거 (`invalidateBalanceCache`, `stripMarkdownCodeBlock` re-export)
+- onChunkBilling 가드 패턴 통일
+
+### 미해결 이슈 개선 — 6건
+
+| # | 이슈 | 해결 내용 |
+|---|------|-----------|
+| SF-1 | billing-disabled vs billing-broken 구분 불가 | `BillingResult<T>` discriminated union 반환 타입 도입 |
+| SF-2 | billingFetch 에러 타입 통합 | `billingFetch`/`billingFetchList` 리라이트, 401 별도 분기 |
+| SF-5 | 네트워크 에러 시 서버 측 차감 데이터 유실 | 분석 완료 후 `loadSubscription()` 잔액 재동기화 |
+| SF-7 | selector catch에서 billing 데이터 유실 | SF-5와 동일 방식으로 해결 |
+| CS-7 | selector.ts `as any` 캐스트 (9곳) | `Object.values(graph.entities/hyperedges)` 타입 활용으로 제거 |
+| CS-8 | `allExtracted: any[]` 파이프라인 전파 | `ChunkExtractedData` 인터페이스 + `EMPTY_CHUNK_DATA` 상수 도입 |
+
+</details>
+
+---
+
+## 미해결 #1: App.tsx vs FileUpload.tsx "파일 추가" 로직 중복 (CS-1)
+
+> 심각도: MEDIUM | 별도 PR 권장
+
+### 현상
+
+동일한 "파일 추가 분석" 흐름이 두 컴포넌트에 각각 구현되어 있음.
+
+| 항목 | App.tsx `handleAddFile` | FileUpload.tsx `executeAddFile` + `handleAddFile` |
+|------|------------------------|--------------------------------------------------|
+| **위치** | L117-162 (46줄) | `executeAddFile`: L371-399 (29줄), `handleAddFile`: L403-433 (31줄) |
+| **진입점** | 헤더 "파일 추가" input onChange | ResumePanel의 "추가 분석" input onChange |
+| **상태 관리** | 자체 state (`isAddingFile`, `addProgress`) | `runExtraction()` 래퍼 (`localLoading`, `progress`) |
+| **파일 읽기** | 핸들러 내부 인라인 | `handleAddFile`에서 별도 단계 |
+| **중복 파일명 체크** | 없음 | 있음 (대화상자 기반 이름 변경) |
+| **에러 후 정리** | finally 블록 수동 정리 | `runExtraction()` 래퍼가 일괄 처리 |
+
+### 공통 흐름 (양쪽 동일)
+
+```
+ensureSufficientBalance(subscription)
+  → extractKnowledgeGraph({ existingGraph, onChunkBilling })
+    → saveKnowledgeGraph(updated, ..., currentDataId)
+      → setKnowledgeGraph(updated, ..., saved.id)
+        → setShowUsageSummary(true) + loadSubscription()
 ```
 
+### 차이점 상세
+
+**App.tsx** — 선형 단일 함수:
+- `isAddingFile` / `addProgress` 자체 로컬 state 관리
+- `resetCurrentUsage()` 직접 호출
+- finally 블록에서 `setIsAddingFile(false)` + input 초기화
+- 중복 파일명 검사 없음 — 같은 이름 파일 그대로 분석
+
+**FileUpload.tsx** — 2단계 레이어 구조:
+- `handleAddFile`: 파일 읽기 → 중복 검사 → `executeAddFile` 호출
+- `executeAddFile`: `runExtraction()` 래퍼 내에서 분석/저장/상태 갱신
+- `runExtraction()`이 loading, error, billing, subscription 크로스커팅 관심사 일괄 처리
+- 중복 파일명 시 `duplicateFileName` 대화상자 → 사용자가 새 이름 입력 → `handleConfirmNewFileName` → `executeAddFile` 재호출
+
+### 스킵 사유
+
+- 두 경로의 상태 관리 방식이 구조적으로 다름 (App: 자체 state, FileUpload: `runExtraction` 래퍼)
+- 공유 훅 추출 시 양쪽의 loading/error 패턴을 모두 수용해야 하므로 인터페이스가 복잡해짐
+- 중복 파일명 검사는 FileUpload에만 필요 (App.tsx 경로는 헤더 바로가기)
+- billing 흐름 변경 시 동기화 부담이 있으나, 현재까지 실제로 문제가 된 적 없음
+- 추상화 비용 > 중복 비용
+
+### 해결 시 접근법 (참고용)
+
+1. `useAddFileAnalysis(knowledgeGraph, currentDataId)` 커스텀 훅 추출
+2. 훅이 `{ execute, isLoading, progress }` 반환
+3. `execute(file, options?)` — options에 `skipDuplicateCheck` 플래그
+4. 내부에서 `runExtraction` 패턴과 동일한 라이프사이클 관리
+5. App.tsx는 `execute(file, { skipDuplicateCheck: true })`, FileUpload는 `execute(file)` 호출
+
 ---
 
-### 1-2. 동시 토큰 갱신 경쟁 조건
+## 미해결 #2: merger.ts 타입 안전성 (CS-7 잔여 + CS-11)
 
-**심각도**: Important
-**위치**: `web/src/lib/auth.ts` JWT callback
+> 심각도: MEDIUM | 별도 PR 권장 | 규모가 크므로 단독 작업 필요
 
-**현재 동작**:
-여러 API 요청이 동시에 만료된 토큰을 감지하면, 각각 `refreshAccessToken()`을 호출합니다.
-Rotating refresh token 환경에서 첫 번째 갱신만 성공하고 나머지는 실패합니다.
+### 현상
 
-**해결 방법**:
+`merger.ts`에 **56곳**의 `any` 타입 사용이 있음. 파이프라인 내부 코드라 외부 타입 안전성에 직접 영향은 없으나, 컴파일 시점 타입 체크가 불가능.
+
+### `any` 사용 현황 (카테고리별)
+
+| 카테고리 | 건수 | 대표 예시 |
+|----------|------|-----------|
+| 파라미터 타입 | 12 | `mergeExtractions(extractions: ChunkExtractedData[]): any` 반환, `normalizeAllRelationTypes(extracted: any)` |
+| 변수 타입 | 14 | `const entities: any[] = []`, `const chapters: Record<string, any> = {}` |
+| 타입 단언 (`as any`) | 13 | `Object.values(entities) as any[]`, `entitiesByCategory as any` |
+| 콜백 파라미터 | 12 | `.filter((e: any) => e.category)`, `.find((c: any) => c.id)` |
+| 반환 타입 | 5 | `mergeExtractions(): any`, `inferMissingRelationships(): any` |
+| **합계** | **56** | |
+
+### 영향받는 함수 목록
+
+| 함수 | any 건수 | 역할 |
+|------|----------|------|
+| `mergeExtractions` | 8 | 청크 결과 병합 (entities, relationships, scenes, chapters) |
+| `normalizeAllRelationTypes` | 3 | 관계 타입 한국어 정규화 |
+| `inferMissingRelationships` | 5 | 후처리: 설명 기반 누락 관계 생성 |
+| `hasEdgeBetween` | 2 | 두 엔티티 간 관계 존재 확인 |
+| `inferDescriptionBasedEdges` | 7 | description에서 엔티티 언급 → 자동 관계 |
+| `inferCoOccurrenceEdges` | 4 | 같은 장면 동시 등장 → 자동 관계 |
+| `buildSnapshots` | 10 | Scene → Snapshot 변환 |
+| `buildKnowledgeGraph` | 12 | 최종 `NovelKnowledgeGraph` 구축 |
+| `findSimilarEntity` | 1 | 이름 유사도 기반 엔티티 매칭 |
+| 기타 (정상 `string` 타입) | 4 | 오탐 — 실제로는 올바른 타입 |
+
+### CS-11: `buildAccumulatedGraph` 과도한 반환 타입 (selector.ts)
+
+`buildAccumulatedGraph`는 `NovelKnowledgeGraph` 전체를 반환하지만, 호출부(`orchestrator.ts:130`)에서는 `.entities`만 사용.
+
+**반환 객체 필드별 사용 현황**:
+
+| 필드 | 호출부에서 사용? | 반환값 |
+|------|-----------------|--------|
+| `entities` | **사용** | 실제 데이터 |
+| `hyperedges` | 미사용 | 실제 데이터 (관계 축적) |
+| `metadata` | 미사용 | 더미 (`{ title: '', ... }`) |
+| `chapters` | 미사용 | 빈 객체 / passthrough |
+| `timeline` | 미사용 | 빈 배열 / passthrough |
+| `snapshots` | 미사용 | 빈 객체 / passthrough |
+| `stats` | 미사용 | 부분 더미 (`{} as any` 2곳) |
+
+반환 필드 중 **70~80%가 미사용 더미 데이터**.
+
+### 선행 작업: hyperedge 필드명 불일치 수정
+
+merger.ts 타입을 정의하려면 먼저 필드명 불일치를 해결해야 함:
+
+| 필드 | `ChunkExtractedData.relationships` | `NovelKnowledgeGraph.HyperEdge` |
+|------|-----------------------------------|---------------------------------|
+| 설명 | `description` | `statement` |
+| 참여자 | `from` + `to` | `entities: string[]` |
+
+`buildKnowledgeGraph`에서 `r.description` → `statement`, `[fromId, toId]` → `entities` 변환이 이루어지고 있어 타입이 혼재.
+
+### 해결 시 접근법 (참고용)
+
+**Phase A — 내부 타입 정의** (merger.ts 내부):
+
 ```typescript
-let refreshPromise: Promise<TokenSet> | null = null;
-
-async function refreshAccessToken(token: JWT): Promise<JWT> {
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = doRefresh(token);
-  try { return await refreshPromise; }
-  finally { refreshPromise = null; }
+/** merger 내부 병합 결과 (buildKnowledgeGraph 입력) */
+interface MergedExtraction {
+  entities: Array<{
+    name: string; category?: string; description?: string;
+    aliases?: string[]; scenes: number[]; attributes?: Record<string, unknown>;
+    importance?: number;
+  }>;
+  relationships: Array<{
+    from: string; to: string; type: string; description?: string;
+    scenes: number[]; sentiment?: string; strength?: number;
+    quote?: string; subtype?: string; bidirectional?: boolean;
+    from_perspective?: string; to_perspective?: string;
+  }>;
+  scenes: Array<{
+    id: number; chapter?: number; location?: string; summary?: string;
+    events?: string[]; mood?: string; time?: string; time_marker?: string | null;
+    chunkNum?: number;
+  }>;
+  chapters: Array<{
+    id: number; title?: string; summary?: string;
+  }>;
 }
 ```
 
----
+**Phase B — `buildKnowledgeGraph` 내부 타입**:
 
-### 1-3. 토큰 갱신 fetch timeout 미설정
+- `entities: Record<string, Entity>` — `Entity` 타입 직접 사용
+- `hyperedges: Record<string, HyperEdge>` — `HyperEdge` 타입 직접 사용
+- `as any[]` 캐스트 → 적절한 타입으로 교체
 
-**심각도**: Minor
-**위치**: `web/src/lib/auth.ts` `refreshAccessToken`
+**Phase C — `buildAccumulatedGraph` 경량화** (selector.ts):
 
-**현재 동작**: 프로바이더 응답 지연 시 JWT callback이 무기한 대기합니다.
-
-**해결 방법**:
 ```typescript
-const response = await fetch(tokenUrl, {
-  ...options,
-  signal: AbortSignal.timeout(10000),
-});
+interface AccumulatedGraph {
+  entities: Record<string, Entity>;
+  hyperedges: Record<string, HyperEdge>;
+}
 ```
 
----
+반환 타입을 `NovelKnowledgeGraph` → `AccumulatedGraph`로 변경. 호출부와 `buildEntitySummaries`, `filterEntitiesByNames` 등의 파라미터도 함께 변경.
 
-## 2. 클린업 & 데드 코드 — 6건 (우선순위: 중간)
+### 작업량 추정
 
-### 2-1. DataManager/SavedDataGrid `refreshList` useEffect 클린업 누락
-
-**위치**: `web/src/components/DataManager.tsx`, `web/src/components/SavedDataGrid.tsx`
-
-**현재 동작**: 컴포넌트 언마운트 후 `setList()` 호출 가능 (React 경고).
-
-**해결 방법**: `let cancelled = false; return () => { cancelled = true; }` 패턴 적용.
-
----
-
-### 2-2. `estimateCredits()` API 함수 데드 코드
-
-**위치**: `web/src/services/billing.ts`
-
-**현재 동작**: `estimateCredits()` 서버 API 함수가 더 이상 사용되지 않습니다. `estimateUsageLocally()`와 `checkSufficientBalance()`로 대체됨.
-
-**해결 방법**: 함수 제거 + 프록시 라우트 (`/api/billing/credits/estimate/route.ts`) + `ALLOWED_POST_FIELDS` 엔트리 함께 정리.
-
----
-
-### 2-3. `hasProgress()` 단순 별칭
-
-**위치**: `web/src/services/extraction/orchestrator.ts`
-
-**현재 동작**: `hasProgress()` = `loadProgress()` 동일 함수.
-
-**해결 방법**: 호출부를 `loadProgress()`로 통합하고 `hasProgress` 제거.
-
----
-
-### 2-4. `knownCharacters` 하위 호환 필드
-
-**위치**: `web/src/services/extraction/types.ts`, `orchestrator.ts`
-
-**현재 동작**: `ExtractionProgress.knownCharacters` 필드가 `knownEntities` 추가 후에도 하위 호환용으로 유지됨.
-
-**해결 방법**: 배포 후 24시간 경과 시 (localStorage 데이터 만료) `knownCharacters` 필드 및 폴백 로직 제거.
-
----
-
-### 2-5. `extractor.ts` → `selector.ts` 단방향 import 잔존
-
-**위치**: `web/src/services/extraction/extractor.ts:8`
-
-**현재 동작**: `trimKnownEntities`를 `selector.ts`에서 import. 현재 동작에 문제는 없으나, 순환 의존 위험이 잠재적으로 존재.
-
-**해결 방법**: `trimKnownEntities`를 `types.ts`로 이동하면 완전 분리.
-
----
-
-### 2-6. `merger.ts` 미사용 export 2건
-
-**위치**: `web/src/services/extraction/merger.ts`
-
-**현재 동작**: `normalizeName`, `findSimilarEntity` — 내부에서만 사용되지만 `export` 키워드 보유.
-
-**해결 방법**: `export` 키워드 제거.
-
----
-
-## 3. 리팩터링 — 2건 (우선순위: 낮음)
-
-### 3-1. 공통 `<ModalOverlay>` 컴포넌트 미추출
-
-**위치**: UsageSummary, SubscriptionPage, DataManager, ResumePanel
-
-**현재 동작**: 4개 모달이 동일한 오버레이 패턴 반복.
-```tsx
-<div className="fixed inset-0 bg-black/50 z-50"
-     role="dialog" aria-modal="true" tabIndex={-1}
-     onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-```
-
-**해결 방법**: `<ModalOverlay onClose={...}>` 공통 컴포넌트로 추출.
-
----
-
-### 3-2. App.tsx `handleAddFile` 중복 구현
-
-**위치**: `web/src/App.tsx` `handleAddFile` vs `web/src/components/FileUpload/FileUpload.tsx` `executeAddFile`
-
-**현재 동작**: 동일한 extraction → save → deduct 패턴이 두 곳에서 중복 구현.
-
-**해결 방법**: App.tsx에서 FileUpload의 `executeAddFile`을 위임하는 방식으로 통합.
-- `useImperativeHandle` + `forwardRef` 또는 store를 통한 트리거.
+- `MergedExtraction` 타입 정의: 1개 파일 (merger.ts 또는 types.ts)
+- `mergeExtractions` + `inferMissingRelationships` 타입 교체: ~20곳
+- `buildKnowledgeGraph` + 내부 함수 타입 교체: ~25곳
+- `buildAccumulatedGraph` 경량화: selector.ts + orchestrator.ts 2개 파일
+- 총 56곳 `any` 중 4곳은 정상 (실제 수정 대상 ~52곳)
 
 ---
 
 ## 요약
 
-| 우선순위 | 건수 | 카테고리 |
-|---------|------|---------|
-| 높음 | 3건 | Auth 토큰 갱신 (1-1, 1-2, 1-3) |
-| 중간 | 6건 | 클린업 & 데드 코드 (2-1 ~ 2-6) |
-| 낮음 | 2건 | 리팩터링 (3-1, 3-2) |
-| **합계** | **11건** | |
+| # | 이슈 | 파일 | any 건수 | 심각도 | 비고 |
+|---|------|------|----------|--------|------|
+| CS-1 | 파일 추가 로직 중복 | App.tsx, FileUpload.tsx | — | MEDIUM | 추상화 비용 > 중복 비용 |
+| CS-7/CS-11 | merger.ts 타입 안전성 | merger.ts, selector.ts | 56곳 (실질 52곳) | MEDIUM | hyperedge 필드명 불일치 선행 필요 |
+| **합계** | **2건** | | | | |
