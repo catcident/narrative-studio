@@ -409,13 +409,10 @@ export function DetailPanel() {
 
             {/* 첫 등장 */}
             {(() => {
-              // ⚠️ 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
+              // order 필드 기준 정렬 (파일 순서 반영)
               const sortedScenes = [...entity.scenes].sort((a, b) => {
                 const snapshotA = knowledgeGraph.snapshots[a];
                 const snapshotB = knowledgeGraph.snapshots[b];
-                const chapterA = snapshotA?.chapterNumber || 0;
-                const chapterB = snapshotB?.chapterNumber || 0;
-                if (chapterA !== chapterB) return chapterA - chapterB;
                 return (snapshotA?.order || 0) - (snapshotB?.order || 0);
               });
               const firstSceneId = sortedScenes[0];
@@ -452,9 +449,6 @@ export function DetailPanel() {
                 .sort((a, b) => {
                   const snapshotA = knowledgeGraph.snapshots[a];
                   const snapshotB = knowledgeGraph.snapshots[b];
-                  const chapterA = snapshotA?.chapterNumber || 0;
-                  const chapterB = snapshotB?.chapterNumber || 0;
-                  if (chapterA !== chapterB) return chapterA - chapterB;
                   return (snapshotA?.order || 0) - (snapshotB?.order || 0);
                 })
                 .map((sceneId) => {
