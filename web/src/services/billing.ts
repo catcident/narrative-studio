@@ -318,3 +318,104 @@ export async function deductPartial(
     { partial: true },
   );
 }
+
+// ==================== 분석 세션 (Hold/Settle) ====================
+
+interface AnalysisSessionResult {
+  session_id: string;
+  hold_token: string;
+  amount: number;
+  balance_after: number;
+  expires_at: string;
+}
+
+interface SettleResult {
+  balance_after: number;
+  amount_deducted: number;
+  refunded: number;
+  hold_token: string;
+  ledger_id: number;
+}
+
+interface ReleaseResult {
+  balance_after: number;
+  refunded: number;
+  hold_token: string;
+}
+
+/**
+ * 분석 세션 시작 — 예상 크레딧을 선차감(hold)하고 세션 ID를 반환.
+ */
+export async function startAnalysisSession(
+  estimatedCredits: number,
+  model: string,
+  metadata?: Record<string, unknown>,
+): Promise<AnalysisSessionResult | null> {
+  try {
+    const res = await fetch('/api/analysis-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: estimatedCredits, model, metadata }),
+    });
+    if (!res.ok) {
+      console.error(`[billing] analysis-session start HTTP ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (error: unknown) {
+    console.error('[billing] analysis-session start error:', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+/**
+ * 분석 세션 정산 — 서버가 누적한 실제 토큰으로 크레딧 계산 및 정산.
+ */
+export async function settleAnalysisSession(
+  sessionId: string,
+  title: string,
+  idempotencyKey: string,
+): Promise<SettleResult | null> {
+  try {
+    const res = await fetch('/api/analysis-session/settle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId,
+        title,
+        idempotency_key: idempotencyKey,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`[billing] analysis-session settle HTTP ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (error: unknown) {
+    console.error('[billing] analysis-session settle error:', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+/**
+ * 분석 세션 취소 — hold 전액 환불.
+ */
+export async function releaseAnalysisSession(
+  sessionId: string,
+): Promise<ReleaseResult | null> {
+  try {
+    const res = await fetch('/api/analysis-session/release', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    if (!res.ok) {
+      console.error(`[billing] analysis-session release HTTP ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (error: unknown) {
+    console.error('[billing] analysis-session release error:', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
