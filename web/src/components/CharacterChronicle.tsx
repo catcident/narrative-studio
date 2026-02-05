@@ -530,7 +530,7 @@ export function CharacterChronicle() {
         onMouseLeave={handleMouseLeave}
       >
         <table
-          className="border-collapse"
+          className="border-collapse table-fixed"
           style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
         >
           {/* 헤더 행: 장면 라벨 + 캐릭터들 */}
@@ -625,7 +625,7 @@ export function CharacterChronicle() {
                     <td
                       key={`time-${scene.sceneId}-${char.id}`}
                       className="bg-amber-50/50 border-b border-amber-100"
-                      style={{ padding: 8 }}
+                      style={{ width: 260, maxWidth: 260, padding: 8 }}
                     >
                       <div className="w-full border-t-2 border-dashed border-amber-300" />
                     </td>
@@ -666,7 +666,7 @@ export function CharacterChronicle() {
                         className={`border-b border-gray-100 transition-opacity duration-300 ${
                           isOtherSelected ? 'opacity-30' : 'opacity-100'
                         }`}
-                        style={{ minHeight: 120 }}
+                        style={{ width: 260, maxWidth: 260, minHeight: 120 }}
                       />
                     );
                   }
@@ -684,7 +684,7 @@ export function CharacterChronicle() {
                       className={`border-b border-gray-100 relative transition-opacity duration-300 align-top ${
                         isOtherSelected ? 'opacity-30' : 'opacity-100'
                       }`}
-                      style={{ minHeight: 120, padding: 12 }}
+                      style={{ width: 260, maxWidth: 260, minHeight: 120, padding: 12 }}
                     >
                       {/* 연속 세로선 */}
                       <div
@@ -692,11 +692,12 @@ export function CharacterChronicle() {
                         style={{ backgroundColor: charColor }}
                       />
 
-                      {/* 이벤트 카드 */}
+                      {/* 이벤트 카드 - 너비 고정, 텍스트 줄바꿈 */}
                       <div
-                        className="w-full rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
+                        className="rounded-xl shadow-md overflow-hidden relative z-10 bg-white flex flex-col"
                         style={{
                           border: `2px solid ${colors.border}`,
+                          width: 236,  /* 260 - 24 (padding) */
                         }}
                       >
                         {/* 헤더: 장면 번호 + 장소/시간 */}
