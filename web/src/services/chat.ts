@@ -3,7 +3,7 @@
  * 지식 그래프와 원본 텍스트를 기반으로 질문에 답변
  */
 
-import type { NovelKnowledgeGraph } from '../types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge } from '../types';
 import { DEFAULT_MODEL } from '../types';
 
 export interface ChatMessage {
@@ -19,7 +19,62 @@ export interface ChatContext {
 }
 
 /**
- * 지식 그래프에서 관련 정보 추출
+ * 질문에서 엔티티 ID 추출
+ */
+function findMentionedEntityIds(
+  query: string,
+  entities: Record<string, Entity>
+): string[] {
+  const mentioned: string[] = [];
+  const queryLower = query.toLowerCase();
+
+  Object.entries(entities).forEach(([id, entity]) => {
+    const nameLower = entity.name.toLowerCase();
+    // 이름으로 검색
+    if (queryLower.includes(nameLower)) {
+      mentioned.push(id);
+      return;
+    }
+    // 별칭으로 검색
+    if (entity.aliases?.some(alias => queryLower.includes(alias.toLowerCase()))) {
+      mentioned.push(id);
+    }
+  });
+
+  return mentioned;
+}
+
+/**
+ * 엔티티와 연결된 모든 관계 찾기
+ */
+function findConnectedEdges(
+  entityIds: string[],
+  hyperedges: Record<string, HyperEdge>
+): HyperEdge[] {
+  const entityIdSet = new Set(entityIds);
+  return Object.values(hyperedges).filter(edge =>
+    edge.entities.some(id => entityIdSet.has(id))
+  );
+}
+
+/**
+ * 두 엔티티 간의 직접 관계 찾기
+ */
+function findDirectRelations(
+  entityIds: string[],
+  hyperedges: Record<string, HyperEdge>
+): HyperEdge[] {
+  if (entityIds.length < 2) return [];
+
+  const entityIdSet = new Set(entityIds);
+  return Object.values(hyperedges).filter(edge =>
+    // 엣지의 모든 엔티티가 언급된 엔티티에 포함되어야 함
+    edge.entities.every(id => entityIdSet.has(id))
+  );
+}
+
+/**
+ * 지식 그래프에서 관련 정보 추출 (개선된 버전)
  */
 function extractRelevantContext(
   query: string,
@@ -29,38 +84,77 @@ function extractRelevantContext(
   const contexts: string[] = [];
   const queryLower = query.toLowerCase();
 
-  // 1. 관련 엔티티 찾기
-  const relevantEntities = Object.values(knowledgeGraph.entities).filter(entity => {
-    const nameLower = entity.name.toLowerCase();
-    const descLower = (entity.description || '').toLowerCase();
-    const aliasesMatch = entity.aliases?.some(a => queryLower.includes(a.toLowerCase()));
-    return queryLower.includes(nameLower) || nameLower.includes(queryLower) ||
-           descLower.includes(queryLower) || aliasesMatch;
+  // 1. 질문에서 언급된 엔티티 찾기
+  const mentionedEntityIds = findMentionedEntityIds(query, knowledgeGraph.entities);
+  const mentionedEntities = mentionedEntityIds
+    .map(id => knowledgeGraph.entities[id])
+    .filter(Boolean);
+
+  // 2. 언급된 엔티티들 간의 직접 관계 찾기 (가장 중요!)
+  const directRelations = findDirectRelations(mentionedEntityIds, knowledgeGraph.hyperedges);
+
+  // 3. 언급된 엔티티와 연결된 모든 관계 찾기
+  const connectedEdges = findConnectedEdges(mentionedEntityIds, knowledgeGraph.hyperedges);
+
+  // 4. 키워드 기반 추가 관계 검색
+  const keywordEdges = Object.values(knowledgeGraph.hyperedges).filter(edge => {
+    const statementLower = edge.statement.toLowerCase();
+    return statementLower.includes(queryLower) ||
+           edge.type.toLowerCase().includes(queryLower);
   });
 
-  if (relevantEntities.length > 0) {
-    contexts.push('## 관련 등장인물/엔티티');
-    relevantEntities.slice(0, 10).forEach(entity => {
-      contexts.push(`- **${entity.name}** (${entity.category}): ${entity.description || '설명 없음'}`);
+  // === 컨텍스트 구성 ===
+
+  // 언급된 엔티티 정보
+  if (mentionedEntities.length > 0) {
+    contexts.push('## 질문에서 언급된 인물/엔티티');
+    mentionedEntities.forEach(entity => {
+      contexts.push(`### ${entity.name} (${entity.category})`);
+      if (entity.description) {
+        contexts.push(`- 설명: ${entity.description}`);
+      }
       if (entity.aliases?.length) {
-        contexts.push(`  - 별칭: ${entity.aliases.join(', ')}`);
+        contexts.push(`- 별칭: ${entity.aliases.join(', ')}`);
+      }
+      if (entity.attributes) {
+        const attrs = Object.entries(entity.attributes)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join(', ');
+        if (attrs) contexts.push(`- 속성: ${attrs}`);
       }
     });
   }
 
-  // 2. 관련 관계 찾기
-  const relevantEdges = Object.values(knowledgeGraph.hyperedges).filter(edge => {
-    const statementLower = edge.statement.toLowerCase();
-    const entityNames = edge.entities.map(id =>
-      knowledgeGraph.entities[id]?.name?.toLowerCase() || ''
-    );
-    return statementLower.includes(queryLower) ||
-           entityNames.some(name => queryLower.includes(name));
-  });
+  // 직접 관계 (가장 중요)
+  if (directRelations.length > 0) {
+    contexts.push('\n## 언급된 인물들 간의 직접 관계');
+    directRelations.forEach(edge => {
+      const entityNames = edge.entities
+        .map(id => knowledgeGraph.entities[id]?.name || id)
+        .join(' ↔ ');
+      contexts.push(`### [${edge.type}] ${entityNames}`);
+      contexts.push(`- 설명: ${edge.statement}`);
+      if (edge.sentiment) {
+        contexts.push(`- 감정: ${edge.sentiment}`);
+      }
+      if (edge.strength) {
+        contexts.push(`- 강도: ${edge.strength}/10`);
+      }
+      if (edge.scenes?.length) {
+        const sceneInfo = edge.scenes.slice(0, 3).map(sceneId => {
+          const scene = knowledgeGraph.snapshots[sceneId];
+          return scene ? `${sceneId}(${scene.location || '?'})` : sceneId;
+        }).join(', ');
+        contexts.push(`- 등장 장면: ${sceneInfo}`);
+      }
+    });
+  }
 
-  if (relevantEdges.length > 0) {
-    contexts.push('\n## 관련 관계');
-    relevantEdges.slice(0, 15).forEach(edge => {
+  // 연결된 다른 관계들
+  const otherEdges = connectedEdges.filter(e => !directRelations.includes(e));
+  if (otherEdges.length > 0) {
+    contexts.push('\n## 관련 인물들의 다른 관계');
+    otherEdges.slice(0, 15).forEach(edge => {
       const entityNames = edge.entities
         .map(id => knowledgeGraph.entities[id]?.name || id)
         .join(' ↔ ');
@@ -68,26 +162,42 @@ function extractRelevantContext(
     });
   }
 
-  // 3. 관련 장면 찾기
-  const relevantScenes = Object.values(knowledgeGraph.snapshots).filter(scene => {
-    const summaryLower = (scene.summary || '').toLowerCase();
-    const eventsLower = scene.events.join(' ').toLowerCase();
-    return summaryLower.includes(queryLower) || eventsLower.includes(queryLower);
-  });
-
-  if (relevantScenes.length > 0) {
-    contexts.push('\n## 관련 장면');
-    relevantScenes.slice(0, 10).forEach(scene => {
-      const chars = scene.charactersPresent
+  // 키워드로 찾은 추가 관계
+  const additionalEdges = keywordEdges.filter(e =>
+    !directRelations.includes(e) && !otherEdges.includes(e)
+  );
+  if (additionalEdges.length > 0) {
+    contexts.push('\n## 키워드 관련 추가 정보');
+    additionalEdges.slice(0, 10).forEach(edge => {
+      const entityNames = edge.entities
         .map(id => knowledgeGraph.entities[id]?.name || id)
-        .join(', ');
-      contexts.push(`- **${scene.sceneId}** (${scene.location}, ${scene.time})`);
-      contexts.push(`  - 등장: ${chars}`);
-      contexts.push(`  - 요약: ${scene.summary}`);
+        .join(' ↔ ');
+      contexts.push(`- [${edge.type}] ${entityNames}: ${edge.statement}`);
     });
   }
 
-  // 4. 장(Chapter) 정보
+  // 관련 장면 찾기 (언급된 엔티티가 등장하는 장면)
+  if (mentionedEntityIds.length > 0) {
+    const relevantScenes = Object.values(knowledgeGraph.snapshots).filter(scene =>
+      scene.charactersPresent?.some(id => mentionedEntityIds.includes(id))
+    );
+
+    if (relevantScenes.length > 0) {
+      contexts.push('\n## 관련 장면');
+      relevantScenes.slice(0, 8).forEach(scene => {
+        const chars = scene.charactersPresent
+          .map(id => knowledgeGraph.entities[id]?.name || id)
+          .join(', ');
+        contexts.push(`### ${scene.sceneId} (${scene.location || '?'}, ${scene.time || '?'})`);
+        contexts.push(`- 등장: ${chars}`);
+        if (scene.summary) {
+          contexts.push(`- 요약: ${scene.summary}`);
+        }
+      });
+    }
+  }
+
+  // 장(Chapter) 정보
   if (knowledgeGraph.chapters && Object.keys(knowledgeGraph.chapters).length > 0) {
     contexts.push('\n## 장 목록');
     Object.values(knowledgeGraph.chapters).slice(0, 20).forEach(chapter => {
@@ -95,16 +205,15 @@ function extractRelevantContext(
     });
   }
 
-  // 5. 원본 텍스트에서 관련 부분 찾기 (키워드 검색)
-  if (originalText && query.length >= 2) {
-    const keywords = query.split(/\s+/).filter(k => k.length >= 2);
+  // 원본 텍스트에서 관련 부분 찾기
+  if (originalText && mentionedEntities.length > 0) {
+    const keywords = mentionedEntities.map(e => e.name);
     const lines = originalText.split('\n');
     const matchedLines: string[] = [];
 
     lines.forEach((line, idx) => {
       const lineLower = line.toLowerCase();
       if (keywords.some(kw => lineLower.includes(kw.toLowerCase()))) {
-        // 앞뒤 문맥 포함
         const start = Math.max(0, idx - 1);
         const end = Math.min(lines.length, idx + 2);
         const context = lines.slice(start, end).join('\n');
@@ -135,25 +244,26 @@ function buildSystemPrompt(context: ChatContext): string {
   const { knowledgeGraph, originalText } = context;
   const title = knowledgeGraph.metadata.title;
 
-  // 전체 세계관 요약
   const entityCount = Object.keys(knowledgeGraph.entities).length;
   const characterCount = Object.values(knowledgeGraph.entities)
     .filter(e => e.category === 'character').length;
   const sceneCount = Object.keys(knowledgeGraph.snapshots).length;
+  const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
 
-  return `당신은 소설 "${title}"의 전문가입니다. 이 소설에 대한 질문에 답변해주세요.
+  return `당신은 소설 "${title}"의 전문가입니다. 이 소설에 대한 질문에 상세하게 답변해주세요.
 
 ## 소설 정보
 - 제목: ${title}
-- 등장 인물 수: ${characterCount}명
-- 총 엔티티 수: ${entityCount}개
-- 총 장면 수: ${sceneCount}개
+- 등장 인물: ${characterCount}명
+- 총 엔티티: ${entityCount}개
+- 관계: ${edgeCount}개
+- 장면: ${sceneCount}개
 
 ## 답변 규칙
-1. 소설 내용에 기반해서만 답변하세요
-2. 확실하지 않은 내용은 추측임을 명시하세요
-3. 관련 장면이나 인물이 있으면 언급해주세요
-4. 스포일러 주의가 필요하면 경고해주세요
+1. 소설 내용에 기반해서 구체적으로 답변하세요
+2. 인물 관계를 물으면 관계의 종류, 감정, 구체적 내용을 설명하세요
+3. 관련 장면이 있으면 언급해주세요
+4. 확실하지 않은 내용은 추측임을 명시하세요
 5. 답변은 한국어로 해주세요
 
 ${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자 있습니다.` : '원본 텍스트는 제공되지 않았습니다.'}`;
@@ -161,7 +271,6 @@ ${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자
 
 /**
  * 채팅 메시지 전송 (스트리밍)
- * 서버 API를 통해 호출 (환경변수 API 키 사용)
  */
 export async function sendChatMessage(
   messages: ChatMessage[],
@@ -169,18 +278,15 @@ export async function sendChatMessage(
   model: string = DEFAULT_MODEL,
   onChunk?: (chunk: string) => void
 ): Promise<string> {
-  // localStorage에서 사용자 API 키 가져오기 (없으면 서버 환경변수 사용)
   const userApiKey = typeof window !== 'undefined'
     ? localStorage.getItem('OPENROUTER_API_KEY') || ''
     : '';
 
-  // 마지막 사용자 메시지에서 관련 컨텍스트 추출
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
   const relevantContext = lastUserMessage
     ? extractRelevantContext(lastUserMessage.content, context.knowledgeGraph, context.originalText)
     : '';
 
-  // API 요청용 메시지 구성
   const apiMessages = [
     { role: 'system', content: buildSystemPrompt(context) },
     ...messages.map(m => ({
@@ -191,7 +297,6 @@ export async function sendChatMessage(
     }))
   ];
 
-  // 서버 API를 통해 호출 (환경변수 API 키 사용 가능)
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: {
@@ -200,7 +305,7 @@ export async function sendChatMessage(
     body: JSON.stringify({
       model,
       messages: apiMessages,
-      apiKey: userApiKey,  // 사용자 키가 있으면 전달, 없으면 서버 환경변수 사용
+      apiKey: userApiKey,
     }),
   });
 
@@ -209,7 +314,6 @@ export async function sendChatMessage(
     throw new Error(error.error?.message || `API 오류: ${response.status}`);
   }
 
-  // 스트리밍 처리
   if (onChunk && response.body) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -244,7 +348,6 @@ export async function sendChatMessage(
     return fullContent;
   }
 
-  // 비스트리밍
   const data = await response.json();
   return data.choices?.[0]?.message?.content || '';
 }
