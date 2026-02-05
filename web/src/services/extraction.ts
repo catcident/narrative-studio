@@ -1878,7 +1878,11 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
 
-  (extracted.scenes || []).forEach((s: any) => {
+  // ⚠️ 중요: 장면을 id 순서로 정렬 (청크 병합 과정에서 순서가 뒤섞일 수 있음)
+  // 장면 순서는 서술 순서(narrative order)이므로 절대 틀리면 안 됨
+  const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
+
+  sortedScenes.forEach((s: any) => {
     // 장면 번호를 기존 것에 이어서
     const actualSceneNum = s.id + sceneCounter;
     const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
