@@ -15,16 +15,27 @@ import { mergeExtractions, inferMissingRelationships, buildKnowledgeGraph } from
 const PROGRESS_KEY = 'novel-extraction-progress';
 
 /**
- * 선형 회귀 기반 남은 시간 추정.
- * chunkTimes 배열과 절대 청크 인덱스를 기반으로 t(i) = a + b·i 모델을 피팅하고,
- * 남은 청크의 예상 처리 시간 합계를 반환한다.
+ * 남은 시간 추정.
+ * - 1~2개 데이터: 평균 청크 시간 × 남은 청크 수 (단순 추정)
+ * - 3개 이상: 선형 회귀 t(i) = a + b·i 모델로 남은 청크별 시간 합산
  *
- * @returns 남은 시간(ms) 또는 null (데이터 3개 미만)
+ * @returns 남은 시간(ms) 또는 null (데이터 없음)
  */
 function estimateRemainingMs(chunkTimes: number[], startChunkIndex: number, totalChunks: number): number | null {
   const n = chunkTimes.length;
-  if (n < 3) return null;
+  if (n === 0) return null;
 
+  const nextAbsIndex = startChunkIndex + n;
+  const remainingChunks = totalChunks - nextAbsIndex;
+  if (remainingChunks <= 0) return 0;
+
+  // 1~2개: 평균 기반 단순 추정
+  if (n < 3) {
+    const avg = chunkTimes.reduce((a, b) => a + b, 0) / n;
+    return Math.max(0, avg * remainingChunks);
+  }
+
+  // 3개 이상: 선형 회귀
   let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
   for (let k = 0; k < n; k++) {
     const x = startChunkIndex + k;
@@ -41,14 +52,13 @@ function estimateRemainingMs(chunkTimes: number[], startChunkIndex: number, tota
   const intercept = (sumY - slope * sumX) / n;
 
   const lastObserved = chunkTimes[n - 1];
-  const nextAbsIndex = startChunkIndex + n;
-  let remaining = 0;
+  let remainingMs = 0;
   for (let j = nextAbsIndex; j < totalChunks; j++) {
     const predicted = intercept + slope * j;
-    remaining += Math.max(predicted, lastObserved);
+    remainingMs += Math.max(predicted, lastObserved);
   }
 
-  return Math.max(0, remaining);
+  return Math.max(0, remainingMs);
 }
 
 // 중간 결과 저장
@@ -148,7 +158,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   }
 
   let chunkTimes: number[] = [];
-  let chunkStartTime = Date.now();
+  let chunkStartTime = 0;
   let failedChunkCount = 0;
   let lastFailureReason = '';
 
@@ -171,7 +181,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   let loopCompleted = true;
 
   for (let i = startChunk; i < chunks.length; i++) {
-    // 선형 회귀 기반 남은 시간 추정 (3개 이상 완료 시부터 표시)
+    // 남은 시간 추정 (1개 이상 완료 시부터 표시, 3개 이상이면 선형 회귀)
     const estimatedRemainingMs = estimateRemainingMs(chunkTimes, startChunk, totalChunks);
     const estimatedRemainingSeconds = estimatedRemainingMs !== null ? Math.round(estimatedRemainingMs / 1000) : null;
     const timeText = estimatedRemainingSeconds !== null
