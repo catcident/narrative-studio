@@ -58,6 +58,7 @@ export function useAddFileAnalysis() {
     } catch (err: unknown) {
       console.error('[extraction] 파일 추가 오류:', err);
       setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
+      setProgress('');
     } finally {
       setIsAdding(false);
       setLoading(false);
@@ -86,6 +87,7 @@ export function useAddFileAnalysis() {
           onDuplicate(file.name, text);
           return;
         }
+        // onDuplicate 미제공 시 그대로 진행 — merger의 dedup이 중복 엔티티/관계 처리
       }
 
       await execute(text, file.name);
