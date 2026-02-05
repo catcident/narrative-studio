@@ -5,8 +5,9 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertCircle, RotateCcw, Play, Trash2, Files, Plus, Key, Cpu, BookOpen, User, X, FileCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
-import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../services/extraction';
+import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, getApiKey, type ExtractionProgress } from '../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList, type SavedKnowledgeGraphMeta } from '../services/storage';
+import { createEntityEmbeddings } from '../services/embedding';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelInfo } from '../types';
 
 // 텍스트 파일 인코딩 감지 및 디코딩
@@ -664,6 +665,21 @@ export function FileUpload() {
       // 저장하고 ID 받기
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
+
+      // 엔티티 임베딩 생성 (백그라운드)
+      setProgress('임베딩 생성 중...');
+      const entities = Object.values(newKnowledgeGraph.entities);
+      if (entities.length > 0) {
+        createEntityEmbeddings(saved.id, entities, getApiKey() || undefined)
+          .then(result => {
+            if (result.success) {
+              console.log(`[embedding] ${result.count}개 엔티티 임베딩 완료`);
+            } else {
+              console.warn('[embedding] 임베딩 생성 실패:', result.error);
+            }
+          })
+          .catch(err => console.warn('[embedding] 임베딩 오류:', err));
+      }
 
       // 타이틀 목록 업데이트
       setExistingTitles(prev => [...prev, title]);

@@ -5,6 +5,7 @@
 
 import type { NovelKnowledgeGraph, Entity, HyperEdge } from '../types';
 import { DEFAULT_MODEL } from '../types';
+import { searchSimilarEntities, extractKeywords } from './embedding';
 
 export interface ChatMessage {
   id: string;
@@ -137,11 +138,13 @@ function findDirectRelations(
 
 /**
  * 지식 그래프에서 관련 정보 추출 (개선된 버전)
+ * @param additionalEntityIds 임베딩 검색으로 찾은 추가 엔티티 ID들
  */
 function extractRelevantContext(
   query: string,
   knowledgeGraph: NovelKnowledgeGraph,
-  originalText?: string
+  originalText?: string,
+  additionalEntityIds?: string[]
 ): string {
   const contexts: string[] = [];
   const queryLower = query.toLowerCase();
@@ -151,6 +154,15 @@ function extractRelevantContext(
 
   // 1. 질문에서 언급된 엔티티 찾기
   let mentionedEntityIds = findMentionedEntityIds(query, knowledgeGraph.entities);
+
+  // 임베딩 검색 결과 추가
+  if (additionalEntityIds && additionalEntityIds.length > 0) {
+    additionalEntityIds.forEach(id => {
+      if (!mentionedEntityIds.includes(id)) {
+        mentionedEntityIds.push(id);
+      }
+    });
+  }
 
   // 1-1. 확장된 키워드로 엔티티 이름/설명에서 검색 (부분 매칭)
   if (mentionedEntityIds.length === 0 && intent.expandedKeywords.length > 0) {
@@ -466,16 +478,14 @@ export async function sendChatMessage(
   messages: ChatMessage[],
   context: ChatContext,
   model: string = DEFAULT_MODEL,
-  onChunk?: (chunk: string) => void
+  onChunk?: (chunk: string) => void,
+  graphId?: string
 ): Promise<string> {
   const userApiKey = typeof window !== 'undefined'
     ? localStorage.getItem('OPENROUTER_API_KEY') || ''
     : '';
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
-  const relevantContext = lastUserMessage
-    ? extractRelevantContext(lastUserMessage.content, context.knowledgeGraph, context.originalText)
-    : '';
 
   // 🔍 사고 과정 로깅 (개발자 도구에서 확인 가능)
   console.group('🧠 채팅 사고 과정');
@@ -499,18 +509,43 @@ export async function sendChatMessage(
     장면수: Object.keys(context.knowledgeGraph.snapshots).length,
   });
 
-  // 질문에서 찾은 엔티티
-  const foundEntityIds = lastUserMessage
+  // 질문에서 찾은 엔티티 (기존 방식)
+  let foundEntityIds = lastUserMessage
     ? findMentionedEntityIds(lastUserMessage.content, context.knowledgeGraph.entities)
     : [];
+
+  // 임베딩 기반 유사 엔티티 검색 (graphId가 있고, 기존 방식으로 못 찾았으면)
+  let embeddingResults: { entityId: string; entityName: string; similarity: number }[] = [];
+  if (graphId && lastUserMessage && foundEntityIds.length === 0) {
+    const keywords = extractKeywords(lastUserMessage.content);
+    console.log('🔎 임베딩 검색 키워드:', keywords);
+
+    if (keywords.length > 0) {
+      embeddingResults = await searchSimilarEntities(graphId, keywords, userApiKey || undefined, 10);
+      console.log('🎯 임베딩 검색 결과:', embeddingResults.map(r => `${r.entityName} (${(r.similarity * 100).toFixed(1)}%)`));
+
+      // 유사도 높은 엔티티 ID 추가
+      embeddingResults.forEach(result => {
+        if (!foundEntityIds.includes(result.entityId)) {
+          foundEntityIds.push(result.entityId);
+        }
+      });
+    }
+  }
+
   const foundEntities = foundEntityIds.map(id => context.knowledgeGraph.entities[id]?.name).filter(Boolean);
-  console.log('🔍 질문에서 찾은 엔티티:', foundEntities.length > 0 ? foundEntities : '(없음)');
+  console.log('🔍 최종 찾은 엔티티:', foundEntities.length > 0 ? foundEntities : '(없음)');
 
   // 관련 관계
   const relatedEdges = findConnectedEdges(foundEntityIds, context.knowledgeGraph.hyperedges);
   console.log('🔗 관련 관계:', relatedEdges.length > 0
     ? relatedEdges.slice(0, 10).map(e => `[${e.type}] ${e.entities.map(id => context.knowledgeGraph.entities[id]?.name || id).join(' ↔ ')}`)
     : '(없음)');
+
+  // 컨텍스트 생성 (임베딩으로 찾은 엔티티도 포함)
+  const relevantContext = lastUserMessage
+    ? extractRelevantContext(lastUserMessage.content, context.knowledgeGraph, context.originalText, foundEntityIds)
+    : '';
 
   console.log('📄 생성된 컨텍스트 (LLM에 전달):\n', relevantContext || '(컨텍스트 없음)');
   console.groupEnd();

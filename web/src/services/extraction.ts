@@ -6,7 +6,7 @@
 import type { NovelKnowledgeGraph } from '../types';
 import { DEFAULT_MODEL } from '../types';
 
-function getApiKey(): string {
+export function getApiKey(): string {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('OPENROUTER_API_KEY') || '';
 }

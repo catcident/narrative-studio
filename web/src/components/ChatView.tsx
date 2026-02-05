@@ -128,7 +128,8 @@ export function ChatView() {
         (chunk) => {
           fullResponse += chunk;
           setStreamingContent(fullResponse);
-        }
+        },
+        knowledgeGraph.metadata.id  // graphId 전달 (임베딩 검색용)
       );
 
       const assistantMessage: ChatMessage = {
