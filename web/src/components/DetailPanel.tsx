@@ -112,7 +112,9 @@ export function DetailPanel() {
   // 현재 장면 정보
   const currentScene = selectedSceneId && knowledgeGraph?.snapshots ? knowledgeGraph.snapshots[selectedSceneId] : null;
   const sceneIndex = selectedSceneId && knowledgeGraph?.snapshots
-    ? Object.keys(knowledgeGraph.snapshots).sort().indexOf(selectedSceneId) + 1
+    ? Object.values(knowledgeGraph.snapshots)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .findIndex(s => s.sceneId === selectedSceneId) + 1
     : 0;
 
   // 현재 장면에서의 관계만 필터링
@@ -270,9 +272,11 @@ export function DetailPanel() {
               <div className="mt-3">
                 <div className="text-xs text-gray-400 mb-2">등장 장면 ({edge.scenes.length}개):</div>
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                  {[...edge.scenes].sort().map((sceneId) => {
+                  {[...edge.scenes]
+                    .sort((a, b) => (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0))
+                    .map((sceneId) => {
                     const scene = knowledgeGraph.snapshots[sceneId];
-                    const sceneIdx = Object.keys(knowledgeGraph.snapshots).sort().indexOf(sceneId) + 1;
+                    const sceneIdx = scene?.order || 0;
                     if (!scene) return null;
 
                     return (
@@ -392,10 +396,12 @@ export function DetailPanel() {
 
             {/* 첫 등장 */}
             {(() => {
-              const sortedScenes = [...entity.scenes].sort();
+              const sortedScenes = [...entity.scenes].sort((a, b) =>
+                (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0)
+              );
               const firstSceneId = sortedScenes[0];
               const firstScene = knowledgeGraph.snapshots[firstSceneId];
-              const firstSceneIndex = Object.keys(knowledgeGraph.snapshots).sort().indexOf(firstSceneId) + 1;
+              const firstSceneIndex = firstScene?.order || 0;
 
               return (
                 <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -423,9 +429,11 @@ export function DetailPanel() {
 
             {/* 모든 등장 장면 목록 */}
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {[...entity.scenes].sort().map((sceneId) => {
+              {[...entity.scenes]
+                .sort((a, b) => (knowledgeGraph.snapshots[a]?.order || 0) - (knowledgeGraph.snapshots[b]?.order || 0))
+                .map((sceneId) => {
                 const scene = knowledgeGraph.snapshots[sceneId];
-                const sceneIdx = Object.keys(knowledgeGraph.snapshots).sort().indexOf(sceneId) + 1;
+                const sceneIdx = scene?.order || 0;
                 if (!scene) return null;
 
                 return (

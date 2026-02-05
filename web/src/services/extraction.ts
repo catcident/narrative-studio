@@ -21,7 +21,7 @@ export function hasApiKey(): boolean {
   return !!getApiKey();
 }
 
-const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석
+const USER_PROMPT = `소설 텍스트 청크 {{chunkNum}} 분석
 
 {{text}}
 
@@ -31,14 +31,14 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석
 ## 출력 형식 (JSON)
 \`\`\`json
 {
-  "chapters": [{"id": 1, "title": "1화: 제목"}],
+  "chapters": [{"id": 1, "title": "텍스트에서 찾은 실제 장/화 제목 (예: '3화: 박스')"}],
   "scenes": [{
     "id": 1,
     "chapter": 1,
     "location": "장소",
     "time": "시간(있으면)",
     "summary": "장면 요약",
-    "time_elapsed": "이전 장면으로부터 경과시간 또는 null"
+    "time_marker": "텍스트에 명시된 시간 표현만 (예: '10년 전', '다음 날', '회귀 전') - 없으면 null"
   }],
   "entities": [{
     "name": "이름",
@@ -59,11 +59,30 @@ const USER_PROMPT = `소설 "{{title}}" 청크 {{chunkNum}} 분석
 
 ## 핵심 규칙
 
-### 1. 장/화 인식
-"제N장", "N화", "Chapter N", "# N화:" 등 패턴을 chapters에 기록
+### 1. 장/화 인식 (매우 중요!)
+텍스트에서 장/화/에피소드 구분을 찾아 chapters에 기록합니다.
 
-### 2. 장면 분할
-시간/장소 변경 시 새 장면. time_elapsed에 경과시간 기록 (예: "다음 날", "2시간 후")
+**인식해야 할 패턴들:**
+- 마크다운: "# 1화: 아침", "# 3화: 박스", "## 제1장: 시작"
+- 숫자+단위: "1화", "2장", "제3장", "4편", "5절"
+- 콜론/공백 형식: "1화:", "1화 제목", "제1장: 시작"
+- 괄호 형식: "[1화]", "【제1장】", "(Episode 1)"
+- 영문: "Chapter 1", "Episode 1", "Part 1", "Ch.1", "Ep.1"
+- 특수: "프롤로그", "에필로그", "Prologue", "Epilogue", "서장", "종장", "막간"
+
+**⚠️ 제목은 텍스트에서 그대로 복사하세요!**
+- 텍스트에 "# 3화: 박스"가 있으면 → title: "3화: 박스"
+- 텍스트에 "# 7화: 거꿀"이 있으면 → title: "7화: 거꿀"
+- 예시 형식("1화: 제목")을 그대로 쓰지 마세요. 실제 텍스트의 제목을 사용하세요!
+
+### 2. 장면 분할 및 시간 처리
+시간/장소 변경 시 새 장면.
+
+**시간 기록 원칙 (중요!):**
+- time_marker에는 텍스트에 **명시적으로 적힌 시간 표현만** 기록
+- 예: "10년 전", "다음 날", "그로부터 일주일 후", "회귀 전", "어린 시절"
+- **추측하지 마세요!** 단서가 없으면 null로 두세요
+- 이게 과거인지 현재인지 **판단하려 하지 마세요** - 나중에 후처리로 계산합니다
 
 ### 3. 엔티티 추출 - 전수 추출 원칙
 **모든 것을 추출**합니다. 중요도는 후처리에서 계산합니다.
@@ -161,25 +180,60 @@ export function hasProgress(): ExtractionProgress | null {
 
 /**
  * 스마트 청크 분할
- * - 장/화/절 경계에서 우선 분할
- * - 문장 끝(. ! ? 등)에서 분할
- * - 문장 중간에서 끊기지 않도록 함
- * - 청크 간 오버랩으로 문맥 연결 보장
+ *
+ * ⚠️ 중요: 청크는 반드시 "화/장" 단위로 분할해야 함!
+ *
+ * 잘못된 분할 (씬/구분선 단위):
+ *   - 청크1: 1화 씬1 → LLM: "1화: 아침"
+ *   - 청크2: 1화 씬2 → LLM: "1화 끝" (다른 제목!)
+ *   - 청크3: 2화 씬1 → LLM: "2화: 시작"
+ *   → 결과: 타임라인에 "1화 아침, 1화 끝, 2화 시작" 뒤죽박죽
+ *
+ * 올바른 분할 (화 단위):
+ *   - 청크1: 1화 전체 → LLM: "1화: 아침" (씬 1,2,3...)
+ *   - 청크2: 2화 전체 → LLM: "2화: 만남" (씬 4,5,6...)
+ *   → 결과: 타임라인에 화 순서대로 정상 표시
+ *
+ * 분할 기준으로 사용하면 안 되는 것들:
+ *   - 구분선 (---, ***, ===) → 씬 구분임
+ *   - ## 또는 ### 헤딩 → 씬 제목일 수 있음
  */
 function splitIntoSmartChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
   const chunks: string[] = [];
 
-  // 장/화/절 구분 패턴 (마크다운 헤딩, 제N장, N화, Chapter, ***, --- 등)
-  const chapterPattern = /(?=\n#{1,3}\s+.+\n)|(?=\n제?\d+[장화편절])|(?=\nChapter\s+\d+)|(?=\nEpisode\s+\d+)|(?=\n---+\n)|(?=\n\*\s*\*\s*\*\s*\n)|(?=\n\* \* \*\n)/gi;
+  // ⚠️ 화/장 단위로만 분할! 씬 단위로 분할하면 안 됨!
+  const chapterPattern = new RegExp(
+    '(?=' +
+      // 마크다운 H1 헤딩만 (# 제목) - ##, ###는 씬 구분이므로 제외
+      '\\n#\\s+\\d+화[:\\s]' +
+    ')|(?=' +
+      // 한글 장/화/편/절 (줄 시작, 숫자 필수)
+      '\\n(?:제)?\\s*\\d+\\s*[장화편절](?:[:\\s]|$)' +
+    ')|(?=' +
+      // 괄호로 감싼 형식
+      '\\n[\\[【\\(]\\s*(?:제)?\\s*\\d+\\s*[장화편절]?\\s*[\\]】\\)]' +
+    ')|(?=' +
+      // 영문 Chapter/Episode/Part
+      '\\n(?:Chapter|Episode|Part|Ch\\.|Ep\\.)\\s*\\d+' +
+    ')|(?=' +
+      // 프롤로그/에필로그/서장/종장
+      '\\n(?:프롤로그|에필로그|Prologue|Epilogue|서장|종장|막간|Interlude)(?:[:\\s]|$)' +
+    ')',
+    'gi'
+  );
 
   // 먼저 장/화 단위로 분할
   const sections = text.split(chapterPattern).filter(s => s.trim());
 
   for (const section of sections) {
+    // 장/화 헤더로 시작하는 섹션인지 확인
+    const hasChapterHeader = /^[\s\n]*#|^[\s\n]*(?:제)?\s*\d+\s*[장화편절]|^[\s\n]*\[|\^[\s\n]*【/.test(section);
+
     if (section.length <= targetSize) {
       // 섹션이 목표 크기 이하면 그대로 추가
-      if (chunks.length > 0 && chunks[chunks.length - 1].length + section.length <= targetSize) {
-        // 이전 청크와 합칠 수 있으면 합침
+      // 단, 장/화 헤더가 있는 섹션은 합치지 않음 (장 구분 유지)
+      if (!hasChapterHeader && chunks.length > 0 && chunks[chunks.length - 1].length + section.length <= targetSize) {
+        // 이전 청크와 합칠 수 있으면 합침 (장/화 헤더 없는 경우만)
         chunks[chunks.length - 1] += section;
       } else {
         chunks.push(section);
@@ -699,7 +753,7 @@ export async function extractKnowledgeGraph(
       }
 
       console.log(`[청크 ${i + 1}] 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
-      const extracted = await extractFromChunk(chunks[i], title, i + 1, entitiesToUse, useModel);
+      const extracted = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
       if (extracted) {
         allExtracted.push(extracted);
 
@@ -834,7 +888,6 @@ async function fetchWithClientTimeout(url: string, options: RequestInit, timeout
 
 async function extractFromChunk(
   chunkText: string,
-  title: string,
   chunkNum: number,
   knownEntities: KnownEntity[] = [],
   model?: string  // 사용할 모델
@@ -882,7 +935,6 @@ ${limitedCategoryEntities.map(e => {
   }
 
   const prompt = USER_PROMPT
-    .replace('{{title}}', title)
     .replace('{{chunkNum}}', String(chunkNum))
     .replace('{{text}}', chunkText)
     .replace('{{previousCharacters}}', previousEntitiesText);
@@ -983,10 +1035,16 @@ function mergeExtractions(extractions: any[]): any {
       }
     }
 
-    // 장면 병합 (글로벌 번호 부여)
+    // 장면 병합 (글로벌 번호 부여 - 청크 내 순서 기준)
+    // LLM이 준 scene.id는 무시하고, 배열 인덱스(청크 내 순서)를 사용
     const localToGlobal: Record<number, number> = {};
-    for (const scene of (ext.scenes || [])) {
-      const globalId = globalSceneOffset + scene.id;
+    const chunkScenes = ext.scenes || [];
+
+    for (let sceneIdx = 0; sceneIdx < chunkScenes.length; sceneIdx++) {
+      const scene = chunkScenes[sceneIdx];
+      // 글로벌 ID = 이전 청크들의 장면 수 + 현재 청크 내 순서(1부터 시작)
+      const globalId = globalSceneOffset + sceneIdx + 1;
+      // LLM이 준 scene.id를 글로벌 ID로 매핑 (엔티티/관계의 scenes 참조용)
       localToGlobal[scene.id] = globalId;
 
       // 장면의 chapter를 글로벌 chapter id로 변환
@@ -1006,7 +1064,7 @@ function mergeExtractions(extractions: any[]): any {
         chunkNum: chunkIdx + 1
       });
     }
-    globalSceneOffset += (ext.scenes || []).length || 1;
+    globalSceneOffset += chunkScenes.length || 1;
 
     // 엔티티 병합
     for (const entity of (ext.entities || [])) {
@@ -1452,7 +1510,6 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   let entityCounter = Object.keys(entities).length;
   let edgeCounter = Object.keys(hyperedges).length;
   let chapterCounter = existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0;
-  let sceneCounter = existingGraph ? Object.keys(existingGraph.snapshots || {}).length : 0;
 
   // 엔티티 등록
   (extracted.entities || []).forEach((e: any) => {
@@ -1474,8 +1531,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
     entityCounter++;
     const id = `E${String(entityCounter).padStart(4, '0')}`;
-    // scenes를 숫자에서 문자열 ID로 변환 (기존 장면 수에 더해서)
-    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s + sceneCounter).padStart(4, '0')}`);
+    const sceneIds = (e.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
     entities[id] = {
       id,
       name: e.name,
@@ -1575,8 +1631,7 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
       e.entities.includes(toId)
     );
 
-    // scenes를 숫자에서 문자열 ID로 변환 (기존 장면 수에 더해서)
-    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s + sceneCounter).padStart(4, '0')}`);
+    const sceneIds = (r.scenes || []).map((s: number) => `S${String(s).padStart(4, '0')}`);
 
     if (existingEdge) {
       // 기존 관계에 장면만 추가
@@ -1807,35 +1862,16 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
   // 새 장 정보를 위한 번호 매핑 (extracted의 장 번호 -> 실제 장 번호)
   let newChapterNumber = chapterCounter;
 
-  // 장이 없고 파일명이 있으면 파일명에서 장 정보 추출
-  if ((extracted.chapters || []).length === 0 && fileName) {
-    // 새 장 생성 (기존 장 개수 + 1)
-    chapterCounter++;
-    newChapterNumber = chapterCounter;
-
-    // 파일명에서 확장자 제거한 것을 제목으로 사용
-    const chapterTitle = fileName.replace(/\.[^/.]+$/, '');
-    const chapterId = `C${String(chapterCounter).padStart(4, '0')}`;
-    chapters[chapterId] = {
-      id: chapterId,
-      number: chapterCounter,
-      title: chapterTitle,
-      summary: '',
-    };
-
-    // 모든 장면에 이 장 번호 할당
-    (extracted.scenes || []).forEach((s: any) => {
-      s.chapter = chapterCounter;
-    });
-  }
+  // 장이 없으면 장 정보를 생성하지 않음 (파일명을 장 제목으로 쓰지 않음)
+  // LLM이 장/화를 추출하지 못했다면 그냥 장 없이 장면만 표시
+  // (이전에는 파일명을 장 제목으로 사용했으나, 사용자가 입력한 제목이 잘못 표시되는 문제 발생)
 
   // 장면(Scene)을 snapshots로 - 기존 그래프가 있으면 포함
   const snapshots: Record<string, any> = existingGraph ? { ...existingGraph.snapshots } : {};
+  const sortedScenes = [...(extracted.scenes || [])].sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
 
-  (extracted.scenes || []).forEach((s: any) => {
-    // 장면 번호를 기존 것에 이어서
-    const actualSceneNum = s.id + sceneCounter;
-    const sceneId = `S${String(actualSceneNum).padStart(4, '0')}`;
+  sortedScenes.forEach((s: any) => {
+    const sceneId = `S${String(s.id).padStart(4, '0')}`;
 
     // 장 번호도 기존 것에 이어서
     const actualChapterNum = s.chapter ? (s.chapter + (existingGraph ? Object.keys(existingGraph.chapters || {}).length : 0)) : newChapterNumber;
@@ -1853,11 +1889,11 @@ function buildKnowledgeGraph(extracted: any, title: string, model?: string, file
 
     snapshots[sceneId] = {
       sceneId,
-      order: actualSceneNum,
+      order: s.id,  // 서술 순서 (청크 병합에서 부여된 글로벌 번호)
       chapter: chapterId,
       chapterNumber: actualChapterNum,
-      time: s.time || `장면 ${actualSceneNum}`,
-      timeElapsed: s.time_elapsed || null,  // 이전 장면으로부터 경과 시간
+      time: s.time || `장면 ${s.id}`,
+      timeMarker: s.time_marker || null,  // 텍스트에 명시된 시간 표현만 (추측 금지)
       location: s.location,
       summary: s.summary,
       events: s.events || [],

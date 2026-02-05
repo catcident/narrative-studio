@@ -137,6 +137,22 @@ export interface SourceFile {
   charCount: number;  // 글자 수
 }
 
+// 장면 스냅샷
+export interface SceneSnapshot {
+  sceneId: string;
+  order: number;  // 서술 순서 (텍스트에 나온 순서, 1화/2화/3화...)
+  chapter: string | null;
+  chapterNumber: number | null;
+  time: string;
+  timeMarker: string | null;  // 텍스트에 명시된 시간 표현만 (예: "10년 전", "다음 날") - 추측 금지, 없으면 null
+  location: string;
+  summary: string;
+  events: string[];
+  mood?: string;
+  charactersPresent: string[];
+  activeEdges: string[];
+}
+
 export interface NovelKnowledgeGraph {
   metadata: {
     title: string;
@@ -151,7 +167,7 @@ export interface NovelKnowledgeGraph {
   hyperedges: Record<string, HyperEdge>;
   chapters?: Record<string, Chapter>;
   timeline: TimelinePoint[];
-  snapshots: Record<string, any>;
+  snapshots: Record<string, SceneSnapshot>;
   stats: {
     totalEntities: number;
     totalEdges: number;

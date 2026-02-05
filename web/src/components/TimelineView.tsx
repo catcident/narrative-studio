@@ -42,7 +42,7 @@ interface TimelineEvent {
   sceneId: string;
   sceneNum: number;
   time: string;
-  timeElapsed?: string | null;
+  timeMarker?: string | null;  // 텍스트에 명시된 시간 표현 (예: "10년 전", "다음 날")
   location?: string;
   summary?: string;
   chapter?: number;
@@ -107,7 +107,8 @@ export function TimelineView() {
         sceneId,
         sceneNum,
         time: scene.time || `장면 ${sceneNum}`,
-        timeElapsed: scene.timeElapsed,
+        // 새 필드(timeMarker) 우선, 기존 데이터 호환(timeElapsed)
+        timeMarker: scene.timeMarker || scene.timeElapsed,
         location: scene.location,
         summary: scene.summary,
         chapter: scene.chapterNumber || (chapterInfo?.number),
@@ -198,31 +199,31 @@ export function TimelineView() {
                 const mainSentiment = event.edges[0]?.sentiment || 'neutral';
                 const style = SENTIMENT_STYLES[mainSentiment];
 
-                // 시간 경과 표시 (timeElapsed 우선, 없으면 시간 변화 비교)
+                // 시간 마커 표시 (텍스트에 명시된 시간 표현 우선, 없으면 시간 변화 비교)
                 const prevEvent = eventIndex > 0 ? events[eventIndex - 1] : null;
-                const timeElapsedText = event.timeElapsed ||
+                const timeMarkerText = event.timeMarker ||
                   (prevEvent && event.time && prevEvent.time && event.time !== prevEvent.time
                     ? `${prevEvent.time} → ${event.time}`
                     : null);
 
                 return (
                   <div key={event.id}>
-                    {/* 시간 경과 표시 (장면 사이) */}
-                    {timeElapsedText && eventIndex > 0 && (
+                    {/* 시간 마커 표시 (장면 사이) */}
+                    {timeMarkerText && eventIndex > 0 && (
                       <div className="relative pl-16 mb-4">
                         {/* 점선 연결 */}
                         <div className="absolute left-[1.4rem] top-0 bottom-0 w-0 border-l-2 border-dashed border-amber-400" />
 
-                        {/* 시간 경과 라벨 */}
+                        {/* 시간 마커 라벨 */}
                         <div className="py-3 px-5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-dashed border-amber-300 rounded-xl shadow-sm">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
                               <span className="text-lg">⏱</span>
                             </div>
                             <div>
-                              <div className="text-xs text-amber-600 font-medium">시간 경과</div>
+                              <div className="text-xs text-amber-600 font-medium">시간 표시</div>
                               <div className="text-sm text-amber-800 font-bold">
-                                {timeElapsedText}
+                                {timeMarkerText}
                               </div>
                             </div>
                           </div>
