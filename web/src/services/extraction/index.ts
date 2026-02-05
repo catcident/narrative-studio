@@ -3,6 +3,6 @@
  */
 
 // Public API
-export { extractKnowledgeGraph, saveProgress, loadProgress, clearProgress, hasProgress } from './orchestrator';
+export { extractKnowledgeGraph, saveProgress, loadProgress, clearProgress } from './orchestrator';
 export { setApiKey, hasApiKey, getApiKey, stripMarkdownCodeBlock } from './types';
 export type { ExtractionProgress, ExtractionOptions, ProgressCallback, ChunkBillingCallback } from './types';

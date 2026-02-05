@@ -6,6 +6,7 @@ import { X, FileCheck } from 'lucide-react';
 import { useStore, useCreditBalance } from '../store';
 import { calculateCreditsFromChunks } from '../services/billing';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
+import { ModalOverlay } from './ModalOverlay';
 
 export function UsageSummary() {
   const currentUsage = useStore((s) => s.currentUsage);
@@ -23,8 +24,7 @@ export function UsageSummary() {
   const creditsUsed = calculateCreditsFromChunks(currentUsage.chunks);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(e) => e.key === 'Escape' && setShowUsageSummary(false)}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+    <ModalOverlay onClose={() => setShowUsageSummary(false)} maxWidth="md">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -79,7 +79,6 @@ export function UsageSummary() {
             확인
           </button>
         </div>
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }

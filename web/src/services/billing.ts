@@ -81,17 +81,6 @@ export interface UsageEstimate {
   chunks: number;
 }
 
-export async function estimateCredits(
-  charCount: number,
-  model: string
-): Promise<UsageEstimate | null> {
-  return billingFetch<UsageEstimate>('/credits/estimate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ char_count: charCount, model }),
-  });
-}
-
 export interface DeductResult {
   balance_after: number;
   amount_deducted: number;

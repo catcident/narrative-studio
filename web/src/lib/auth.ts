@@ -26,8 +26,21 @@ const OIDC_ISSUER = process.env.AUTH_CATCIDENT_ISSUER
 
 const REFRESH_TOKEN_ERROR = 'RefreshTokenError';
 
+/** 동시 갱신 경쟁 조건 방지를 위한 싱글턴 */
+let refreshPromise: Promise<import('next-auth/jwt').JWT> | null = null;
+
 /** 만료 임박한 access token을 refresh token으로 갱신 */
 async function refreshAccessToken(token: import('next-auth/jwt').JWT): Promise<import('next-auth/jwt').JWT> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefreshAccessToken(token);
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefreshAccessToken(token: import('next-auth/jwt').JWT): Promise<import('next-auth/jwt').JWT> {
   try {
     const response = await fetch(`${OIDC_ISSUER}/token/`, {
       method: 'POST',
@@ -38,6 +51,7 @@ async function refreshAccessToken(token: import('next-auth/jwt').JWT): Promise<i
         client_id: process.env.AUTH_CATCIDENT_ID || '',
         client_secret: process.env.AUTH_CATCIDENT_SECRET || '',
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {

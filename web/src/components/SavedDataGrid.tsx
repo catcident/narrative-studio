@@ -47,7 +47,11 @@ export function SavedDataGrid({ onLoad }: Props) {
   };
 
   useEffect(() => {
-    refreshList();
+    let cancelled = false;
+    getSavedKnowledgeGraphList().then(list => {
+      if (!cancelled) setSavedList(list);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // 버전 히스토리 토글

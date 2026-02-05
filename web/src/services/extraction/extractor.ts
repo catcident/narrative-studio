@@ -5,7 +5,7 @@
 import type { KnownEntity, ChunkExtractionResult } from './types';
 import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { USER_PROMPT } from './prompts';
-import { trimKnownEntities } from './selector';
+import { trimKnownEntities } from './types';
 
 export async function extractFromChunk(
   chunkText: string,

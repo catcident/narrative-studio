@@ -93,7 +93,6 @@ export function billingGetHandler(billingPath: string, logLabel: string) {
 /** POST body 허용 필드 화이트리스트 */
 const ALLOWED_POST_FIELDS: Record<string, string[]> = {
   '/credits/deduct/': ['amount', 'description', 'metadata', 'idempotency_key'],
-  '/credits/estimate/': ['char_count', 'model'],
 };
 
 /**

@@ -12,7 +12,7 @@ function formatId(prefix: string, num: number): string {
 
 // --- 이름 정규화 ---
 
-export function normalizeName(name: string): string {
+function normalizeName(name: string): string {
   return name
     .trim()
     .toLowerCase()
@@ -79,7 +79,7 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
 
 // --- 비슷한 엔티티 찾기 (mergeExtractions 전용) ---
 
-export function findSimilarEntity(name: string, nameMap: Record<string, number>, _entities: any[]): number {
+function findSimilarEntity(name: string, nameMap: Record<string, number>, _entities: any[]): number {
   // 정확히 일치
   if (nameMap[name] !== undefined) {
     return nameMap[name];

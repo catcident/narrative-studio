@@ -50,8 +50,7 @@ export interface ExtractionProgress {
   totalChunks: number;
   processedChunks: number;
   allExtracted: any[];
-  knownCharacters: { name: string; description: string; aliases?: string[] }[];
-  knownEntities?: KnownEntity[];  // 전체 엔티티 (카테고리 포함)
+  knownEntities: KnownEntity[];
   chunks: string[];
   timestamp: number;
   model?: string;  // 사용된 모델
@@ -117,4 +116,30 @@ export async function fetchWithClientTimeout(url: string, options: RequestInit, 
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+// --- 엔티티 트리밍 (순환 의존 방지를 위해 여기에 배치) ---
+
+export function trimKnownEntities(entities: KnownEntity[]): KnownEntity[] {
+  if (entities.length <= MAX_KNOWN_ENTITIES) {
+    return entities;
+  }
+
+  // 카테고리별로 그룹화하고 각각 제한
+  const byCategory: Record<string, KnownEntity[]> = {};
+  for (const e of entities) {
+    if (!byCategory[e.category]) {
+      byCategory[e.category] = [];
+    }
+    byCategory[e.category].push(e);
+  }
+
+  const result: KnownEntity[] = [];
+  for (const category of Object.keys(byCategory)) {
+    const categoryEntities = byCategory[category];
+    // 최근 것들만 유지
+    result.push(...categoryEntities.slice(-MAX_PER_CATEGORY));
+  }
+
+  return result.slice(-MAX_KNOWN_ENTITIES);
 }

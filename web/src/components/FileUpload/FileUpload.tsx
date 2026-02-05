@@ -4,7 +4,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useStore, useBillingSubscription } from '../../store';
-import { extractKnowledgeGraph, hasProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
+import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, deductAfterSave, deductPartial, checkSufficientBalance } from '../../services/billing';
 import { readFileAsText } from '../../services/fileReader';
@@ -108,7 +108,7 @@ export function FileUpload() {
     setProgress('');
     setProgressCurrent(0);
     setProgressTotal(0);
-    setSavedProgress(checkSaved ? hasProgress() : null);
+    setSavedProgress(checkSaved ? loadProgress() : null);
   }, []);
 
   // 등록 가능 여부: 제목 + 작가 + (파일 또는 텍스트) 모두 필요 + 중복 아님
@@ -210,7 +210,7 @@ export function FileUpload() {
       });
 
     setHasLocalKey(hasApiKey());
-    setSavedProgress(hasProgress());
+    setSavedProgress(loadProgress());
 
     getSavedKnowledgeGraphList()
       .then(list => { if (!cancelled) setExistingTitles(list.map(item => item.title)); })

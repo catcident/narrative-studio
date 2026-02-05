@@ -4,32 +4,8 @@
 
 import type { NovelKnowledgeGraph } from '../../types';
 import type { KnownEntity, EntitySummary } from './types';
-import { CATEGORY_NAMES, MAX_KNOWN_ENTITIES, MAX_PER_CATEGORY, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
+import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
-
-export function trimKnownEntities(entities: KnownEntity[]): KnownEntity[] {
-  if (entities.length <= MAX_KNOWN_ENTITIES) {
-    return entities;
-  }
-
-  // 카테고리별로 그룹화하고 각각 제한
-  const byCategory: Record<string, KnownEntity[]> = {};
-  for (const e of entities) {
-    if (!byCategory[e.category]) {
-      byCategory[e.category] = [];
-    }
-    byCategory[e.category].push(e);
-  }
-
-  const result: KnownEntity[] = [];
-  for (const category of Object.keys(byCategory)) {
-    const categoryEntities = byCategory[category];
-    // 최근 것들만 유지
-    result.push(...categoryEntities.slice(-MAX_PER_CATEGORY));
-  }
-
-  return result.slice(-MAX_KNOWN_ENTITIES);
-}
 
 /**
  * 지식그래프에서 엔티티 요약 목록 생성

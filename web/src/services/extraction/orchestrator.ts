@@ -45,11 +45,6 @@ export function clearProgress(): void {
   localStorage.removeItem(PROGRESS_KEY);
 }
 
-// 저장된 진행상황이 있는지 확인
-export function hasProgress(): ExtractionProgress | null {
-  return loadProgress();
-}
-
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
   const { text, title, onProgress, resumeFrom, model, fileName, existingGraph, onChunkBilling } = options;
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
@@ -66,13 +61,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   if (resumeFrom) {
     chunks = resumeFrom.chunks;
     allExtracted = resumeFrom.allExtracted;
-    // knownEntities 우선 사용, 없으면 knownCharacters 폴백 (하위 호환)
-    knownEntities = resumeFrom.knownEntities
-      ? [...resumeFrom.knownEntities]
-      : (resumeFrom.knownCharacters || []).map(c => ({
-          ...c,
-          category: 'character' as const,
-        }));
+    knownEntities = [...resumeFrom.knownEntities];
     startChunk = resumeFrom.processedChunks;
     console.log(`[extraction] 이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
     onProgress?.(`이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개...`);
@@ -106,7 +95,6 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       totalChunks,
       processedChunks,
       allExtracted,
-      knownCharacters: knownEntities.filter(e => e.category === 'character'),
       knownEntities,
       chunks,
       timestamp: Date.now(),

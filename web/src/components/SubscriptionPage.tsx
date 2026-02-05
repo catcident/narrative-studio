@@ -8,6 +8,7 @@ import { X, Crown, Zap, Star, ShoppingCart, Check } from 'lucide-react';
 import { useBillingSubscription } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
 import { UsageHistory } from './UsageHistory';
+import { ModalOverlay } from './ModalOverlay';
 
 type Tab = 'plans' | 'packages' | 'history';
 
@@ -65,8 +66,8 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+    <ModalOverlay onClose={onClose} maxWidth="3xl">
+      <div className="max-h-[85vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="font-bold text-gray-800 text-lg">구독 관리</h2>
@@ -225,6 +226,6 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
           )}
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

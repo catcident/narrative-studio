@@ -28,6 +28,7 @@ import {
 } from '../services/storage';
 import { useStore } from '../store';
 import type { NovelKnowledgeGraph } from '../types';
+import { ModalOverlay } from './ModalOverlay';
 
 interface Props {
   onClose: () => void;
@@ -49,7 +50,11 @@ export function DataManager({ onClose, onLoad }: Props) {
   };
 
   useEffect(() => {
-    refreshList();
+    let cancelled = false;
+    getSavedKnowledgeGraphList().then(list => {
+      if (!cancelled) setSavedList(list);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // 버전 히스토리 토글
@@ -136,8 +141,8 @@ export function DataManager({ onClose, onLoad }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <ModalOverlay onClose={onClose} maxWidth="2xl">
+      <div className="max-h-[80vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
@@ -334,10 +339,10 @@ export function DataManager({ onClose, onLoad }: Props) {
         </div>
 
         {/* 푸터 */}
-        <div className="p-4 border-t bg-gray-50 text-xs text-gray-500">
+        <div className="p-4 border-t bg-gray-50 text-xs text-gray-500 rounded-b-xl">
           데이터는 브라우저 로컬 저장소에 저장됩니다. 브라우저 데이터를 삭제하면 함께 삭제됩니다.
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
