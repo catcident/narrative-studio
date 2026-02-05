@@ -4,15 +4,26 @@
 
 import { X, FileCheck } from 'lucide-react';
 import { useStore, useCreditBalance } from '../store';
+import { calculateCreditsFromTokens } from '../services/billing';
+import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 
 export function UsageSummary() {
   const { currentUsage, showUsageSummary, setShowUsageSummary } = useStore();
   const creditBalance = useCreditBalance();
+  const showTokenDetails = useShowTokenDetails();
 
   if (!showUsageSummary) return null;
 
   const totalChunks = currentUsage.chunks.length;
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
+
+  // 실제 토큰에서 크레딧 역산
+  const model = currentUsage.chunks[0]?.model ?? '';
+  const creditsUsed = calculateCreditsFromTokens(
+    currentUsage.totalPromptTokens,
+    currentUsage.totalCompletionTokens,
+    model,
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -34,16 +45,24 @@ export function UsageSummary() {
         {/* 내용 */}
         <div className="p-6 space-y-4">
           <div className="space-y-3">
+            {creditsUsed > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">사용 크레딧</span>
+                <span className="font-bold text-blue-600">~{creditsUsed.toLocaleString()} 크레딧</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">총 청크</span>
               <span className="font-medium text-gray-800">{totalChunks}개</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">사용 토큰</span>
-              <span className="font-medium text-gray-800">
-                {totalTokens.toLocaleString()} ({currentUsage.totalPromptTokens.toLocaleString()} in + {currentUsage.totalCompletionTokens.toLocaleString()} out)
-              </span>
-            </div>
+            {showTokenDetails && totalTokens > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">사용 토큰</span>
+                <span className="text-gray-400">
+                  {totalTokens.toLocaleString()} ({currentUsage.totalPromptTokens.toLocaleString()} in + {currentUsage.totalCompletionTokens.toLocaleString()} out)
+                </span>
+              </div>
+            )}
             {creditBalance !== null && (
               <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
                 <span className="text-gray-500">잔여 크레딧</span>

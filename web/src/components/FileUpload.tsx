@@ -118,8 +118,14 @@ export function FileUpload() {
   useEffect(() => {
     fetch('/api/config')
       .then(res => res.json())
-      .then(data => setHasEnvKey(data.hasEnvKey))
-      .catch(() => setHasEnvKey(false));
+      .then(data => {
+        setHasEnvKey(data.hasEnvKey);
+        useStore.getState().setAuthEnabled(data.authEnabled ?? false);
+      })
+      .catch(() => {
+        setHasEnvKey(false);
+        useStore.getState().setAuthEnabled(false);
+      });
 
     setHasLocalKey(hasApiKey());
     const saved = hasProgress();

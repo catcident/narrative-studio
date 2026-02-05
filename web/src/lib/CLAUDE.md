@@ -85,6 +85,31 @@ session.user.roles      // 권한 배열
 
 ---
 
+## useShowTokenDetails.ts - 토큰 상세 표시 훅
+
+토큰 input/output 상세 정보의 UI 표시 여부를 결정하는 클라이언트 훅.
+
+### 표시 규칙
+
+| AUTH_ENABLED | 역할 | 토큰 상세 |
+|--------------|------|-----------|
+| `false` (Railway) | - | 항상 표시 |
+| `true` | admin/developer | 표시 |
+| `true` | 일반 사용자 | 숨김 |
+| `true` | 미로그인 | 숨김 |
+
+### 의존성
+
+- `useAuthEnabled()` (store) — 서버에서 받아온 `authEnabled` 설정
+- `useSession()` (next-auth) — 현재 세션의 사용자 역할
+
+### 사용처
+
+- `UsageEstimate.tsx` — 분석 전 예상 토큰 표시
+- `UsageSummary.tsx` — 분석 후 사용 토큰 표시
+
+---
+
 <claude-mem-context>
 # Recent Activity
 
