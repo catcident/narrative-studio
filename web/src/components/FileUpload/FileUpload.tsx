@@ -154,11 +154,15 @@ export function FileUpload() {
         }
       } catch (err: unknown) {
         console.error('[extraction] error:', err);
-        if (subscription) {
+        const message = err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.';
+
+        // 차감 실패 에러는 partial deduct를 하지 않음 (이미 save 완료 후 deduct 실패)
+        const isDeductError = message.includes('크레딧 차감에 실패');
+        if (subscription && !isDeductError) {
           const { currentUsage, loadSubscription } = useStore.getState();
           await deductPartial(title, currentUsage, updateCreditBalance, loadSubscription);
         }
-        setError(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
+        setError(message);
         resetProgressState(true);
       } finally {
         setLocalLoading(false);

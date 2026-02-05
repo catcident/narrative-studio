@@ -258,6 +258,7 @@ async function deductUsage(
   updateCreditBalance: (n: number) => void,
   onDeductFailed?: () => void,
   extraMetadata?: Record<string, unknown>,
+  throwOnFail = false,
 ): Promise<void> {
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
   if (totalTokens <= 0) return;
@@ -276,6 +277,9 @@ async function deductUsage(
     updateCreditBalance(result.balance_after);
   } else {
     onDeductFailed?.();
+    if (throwOnFail) {
+      throw new Error('크레딧 차감에 실패했습니다. 다음 분석 시 자동으로 재시도됩니다.');
+    }
   }
 }
 
@@ -293,6 +297,8 @@ export async function deductAfterSave(
     currentUsage,
     updateCreditBalance,
     onDeductFailed,
+    undefined,
+    true,  // throwOnFail
   );
 }
 
