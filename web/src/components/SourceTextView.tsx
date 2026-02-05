@@ -28,6 +28,22 @@ export function SourceTextView() {
     const singleFileMode = sourceFiles.length === 1;
     const singleFileName = singleFileMode ? sourceFiles[0].fileName : null;
 
+    // 디버그: 장면 데이터 확인
+    const scenes = Object.values(knowledgeGraph.snapshots);
+    console.log('[SourceTextView] 장면 수:', scenes.length);
+    console.log('[SourceTextView] 파일 수:', sourceFiles.length);
+    if (scenes.length > 0) {
+      console.log('[SourceTextView] 첫 장면:', {
+        sceneId: scenes[0].sceneId,
+        chapterNumber: scenes[0].chapterNumber,
+        sourceFile: scenes[0].sourceFile,
+        chapter: scenes[0].chapter,
+      });
+      // chapterNumber 분포 확인
+      const chapterNumbers = scenes.map(s => s.chapterNumber).filter(Boolean);
+      console.log('[SourceTextView] chapterNumber 분포:', [...new Set(chapterNumbers)].sort((a, b) => (a || 0) - (b || 0)));
+    }
+
     Object.values(knowledgeGraph.snapshots).forEach(scene => {
       // sourceFile이 있으면 그걸 사용
       let key = scene.sourceFile || scene.sourceFileId;
@@ -61,6 +77,11 @@ export function SourceTextView() {
     Object.keys(map).forEach(key => {
       map[key].sort((a, b) => a.order - b.order);
     });
+
+    // 디버그: 매핑 결과
+    console.log('[SourceTextView] 파일별 장면 매핑:', Object.fromEntries(
+      Object.entries(map).map(([k, v]) => [k, v.length])
+    ));
 
     return map;
   }, [knowledgeGraph?.snapshots, sourceFiles]);
