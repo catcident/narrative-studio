@@ -75,6 +75,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     // 새 분석 시 유효하지 않으면 DEFAULT_MODEL로 폴백 + 경고
     useModel = DEFAULT_MODEL;
     console.warn(`[extraction] 모델 "${candidateModel}"이(가) 유효하지 않음, "${DEFAULT_MODEL}"로 대체`);
+    onProgress?.(`선택한 모델을 사용할 수 없어 기본 모델(${DEFAULT_MODEL})로 진행합니다.`);
   }
 
   // 이어하기인 경우
@@ -267,6 +268,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         // 연속 3회 이상 실패 시 조기 중단 (동일 오류 반복 방지)
         if (failedChunkCount >= 3) {
           console.error(`[extraction] 연속 ${failedChunkCount}회 실패, 분석 중단. 원인: ${errMsg}`);
+          onProgress?.(`연속 ${failedChunkCount}회 실패로 분석 중단 (${i + 1}/${totalChunks}). 이어하기로 재개할 수 있습니다.`);
           loopCompleted = false;
           break;
         }

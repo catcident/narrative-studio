@@ -117,6 +117,9 @@ export async function POST(request: NextRequest) {
     // 프롬프트 크기 로깅
     console.log(`[analyze] 모델: ${model}, 프롬프트 크기: ${prompt.length}자`);
 
+    // billing 활성 시 모델 캐시 사전 워밍 (OpenRouter 호출과 병렬)
+    const dynamicModelsPromise = userId ? getCachedModels() : null;
+
     const response = await fetchWithTimeout(
       'https://openrouter.ai/api/v1/chat/completions',
       {
@@ -142,18 +145,11 @@ export async function POST(request: NextRequest) {
       const errorBody = await response.text();
       console.error(`[analyze] API 오류: ${response.status} - ${errorBody.slice(0, 500)}`);
 
-      // OpenRouter 에러 상세를 클라이언트에 전달
-      let detail = '';
-      try {
-        const parsed = JSON.parse(errorBody);
-        detail = parsed?.error?.message || parsed?.error || '';
-      } catch {
-        detail = errorBody.slice(0, 200);
-      }
-      const message = detail
-        ? `AI API 오류 (${response.status}): ${detail}`
-        : `AI API 오류 (${response.status})`;
-      return NextResponse.json({ error: message }, { status: response.status });
+      // 클라이언트에는 제네릭 에러 반환 (상세는 서버 로그에만 기록)
+      return NextResponse.json(
+        { error: `AI API 오류 (${response.status})` },
+        { status: response.status },
+      );
     }
 
     const data = await response.json();
@@ -166,7 +162,7 @@ export async function POST(request: NextRequest) {
     let insufficientBalance = false;
 
     if (userId && userId !== 'anonymous' && billing) {
-      const dynamicModels = await getCachedModels();
+      const dynamicModels = dynamicModelsPromise ? await dynamicModelsPromise : [];
       const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
       const credits = costUsdToCredits(
         tokenCostUsd(billing.prompt_tokens, billing.completion_tokens, inputCost, outputCost)

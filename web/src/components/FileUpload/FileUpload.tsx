@@ -9,7 +9,7 @@ import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/s
 import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
-import { DEFAULT_MODEL } from '../../types';
+import { DEFAULT_MODEL, getAvailableModelIds } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
 import { useAddFileAnalysis } from '../../hooks/useAddFileAnalysis';
 import { UploadArea } from './UploadArea';
@@ -307,7 +307,7 @@ export function FileUpload() {
         model: currentModel,
         fileNames: sortedFiles.map(f => f.name),
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: allModels.filter((m) => m.available !== false).map((m) => m.id),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       const sourceFiles = buildSourceFiles(fileInfos);
@@ -379,7 +379,7 @@ export function FileUpload() {
         onProgress: makeProgressCallback(),
         resumeFrom: resumeData,
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: allModels.filter((m) => m.available !== false).map((m) => m.id),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       setProgress('저장 중...');
@@ -472,7 +472,7 @@ export function FileUpload() {
           ? fileInfos.map(f => f.fileName)
           : (sourceFileName ? [sourceFileName] : undefined),
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: allModels.filter((m) => m.available !== false).map((m) => m.id),
+        availableModelIds: getAvailableModelIds(allModels),
       });
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();

@@ -125,7 +125,9 @@ function extractMentionedEntities(
 }
 
 export function ChatView() {
-  const { knowledgeGraph, originalText, setChatMentionedEntities } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const originalText = useStore((s) => s.originalText);
+  const setChatMentionedEntities = useStore((s) => s.setChatMentionedEntities);
   const models = useModels();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');

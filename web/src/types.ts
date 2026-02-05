@@ -118,7 +118,6 @@ export interface ModelInfo {
   outputCost: number; // per 1M tokens, USD
   description: string;
   available?: boolean;          // OpenRouter에서 현재 사용 가능 여부
-  expirationDate?: string | null; // 만료 예정일 (ISO string) 또는 null
 }
 
 /** 큐레이션 메타데이터: 소설 분석에 적합한 모델만 선별 + 한국어 설명 + 정렬 순서 */
@@ -163,6 +162,11 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
 ];
 
 export const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+
+/** available !== false인 모델의 ID 배열 반환 (orchestrator availableModelIds용) */
+export function getAvailableModelIds(models: ModelInfo[]): string[] {
+  return models.filter((m) => m.available !== false).map((m) => m.id);
+}
 
 // 업로드된 소스 파일 정보
 export interface SourceFile {

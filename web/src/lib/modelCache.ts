@@ -65,14 +65,34 @@ async function fetchFromOpenRouter(): Promise<ModelInfo[]> {
       if (!curatedIds.includes(orModel.id)) continue;
 
       const meta = CURATED_MODEL_META[orModel.id];
+
+      // pricing 구조 검증: 누락 시 정적 가격 폴백
+      if (!orModel.pricing || typeof orModel.pricing.prompt !== 'string' || typeof orModel.pricing.completion !== 'string') {
+        const staticModel = AVAILABLE_MODELS.find((m) => m.id === orModel.id);
+        if (staticModel) {
+          console.warn(`[modelCache] ${orModel.id}: pricing 구조 누락, 정적 가격 사용`);
+          models.push({ ...staticModel, available: true });
+        }
+        continue;
+      }
+
       const inputCost = toPerMillion(orModel.pricing.prompt);
       const outputCost = toPerMillion(orModel.pricing.completion);
+
+      // 가격이 0(무효)이면 정적 가격 폴백 (과소 과금 방지)
+      const staticModel = AVAILABLE_MODELS.find((m) => m.id === orModel.id);
+      const finalInputCost = inputCost > 0 ? inputCost : (staticModel?.inputCost ?? inputCost);
+      const finalOutputCost = outputCost > 0 ? outputCost : (staticModel?.outputCost ?? outputCost);
+
+      if (inputCost === 0 || outputCost === 0) {
+        console.warn(`[modelCache] ${orModel.id}: 가격 파싱 실패 (prompt=${orModel.pricing.prompt}, completion=${orModel.pricing.completion}), 정적 가격 사용`);
+      }
 
       models.push({
         id: orModel.id,
         name: orModel.name,
-        inputCost,
-        outputCost,
+        inputCost: finalInputCost,
+        outputCost: finalOutputCost,
         description: meta.description,
         available: true,
       });

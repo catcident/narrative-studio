@@ -3,7 +3,7 @@
  */
 
 import { X, FileCheck } from 'lucide-react';
-import { useStore, useCreditBalance } from '../store';
+import { useStore, useCreditBalance, useModels } from '../store';
 import { calculateCreditsFromChunks } from '../services/billing';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 import { ModalOverlay } from './ModalOverlay';
@@ -14,14 +14,15 @@ export function UsageSummary() {
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
+  const allModels = useModels();
 
   if (!showUsageSummary) return null;
 
   const totalChunks = currentUsage.chunks.length;
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
 
-  // 실제 토큰에서 크레딧 역산 (청크별 개별 모델 반영)
-  const creditsUsed = calculateCreditsFromChunks(currentUsage.chunks);
+  // 실제 토큰에서 크레딧 역산 (청크별 개별 모델 반영, 동적 가격 사용)
+  const creditsUsed = calculateCreditsFromChunks(currentUsage.chunks, allModels);
 
   return (
     <ModalOverlay onClose={() => setShowUsageSummary(false)} maxWidth="md">
