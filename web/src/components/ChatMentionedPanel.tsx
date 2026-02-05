@@ -1,20 +1,10 @@
 /**
  * 채팅에서 언급된 엔티티 패널
- * 간결한 미니 관계도 + 엔티티 목록
+ * force-graph(Canvas 기반)로 미니 관계도 표시
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { User, MapPin, Building, Sword, Clock, Zap, Info, Heart, MessageCircle, X } from 'lucide-react';
-import {
-  ReactFlow,
-  Background,
-  Node,
-  Edge,
-  Position,
-  useNodesState,
-  useEdgesState,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
 import { useStore } from '../store';
 import type { EntityCategory, Entity, HyperEdge } from '../types';
 
@@ -58,6 +48,13 @@ const CATEGORY_COLORS: Record<EntityCategory, string> = {
   emotion: '#f43f5e',
 };
 
+// 감정별 엣지 색상
+const SENTIMENT_COLORS: Record<string, string> = {
+  positive: '#22c55e',
+  negative: '#ef4444',
+  neutral: '#6b7280',
+};
+
 // 툴팁 정보 타입
 interface TooltipInfo {
   type: 'node' | 'edge';
@@ -69,6 +66,8 @@ interface TooltipInfo {
 export function ChatMentionedPanel() {
   const { knowledgeGraph, chatMentionedEntities, selectEntity } = useStore();
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<any>(null);
 
   // 언급된 엔티티 목록 가져오기
   const mentionedEntities: Entity[] = useMemo(() => {
@@ -86,137 +85,187 @@ export function ChatMentionedPanel() {
     );
   }, [knowledgeGraph, chatMentionedEntities]);
 
-  // 미니 그래프용 노드/엣지 생성 - 가로로 넓게
-  const { initialNodes, initialEdges } = useMemo(() => {
-    if (mentionedEntities.length === 0) {
-      return { initialNodes: [], initialEdges: [] };
-    }
+  // force-graph 초기화
+  const updateGraph = useCallback(async () => {
+    if (!containerRef.current || mentionedEntities.length < 2) return;
 
-    // 배치 영역 - 높이 두 배
-    const width = 480;
-    const height = 380;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    // 동적 import (force-graph는 CSR only)
+    const ForceGraph = (await import('force-graph')).default as any;
 
-    // 노드 수에 따라 배치 방식 결정
-    const count = mentionedEntities.length;
+    // 노드 데이터 변환
+    const graphNodes = mentionedEntities.map(entity => ({
+      id: entity.id,
+      name: entity.name,
+      category: entity.category,
+      color: CATEGORY_COLORS[entity.category] || '#6b7280',
+      entity,
+    }));
 
-    const initialNodes: Node[] = mentionedEntities.map((entity, index) => {
-      let x: number, y: number;
+    // 유효한 노드 ID Set
+    const nodeIdSet = new Set(graphNodes.map(n => n.id));
 
-      if (count === 1) {
-        x = centerX;
-        y = centerY;
-      } else if (count === 2) {
-        x = index === 0 ? centerX - 140 : centerX + 140;
-        y = centerY;
-      } else if (count <= 4) {
-        // 2x2 그리드
-        const col = index % 2;
-        const row = Math.floor(index / 2);
-        x = centerX + (col === 0 ? -100 : 100);
-        y = centerY + (row === 0 ? -80 : 80);
-      } else {
-        // 원형 배치
-        const angle = (2 * Math.PI * index) / count - Math.PI / 2;
-        const radius = Math.min(160, 80 + count * 12);
-        x = centerX + radius * Math.cos(angle);
-        y = centerY + radius * Math.sin(angle);
-      }
-
-      const color = CATEGORY_COLORS[entity.category] || '#6b7280';
-
-      return {
-        id: entity.id,
-        position: { x: x - 30, y: y - 30 },
-        data: { label: entity.name.slice(0, 6), entity },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-        style: {
-          background: color,
-          color: '#fff',
-          border: `3px solid ${color}`,
-          borderRadius: '50%',
-          width: 60,
-          height: 60,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '11px',
-          fontWeight: 600,
-          padding: '4px',
-          cursor: 'pointer',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-        },
-      };
-    });
-
-    const initialEdges: Edge[] = relevantEdges.slice(0, 20).map((edge, index) => {
-      const [source, target] = edge.entities;
-      return {
-        id: `edge-${index}`,
-        source,
-        target,
+    // 엣지 데이터 변환
+    const graphEdges = relevantEdges
+      .filter(edge => edge.entities.length >= 2 && edge.entities.every(id => nodeIdSet.has(id)))
+      .slice(0, 20)
+      .map(edge => ({
+        source: edge.entities[0],
+        target: edge.entities[1],
         label: edge.type,
-        labelStyle: {
-          fontSize: '10px',
-          fontWeight: 500,
-          fill: '#374151',
-        },
-        labelBgStyle: {
-          fill: '#ffffff',
-          fillOpacity: 0.85,
-        },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 3,
-        style: {
-          stroke: edge.sentiment === 'positive' ? '#22c55e' :
-                  edge.sentiment === 'negative' ? '#ef4444' : '#6b7280',
-          strokeWidth: 2,
-        },
-        data: { edge },
-      };
-    });
+        sentiment: edge.sentiment || 'neutral',
+        edge,
+      }));
 
-    return { initialNodes, initialEdges };
-  }, [mentionedEntities, relevantEdges]);
+    const graphData = { nodes: graphNodes, links: graphEdges };
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  // 노드/엣지 변경 시 업데이트
-  useMemo(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-  // 노드 클릭 핸들러
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    const entity = node.data.entity as Entity;
-    setTooltip({
-      type: 'node',
-      x: event.clientX,
-      y: event.clientY,
-      data: entity,
-    });
-  }, []);
-
-  // 엣지 클릭 핸들러
-  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
-    const edgeData = edge.data?.edge as HyperEdge;
-    if (edgeData) {
-      setTooltip({
-        type: 'edge',
-        x: event.clientX,
-        y: event.clientY,
-        data: edgeData,
-      });
+    // 기존 그래프 제거
+    if (graphRef.current) {
+      graphRef.current._destructor?.();
+      containerRef.current.innerHTML = '';
     }
-  }, []);
 
-  // 배경 클릭 시 툴팁 닫기
-  const onPaneClick = useCallback(() => {
-    setTooltip(null);
+    // 컨테이너 크기
+    const width = containerRef.current.clientWidth;
+    const height = containerRef.current.clientHeight;
+
+    // 새 그래프 생성
+    graphRef.current = ForceGraph()(containerRef.current)
+      .graphData(graphData)
+      .width(width)
+      .height(height)
+      .nodeCanvasObject((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+        const radius = 12;
+
+        // 노드 원
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 라벨 (이름)
+        const label = node.name.length > 8 ? node.name.slice(0, 8) + '…' : node.name;
+        const fontSize = Math.max(11 / globalScale, 6);
+        ctx.font = `bold ${fontSize}px Sans-Serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#333';
+        ctx.fillText(label, node.x, node.y + radius + 4);
+      })
+      .nodeCanvasObjectMode(() => 'replace')
+      .nodePointerAreaPaint((node: any, color: string, ctx: CanvasRenderingContext2D) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 18, 0, 2 * Math.PI);
+        ctx.fill();
+      })
+      .linkCanvasObject((link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+        const start = link.source;
+        const end = link.target;
+        if (typeof start.x !== 'number' || typeof end.x !== 'number') return;
+
+        // 엣지 선
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = SENTIMENT_COLORS[link.sentiment] || SENTIMENT_COLORS.neutral;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 엣지 라벨
+        if (link.label) {
+          const midX = (start.x + end.x) / 2;
+          const midY = (start.y + end.y) / 2;
+          const fontSize = Math.max(9 / globalScale, 5);
+          ctx.font = `bold ${fontSize}px Sans-Serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          const textWidth = ctx.measureText(link.label).width;
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.fillRect(midX - textWidth/2 - 3, midY - fontSize/2 - 2, textWidth + 6, fontSize + 4);
+          ctx.fillStyle = SENTIMENT_COLORS[link.sentiment] || '#666';
+          ctx.fillText(link.label, midX, midY);
+        }
+      })
+      .linkCanvasObjectMode(() => 'replace')
+      .backgroundColor('#fafafa')
+      .onNodeHover((node: any) => {
+        if (node && graphRef.current && typeof node.x === 'number') {
+          const screenCoords = graphRef.current.graph2ScreenCoords(node.x, node.y);
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (rect && screenCoords) {
+            setTooltip({
+              type: 'node',
+              x: rect.left + screenCoords.x + 20,
+              y: rect.top + screenCoords.y,
+              data: node.entity,
+            });
+          }
+        } else {
+          setTooltip(null);
+        }
+        if (containerRef.current) {
+          containerRef.current.style.cursor = node ? 'pointer' : 'default';
+        }
+      })
+      .onLinkHover((link: any) => {
+        if (link && graphRef.current && link.source && typeof link.source.x === 'number') {
+          const midX = (link.source.x + link.target.x) / 2;
+          const midY = (link.source.y + link.target.y) / 2;
+          const screenCoords = graphRef.current.graph2ScreenCoords(midX, midY);
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (rect && screenCoords) {
+            setTooltip({
+              type: 'edge',
+              x: rect.left + screenCoords.x + 20,
+              y: rect.top + screenCoords.y,
+              data: link.edge,
+            });
+          }
+        } else if (!link) {
+          setTooltip(null);
+        }
+      })
+      .onNodeClick((node: any) => {
+        if (node?.entity) {
+          selectEntity(node.entity.id);
+        }
+      });
+
+    // Force 조정
+    graphRef.current.d3Force('charge').strength(-300);
+    graphRef.current.d3Force('link').distance(80);
+    graphRef.current.d3Force('center', null);
+
+    // 초기 줌 조정
+    setTimeout(() => {
+      graphRef.current?.zoomToFit(300, 40);
+    }, 500);
+  }, [mentionedEntities, relevantEdges, selectEntity]);
+
+  // 그래프 업데이트
+  useEffect(() => {
+    updateGraph();
+    return () => {
+      if (graphRef.current) {
+        graphRef.current._destructor?.();
+      }
+    };
+  }, [updateGraph]);
+
+  // 리사이즈 처리
+  useEffect(() => {
+    const handleResize = () => {
+      if (graphRef.current && containerRef.current) {
+        graphRef.current.width(containerRef.current.clientWidth);
+        graphRef.current.height(containerRef.current.clientHeight);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   if (mentionedEntities.length === 0) {
@@ -246,31 +295,12 @@ export function ChatMentionedPanel() {
         </div>
       </div>
 
-      {/* 미니 관계도 - 넉넉한 높이 */}
+      {/* 미니 관계도 - force-graph (Canvas) */}
       {mentionedEntities.length >= 2 && (
-        <div className="flex-shrink-0 h-[400px] border-b border-gray-100 bg-gray-50/50">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={onNodeClick}
-            onEdgeClick={onEdgeClick}
-            onPaneClick={onPaneClick}
-            fitView
-            fitViewOptions={{ padding: 0.15 }}
-            nodesDraggable={true}
-            nodesConnectable={false}
-            panOnDrag={true}
-            zoomOnScroll={false}
-            zoomOnPinch={false}
-            minZoom={0.8}
-            maxZoom={1.5}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background color="#e5e7eb" gap={24} size={1} />
-          </ReactFlow>
-        </div>
+        <div
+          ref={containerRef}
+          className="flex-shrink-0 h-[400px] border-b border-gray-100"
+        />
       )}
 
       {/* 엔티티 목록 */}
@@ -336,56 +366,40 @@ export function ChatMentionedPanel() {
       {/* 툴팁 */}
       {tooltip && (
         <div
-          className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2.5 max-w-[260px] text-sm"
+          className="fixed z-50 bg-slate-800 text-white rounded-lg shadow-lg p-2.5 max-w-[260px] text-sm pointer-events-none"
           style={{
-            left: Math.min(tooltip.x - 130, window.innerWidth - 280),
-            top: tooltip.y + 10,
+            left: Math.min(tooltip.x, window.innerWidth - 280),
+            top: tooltip.y,
           }}
         >
-          <button
-            onClick={() => setTooltip(null)}
-            className="absolute top-1.5 right-1.5 text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-
           {tooltip.type === 'node' ? (
             <div>
-              <div className="font-medium text-gray-800 pr-4">{(tooltip.data as Entity).name}</div>
-              <div className="text-xs text-gray-500 mt-0.5">
+              <div className="font-medium">{(tooltip.data as Entity).name}</div>
+              <div className="text-xs text-slate-300 mt-0.5">
                 {CATEGORY_LABELS[(tooltip.data as Entity).category]}
               </div>
               {(tooltip.data as Entity).description && (
-                <p className="text-xs text-gray-600 mt-1.5 line-clamp-2">
+                <p className="text-xs text-slate-400 mt-1.5 line-clamp-2">
                   {(tooltip.data as Entity).description}
                 </p>
               )}
-              <button
-                onClick={() => {
-                  selectEntity((tooltip.data as Entity).id);
-                  setTooltip(null);
-                }}
-                className="w-full mt-2 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
-              >
-                상세 보기
-              </button>
             </div>
           ) : (
             <div>
               <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                (tooltip.data as HyperEdge).sentiment === 'positive' ? 'bg-green-100 text-green-700' :
-                (tooltip.data as HyperEdge).sentiment === 'negative' ? 'bg-red-100 text-red-700' :
-                'bg-gray-100 text-gray-600'
+                (tooltip.data as HyperEdge).sentiment === 'positive' ? 'bg-green-600 text-white' :
+                (tooltip.data as HyperEdge).sentiment === 'negative' ? 'bg-red-600 text-white' :
+                'bg-gray-600 text-white'
               }`}>
                 {(tooltip.data as HyperEdge).type}
               </span>
-              <div className="text-xs text-gray-700 mt-1.5">
+              <div className="text-xs text-slate-300 mt-1.5">
                 {(tooltip.data as HyperEdge).entities
                   .map(id => knowledgeGraph?.entities[id]?.name || id)
                   .join(' ↔ ')}
               </div>
               {(tooltip.data as HyperEdge).statement && (
-                <p className="text-xs text-gray-500 mt-1 line-clamp-3">
+                <p className="text-xs text-slate-400 mt-1 line-clamp-3">
                   {(tooltip.data as HyperEdge).statement}
                 </p>
               )}
