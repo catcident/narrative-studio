@@ -172,6 +172,7 @@ export function CharacterChronicle() {
   const characters = useCharacters();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const leftColumnRef = useRef<HTMLDivElement>(null);  // 왼쪽 고정 열 스크롤 동기화용
   const selectedColumnRef = useRef<HTMLDivElement>(null);
 
   // 줌 상태
@@ -512,26 +513,113 @@ export function CharacterChronicle() {
         </div>
       </div>
 
-      {/* 그리드 영역 - 드래그로 스크롤 가능 */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-auto cursor-grab select-none"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-      >
+      {/*
+        ⚠️ 레이아웃 구조: 왼쪽 고정 열 + 오른쪽 스크롤 영역
+
+        CSS Grid의 sticky는 가로 스크롤에서 제대로 작동하지 않음!
+        따라서 왼쪽 열을 완전히 분리하고, 세로 스크롤만 동기화함.
+
+        구조:
+        [고정 왼쪽 열] | [가로+세로 스크롤 가능한 오른쪽 영역]
+      */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 왼쪽 고정 열: 장면 라벨 */}
         <div
-          className="grid gap-0 origin-top-left transition-transform duration-200"
-          style={{
-            gridTemplateColumns: `${100 * zoomLevel}px repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
-            gridTemplateRows: `${80 * zoomLevel}px repeat(${pageScenes.length}, auto)`,
-          }}
+          className="flex-shrink-0 overflow-hidden bg-white border-r border-gray-300"
+          style={{ width: `${100 * zoomLevel}px` }}
         >
-          {/* 헤더 행: 빈 셀 + 캐릭터 헤더들 */}
-          <div className="sticky left-0 z-30 bg-gray-50 border-b border-r border-gray-200 flex items-center justify-center">
+          {/* 왼쪽 열 헤더 */}
+          <div
+            className="bg-gray-50 border-b border-gray-200 flex items-center justify-center"
+            style={{ height: `${80 * zoomLevel}px` }}
+          >
             <span className="text-xs font-medium text-gray-400">장면</span>
           </div>
+          {/* 왼쪽 열 내용 - 세로 스크롤은 오른쪽과 동기화 */}
+          <div
+            ref={leftColumnRef}
+            className="overflow-hidden"
+            style={{ height: `calc(100% - ${80 * zoomLevel}px)` }}
+          >
+            <div>
+              {pageScenes.map((scene, localIndex) => {
+                // 시간 마커 텍스트: 텍스트에 명시된 시간 표현만 표시
+                const getTimeMarkerText = () => {
+                  if (localIndex === 0) return null;
+                  if (scene.timeMarker) return scene.timeMarker;
+                  const prevScene = pageScenes[localIndex - 1];
+                  if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
+                    return `${prevScene.time} → ${scene.time}`;
+                  }
+                  return null;
+                };
+                const timeMarkerText = getTimeMarkerText();
+
+                return (
+                  <div key={`left-${scene.sceneId}`}>
+                    {/* 시간 경과 행 */}
+                    {timeMarkerText && localIndex > 0 && (
+                      <div
+                        className="bg-amber-50 border-b border-amber-200 flex items-center justify-center"
+                        style={{ padding: `${8 * zoomLevel}px ${12 * zoomLevel}px` }}
+                      >
+                        <div
+                          className="text-amber-700 font-medium flex items-center gap-1"
+                          style={{ fontSize: `${11 * zoomLevel}px` }}
+                        >
+                          <span>⏱</span>
+                          <span>{timeMarkerText}</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* 장면 라벨 */}
+                    <div
+                      id={`scene-row-local-${localIndex}`}
+                      className="bg-white border-b border-gray-200 flex flex-col justify-center"
+                      style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px`, minHeight: `${120 * zoomLevel}px` }}
+                    >
+                      <div
+                        className="font-bold text-blue-600"
+                        style={{ fontSize: `${14 * zoomLevel}px` }}
+                      >
+                        {scene.sceneLabel}
+                      </div>
+                      <div
+                        className="text-gray-500"
+                        style={{ fontSize: `${12 * zoomLevel}px`, marginTop: `${2 * zoomLevel}px` }}
+                      >
+                        {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 오른쪽 스크롤 영역: 캐릭터 열들 */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-auto cursor-grab select-none"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onScroll={(e) => {
+            // 세로 스크롤 동기화: 오른쪽 스크롤 → 왼쪽 열
+            if (leftColumnRef.current) {
+              leftColumnRef.current.scrollTop = e.currentTarget.scrollTop;
+            }
+          }}
+        >
+          <div
+            className="grid gap-0 origin-top-left transition-transform duration-200"
+            style={{
+              gridTemplateColumns: `repeat(${visibleCharacters.length}, ${260 * zoomLevel}px)`,
+              gridTemplateRows: `${80 * zoomLevel}px repeat(${pageScenes.length}, auto)`,
+            }}
+          >
           {visibleCharacters.map((char, charIndex) => {
             const isSelected = selectedCharId === char.id;
             const isOtherSelected = selectedCharId && !isSelected;
@@ -576,20 +664,12 @@ export function CharacterChronicle() {
             );
           })}
 
-          {/* 각 장면 행 */}
+          {/* 각 장면 행 (오른쪽 영역: 캐릭터 열만) */}
           {pageScenes.map((scene, localIndex) => {
-            const sceneNum = parseInt(scene.sceneId.replace('S', '').replace(/^0+/, '') || '0');
-            // 시간 마커 텍스트: 텍스트에 명시된 시간 표현만 표시
+            // 시간 마커 텍스트
             const getTimeMarkerText = () => {
-              // 페이지 첫 장면은 시간 마커 표시 안함 (이전 장면과의 관계가 없으므로)
               if (localIndex === 0) return null;
-
-              // 1. 텍스트에 명시된 시간 표현 사용
-              if (scene.timeMarker) {
-                return scene.timeMarker;
-              }
-
-              // 2. fallback: 이전 장면과 시간이 다르면 표시
+              if (scene.timeMarker) return scene.timeMarker;
               const prevScene = pageScenes[localIndex - 1];
               if (prevScene && scene.time && prevScene.time && scene.time !== prevScene.time) {
                 return `${prevScene.time} → ${scene.time}`;
@@ -600,61 +680,20 @@ export function CharacterChronicle() {
 
             return (
             <>
-              {/* 시간 경과 행 (장면 사이에 표시) */}
+              {/* 시간 경과 행: 캐릭터 열들만 (왼쪽 라벨은 고정 열에 있음) */}
               {timeMarkerText && localIndex > 0 && (
-                <>
-                  {/* 시간 경과 라벨 셀 */}
+                visibleCharacters.map((char) => (
                   <div
-                    key={`time-label-${scene.sceneId}`}
-                    className="sticky left-0 z-20 bg-amber-50 border-b border-r border-amber-200 flex items-center justify-center"
-                    style={{ padding: `${8 * zoomLevel}px ${12 * zoomLevel}px` }}
+                    key={`time-${scene.sceneId}-${char.id}`}
+                    className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
+                    style={{ padding: `${8 * zoomLevel}px` }}
                   >
-                    <div
-                      className="text-amber-700 font-medium flex items-center gap-1"
-                      style={{ fontSize: `${11 * zoomLevel}px` }}
-                    >
-                      <span>⏱</span>
-                      <span>{timeMarkerText}</span>
-                    </div>
+                    <div className="w-full border-t-2 border-dashed border-amber-300" />
                   </div>
-                  {/* 각 캐릭터 열에 시간 경과 표시 */}
-                  {visibleCharacters.map((char) => (
-                    <div
-                      key={`time-${scene.sceneId}-${char.id}`}
-                      className="bg-amber-50/50 border-b border-amber-100 flex items-center justify-center"
-                      style={{ padding: `${8 * zoomLevel}px` }}
-                    >
-                      <div
-                        className="w-full border-t-2 border-dashed border-amber-300"
-                      />
-                    </div>
-                  ))}
-                </>
+                ))
               )}
 
-              {/* 장면 라벨 (고정) */}
-              <div
-                id={`scene-row-local-${localIndex}`}
-                key={`label-${scene.sceneId}`}
-                className="sticky left-0 z-20 bg-white border-b border-r border-gray-200 flex flex-col justify-center"
-                style={{ padding: `${16 * zoomLevel}px ${12 * zoomLevel}px` }}
-              >
-                <div
-                  className="font-bold text-blue-600"
-                  style={{ fontSize: `${14 * zoomLevel}px` }}
-                >
-                  {scene.sceneLabel}
-                </div>
-                {/* 장소/시간 정보 */}
-                <div
-                  className="text-gray-500"
-                  style={{ fontSize: `${12 * zoomLevel}px`, marginTop: `${2 * zoomLevel}px` }}
-                >
-                  {[scene.location, scene.time].filter(Boolean).join(' / ') || ''}
-                </div>
-              </div>
-
-              {/* 각 캐릭터의 해당 장면 셀 (등장하는 캐릭터만) */}
+              {/* 각 캐릭터의 해당 장면 셀 */}
               {visibleCharacters.map((char) => {
                 const globalIndex = characters.findIndex(c => c.id === char.id);
                 const isSelected = selectedCharId === char.id;
@@ -743,6 +782,7 @@ export function CharacterChronicle() {
           );
           })}
         </div>
+      </div>
       </div>
 
       {/* 하단: 네비게이션 + 범례 */}
