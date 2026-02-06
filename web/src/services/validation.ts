@@ -174,11 +174,11 @@ function sceneToString(scene: SceneSnapshot): string {
 const SYSTEM_PROMPT = `소설의 **설정 오류/모순**을 찾아주세요.
 
 ## 데이터 구조
-- **[이전 파일 요약]**: 지식그래프로 정리된 기존 설정 (엔티티/관계/장면)
-- **[새 파일 원본]**: 검증할 새 챕터의 원본 텍스트
+- **[기존 설정]**: 새 챕터에 등장하는 캐릭터/엔티티들의 이전 설정 (지식그래프에서 추출)
+- **[새 챕터 원본]**: 검증할 새 챕터의 원본 텍스트
 
 ## 검증 방법
-새 파일 원본에서 **기존 설정과 모순되는 내용**이 있는지 확인하세요.
+새 챕터 원본에서 **기존 설정과 모순되는 내용**이 있는지 확인하세요.
 
 ## 찾아야 할 오류
 - 동일 캐릭터의 **종족/출신지/외형/성별**이 기존 설정과 다르게 언급됨
@@ -222,51 +222,77 @@ function splitIntoChunks(
   };
 
   // 현재 파일: 원본 텍스트만 (검증 대상)
-  const currentContext = `[새 파일 원본: ${currentFile.fileName}]
+  const currentContext = `[새 챕터 원본: ${currentFile.fileName}]
 ${truncateText(currentFile.originalText)}`;
 
-  // 이전 파일들을 청크로 분할
-  const chunks: { previousContext: string; currentContext: string }[] = [];
-  let currentChunk = '';
+  // 현재 파일에 등장하는 엔티티 ID 수집
+  const currentEntityIds = new Set(currentFile.entities.map(e => e.id));
 
-  // 이전 파일들: 지식그래프 정보만 (원본 텍스트 제외)
+  // 이전 파일들에서 현재 파일 엔티티들의 설정만 추출
+  const relevantEntities: Entity[] = [];
+  const relevantEdges: HyperEdge[] = [];
+
   for (const pf of previousFiles) {
-    const entitiesStr = pf.entities.map(entityToString).join('\n');
-    const edgesStr = pf.edges
-      .map((e) => edgeToString(e, allEntities))
-      .join('\n');
-    const scenesStr = pf.scenes.map(sceneToString).join('\n');
-
-    const fileContext = `[${pf.fileName} 요약]
-엔티티: ${entitiesStr || '없음'}
-관계: ${edgesStr || '없음'}
-장면: ${scenesStr || '없음'}
-
-`;
-
-    // 청크 크기 체크
-    if (currentChunk.length + fileContext.length + currentContext.length > MAX_CONTEXT_CHARS) {
-      // 현재 청크 저장하고 새 청크 시작
-      if (currentChunk) {
-        chunks.push({ previousContext: currentChunk, currentContext });
+    // 현재 파일 엔티티와 겹치는 엔티티만
+    pf.entities.forEach(e => {
+      if (currentEntityIds.has(e.id) && !relevantEntities.find(re => re.id === e.id)) {
+        relevantEntities.push(e);
       }
-      currentChunk = fileContext;
-    } else {
-      currentChunk += fileContext;
+    });
+    // 현재 파일 엔티티가 포함된 관계만
+    pf.edges.forEach(edge => {
+      if (edge.entities.some(id => currentEntityIds.has(id))) {
+        if (!relevantEdges.find(re => re.id === edge.id)) {
+          relevantEdges.push(edge);
+        }
+      }
+    });
+  }
+
+  // 기존 설정 컨텍스트 생성
+  const entitiesStr = relevantEntities.map(entityToString).join('\n');
+  const edgesStr = relevantEdges.map(e => edgeToString(e, allEntities)).join('\n');
+
+  const previousContext = `[기존 설정 - 새 챕터에 등장하는 엔티티들의 이전 정보]
+엔티티:
+${entitiesStr || '없음'}
+
+관계:
+${edgesStr || '없음'}`;
+
+  // 청크 분할 (컨텍스트가 너무 크면)
+  const chunks: { previousContext: string; currentContext: string }[] = [];
+
+  if (previousContext.length + currentContext.length > MAX_CONTEXT_CHARS) {
+    // 엔티티를 청크로 분할
+    const entitiesPerChunk = Math.ceil(relevantEntities.length / Math.ceil((previousContext.length + currentContext.length) / MAX_CONTEXT_CHARS));
+    for (let i = 0; i < relevantEntities.length; i += entitiesPerChunk) {
+      const chunkEntities = relevantEntities.slice(i, i + entitiesPerChunk);
+      const chunkEntityIds = new Set(chunkEntities.map(e => e.id));
+      const chunkEdges = relevantEdges.filter(edge => edge.entities.some(id => chunkEntityIds.has(id)));
+
+      const chunkEntitiesStr = chunkEntities.map(entityToString).join('\n');
+      const chunkEdgesStr = chunkEdges.map(e => edgeToString(e, allEntities)).join('\n');
+
+      const chunkContext = `[기존 설정 - 청크 ${Math.floor(i / entitiesPerChunk) + 1}]
+엔티티:
+${chunkEntitiesStr || '없음'}
+
+관계:
+${chunkEdgesStr || '없음'}`;
+
+      chunks.push({ previousContext: chunkContext, currentContext });
     }
+  } else {
+    chunks.push({ previousContext, currentContext });
   }
 
-  // 마지막 청크 저장
-  if (currentChunk) {
-    chunks.push({ previousContext: currentChunk, currentContext });
-  }
-
-  // 청크가 없으면 (이전 파일이 없거나 매우 작으면) 빈 컨텍스트로 하나 생성
+  // 청크가 없으면 빈 컨텍스트로 하나 생성
   if (chunks.length === 0) {
-    chunks.push({ previousContext: '없음', currentContext });
+    chunks.push({ previousContext: '기존 설정 없음 (새 엔티티만 등장)', currentContext });
   }
 
-  console.log(`[validation] ${previousFiles.length}개 파일 → ${chunks.length}개 청크로 분할`);
+  console.log(`[validation] ${currentFile.fileName}: ${relevantEntities.length}개 엔티티, ${relevantEdges.length}개 관계 → ${chunks.length}개 청크`);
 
   return chunks;
 }
