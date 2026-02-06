@@ -605,12 +605,19 @@ export function SourceTextView() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleValidateFile(fileId);
+            setExpandedIssues(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(fileId)) {
+                newSet.delete(fileId);
+              } else {
+                newSet.add(fileId);
+              }
+              return newSet;
+            });
           }}
-          disabled={isValidating}
-          className="text-xs px-2 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors disabled:opacity-50"
+          className="text-xs px-2 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors font-medium"
         >
-          재검증 필요
+          재검증 필요 {expandedIssues.has(fileId) ? '▲' : '▼'}
         </button>
       );
     }
@@ -713,6 +720,33 @@ export function SourceTextView() {
           <p className="text-xs text-red-400 mt-2">
             * 이 이슈들이 있어도 소설 작성을 계속할 수 있습니다. 필요시 수정하세요.
           </p>
+        </div>
+      );
+    }
+
+    // invalidated 상태 - 이전 파일 검증 안 됨
+    if (result.status === 'invalidated') {
+      return (
+        <div className="bg-yellow-50 border-t border-yellow-200 p-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+            <span className="text-sm font-medium text-yellow-800">
+              재검증 필요
+            </span>
+            <span className="text-xs text-yellow-600">
+              - 이전 파일이 아직 검증되지 않았습니다
+            </span>
+          </div>
+          <p className="text-xs text-yellow-600 mt-2">
+            앞 파일들을 먼저 검증한 후 이 파일을 검증해주세요.
+          </p>
+          <button
+            onClick={() => handleValidateFile(fileId)}
+            disabled={isValidating}
+            className="mt-2 text-xs px-3 py-1 bg-yellow-200 hover:bg-yellow-300 text-yellow-800 rounded disabled:opacity-50"
+          >
+            그래도 검증하기
+          </button>
         </div>
       );
     }
