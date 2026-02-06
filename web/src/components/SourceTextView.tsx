@@ -471,7 +471,7 @@ export function SourceTextView() {
     if (!knowledgeGraph || isValidating) return;
 
     // API 키 가져오기 (localStorage에서)
-    const apiKey = localStorage.getItem('openrouter_api_key') || '';
+    const apiKey = localStorage.getItem('OPENROUTER_API_KEY') || '';
     if (!apiKey) {
       alert('API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
       return;
