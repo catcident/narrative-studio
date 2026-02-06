@@ -56,7 +56,7 @@ export function SourceTextView() {
     }
   }, [validationResultsJson, setValidationResults]);
 
-  // 검증 결과 저장 (변경 시 knowledgeGraph에 반영) - store에서 최신 값을 직접 가져옴
+  // 검증 결과 저장 - 기존 결과와 병합해서 저장
   const saveValidationResults = useCallback(async (results: Map<string, FileValidationResult>) => {
     const state = useStore.getState();
     const currentGraph = state.knowledgeGraph;
@@ -67,23 +67,34 @@ export function SourceTextView() {
       return;
     }
 
-    const resultsObj: Record<string, FileValidationResult> = {};
+    // 기존 결과와 새 결과 병합
+    const existingResults = currentGraph.validationResults || {};
+    const newResultsObj: Record<string, FileValidationResult> = { ...existingResults };
     results.forEach((result, fileId) => {
-      resultsObj[fileId] = result;
+      newResultsObj[fileId] = result;
     });
 
     const updatedGraph: NovelKnowledgeGraph = {
       ...currentGraph,
-      validationResults: resultsObj,
+      validationResults: newResultsObj,
       metadata: {
         ...currentGraph.metadata,
         updatedAt: new Date().toISOString(),
       },
     };
 
-    console.log('[validation] 검증 결과 저장:', Object.keys(resultsObj).length, '개 파일');
+    console.log('[validation] 검증 결과 저장:', Object.keys(newResultsObj).length, '개 파일');
+
+    // store 먼저 업데이트
     setKnowledgeGraph(updatedGraph);
-    await updateKnowledgeGraph(dataId, updatedGraph);
+
+    // API 저장은 비동기로 (실패해도 store에는 저장됨)
+    try {
+      await updateKnowledgeGraph(dataId, updatedGraph);
+      console.log('[validation] API 저장 완료');
+    } catch (err) {
+      console.error('[validation] API 저장 실패:', err);
+    }
   }, [setKnowledgeGraph]);
 
   const sourceFiles = useMemo(() => {
