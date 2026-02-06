@@ -15,6 +15,11 @@ import type {
 } from '../types';
 import { DEFAULT_MODEL } from '../types';
 
+// ==================== 상수 ====================
+
+// 청크당 최대 문자 수 (LLM 컨텍스트 제한 고려)
+const MAX_CONTEXT_CHARS = 8000;
+
 // ==================== 타입 ====================
 
 interface ValidationContext {
@@ -119,45 +124,58 @@ function sceneToString(scene: SceneSnapshot): string {
 
 // ==================== LLM 검증 ====================
 
+const SYSTEM_PROMPT = `당신은 소설의 **논리적 모순**을 찾는 전문가입니다.
+
+## 핵심 원칙
+- 소설은 **시간순으로 진행**됩니다. 파일 1 → 파일 2 → 파일 3 순서입니다.
+- 새로운 내용이 추가되는 것은 **당연**합니다.
+- 당신의 역할: **기존 설정과 물리적/논리적으로 충돌하는 모순**만 찾기
+
+## 보고해야 할 것 (확실한 모순만)
+1. **사망 후 부활**: 죽었다고 명시된 캐릭터가 설명 없이 다시 등장
+2. **불변 속성 변경**: 나이/성별/종족/혈액형 등이 다르게 기술됨
+3. **파괴 후 복구**: 부서졌다고 명시된 것이 설명 없이 멀쩡히 등장
+4. **동시 존재 불가**: 같은 시점에 두 장소에 동시에 있음 (순간이동 능력 없이)
+5. **시간 역행**: 명시된 시간이 거꾸로 감 (3일 후 → 2일 후)
+
+## 절대 보고하지 말 것 (이것들은 모순이 아님)
+- **장소 이동**: A가 1화에서 서울에 있다가 2화에서 부산에 있음 → 이동한 것임, 모순 아님
+- **관계 변화**: 친했다가 싸워서 사이가 나빠짐 → 시간에 따른 변화, 모순 아님
+- **새 정보 추가**: 이전에 언급 안 된 설정이 나옴 → 세계관 확장, 모순 아님
+- **이름/호칭 변경**: "나"로 불리다가 "가"로 불림 → 가명/위장 가능, 모순 아님
+- **새 캐릭터/관계/장소**: 처음 등장 → 당연함, 모순 아님
+- **감정/행동 변화**: 이전과 다른 행동 → 캐릭터 발전, 모순 아님
+
+## 판단 기준
+질문: "이전 설정이 **물리적으로 불가능**하게 만드는가?"
+- 서울에 있던 사람이 부산에 나타남 → 이동 가능, 모순 아님
+- 죽은 사람이 살아있음 → 물리적 불가능, 모순임
+- 부서진 검이 멀쩡함 → 물리적 불가능, 모순임
+
+## 응답 형식
+{"issues": []}
+
+모순이 있을 때만:
+{"issues": [{"type": "character_inconsistency", "severity": "error", "description": "구체적 설명", "suggestion": "수정 제안"}]}
+
+**99%의 경우 빈 배열입니다. 확실한 물리적/논리적 모순만 보고하세요.**`;
+
 /**
- * LLM을 사용하여 두 파일 간 일관성 검증
+ * 컨텍스트를 청크로 분할
  */
-async function validateWithLLM(
-  currentFile: FileGraphData,
+function splitIntoChunks(
   previousFiles: FileGraphData[],
-  allEntities: Record<string, Entity>,
-  apiKey: string | undefined,
-  model: string
-): Promise<ValidationIssue[]> {
-  // 이전 파일들의 정보 요약
-  const previousContext = previousFiles
-    .map((pf) => {
-      const entitiesStr = pf.entities.map(entityToString).join('\n');
-      const edgesStr = pf.edges
-        .map((e) => edgeToString(e, allEntities))
-        .join('\n');
-      const scenesStr = pf.scenes.map(sceneToString).join('\n');
-
-      return `=== ${pf.fileName} (${pf.fileId}) ===
-## 등장인물/엔티티
-${entitiesStr || '없음'}
-
-## 관계
-${edgesStr || '없음'}
-
-## 주요 장면
-${scenesStr || '없음'}`;
-    })
-    .join('\n\n');
-
-  // 현재 파일 정보
+  currentFile: FileGraphData,
+  allEntities: Record<string, Entity>
+): { previousContext: string; currentContext: string }[] {
+  // 현재 파일 컨텍스트 생성
   const currentEntitiesStr = currentFile.entities.map(entityToString).join('\n');
   const currentEdgesStr = currentFile.edges
     .map((e) => edgeToString(e, allEntities))
     .join('\n');
   const currentScenesStr = currentFile.scenes.map(sceneToString).join('\n');
 
-  const currentContext = `=== ${currentFile.fileName} (${currentFile.fileId}) ===
+  const currentContext = `=== ${currentFile.fileName} ===
 ## 등장인물/엔티티
 ${currentEntitiesStr || '없음'}
 
@@ -167,55 +185,74 @@ ${currentEdgesStr || '없음'}
 ## 주요 장면
 ${currentScenesStr || '없음'}`;
 
-  const systemPrompt = `당신은 소설의 **논리적 모순**을 찾는 전문가입니다.
+  // 이전 파일들을 청크로 분할
+  const chunks: { previousContext: string; currentContext: string }[] = [];
+  let currentChunk = '';
 
-## 핵심 원칙
-소설은 이야기가 진행되면서 새로운 캐릭터, 관계, 설정이 추가되는 것이 **당연합니다**.
-당신의 역할은 새로운 내용을 지적하는 것이 아니라, **기존 설정과 논리적으로 충돌하는 모순**만 찾는 것입니다.
+  for (const pf of previousFiles) {
+    const entitiesStr = pf.entities.map(entityToString).join('\n');
+    const edgesStr = pf.edges
+      .map((e) => edgeToString(e, allEntities))
+      .join('\n');
+    const scenesStr = pf.scenes.map(sceneToString).join('\n');
 
-## 보고해야 할 것 (확실한 논리적 모순만)
-1. 사망한 캐릭터가 부활 설정 없이 다시 등장
-2. 동일 인물의 나이/성별/종족 등 불변 속성이 다르게 기술됨
-3. 파괴된 아이템/장소가 복구 설명 없이 원래대로 등장
-4. 시간이 역행함 (예: 3일 후 사건 → 2일 후 사건)
-5. 명시적으로 "불가능하다"고 한 것이 가능해짐 (설명 없이)
+    const fileContext = `=== ${pf.fileName} ===
+## 등장인물/엔티티
+${entitiesStr || '없음'}
 
-## 절대 보고하지 말 것
-- 새로운 캐릭터의 등장 (당연함)
-- 새로운 관계의 형성 (소설 전개의 핵심)
-- 기존 캐릭터 간 새로운 상호작용 (이야기 발전)
-- 이전에 없던 배경/설정 추가 (세계관 확장)
-- 관계 유형의 구체화 (예: 이전엔 그냥 "관련", 이제는 "소유")
-- 캐릭터의 감정/행동 변화 (캐릭터 발전)
-- 새로운 장소나 아이템 등장
+## 관계
+${edgesStr || '없음'}
 
-## 판단 기준
-- "이전에 없었던 것" ≠ 오류 (새로운 것은 자연스러움)
-- "이전과 다른 것" ≠ 오류 (변화/발전은 자연스러움)
-- "이전과 논리적으로 충돌하는 것" = 오류 (이것만 보고)
+## 주요 장면
+${scenesStr || '없음'}
 
-## 응답 형식
-{
-  "issues": [
-    {
-      "type": "character_inconsistency" | "timeline_conflict" | "item_inconsistency" | "other",
-      "severity": "error" | "warning",
-      "description": "구체적인 모순 설명",
-      "suggestion": "수정 제안"
+`;
+
+    // 청크 크기 체크
+    if (currentChunk.length + fileContext.length + currentContext.length > MAX_CONTEXT_CHARS) {
+      // 현재 청크 저장하고 새 청크 시작
+      if (currentChunk) {
+        chunks.push({ previousContext: currentChunk, currentContext });
+      }
+      currentChunk = fileContext;
+    } else {
+      currentChunk += fileContext;
     }
-  ]
+  }
+
+  // 마지막 청크 저장
+  if (currentChunk) {
+    chunks.push({ previousContext: currentChunk, currentContext });
+  }
+
+  // 청크가 없으면 (이전 파일이 없거나 매우 작으면) 빈 컨텍스트로 하나 생성
+  if (chunks.length === 0) {
+    chunks.push({ previousContext: '없음', currentContext });
+  }
+
+  console.log(`[validation] ${previousFiles.length}개 파일 → ${chunks.length}개 청크로 분할`);
+
+  return chunks;
 }
 
-**대부분의 경우 빈 배열 {"issues": []} 을 반환해야 합니다.**
-확실한 논리적 모순이 아니면 보고하지 마세요.`;
-
-  const userPrompt = `## 이전 파일들 (기준)
+/**
+ * 단일 청크에 대해 LLM 검증 수행
+ */
+async function validateChunk(
+  previousContext: string,
+  currentContext: string,
+  currentFileId: string,
+  chunkIndex: number,
+  apiKey: string | undefined,
+  model: string
+): Promise<ValidationIssue[]> {
+  const userPrompt = `## 이전 파일들의 설정 (기준)
 ${previousContext}
 
 ## 현재 파일 (검증 대상)
 ${currentContext}
 
-위 내용을 비교하여 현재 파일에서 발견되는 일관성 문제를 JSON 형식으로 보고해주세요.`;
+위 내용을 비교하여 **물리적/논리적으로 불가능한 모순**만 JSON으로 보고하세요.`;
 
   try {
     const response = await fetch('/api/chat', {
@@ -223,10 +260,10 @@ ${currentContext}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        ...(apiKey && { apiKey }),  // apiKey가 있을 때만 전달
+        ...(apiKey && { apiKey }),
         stream: false,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
         ],
       }),
@@ -242,33 +279,71 @@ ${currentContext}
     // JSON 파싱
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.warn('[validation] JSON 파싱 실패:', content);
+      console.warn(`[validation] 청크 ${chunkIndex} JSON 파싱 실패:`, content);
       return [];
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    const issues: ValidationIssue[] = (parsed.issues || []).map(
+    return (parsed.issues || []).map(
       (issue: any, idx: number) => ({
-        id: `${currentFile.fileId}_issue_${idx + 1}`,
+        id: `${currentFileId}_chunk${chunkIndex}_issue_${idx + 1}`,
         type: issue.type || 'other',
         severity: issue.severity || 'warning',
         description: issue.description || '',
         suggestion: issue.suggestion,
       })
     );
-
-    // 디버깅: 이슈 내용 출력
-    if (issues.length > 0) {
-      console.log(`[validation] ${currentFile.fileName} 이슈 발견:`, issues.map(i => i.description));
-    } else {
-      console.log(`[validation] ${currentFile.fileName} 이슈 없음`);
-    }
-
-    return issues;
   } catch (err) {
-    console.error('[validation] LLM 검증 실패:', err);
+    console.error(`[validation] 청크 ${chunkIndex} 검증 실패:`, err);
     return [];
   }
+}
+
+/**
+ * LLM을 사용하여 파일 간 일관성 검증 (청크 분할 지원)
+ */
+async function validateWithLLM(
+  currentFile: FileGraphData,
+  previousFiles: FileGraphData[],
+  allEntities: Record<string, Entity>,
+  apiKey: string | undefined,
+  model: string
+): Promise<ValidationIssue[]> {
+  // 청크 분할
+  const chunks = splitIntoChunks(previousFiles, currentFile, allEntities);
+
+  // 각 청크 검증 (순차 실행)
+  const allIssues: ValidationIssue[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    console.log(`[validation] ${currentFile.fileName} 청크 ${i + 1}/${chunks.length} 검증 중...`);
+
+    const issues = await validateChunk(
+      chunk.previousContext,
+      chunk.currentContext,
+      currentFile.fileId,
+      i,
+      apiKey,
+      model
+    );
+
+    allIssues.push(...issues);
+  }
+
+  // 중복 제거 (description 기준)
+  const uniqueIssues = allIssues.filter((issue, index, self) =>
+    index === self.findIndex(i => i.description === issue.description)
+  );
+
+  // 디버깅
+  if (uniqueIssues.length > 0) {
+    console.log(`[validation] ${currentFile.fileName} 이슈 발견:`, uniqueIssues.map(i => i.description));
+  } else {
+    console.log(`[validation] ${currentFile.fileName} 이슈 없음`);
+  }
+
+  return uniqueIssues;
 }
 
 // ==================== 공개 API ====================
