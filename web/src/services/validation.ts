@@ -152,13 +152,19 @@ const SYSTEM_PROMPT = `당신은 소설의 **논리적 모순**을 찾는 전문
 - 죽은 사람이 살아있음 → 물리적 불가능, 모순임
 - 부서진 검이 멀쩡함 → 물리적 불가능, 모순임
 
-## 응답 형식
-{"issues": []}
+## 응답 형식 (반드시 이 형식으로)
+{
+  "summary": "검토한 내용 요약 (예: 캐릭터 A, B의 설정, 장소 X의 위치 관계, 시간대 등을 검토함)",
+  "issues": []
+}
 
-모순이 있을 때만:
-{"issues": [{"type": "character_inconsistency", "severity": "error", "description": "구체적 설명", "suggestion": "수정 제안"}]}
+모순이 있을 때:
+{
+  "summary": "검토 내용 요약",
+  "issues": [{"type": "character_inconsistency", "severity": "error", "description": "구체적 설명", "suggestion": "수정 제안"}]
+}
 
-**99%의 경우 빈 배열입니다. 확실한 물리적/논리적 모순만 보고하세요.**`;
+**summary는 항상 작성하세요. 무엇을 검토했는지 사용자가 알 수 있어야 합니다.**`;
 
 /**
  * 컨텍스트를 청크로 분할
@@ -235,6 +241,12 @@ ${scenesStr || '없음'}
   return chunks;
 }
 
+/** 청크 검증 결과 */
+interface ChunkValidationResult {
+  issues: ValidationIssue[];
+  summary: string;
+}
+
 /**
  * 단일 청크에 대해 LLM 검증 수행
  */
@@ -245,14 +257,14 @@ async function validateChunk(
   chunkIndex: number,
   apiKey: string | undefined,
   model: string
-): Promise<ValidationIssue[]> {
+): Promise<ChunkValidationResult> {
   const userPrompt = `## 이전 파일들의 설정 (기준)
 ${previousContext}
 
 ## 현재 파일 (검증 대상)
 ${currentContext}
 
-위 내용을 비교하여 **물리적/논리적으로 불가능한 모순**만 JSON으로 보고하세요.`;
+위 내용을 비교하여 JSON으로 보고하세요. summary는 반드시 작성하세요.`;
 
   try {
     const response = await fetch('/api/chat', {
@@ -280,11 +292,11 @@ ${currentContext}
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.warn(`[validation] 청크 ${chunkIndex} JSON 파싱 실패:`, content);
-      return [];
+      return { issues: [], summary: '검증 결과를 파싱할 수 없습니다.' };
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return (parsed.issues || []).map(
+    const issues = (parsed.issues || []).map(
       (issue: any, idx: number) => ({
         id: `${currentFileId}_chunk${chunkIndex}_issue_${idx + 1}`,
         type: issue.type || 'other',
@@ -293,10 +305,21 @@ ${currentContext}
         suggestion: issue.suggestion,
       })
     );
+
+    return {
+      issues,
+      summary: parsed.summary || '검토 요약 없음',
+    };
   } catch (err) {
     console.error(`[validation] 청크 ${chunkIndex} 검증 실패:`, err);
-    return [];
+    return { issues: [], summary: '검증 중 오류 발생' };
   }
+}
+
+/** LLM 검증 결과 */
+interface LLMValidationResult {
+  issues: ValidationIssue[];
+  summary: string;
 }
 
 /**
@@ -308,18 +331,19 @@ async function validateWithLLM(
   allEntities: Record<string, Entity>,
   apiKey: string | undefined,
   model: string
-): Promise<ValidationIssue[]> {
+): Promise<LLMValidationResult> {
   // 청크 분할
   const chunks = splitIntoChunks(previousFiles, currentFile, allEntities);
 
   // 각 청크 검증 (순차 실행)
   const allIssues: ValidationIssue[] = [];
+  const allSummaries: string[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     console.log(`[validation] ${currentFile.fileName} 청크 ${i + 1}/${chunks.length} 검증 중...`);
 
-    const issues = await validateChunk(
+    const result = await validateChunk(
       chunk.previousContext,
       chunk.currentContext,
       currentFile.fileId,
@@ -328,7 +352,10 @@ async function validateWithLLM(
       model
     );
 
-    allIssues.push(...issues);
+    allIssues.push(...result.issues);
+    if (result.summary) {
+      allSummaries.push(result.summary);
+    }
   }
 
   // 중복 제거 (description 기준)
@@ -336,14 +363,18 @@ async function validateWithLLM(
     index === self.findIndex(i => i.description === issue.description)
   );
 
+  // summary 병합
+  const summary = allSummaries.join(' / ');
+
   // 디버깅
   if (uniqueIssues.length > 0) {
     console.log(`[validation] ${currentFile.fileName} 이슈 발견:`, uniqueIssues.map(i => i.description));
   } else {
     console.log(`[validation] ${currentFile.fileName} 이슈 없음`);
   }
+  console.log(`[validation] ${currentFile.fileName} 요약:`, summary);
 
-  return uniqueIssues;
+  return { issues: uniqueIssues, summary };
 }
 
 // ==================== 공개 API ====================
@@ -399,7 +430,7 @@ export async function validateFile(
 
   // LLM 검증
   const model = context.model || DEFAULT_MODEL;
-  const issues = await validateWithLLM(
+  const { issues, summary } = await validateWithLLM(
     currentData,
     previousData,
     graph.entities,
@@ -416,6 +447,7 @@ export async function validateFile(
     validatedAt: new Date().toISOString(),
     issues,
     comparedWith: previousFiles.map((f) => f.id),
+    summary,
   };
 }
 

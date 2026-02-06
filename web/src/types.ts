@@ -312,4 +312,5 @@ export interface FileValidationResult {
   validatedAt: string | null;
   issues: ValidationIssue[];
   comparedWith: string[];     // 비교한 파일 ID 목록
+  summary?: string;           // 검토 내용 요약
 }

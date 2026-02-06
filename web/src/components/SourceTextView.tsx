@@ -643,7 +643,7 @@ export function SourceTextView() {
               검증 통과
             </span>
             <span className="text-xs text-green-600">
-              - 이전 {result.comparedWith.length}개 파일과 비교하여 모순 없음
+              - 이전 {result.comparedWith.length}개 파일과 비교
             </span>
             <button
               onClick={() => handleValidateFile(fileId)}
@@ -653,6 +653,11 @@ export function SourceTextView() {
               다시 검증
             </button>
           </div>
+          {result.summary && (
+            <p className="text-sm text-green-700 mt-2 bg-green-100 p-2 rounded">
+              📋 {result.summary}
+            </p>
+          )}
           {result.validatedAt && (
             <p className="text-xs text-green-500 mt-1">
               검증 시간: {new Date(result.validatedAt).toLocaleString('ko-KR')}
@@ -682,6 +687,11 @@ export function SourceTextView() {
               다시 검증
             </button>
           </div>
+          {result.summary && (
+            <p className="text-sm text-red-700 mb-2 bg-red-100 p-2 rounded">
+              📋 {result.summary}
+            </p>
+          )}
           <div className="space-y-2">
             {result.issues.map((issue) => (
               <div
