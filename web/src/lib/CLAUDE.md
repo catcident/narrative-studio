@@ -36,11 +36,12 @@ NextAuth.js v5 설정 + 헬퍼 함수
 ### AUTH_ENABLED 플래그
 
 ```typescript
-export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
+// 인증은 기본 활성 — AUTH_ENABLED=false로 명시적 비활성화만 가능 (보안 기본값)
+export const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
 ```
 
-- `true`: Catcident OAuth 인증 필수
-- `false` 또는 미설정: 익명 모드
+- 기본값(미설정/true/기타): Catcident OAuth 인증 필수
+- `false`: 익명 모드 (Railway 퍼블릭 데모)
 
 ### Catcident OAuth Provider
 
