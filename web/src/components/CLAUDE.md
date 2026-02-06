@@ -53,6 +53,18 @@ React Flow 기반 인터랙티브 관계도 그래프
 - 관련 관계 목록
 - 등장 장면 목록
 
+### PartialAnalysisBanner.tsx
+
+메인 뷰어 header 아래 표시되는 부분 분석 인디케이터 배너.
+
+**기능**:
+- 중단된 분석 상태 표시 (타이틀, 청크 진행률, 상대 시간)
+- "이어하기" / "삭제" 버튼
+- `isResuming` 시 스피너 + 진행 텍스트
+- `role="status"`, progress bar `role="progressbar"` + aria 속성
+
+**Props**: `partialAnalysis`, `onResume`, `onClear`, `isResuming`, `resumeProgress`
+
 ### TimelineView.tsx / SceneTimeline.tsx
 
 장면별 타임라인 시각화

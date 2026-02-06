@@ -5,7 +5,7 @@
 
 import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels } from '../store';
-import { extractKnowledgeGraph } from '../services/extraction';
+import { extractKnowledgeGraph, syncPartialAnalysis } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
 import { createBillingCallback, ensureSufficientBalance } from '../services/billing';
 import { readFileAsText } from '../services/fileReader';
@@ -24,6 +24,7 @@ export function useAddFileAnalysis() {
   const resetCurrentUsage = useStore((s) => s.resetCurrentUsage);
   const setLoading = useStore((s) => s.setLoading);
   const loadSubscription = useStore((s) => s.loadSubscription);
+  const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
 
   const [isAdding, setIsAdding] = useState(false);
   const [progress, setProgress] = useState('');
@@ -58,12 +59,14 @@ export function useAddFileAnalysis() {
         updated, undefined, undefined, currentDataId || undefined,
       );
       setKnowledgeGraph(updated, undefined, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       setProgress('');
       setShowUsageSummary(true);
     } catch (err: unknown) {
       console.error('[extraction] 파일 추가 오류:', err);
       setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
       setProgress('');
+      syncPartialAnalysis(setPartialAnalysis);
     } finally {
       setIsAdding(false);
       setLoading(false);
@@ -71,7 +74,7 @@ export function useAddFileAnalysis() {
     }
   }, [knowledgeGraph, currentDataId, subscription, addChunkUsage,
       updateCreditBalance, setKnowledgeGraph, setShowUsageSummary,
-      setError, resetCurrentUsage, setLoading, loadSubscription, allModels]);
+      setError, resetCurrentUsage, setLoading, loadSubscription, allModels, setPartialAnalysis]);
 
   const addFile = useCallback(async (
     file: File,

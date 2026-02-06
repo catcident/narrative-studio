@@ -5,8 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2, FileText, MessageCircle } from 'lucide-react';
-import { useStore } from './store';
+import { useStore, usePartialAnalysis } from './store';
 import { FileUpload } from './components/FileUpload';
+import { PartialAnalysisBanner } from './components/PartialAnalysisBanner';
 import { RelationshipGraph, GraphLegend } from './components/RelationshipGraph';
 import { TimelineView } from './components/TimelineView';
 import { CharacterChronicle } from './components/CharacterChronicle';
@@ -23,7 +24,9 @@ import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
+import { loadProgress } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
+import { useResumeAnalysis } from './hooks/useResumeAnalysis';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -50,15 +53,33 @@ function App() {
   const selectSceneRange = useStore((s) => s.selectSceneRange);
   const selectedEntityId = useStore((s) => s.selectedEntityId);
   const loadSubscription = useStore((s) => s.loadSubscription);
+  const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
+  const partialAnalysis = usePartialAnalysis();
   const [showDataManager, setShowDataManager] = useState(false);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { addFile, isAdding: isAddingFile, progress: addProgress } = useAddFileAnalysis();
+  const { resume, clearSavedProgress, isResuming, progress: resumeProgress } = useResumeAnalysis();
 
   // 로그인 시 구독 정보 로드
   useEffect(() => {
     loadSubscription();
   }, [loadSubscription]);
+
+  // 마운트 시 부분 분석 상태 동기화 (타이틀 매칭)
+  useEffect(() => {
+    if (!knowledgeGraph) return;
+    const progress = loadProgress();
+    if (progress && progress.title === knowledgeGraph.metadata.title) {
+      setPartialAnalysis({
+        processedChunks: progress.processedChunks,
+        totalChunks: progress.totalChunks,
+        title: progress.title,
+        timestamp: progress.timestamp,
+        model: progress.model,
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만
 
   // 지식 그래프가 변경되면 자동 저장
   // FileUpload에서 저장한 경우 currentDataId가 이미 있으므로 중복 저장 방지
@@ -104,6 +125,7 @@ function App() {
   // 데이터 관리자에서 불러오기 (ID 포함)
   const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph, dataId?: string) => {
     setKnowledgeGraph(loaded, undefined, dataId);
+    setPartialAnalysis(null);
     setShowDataManager(false);
   };
 
@@ -376,6 +398,17 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* 부분 분석 배너 */}
+      {partialAnalysis && (
+        <PartialAnalysisBanner
+          partialAnalysis={partialAnalysis}
+          onResume={resume}
+          onClear={clearSavedProgress}
+          isResuming={isResuming}
+          resumeProgress={resumeProgress}
+        />
+      )}
 
       {/* 장면 타임라인 (장면이 있을 때만) */}
       {viewMode === 'graph' && scenes.length > 0 && (

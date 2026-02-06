@@ -238,6 +238,16 @@ export interface ChronicleEvent {
   sentiment?: string;
 }
 
+// ==================== Partial Analysis ====================
+
+export interface PartialAnalysisInfo {
+  processedChunks: number;
+  totalChunks: number;
+  title: string;
+  timestamp: number;
+  model?: string;
+}
+
 // ==================== UI ====================
 
 export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';

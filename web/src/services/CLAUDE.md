@@ -15,8 +15,8 @@
 | `selector.ts` | 엔티티 선별 (LLM 기반) + API 키 관리 |
 | `extractor.ts` | 단일 청크 LLM 추출 + JSON 복구 |
 | `merger.ts` | 결과 병합 + 관계 추론 + 지식 그래프 구조화 |
-| `orchestrator.ts` | 메인 파이프라인 + 진행상황 저장/복원 |
-| `index.ts` | Public API re-export |
+| `orchestrator.ts` | 메인 파이프라인 + 진행상황 저장/복원 + `syncPartialAnalysis` |
+| `index.ts` | Public API re-export only (함수 구현 금지) |
 
 ### 모듈 의존성 규칙
 
@@ -112,7 +112,7 @@ interface ExtractionOptions {
 }
 
 // 진행상황 관리
-saveProgress(), loadProgress(), clearProgress()
+saveProgress(), loadProgress(), clearProgress(), syncPartialAnalysis(setter)
 
 // API 키 관리
 setApiKey(), hasApiKey(), getApiKey()
@@ -147,6 +147,7 @@ extractKnowledgeGraph({ onChunkBilling })
 - [ ] 402 응답 명시 처리 (selector, extractor 모두) — generic error에 흡수 금지
 - [ ] `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
+- [ ] `syncPartialAnalysis(setPartialAnalysis)` — extraction 완료/실패 후 반드시 호출 (success + error 양쪽)
 
 ### 파일 추가 분석
 

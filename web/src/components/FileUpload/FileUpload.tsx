@@ -4,7 +4,7 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useStore, useBillingSubscription, useModels } from '../../store';
-import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
+import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
@@ -73,6 +73,7 @@ export function FileUpload() {
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const loadSubscription = useStore((s) => s.loadSubscription);
   const loadModels = useStore((s) => s.loadModels);
+  const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
   const subscription = useBillingSubscription();
   const allModels = useModels();
   const [dragActive, setDragActive] = useState(false);
@@ -251,7 +252,8 @@ export function FileUpload() {
   const handleClearProgress = useCallback(() => {
     clearProgress();
     setSavedProgress(null);
-  }, []);
+    setPartialAnalysis(null);
+  }, [setPartialAnalysis]);
 
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
@@ -329,10 +331,11 @@ export function FileUpload() {
       setBookTitle('');
       setBookAuthor('');
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       resetProgressState();
       return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -391,10 +394,11 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       resetProgressState();
       return true;
     });
-  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels]);
+  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels, setPartialAnalysis]);
 
   // 추가 분석 (기존 결과에 새 파일 병합) — useAddFileAnalysis 훅 위임
   const handleAddFile = useCallback(async (file: File) => {
@@ -544,10 +548,11 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       resetProgressState();
       return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis]);
 
   // ==================== 렌더링 ====================
 

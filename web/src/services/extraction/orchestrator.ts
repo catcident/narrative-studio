@@ -2,7 +2,7 @@
  * 지식 그래프 추출 서비스 — 메인 오케스트레이션
  */
 
-import type { NovelKnowledgeGraph } from '../../types';
+import type { NovelKnowledgeGraph, PartialAnalysisInfo } from '../../types';
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from '../../types';
 import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions } from './types';
 import { EMPTY_CHUNK_DATA } from './types';
@@ -373,4 +373,25 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   const finalText = resumeFrom?.originalText || text;
   const finalFileNames = resumeFrom?.fileNames || fileNames;
   return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph);
+}
+
+/**
+ * localStorage의 진행상황을 store.partialAnalysis와 동기화.
+ * extractKnowledgeGraph() 완료 후 호출하여 부분 분석 상태를 반영.
+ */
+export function syncPartialAnalysis(
+  setPartialAnalysis: (info: PartialAnalysisInfo | null) => void,
+): void {
+  const progress = loadProgress();
+  if (progress) {
+    setPartialAnalysis({
+      processedChunks: progress.processedChunks,
+      totalChunks: progress.totalChunks,
+      title: progress.title,
+      timestamp: progress.timestamp,
+      model: progress.model,
+    });
+  } else {
+    setPartialAnalysis(null);
+  }
 }

@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult, PartialAnalysisInfo } from './types';
 import { AVAILABLE_MODELS } from './types';
 import { getSubscription } from './services/billing';
 
@@ -31,6 +31,9 @@ interface AppState {
   isValidating: boolean;  // 검증 진행 중 여부
   validatingFileId: string | null;  // 현재 검증 중인 파일 ID
 
+  // Partial Analysis
+  partialAnalysis: PartialAnalysisInfo | null;
+
   // Billing
   subscription: BillingSubscription | null;
   currentUsage: CurrentUsage;
@@ -55,6 +58,7 @@ interface AppState {
   selectSceneRange: (start: string | null, end: string | null) => void;
   setViewMode: (mode: ViewMode) => void;
   setChatMentionedEntities: (entityIds: string[]) => void;
+  setPartialAnalysis: (info: PartialAnalysisInfo | null) => void;
   reset: () => void;
 
   // 검증 액션
@@ -94,6 +98,7 @@ export const useStore = create<AppState>((set, get) => ({
   validationResults: new Map(),
   isValidating: false,
   validatingFileId: null,
+  partialAnalysis: null,
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
@@ -131,6 +136,7 @@ export const useStore = create<AppState>((set, get) => ({
   setViewMode: (viewMode) => set({ viewMode }),
   setChatMentionedEntities: (chatMentionedEntities) => set({ chatMentionedEntities }),
 
+
   // 검증 액션
   setValidationResults: (validationResults) => set({ validationResults }),
   updateValidationResult: (fileId, result) => set((state) => {
@@ -142,6 +148,7 @@ export const useStore = create<AppState>((set, get) => ({
   setValidatingFileId: (validatingFileId) => set({ validatingFileId }),
   clearValidationResults: () => set({ validationResults: new Map(), isValidating: false, validatingFileId: null }),
 
+  setPartialAnalysis: (partialAnalysis) => set({ partialAnalysis }),
   reset: () => set({
     knowledgeGraph: null,
     originalText: null,
@@ -155,6 +162,7 @@ export const useStore = create<AppState>((set, get) => ({
     validationResults: new Map(),
     isValidating: false,
     validatingFileId: null,
+    partialAnalysis: null,
     error: null,
     currentUsage: initialUsage,
     showUsageSummary: false,
@@ -217,6 +225,7 @@ export const useCreditBalance = () => useStore((s) => s.subscription?.creditBala
 export const useAuthEnabled = () => useStore((s) => s.authEnabled);
 export const useModels = () => useStore((s) => s.models);
 export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);
+export const usePartialAnalysis = () => useStore((s) => s.partialAnalysis);
 
 export const useCharacters = (): Entity[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
