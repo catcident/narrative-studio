@@ -731,9 +731,29 @@ export function SourceTextView() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-red-400 mt-2">
-            * 이 이슈들이 있어도 소설 작성을 계속할 수 있습니다. 필요시 수정하세요.
-          </p>
+          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-red-200">
+            <button
+              onClick={() => {
+                // 이슈를 유지하면서 passed로 변경
+                const passedResult: FileValidationResult = {
+                  ...result,
+                  status: 'passed',
+                };
+                updateValidationResult(fileId, passedResult);
+                setExpandedIssues(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(fileId);
+                  return newSet;
+                });
+              }}
+              className="text-xs px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded font-medium"
+            >
+              ✓ 확인 후 통과 처리
+            </button>
+            <span className="text-xs text-gray-500">
+              이슈를 확인했고 문제없다고 판단하면 클릭
+            </span>
+          </div>
         </div>
       );
     }
