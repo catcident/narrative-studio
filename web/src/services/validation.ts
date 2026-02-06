@@ -40,10 +40,14 @@ interface FileGraphData {
 
 /**
  * 파일별 그래프 데이터 추출
+ * @param graph 전체 지식 그래프
+ * @param file 대상 파일
+ * @param scopeFileIds 범위 제한용 파일 ID들 (이 파일들의 장면에서만 엔티티 정보 추출)
  */
 function extractFileGraphData(
   graph: NovelKnowledgeGraph,
-  file: SourceFile
+  file: SourceFile,
+  scopeFileIds?: Set<string>
 ): FileGraphData {
   const fileId = file.id;
   const fileName = file.fileName;
@@ -66,9 +70,45 @@ function extractFileGraphData(
     });
   });
 
-  const entities = Object.values(graph.entities).filter((e) =>
-    entityIds.has(e.id)
-  );
+  // 엔티티 가져오되, scopeFileIds가 있으면 해당 범위 장면의 정보만 사용
+  let entities: Entity[];
+  if (scopeFileIds) {
+    // 범위 내 파일들의 장면 ID 수집
+    const scopeSceneIds = new Set<string>();
+    Object.values(graph.snapshots).forEach((scene) => {
+      if (scopeFileIds.has(scene.sourceFileId || '')) {
+        scopeSceneIds.add(scene.sceneId);
+      }
+    });
+
+    // 엔티티 정보를 범위 내 장면 기준으로 재구성
+    entities = Object.values(graph.entities)
+      .filter((e) => entityIds.has(e.id))
+      .map((e) => {
+        // 해당 엔티티가 등장하는 범위 내 장면들의 요약에서 정보 추출
+        const relevantScenes = Object.values(graph.snapshots).filter(
+          (scene) =>
+            scopeSceneIds.has(scene.sceneId) &&
+            scene.charactersPresent?.includes(e.id)
+        );
+
+        // 범위 내 장면들의 요약을 엔티티 설명으로 사용
+        const scopedDescription = relevantScenes
+          .map((s) => s.summary)
+          .filter(Boolean)
+          .slice(0, 3) // 최대 3개 장면
+          .join(' / ');
+
+        return {
+          ...e,
+          description: scopedDescription || `${e.name} (${e.category})`,
+        };
+      });
+  } else {
+    entities = Object.values(graph.entities).filter((e) =>
+      entityIds.has(e.id)
+    );
+  }
 
   // 해당 파일의 관계들
   const edges = Object.values(graph.hyperedges).filter(
@@ -419,16 +459,43 @@ export async function validateFile(
   const currentFile = sourceFiles[fileIndex];
   const previousFiles = sourceFiles.slice(0, fileIndex);
 
-  // 그래프 데이터 추출
-  const currentData = extractFileGraphData(graph, currentFile);
-  const previousData = previousFiles.map((f) => extractFileGraphData(graph, f));
+  // 범위 제한: 이전 파일들 + 현재 파일만 (5화 검증 시 1~5화만)
+  const scopeFileIds = new Set([
+    ...previousFiles.map((f) => f.id),
+    currentFile.id,
+  ]);
+
+  // 그래프 데이터 추출 (범위 내 파일 정보만 사용)
+  const currentData = extractFileGraphData(graph, currentFile, scopeFileIds);
+  const previousData = previousFiles.map((f) => extractFileGraphData(graph, f, scopeFileIds));
+
+  // 범위 내 엔티티만 필터링
+  const scopeSceneIds = new Set<string>();
+  Object.values(graph.snapshots).forEach((scene) => {
+    if (scopeFileIds.has(scene.sourceFileId || '')) {
+      scopeSceneIds.add(scene.sceneId);
+    }
+  });
+
+  const scopedEntities: Record<string, Entity> = {};
+  Object.entries(graph.entities).forEach(([id, entity]) => {
+    // 이 엔티티가 범위 내 장면에 등장하는지 확인
+    const appearsInScope = Object.values(graph.snapshots).some(
+      (scene) =>
+        scopeSceneIds.has(scene.sceneId) &&
+        scene.charactersPresent?.includes(id)
+    );
+    if (appearsInScope) {
+      scopedEntities[id] = entity;
+    }
+  });
 
   // LLM 검증
   const model = context.model || DEFAULT_MODEL;
   const { issues, summary } = await validateWithLLM(
     currentData,
     previousData,
-    graph.entities,
+    scopedEntities,  // 범위 내 엔티티만 전달
     context.apiKey,
     model
   );
