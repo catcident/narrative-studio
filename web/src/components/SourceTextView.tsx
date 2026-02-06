@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, Shield, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, AlertTriangle } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle } from 'lucide-react';
 import { useStore, useValidationResults, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile, invalidateFilesAfter } from '../services/validation';
@@ -518,14 +518,14 @@ export function SourceTextView() {
     }
   }, [knowledgeGraph, isValidating, validationResults, setIsValidating, setValidatingFileId, updateValidationResult, setValidationResults]);
 
-  // 검증 상태 아이콘 렌더링
-  const renderValidationIcon = (fileId: string, fileIndex: number) => {
-    // 첫 번째 파일은 검증 불필요
+  // 검증 버튼 렌더링 (글자 버튼)
+  const renderValidationButton = (fileId: string, fileIndex: number) => {
+    // 첫 번째 파일은 기준 파일
     if (fileIndex === 0) {
       return (
-        <div className="p-1.5" title="기준 파일 (검증 불필요)">
-          <Shield className="w-4 h-4 text-gray-300" />
-        </div>
+        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-400 rounded">
+          기준
+        </span>
       );
     }
 
@@ -534,9 +534,10 @@ export function SourceTextView() {
 
     if (isCurrentlyValidating) {
       return (
-        <div className="p-1.5" title="검증 중...">
-          <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-        </div>
+        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded flex items-center gap-1">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          검증중
+        </span>
       );
     }
 
@@ -548,10 +549,9 @@ export function SourceTextView() {
             handleValidateFile(fileId);
           }}
           disabled={isValidating}
-          className="p-1.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
-          title="일관성 검증하기"
+          className="text-xs px-2 py-1 bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-600 rounded transition-colors disabled:opacity-50"
         >
-          <ShieldQuestion className="w-4 h-4 text-gray-400 hover:text-blue-500" />
+          검증하기
         </button>
       );
     }
@@ -561,7 +561,6 @@ export function SourceTextView() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            // 결과 패널 토글
             setExpandedIssues(prev => {
               const newSet = new Set(prev);
               if (newSet.has(fileId)) {
@@ -572,10 +571,9 @@ export function SourceTextView() {
               return newSet;
             });
           }}
-          className="p-1.5 hover:bg-green-100 rounded transition-colors"
-          title="검증 통과 - 클릭하여 상세 보기"
+          className="text-xs px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors font-medium"
         >
-          <ShieldCheck className="w-4 h-4 text-green-500" />
+          통과 {expandedIssues.has(fileId) ? '▲' : '▼'}
         </button>
       );
     }
@@ -585,7 +583,6 @@ export function SourceTextView() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            // 이슈 목록 토글
             setExpandedIssues(prev => {
               const newSet = new Set(prev);
               if (newSet.has(fileId)) {
@@ -596,10 +593,9 @@ export function SourceTextView() {
               return newSet;
             });
           }}
-          className="p-1.5 hover:bg-red-100 rounded transition-colors"
-          title={`검증 실패 (${result.issues.length}개 이슈) - 클릭하여 상세 보기`}
+          className="text-xs px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors font-medium"
         >
-          <ShieldAlert className="w-4 h-4 text-red-500" />
+          이슈 {result.issues.length}개 {expandedIssues.has(fileId) ? '▲' : '▼'}
         </button>
       );
     }
@@ -612,10 +608,9 @@ export function SourceTextView() {
             handleValidateFile(fileId);
           }}
           disabled={isValidating}
-          className="p-1.5 hover:bg-yellow-100 rounded transition-colors"
-          title="이전 파일 실패로 재검증 필요 (클릭하여 검증)"
+          className="text-xs px-2 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors disabled:opacity-50"
         >
-          <AlertTriangle className="w-4 h-4 text-yellow-500" />
+          재검증 필요
         </button>
       );
     }
@@ -823,9 +818,9 @@ export function SourceTextView() {
                   </div>
                 </div>
 
-                {/* 검증 상태 아이콘 */}
+                {/* 검증 상태 버튼 */}
                 <div onClick={(e) => e.stopPropagation()}>
-                  {renderValidationIcon(file.id, index)}
+                  {renderValidationButton(file.id, index)}
                 </div>
 
                 {/* 순서 이동 버튼 */}
