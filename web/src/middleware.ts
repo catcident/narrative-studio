@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
+// 인증은 기본 활성 — AUTH_ENABLED=false로 명시적 비활성화만 가능 (보안 기본값)
+const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
 
 // 인증 비활성화 시 미들웨어 바이패스
 export async function middleware(request: NextRequest) {
