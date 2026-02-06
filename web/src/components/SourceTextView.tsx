@@ -561,11 +561,19 @@ export function SourceTextView() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleValidateFile(fileId);
+            // 결과 패널 토글
+            setExpandedIssues(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(fileId)) {
+                newSet.delete(fileId);
+              } else {
+                newSet.add(fileId);
+              }
+              return newSet;
+            });
           }}
-          disabled={isValidating}
           className="p-1.5 hover:bg-green-100 rounded transition-colors"
-          title="검증 통과 (다시 검증하려면 클릭)"
+          title="검증 통과 - 클릭하여 상세 보기"
         >
           <ShieldCheck className="w-4 h-4 text-green-500" />
         </button>
@@ -615,65 +623,106 @@ export function SourceTextView() {
     return null;
   };
 
-  // 이슈 목록 렌더링
-  const renderIssues = (fileId: string) => {
+  // 검증 결과 패널 렌더링 (passed/failed 모두)
+  const renderValidationPanel = (fileId: string, fileIndex: number) => {
+    // 첫 번째 파일은 검증 패널 없음
+    if (fileIndex === 0) return null;
+
     const result = validationResults.get(fileId);
-    if (!result || result.issues.length === 0 || !expandedIssues.has(fileId)) {
-      return null;
+    if (!result || !expandedIssues.has(fileId)) return null;
+
+    // passed 상태
+    if (result.status === 'passed') {
+      return (
+        <div className="bg-green-50 border-t border-green-200 p-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-medium text-green-800">
+              검증 통과
+            </span>
+            <span className="text-xs text-green-600">
+              - 이전 {result.comparedWith.length}개 파일과 비교하여 모순 없음
+            </span>
+            <button
+              onClick={() => handleValidateFile(fileId)}
+              disabled={isValidating}
+              className="ml-auto text-xs text-green-600 hover:text-green-800 underline disabled:opacity-50"
+            >
+              다시 검증
+            </button>
+          </div>
+          {result.validatedAt && (
+            <p className="text-xs text-green-500 mt-1">
+              검증 시간: {new Date(result.validatedAt).toLocaleString('ko-KR')}
+            </p>
+          )}
+        </div>
+      );
     }
 
-    return (
-      <div className="bg-red-50 border-t border-red-200 p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <ShieldAlert className="w-4 h-4 text-red-600" />
-          <span className="text-sm font-medium text-red-800">
-            검증 이슈 ({result.issues.length}개)
-          </span>
-          <button
-            onClick={() => handleValidateFile(fileId)}
-            disabled={isValidating}
-            className="ml-auto text-xs text-red-600 hover:text-red-800 underline disabled:opacity-50"
-          >
-            다시 검증
-          </button>
-        </div>
-        <div className="space-y-2">
-          {result.issues.map((issue) => (
-            <div
-              key={issue.id}
-              className={`text-sm p-2 rounded ${
-                issue.severity === 'error'
-                  ? 'bg-red-100 border border-red-300'
-                  : 'bg-yellow-100 border border-yellow-300'
-              }`}
+    // failed 상태 (이슈가 있음)
+    if (result.status === 'failed' && result.issues.length > 0) {
+      return (
+        <div className="bg-red-50 border-t border-red-200 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-medium text-red-800">
+              검증 이슈 ({result.issues.length}개)
+            </span>
+            <span className="text-xs text-red-500">
+              - 이전 {result.comparedWith.length}개 파일과 비교
+            </span>
+            <button
+              onClick={() => handleValidateFile(fileId)}
+              disabled={isValidating}
+              className="ml-auto text-xs text-red-600 hover:text-red-800 underline disabled:opacity-50"
             >
-              <div className="flex items-start gap-2">
-                <span
-                  className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                    issue.severity === 'error'
-                      ? 'bg-red-200 text-red-800'
-                      : 'bg-yellow-200 text-yellow-800'
-                  }`}
-                >
-                  {issue.severity === 'error' ? '오류' : '경고'}
-                </span>
-                <span
-                  className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded"
-                >
-                  {issue.type.replace(/_/g, ' ')}
-                </span>
+              다시 검증
+            </button>
+          </div>
+          <div className="space-y-2">
+            {result.issues.map((issue) => (
+              <div
+                key={issue.id}
+                className={`text-sm p-2 rounded ${
+                  issue.severity === 'error'
+                    ? 'bg-red-100 border border-red-300'
+                    : 'bg-yellow-100 border border-yellow-300'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <span
+                    className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                      issue.severity === 'error'
+                        ? 'bg-red-200 text-red-800'
+                        : 'bg-yellow-200 text-yellow-800'
+                    }`}
+                  >
+                    {issue.severity === 'error' ? '오류' : '경고'}
+                  </span>
+                  <span
+                    className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded"
+                  >
+                    {issue.type.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <p className="mt-1 text-gray-700">{issue.description}</p>
+                {issue.suggestion && (
+                  <p className="mt-1 text-gray-500 text-xs">
+                    💡 {issue.suggestion}
+                  </p>
+                )}
               </div>
-              <p className="mt-1 text-gray-700">{issue.description}</p>
-              {issue.suggestion && (
-                <p className="mt-1 text-gray-500 text-xs">
-                  💡 {issue.suggestion}
-                </p>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+          <p className="text-xs text-red-400 mt-2">
+            * 이 이슈들이 있어도 소설 작성을 계속할 수 있습니다. 필요시 수정하세요.
+          </p>
         </div>
-      </div>
-    );
+      );
+    }
+
+    return null;
   };
 
   if (sourceFiles.length === 0) {
@@ -852,8 +901,8 @@ export function SourceTextView() {
                 )}
               </button>
 
-              {/* 검증 이슈 목록 */}
-              {renderIssues(file.id)}
+              {/* 검증 결과 패널 */}
+              {renderValidationPanel(file.id, index)}
 
               {/* 파일 내용 */}
               {isExpanded && (
