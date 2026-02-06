@@ -116,12 +116,12 @@ export const useStore = create<AppState>((set, get) => ({
   authEnabled: null,
 
   setAuthEnabled: (authEnabled) => set({ authEnabled }),
-  setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set({
+  setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set((state) => ({
     knowledgeGraph,
-    originalText: originalText || null,
-    currentDataId: dataId || null,
+    originalText: originalText !== undefined ? originalText : state.originalText,
+    currentDataId: dataId !== undefined ? dataId : state.currentDataId,
     error: null,
-  }),
+  })),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   selectEntity: (selectedEntityId) => set({ selectedEntityId }),
