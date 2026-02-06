@@ -121,16 +121,9 @@ export const GET = billingGetHandler('/plans/?service=storygraph', 'plans GET');
 export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST');
 ```
 
-### 스토리지 (Dual Layer)
+### 스토리지 (서버 전용)
 
-```
-요청 → MongoDB API
-         ↓ 실패
-      IndexedDB (폴백)
-```
-
-- 서버 저장 ID: MongoDB ObjectId
-- 로컬 저장 ID: `kg_` 접두사
+서버 API를 통해 MongoDB에 저장. 서버 실패 시 에러 반환 또는 빈 결과.
 
 **버전 관리**: 매 저장 시 이전 버전 자동 보관
 

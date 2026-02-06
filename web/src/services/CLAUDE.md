@@ -161,38 +161,20 @@ extractKnowledgeGraph({ onChunkBilling })
 
 ## storage.ts - 스토리지 서비스
 
-지식 그래프 데이터 영속화 관리
+지식 그래프 데이터 영속화 관리 (서버 MongoDB 전용)
 
-### Dual Layer 아키텍처
+### 서버 실패 시 동작
 
-```typescript
-// 저장/로드 흐름
-try {
-  return await serverAPI();  // MongoDB 우선
-} catch {
-  return await localIndexedDB();  // 폴백
-}
-```
-
-### IndexedDB 스키마
-
-**Database**: `character-relationship-db`
-
-| Store | keyPath | 설명 |
-|-------|---------|------|
-| `knowledgeGraphs` | `id` | 메인 데이터 |
-| `versions` | `[dataId, version]` | 버전 히스토리 |
-
-### 버전 관리 로직
-
-1. 저장 시 기존 데이터 존재 확인
-2. 존재하면 `versions` 스토어에 이전 버전 보관
-3. `version` 필드 증가 후 업데이트
-
-### ID 구분
-
-- **로컬**: `kg_` 접두사 (예: `kg_1706123456789_abc1234`)
-- **서버**: MongoDB ObjectId (24자 hex)
+| 함수 | 서버 실패 시 |
+|------|------------|
+| `getSavedKnowledgeGraphList` | `[]` 반환 |
+| `loadKnowledgeGraph` | `null` 반환 |
+| `saveKnowledgeGraph` | **throw** (데이터 유실 방지) |
+| `updateKnowledgeGraph` | `false` 반환 |
+| `deleteKnowledgeGraph` | `false` 반환 |
+| `getVersionHistory` | `[]` 반환 |
+| `restoreVersion` | `null` 반환 |
+| `saveNovelText` | **throw** (데이터 유실 방지) |
 
 ### 주요 함수
 
@@ -200,7 +182,7 @@ try {
 // 목록/CRUD
 getSavedKnowledgeGraphList()
 loadKnowledgeGraph(id)
-saveKnowledgeGraph(knowledgeGraph, novelId?, userId?, existingId?)
+saveKnowledgeGraph(knowledgeGraph, novelId?, existingId?)
 deleteKnowledgeGraph(id)
 
 // 버전 관리
@@ -208,7 +190,7 @@ getVersionHistory(dataId)
 restoreVersion(dataId, version)
 
 // 소설 원본 관리
-saveNovelText(title, text, knowledgeGraphId?, userId?)
+saveNovelText(title, text, knowledgeGraphId?)
 loadNovelText(id)
 getNovelList()
 

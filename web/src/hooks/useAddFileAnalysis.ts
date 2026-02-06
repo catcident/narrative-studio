@@ -56,7 +56,7 @@ export function useAddFileAnalysis() {
 
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(
-        updated, undefined, undefined, currentDataId || undefined,
+        updated, undefined, currentDataId || undefined,
       );
       setKnowledgeGraph(updated, undefined, saved.id);
       syncPartialAnalysis(setPartialAnalysis);

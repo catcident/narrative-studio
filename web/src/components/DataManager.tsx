@@ -340,7 +340,7 @@ export function DataManager({ onClose, onLoad }: Props) {
 
         {/* 푸터 */}
         <div className="p-4 border-t bg-gray-50 text-xs text-gray-500 rounded-b-xl">
-          데이터는 브라우저 로컬 저장소에 저장됩니다. 브라우저 데이터를 삭제하면 함께 삭제됩니다.
+          데이터는 서버에 저장됩니다.
         </div>
       </div>
     </ModalOverlay>
