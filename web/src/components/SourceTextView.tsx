@@ -470,19 +470,15 @@ export function SourceTextView() {
   const handleValidateFile = useCallback(async (fileId: string) => {
     if (!knowledgeGraph || isValidating) return;
 
-    // API 키 가져오기 (localStorage에서)
-    const apiKey = localStorage.getItem('OPENROUTER_API_KEY') || '';
-    if (!apiKey) {
-      alert('API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
-      return;
-    }
+    // API 키는 localStorage에서 가져오거나, 서버에서 환경변수 사용
+    const apiKey = localStorage.getItem('OPENROUTER_API_KEY') || undefined;
 
     setIsValidating(true);
     setValidatingFileId(fileId);
 
     try {
       const result = await validateFile(knowledgeGraph, fileId, {
-        apiKey,
+        apiKey,  // undefined면 서버에서 환경변수 사용
         model: knowledgeGraph.metadata.model,
         onProgress: (fId, status) => {
           console.log(`[validation] ${fId}: ${status}`);

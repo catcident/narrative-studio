@@ -18,7 +18,7 @@ import { DEFAULT_MODEL } from '../types';
 // ==================== 타입 ====================
 
 interface ValidationContext {
-  apiKey: string;
+  apiKey?: string;  // 옵셔널 - 서버에서 환경변수 사용 가능
   model?: string;
   onProgress?: (fileId: string, status: ValidationStatus) => void;
 }
@@ -126,7 +126,7 @@ async function validateWithLLM(
   currentFile: FileGraphData,
   previousFiles: FileGraphData[],
   allEntities: Record<string, Entity>,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string
 ): Promise<ValidationIssue[]> {
   // 이전 파일들의 정보 요약
@@ -207,7 +207,7 @@ ${currentContext}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        apiKey,
+        ...(apiKey && { apiKey }),  // apiKey가 있을 때만 전달
         stream: false,
         messages: [
           { role: 'system', content: systemPrompt },
