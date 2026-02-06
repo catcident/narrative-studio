@@ -255,6 +255,13 @@ ${currentContext}
       })
     );
 
+    // 디버깅: 이슈 내용 출력
+    if (issues.length > 0) {
+      console.log(`[validation] ${currentFile.fileName} 이슈 발견:`, issues.map(i => i.description));
+    } else {
+      console.log(`[validation] ${currentFile.fileName} 이슈 없음`);
+    }
+
     return issues;
   } catch (err) {
     console.error('[validation] LLM 검증 실패:', err);
