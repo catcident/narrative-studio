@@ -63,6 +63,11 @@ export interface Entity {
   name: string;
   aliases?: string[];
   category: EntityCategory;
+  /**
+   * @deprecated UI에서 사용하지 말 것
+   * - 파일 수정/삭제 시 동기화 문제로 인해 UI 표시에서 제외됨
+   * - 데이터는 유지됨 (향후 채팅 기능에서 활용 예정)
+   */
   description?: string;
   attributes?: Record<string, any>;
   firstMention?: SourceRef;

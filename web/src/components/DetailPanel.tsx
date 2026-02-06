@@ -374,12 +374,12 @@ export function DetailPanel() {
 
       {/* 내용 - 스크롤 */}
       <div className="flex-1 overflow-y-auto">
-        {/* 설명 */}
-        {entity.description && (
-          <div className="p-4 border-b border-gray-100">
-            <p className="text-sm text-gray-700 leading-relaxed">{entity.description}</p>
-          </div>
-        )}
+        {/*
+         * 설명(description) 필드는 UI에서 숨김 처리
+         * - 파일 수정/삭제 시 동기화 문제로 인해 UI에서 제외
+         * - 데이터는 유지됨 (채팅 기능에서 활용 예정)
+         * - 이 필드 내용은 다른 곳에서 사용하지 말 것
+         */}
 
         {/* 속성 */}
         {entity.attributes && Object.keys(entity.attributes).length > 0 && (
