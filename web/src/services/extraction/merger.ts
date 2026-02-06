@@ -757,6 +757,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   const edgeCounter = { value: Object.keys(hyperedges).length };
 
   // 엔티티 등록
+  console.log(`[extraction] LLM 추출 엔티티 수: ${extracted.entities.length}개`);
   for (const e of extracted.entities) {
     const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
     // 새 장면 ID로 변환 (sceneIdMapping 사용)
@@ -770,7 +771,9 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
         existing.description = ((existing.description || '') + ' ' + e.description).slice(0, 500);
       }
       // 기존 scenes에 새 장면 ID 추가 (중복 제거)
+      const oldScenes = existing.scenes?.length || 0;
       existing.scenes = [...new Set([...(existing.scenes || []), ...newSceneIds])];
+      console.log(`[extraction] 기존 엔티티 업데이트: ${e.name} (${existingId}), scenes: ${oldScenes}→${existing.scenes.length}`);
       continue;
     }
 
@@ -787,6 +790,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       firstMention: { chapter: 1 },
       importance: e.importance || 5,
     };
+    console.log(`[extraction] 새 엔티티 생성: ${e.name} (${id}), category: ${e.category}, scenes: ${newSceneIds.join(',')}`);
     registerNameMapping(nameToId, e.name, id);
     for (const alias of (e.aliases || [])) {
       registerNameMapping(nameToId, alias, id);
