@@ -898,24 +898,30 @@ ${relationSection}
 ## 장면 목록 (시간순)
 ${sceneSection || '(장면 정보 없음)'}
 
-## 답변 형식 (필수)
+## 답변 지침 (필수)
 
-**마크다운으로 깔끔하게 정리하세요:**
+### 1. 상세하게 답변
+- 짧은 답변 금지. 최소 5문장 이상으로 풍부하게 설명
+- 캐릭터 질문: 외모, 성격, 등장 장면, 다른 캐릭터와의 관계 모두 설명
+- "자세히", "더 알려줘" 요청 시: 이전에 말한 내용 + 추가 정보 제공
 
-1. **핵심 답변을 먼저**: 질문에 대한 직접적인 답을 첫 문장에 작성
-   - 예: "얼룩 고양이는 **장면 3**에서 처음 등장합니다."
+### 2. 대화 맥락 유지 (멀티턴)
+- 이전 대화에서 언급된 대상을 기억하고 이어서 답변
+- "그거", "그 캐릭터", "더 자세히" 등은 이전 맥락 참조
+- 예: "얼룩고양이 알려줘" → (답변) → "더 자세히" → 얼룩고양이에 대해 추가 설명
 
-2. **구조화된 형식 사용**:
-   - 제목은 ### 로 시작
-   - 중요 단어는 **굵게** 표시
-   - 항목 나열은 - 또는 숫자 목록 사용
-   - 인용문은 > 로 시작
+### 3. 마크다운 형식
+- 제목: ### 사용
+- 강조: **굵게**
+- 목록: - 또는 1. 2. 3.
+- 인용: > 사용
 
-3. **간결하게**: 불필요한 서론 없이 바로 본론으로. 3-5문장 정도가 적당.
+### 4. 정보 부족 시
+- "해당 정보를 찾을 수 없습니다"로 끝내지 말 것
+- 대신 **구체적으로 질문**: "어떤 장면에서의 얼룩고양이를 말씀하시나요?" 또는 "혹시 다른 이름으로 불리는 캐릭터인가요?"
+- 비슷한 정보가 있으면 제안: "혹시 OOO를 찾으시나요?"
 
-4. **정보가 없으면**: "해당 정보를 찾을 수 없습니다"라고 간단히.
-
-5. 답변은 한국어로 작성.
+### 5. 한국어로 답변
 
 ${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자 있습니다.` : ''}`;
 }
@@ -936,9 +942,20 @@ export async function sendChatMessage(
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
 
+  // 이전 대화에서 언급된 엔티티도 추출 (멀티턴 맥락 유지)
+  const recentMessages = messages.slice(-6); // 최근 3턴 (user+assistant 쌍)
+  const previousContext = recentMessages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => m.content)
+    .join(' ');
+
   // [1단계] LLM 의도 분석 (키워드 + 카테고리 요청 판단)
+  // 현재 질문 + 이전 맥락을 함께 분석
+  const queryForAnalysis = lastUserMessage
+    ? `${lastUserMessage.content} (이전 맥락: ${previousContext.slice(0, 500)})`
+    : '';
   const queryAnalysis = lastUserMessage
-    ? await analyzeQueryWithLLM(lastUserMessage.content, userApiKey || undefined)
+    ? await analyzeQueryWithLLM(queryForAnalysis, userApiKey || undefined)
     : { keywords: [], wantsCategoryList: false, targetCategory: null };
 
   // [2단계] 데이터 수집
@@ -961,6 +978,15 @@ export async function sendChatMessage(
       context.knowledgeGraph.entities
     );
     directFromQuery.forEach(id => {
+      if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
+    });
+
+    // 이전 대화 맥락에서도 엔티티 검색 (멀티턴 지원)
+    const contextEntityIds = findMentionedEntityIds(
+      previousContext,
+      context.knowledgeGraph.entities
+    );
+    contextEntityIds.forEach(id => {
       if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
     });
 
