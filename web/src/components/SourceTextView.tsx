@@ -9,6 +9,7 @@ import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2,
 import { useStore, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile, invalidateFilesAfter } from '../services/validation';
+import { useAddFileAnalysis } from '../hooks/useAddFileAnalysis';
 import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile, ValidationStatus, FileValidationResult } from '../types';
 
 export function SourceTextView() {
@@ -32,6 +33,9 @@ export function SourceTextView() {
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // 파일 추가 분석 훅 (수정 시 재분석용)
+  const { execute: executeAddFile, isAdding: isReanalyzing, progress: reanalyzeProgress } = useAddFileAnalysis();
 
   // 검증 결과를 knowledgeGraph에서 직접 읽음 (store의 Map은 UI용)
   const getValidationStatus = (fileId: string): FileValidationResult | undefined => {
@@ -601,7 +605,7 @@ export function SourceTextView() {
     setEditingText('');
   };
 
-  // 텍스트 수정 저장
+  // 텍스트 수정 저장 + 재분석
   const handleSaveEdit = async (fileId: string) => {
     if (!knowledgeGraph || !currentDataId) return;
 
@@ -618,121 +622,96 @@ export function SourceTextView() {
 
     setIsSavingEdit(true);
     try {
-      console.log(`[SourceTextView] 텍스트 수정: ${file.fileName}`);
+      console.log(`[SourceTextView] 텍스트 수정 시작: ${file.fileName} (위치: ${fileIndex})`);
 
-      // 1. sourceFiles 업데이트
-      const newSourceFiles = currentFiles.map((f, idx) => {
-        if (idx === fileIndex) {
-          return {
+      // 1. 해당 파일 삭제 (handleDeleteFile 로직 사용)
+      await handleDeleteFile(fileId, file.fileName);
+
+      // 2. 삭제 후 최신 상태 가져오기
+      const afterDeleteGraph = useStore.getState().knowledgeGraph;
+
+      // 3. 수정된 텍스트로 재분석 (파일이 맨 뒤에 추가됨)
+      console.log(`[SourceTextView] 재분석 시작: ${file.fileName}`);
+      handleCancelEdit(); // 편집 모드 종료 (UI 갱신)
+
+      await executeAddFile(editingText, file.fileName, afterDeleteGraph);
+
+      // 3. 재분석 완료 후 파일을 원래 위치로 이동
+      // (executeAddFile이 완료되면 store가 업데이트되므로 최신 상태 사용)
+      const state = useStore.getState();
+      const updatedGraph = state.knowledgeGraph;
+      const updatedDataId = state.currentDataId;
+
+      if (updatedGraph && updatedDataId) {
+        const updatedFiles = updatedGraph.metadata.sourceFiles || [];
+        const newFileIndex = updatedFiles.findIndex(f => f.fileName === file.fileName);
+
+        // 새로 추가된 파일이 맨 뒤에 있고, 원래 위치와 다르면 이동
+        if (newFileIndex >= 0 && newFileIndex !== fileIndex && newFileIndex === updatedFiles.length - 1) {
+          console.log(`[SourceTextView] 파일 원래 위치로 이동: ${newFileIndex} → ${fileIndex}`);
+
+          // 파일을 맨 뒤에서 원래 위치로 이동
+          const reorderedFiles = [...updatedFiles];
+          const [movedFile] = reorderedFiles.splice(newFileIndex, 1);
+          reorderedFiles.splice(fileIndex, 0, movedFile);
+
+          // 파일 ID 재정렬
+          const reorderedWithIds = reorderedFiles.map((f, idx) => ({
             ...f,
-            text: editingText,
-            charCount: editingText.length,
-            uploadedAt: new Date().toISOString(), // 수정 시간 갱신
+            id: `F${String(idx + 1).padStart(4, '0')}`,
+          }));
+
+          // 장면의 sourceFileId도 업데이트
+          const fileIdMapping: Record<string, string> = {};
+          updatedFiles.forEach((oldFile, oldIdx) => {
+            const newIdx = reorderedFiles.findIndex(f => f.fileName === oldFile.fileName);
+            if (newIdx >= 0) {
+              fileIdMapping[oldFile.id] = `F${String(newIdx + 1).padStart(4, '0')}`;
+            }
+          });
+
+          const reorderedSnapshots: Record<string, SceneSnapshot> = {};
+          Object.entries(updatedGraph.snapshots).forEach(([sceneId, scene]) => {
+            reorderedSnapshots[sceneId] = {
+              ...scene,
+              sourceFileId: scene.sourceFileId ? (fileIdMapping[scene.sourceFileId] || scene.sourceFileId) : scene.sourceFileId,
+            };
+          });
+
+          // 검증 결과 초기화 (fileIndex 이후)
+          const newValidationResults: Record<string, FileValidationResult> = {};
+          reorderedWithIds.forEach((f, idx) => {
+            if (idx < fileIndex && updatedGraph.validationResults?.[f.id]) {
+              // 이전 파일들의 검증 결과 유지 (ID 매핑 적용)
+              const oldId = updatedFiles.find(uf => uf.fileName === f.fileName)?.id;
+              if (oldId && updatedGraph.validationResults[oldId]) {
+                newValidationResults[f.id] = {
+                  ...updatedGraph.validationResults[oldId],
+                  fileId: f.id,
+                };
+              }
+            }
+          });
+
+          const finalGraph: NovelKnowledgeGraph = {
+            ...updatedGraph,
+            metadata: {
+              ...updatedGraph.metadata,
+              sourceFiles: reorderedWithIds,
+              updatedAt: new Date().toISOString(),
+            },
+            snapshots: reorderedSnapshots,
+            validationResults: newValidationResults,
           };
+
+          await updateKnowledgeGraph(updatedDataId, finalGraph);
+          setKnowledgeGraph(finalGraph, undefined, updatedDataId);
+
+          console.log(`[SourceTextView] 텍스트 수정 + 재분석 + 위치 복원 완료: ${file.fileName}`);
+        } else {
+          console.log(`[SourceTextView] 텍스트 수정 + 재분석 완료: ${file.fileName}`);
         }
-        return f;
-      });
-
-      // 2. 해당 파일 + 이후 파일들의 검증 결과 초기화
-      const newValidationResults: Record<string, FileValidationResult> = {};
-      Object.entries(knowledgeGraph.validationResults || {}).forEach(([fid, result]) => {
-        const fidIndex = currentFiles.findIndex(f => f.id === fid);
-        if (fidIndex < fileIndex) {
-          // 이전 파일들의 검증 결과는 유지
-          newValidationResults[fid] = result;
-        }
-        // fileIndex 이후는 초기화 (저장 안 함)
-      });
-
-      // 3. 수정된 파일과 관련된 장면/엔티티/관계 삭제 (재분석 필요)
-      // 3-1. 삭제할 장면 찾기
-      const scenesToDelete = new Set<string>();
-      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
-        const matchByName = scene.sourceFile === file.fileName;
-        const matchById = scene.sourceFileId === fileId;
-        if (matchByName || matchById) {
-          scenesToDelete.add(sceneId);
-        }
-      });
-
-      console.log(`[SourceTextView] 삭제할 장면: ${scenesToDelete.size}개`);
-
-      // 3-2. 새 snapshots 생성 (삭제된 장면 제외)
-      const newSnapshots: Record<string, SceneSnapshot> = {};
-      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
-        if (!scenesToDelete.has(sceneId)) {
-          newSnapshots[sceneId] = scene;
-        }
-      });
-
-      // 3-3. entities의 scenes 배열에서 삭제된 장면 제거
-      const newEntities = { ...knowledgeGraph.entities };
-      Object.keys(newEntities).forEach(entityId => {
-        const entity = newEntities[entityId];
-        if (entity.scenes) {
-          newEntities[entityId] = {
-            ...entity,
-            scenes: entity.scenes.filter(sceneId => !scenesToDelete.has(sceneId)),
-          };
-        }
-      });
-
-      // 3-4. hyperedges의 scenes 배열에서 삭제된 장면 제거 + 빈 관계 삭제
-      const newHyperedges: typeof knowledgeGraph.hyperedges = {};
-      Object.entries(knowledgeGraph.hyperedges).forEach(([edgeId, edge]) => {
-        const filteredScenes = edge.scenes?.filter(sceneId => !scenesToDelete.has(sceneId)) || [];
-        if (filteredScenes.length > 0) {
-          newHyperedges[edgeId] = {
-            ...edge,
-            scenes: filteredScenes,
-          };
-        }
-      });
-
-      // 3-5. 관계가 있는 엔티티만 유지
-      const entitiesWithRelations = new Set<string>();
-      Object.values(newHyperedges).forEach(edge => {
-        edge.entities.forEach(entityId => entitiesWithRelations.add(entityId));
-      });
-
-      const finalEntities: typeof knowledgeGraph.entities = {};
-      Object.entries(newEntities).forEach(([entityId, entity]) => {
-        const hasRelations = entitiesWithRelations.has(entityId);
-        const hasScenes = entity.scenes && entity.scenes.length > 0;
-        if (hasRelations || hasScenes) {
-          finalEntities[entityId] = entity;
-        }
-      });
-
-      // 4. 새 지식 그래프 생성
-      const updatedGraph: NovelKnowledgeGraph = {
-        ...knowledgeGraph,
-        metadata: {
-          ...knowledgeGraph.metadata,
-          sourceFiles: newSourceFiles,
-          updatedAt: new Date().toISOString(),
-        },
-        entities: finalEntities,
-        hyperedges: newHyperedges,
-        snapshots: newSnapshots,
-        validationResults: newValidationResults,
-        stats: {
-          ...knowledgeGraph.stats,
-          totalEntities: Object.keys(finalEntities).length,
-          totalEdges: Object.keys(newHyperedges).length,
-        },
-      };
-
-      // 5. 서버에 업데이트
-      await updateKnowledgeGraph(currentDataId, updatedGraph);
-
-      // 6. 스토어 업데이트
-      setKnowledgeGraph(updatedGraph, undefined, currentDataId);
-
-      console.log(`[SourceTextView] 텍스트 수정 완료: ${file.fileName}`);
-      console.log(`[SourceTextView] 삭제된 장면: ${scenesToDelete.size}개, 초기화된 검증: ${Object.keys(knowledgeGraph.validationResults || {}).length - Object.keys(newValidationResults).length}개`);
-
-      handleCancelEdit();
+      }
     } catch (error) {
       console.error('[SourceTextView] 텍스트 수정 실패:', error);
       alert('텍스트 수정에 실패했습니다.');

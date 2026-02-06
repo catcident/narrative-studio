@@ -28,8 +28,10 @@ export function useAddFileAnalysis() {
   const [isAdding, setIsAdding] = useState(false);
   const [progress, setProgress] = useState('');
 
-  const execute = useCallback(async (text: string, fileName: string) => {
-    if (!knowledgeGraph) return;
+  const execute = useCallback(async (text: string, fileName: string, existingGraphOverride?: typeof knowledgeGraph) => {
+    // 최신 상태를 사용하거나 override 사용 (파일 수정 시 삭제 후 최신 상태 전달)
+    const graphToUse = existingGraphOverride ?? useStore.getState().knowledgeGraph;
+    if (!graphToUse) return;
 
     setIsAdding(true);
     setLoading(true);
@@ -42,11 +44,11 @@ export function useAddFileAnalysis() {
       setProgress('추가 분석 중...');
       const updated = await extractKnowledgeGraph({
         text,
-        title: knowledgeGraph.metadata.title,
+        title: graphToUse.metadata.title,
         onProgress: (msg) => setProgress(msg),
-        model: knowledgeGraph.metadata.model,
+        model: graphToUse.metadata.model,
         fileNames: [fileName],
-        existingGraph: knowledgeGraph,
+        existingGraph: graphToUse,
         onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
         availableModelIds: getAvailableModelIds(allModels),
       });
