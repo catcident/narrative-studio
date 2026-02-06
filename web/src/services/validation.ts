@@ -288,14 +288,20 @@ ${currentContext}
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
+    console.log(`[validation] 청크 ${chunkIndex} LLM 응답:`, content);
+
     // JSON 파싱
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.warn(`[validation] 청크 ${chunkIndex} JSON 파싱 실패:`, content);
+      console.warn(`[validation] 청크 ${chunkIndex} JSON 파싱 실패 - JSON 없음:`, content);
       return { issues: [], summary: '검증 결과를 파싱할 수 없습니다.' };
     }
 
+    console.log(`[validation] 청크 ${chunkIndex} JSON 매칭:`, jsonMatch[0]);
+
     const parsed = JSON.parse(jsonMatch[0]);
+    console.log(`[validation] 청크 ${chunkIndex} 파싱 결과:`, JSON.stringify(parsed, null, 2));
+
     const issues = (parsed.issues || []).map(
       (issue: any, idx: number) => ({
         id: `${currentFileId}_chunk${chunkIndex}_issue_${idx + 1}`,
@@ -305,6 +311,8 @@ ${currentContext}
         suggestion: issue.suggestion,
       })
     );
+
+    console.log(`[validation] 청크 ${chunkIndex} 이슈 ${issues.length}개:`, issues);
 
     return {
       issues,
