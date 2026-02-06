@@ -47,16 +47,13 @@ async function analyzeQueryWithLLM(
 3. targetCategory: 요청된 카테고리. 다음 중 하나만: character(인물), item(물건/아이템), location(장소), organization(조직/단체), event(사건), concept(개념/설정/무공/기술). 목록 요청이 아니면 null.
 
 응답 형식 (JSON만):
-{"keywords": ["키워드1", "키워드2"], "wantsCategoryList": false, "targetCategory": null}
+{"keywords": ["키워드1"], "wantsCategoryList": false, "targetCategory": null}
 
 예시:
 - "장소는 뭐뭐가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "location"}
-- "아이템 목록 알려줘" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "item"}
-- "등장인물 누가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "character"}
 - "김철수가 누구야?" → {"keywords": ["김철수"], "wantsCategoryList": false, "targetCategory": null}
-- "주인공이 얻은 검이 뭐야?" → {"keywords": ["주인공", "검"], "wantsCategoryList": false, "targetCategory": null}
-- "What items are there?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "item"}
-- "Who is the main character?" → {"keywords": ["main character"], "wantsCategoryList": false, "targetCategory": null}`
+- "주인공과 검은 고양이 관계" → {"keywords": ["주인공", "검은 고양이"], "wantsCategoryList": false, "targetCategory": null}
+- "등장인물 이름만 나열해줘" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "character"}`
           },
           { role: 'user', content: query }
         ],
@@ -222,6 +219,113 @@ ${chunkList || '(없음)'}`
   }
 }
 
+/**
+ * [4단계] 연결 노드 필요 여부 판단 (LLM이 그래프 구조 보고 결정)
+ */
+interface ConnectedNodeDecision {
+  needsConnectedNodes: boolean;
+  selectedNodeIds: string[];
+}
+
+async function decideConnectedNodes(
+  query: string,
+  foundEntityIds: string[],
+  relatedEdges: HyperEdge[],
+  entities: Record<string, Entity>,
+  apiKey?: string
+): Promise<ConnectedNodeDecision> {
+  // 연결된 노드 후보 추출
+  const connectedCandidates = new Map<string, { name: string; relations: string[] }>();
+
+  relatedEdges.forEach(edge => {
+    edge.entities.forEach(entityId => {
+      if (!foundEntityIds.includes(entityId)) {
+        const entity = entities[entityId];
+        if (entity) {
+          if (!connectedCandidates.has(entityId)) {
+            connectedCandidates.set(entityId, { name: entity.name, relations: [] });
+          }
+          connectedCandidates.get(entityId)!.relations.push(edge.statement.slice(0, 50));
+        }
+      }
+    });
+  });
+
+  // 연결 노드가 없으면 바로 반환
+  if (connectedCandidates.size === 0) {
+    return { needsConnectedNodes: false, selectedNodeIds: [] };
+  }
+
+  // 선택된 노드 이름들
+  const foundNames = foundEntityIds.map(id => entities[id]?.name || id).join(', ');
+
+  // 연결 노드 목록 생성
+  const connectedList = Array.from(connectedCandidates.entries())
+    .slice(0, 30)
+    .map(([id, info]) => `- [${id}] ${info.name}: ${info.relations[0] || ''}`)
+    .join('\n');
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `당신은 소설 Q&A 시스템의 연결 노드 선별기입니다.
+
+## 상황
+사용자가 "${foundNames}"에 대해 질문했습니다.
+이 노드들과 연결된 다른 노드들이 있습니다.
+
+## 질문에 답하려면 연결된 노드 정보도 필요한가요?
+
+연결된 노드들:
+${connectedList}
+
+## 판단 기준
+- 관계, 상호작용, 맥락 파악에 필요하면 → 필요
+- 단순 속성(외모, 이름 등)만 물으면 → 불필요
+- "자세히", "관계", "누구와" 등 → 필요
+
+## 응답 형식 (JSON만)
+{"needsConnectedNodes": true/false, "selectedNodeIds": ["필요한ID1", "필요한ID2"]}`
+          },
+          { role: 'user', content: query }
+        ],
+        apiKey,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[decideConnected] API 오류, 기본값 사용');
+      return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    const match = content.match(/\{[\s\S]*\}/);
+    if (match) {
+      const parsed = JSON.parse(match[0]);
+      const result: ConnectedNodeDecision = {
+        needsConnectedNodes: !!parsed.needsConnectedNodes,
+        selectedNodeIds: Array.isArray(parsed.selectedNodeIds) ? parsed.selectedNodeIds : [],
+      };
+      console.log('[decideConnected] LLM 판단:', result);
+      return result;
+    }
+
+    return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
+  } catch (err) {
+    console.warn('[decideConnected] 오류, 기본값 사용:', err);
+    return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
+  }
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -252,6 +356,8 @@ function findMentionedEntityIds(
 ): string[] {
   const mentioned: string[] = [];
   const queryLower = query.toLowerCase();
+  // 띄어쓰기 제거한 버전도 준비
+  const queryNoSpace = queryLower.replace(/\s+/g, '');
   const queryWords = queryLower.split(/\s+/).filter(w => w.length >= 2);
 
   // 키워드 확장 (동의어 추가)
@@ -265,6 +371,8 @@ function findMentionedEntityIds(
 
   Object.entries(entities).forEach(([id, entity]) => {
     const nameLower = entity.name.toLowerCase();
+    // 띄어쓰기 제거한 엔티티 이름
+    const nameNoSpace = nameLower.replace(/\s+/g, '');
 
     // 1. 질문에 엔티티 이름이 포함됨 (정확히 일치)
     if (queryLower.includes(nameLower)) {
@@ -272,8 +380,14 @@ function findMentionedEntityIds(
       return;
     }
 
+    // 1-1. 띄어쓰기 무시 매칭 (예: "얼룩고양이" vs "얼룩 고양이")
+    if (queryNoSpace.includes(nameNoSpace) || nameNoSpace.includes(queryNoSpace.slice(0, 10))) {
+      mentioned.push(id);
+      return;
+    }
+
     // 2. 엔티티 이름에 질문 키워드가 포함됨 (부분 일치 - "새 박스"에서 "박스" 검색)
-    if ([...expandedQueryWords].some(word => nameLower.includes(word))) {
+    if ([...expandedQueryWords].some(word => nameLower.includes(word) || nameNoSpace.includes(word))) {
       mentioned.push(id);
       return;
     }
@@ -281,7 +395,9 @@ function findMentionedEntityIds(
     // 3. 별칭으로 검색
     if (entity.aliases?.some(alias => {
       const aliasLower = alias.toLowerCase();
+      const aliasNoSpace = aliasLower.replace(/\s+/g, '');
       return queryLower.includes(aliasLower) ||
+             queryNoSpace.includes(aliasNoSpace) ||
              [...expandedQueryWords].some(word => aliasLower.includes(word));
     })) {
       mentioned.push(id);
@@ -852,12 +968,30 @@ function buildSystemPrompt(
     relationSection = '(질문과 관련된 정보를 찾지 못했습니다)';
   }
 
+  // 장면 정보 생성 (시간대, 등장인물 첫 등장 파악용)
+  const scenes = Object.values(knowledgeGraph.snapshots)
+    .sort((a, b) => a.order - b.order);
+
+  let sceneSection = '';
+  if (scenes.length > 0) {
+    sceneSection = scenes.slice(0, 30).map(scene => {
+      const chars = scene.charactersPresent?.slice(0, 5).join(', ') || '';
+      const timeInfo = scene.timeMarker ? ` [${scene.timeMarker}]` : '';
+      return `- 장면 ${scene.order}: ${scene.location || '?'}, ${scene.time || '?'}${timeInfo} - ${scene.summary?.slice(0, 50) || ''}... (등장: ${chars})`;
+    }).join('\n');
+
+    if (scenes.length > 30) {
+      sceneSection += `\n... 외 ${scenes.length - 30}개 장면`;
+    }
+  }
+
   return `당신은 소설 "${title}"의 전문가입니다.
 
 ## 소설 정보
 - 제목: ${title}
 - 등장 인물: ${characterCount}명
 - 총 엔티티: ${entityCount}개
+- 총 장면: ${scenes.length}개
 
 ## 질문과 관련된 엔티티
 ${entitySection}
@@ -865,25 +999,33 @@ ${entitySection}
 ## 관련 관계
 ${relationSection}
 
-## 답변 규칙 (매우 중요!)
+## 장면 목록 (시간순)
+${sceneSection || '(장면 정보 없음)'}
 
-**반드시 상세하고 풍부한 답변을 제공하세요!** 단답은 절대 금지입니다.
+## 답변 지침 (필수)
 
-1. **상세한 설명 필수**: 모든 질문에 최소 3-5문장 이상으로 답변하세요. 단순히 이름이나 단어만 나열하지 마세요.
+### 1. 상세하게 답변
+- 짧은 답변 금지. 최소 5문장 이상으로 풍부하게 설명
+- 캐릭터 질문: 외모, 성격, 등장 장면, 다른 캐릭터와의 관계 모두 설명
+- "자세히", "더 알려줘" 요청 시: 이전에 말한 내용 + 추가 정보 제공
 
-2. **맥락과 배경 설명**: 해당 인물/사물/개념이 소설에서 어떤 역할을 하는지, 왜 중요한지 설명하세요.
+### 2. 대화 맥락 유지 (멀티턴)
+- 이전 대화에서 언급된 대상을 기억하고 이어서 답변
+- "그거", "그 캐릭터", "더 자세히" 등은 이전 맥락 참조
+- 예: "얼룩고양이 알려줘" → (답변) → "더 자세히" → 얼룩고양이에 대해 추가 설명
 
-3. **관계와 연결고리 설명**: 관련된 다른 인물이나 사건과의 연결고리를 자세히 설명하세요. 예: "A는 B와 ~한 관계이며, C 사건에서 ~한 역할을 했습니다."
+### 3. 마크다운 형식
+- 제목: ### 사용
+- 강조: **굵게**
+- 목록: - 또는 1. 2. 3.
+- 인용: > 사용
 
-4. **구체적인 예시 포함**: 가능하다면 제공된 정보에서 구체적인 상황, 대사, 행동 등을 인용하여 설명하세요.
+### 4. 정보 부족 시
+- "해당 정보를 찾을 수 없습니다"로 끝내지 말 것
+- 대신 **구체적으로 질문**: "어떤 장면에서의 얼룩고양이를 말씀하시나요?" 또는 "혹시 다른 이름으로 불리는 캐릭터인가요?"
+- 비슷한 정보가 있으면 제안: "혹시 OOO를 찾으시나요?"
 
-5. **목록은 설명과 함께**: 여러 항목을 나열할 때는 각 항목마다 최소 1-2문장의 설명을 반드시 추가하세요.
-   - 나쁜 예: "박스, 검, 책"
-   - 좋은 예: "박스 - 주인공이 발견한 의문의 물건으로, ~에서 중요한 역할을 합니다. 검 - 주인공의 무기로, ~한 특성을 가지고 있습니다."
-
-6. 제공된 정보에 없는 내용은 "해당 정보가 소설 데이터에서 찾을 수 없습니다"라고 명확히 밝히세요.
-
-7. 답변은 한국어로 작성하세요.
+### 5. 한국어로 답변
 
 ${originalText ? `원본 텍스트가 ${originalText.length.toLocaleString()}자 있습니다.` : ''}`;
 }
@@ -904,9 +1046,20 @@ export async function sendChatMessage(
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
 
+  // 이전 대화에서 언급된 엔티티도 추출 (멀티턴 맥락 유지)
+  const recentMessages = messages.slice(-6); // 최근 3턴 (user+assistant 쌍)
+  const previousContext = recentMessages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => m.content)
+    .join(' ');
+
   // [1단계] LLM 의도 분석 (키워드 + 카테고리 요청 판단)
+  // 현재 질문 + 이전 맥락을 함께 분석
+  const queryForAnalysis = lastUserMessage
+    ? `${lastUserMessage.content} (이전 맥락: ${previousContext.slice(0, 500)})`
+    : '';
   const queryAnalysis = lastUserMessage
-    ? await analyzeQueryWithLLM(lastUserMessage.content, userApiKey || undefined)
+    ? await analyzeQueryWithLLM(queryForAnalysis, userApiKey || undefined)
     : { keywords: [], wantsCategoryList: false, targetCategory: null };
 
   // [2단계] 데이터 수집
@@ -921,22 +1074,42 @@ export async function sendChatMessage(
     foundEntityIds = categoryEntities;
   }
 
-  // (B) 키워드 기반 검색
-  if (queryAnalysis.keywords.length > 0) {
-    // 먼저 직접 매칭 시도
-    const directMatches = findMentionedEntityIds(
-      queryAnalysis.keywords.join(' '),
+  // (B) 키워드 기반 검색 + 원본 질문으로도 검색
+  if (lastUserMessage) {
+    // 원본 질문으로 직접 매칭 (띄어쓰기 무시 검색 포함)
+    const directFromQuery = findMentionedEntityIds(
+      lastUserMessage.content,
       context.knowledgeGraph.entities
     );
-    directMatches.forEach(id => {
+    directFromQuery.forEach(id => {
       if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
     });
+
+    // 이전 대화 맥락에서도 엔티티 검색 (멀티턴 지원)
+    const contextEntityIds = findMentionedEntityIds(
+      previousContext,
+      context.knowledgeGraph.entities
+    );
+    contextEntityIds.forEach(id => {
+      if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
+    });
+
+    // LLM 키워드로도 추가 검색
+    if (queryAnalysis.keywords.length > 0) {
+      const directFromKeywords = findMentionedEntityIds(
+        queryAnalysis.keywords.join(' '),
+        context.knowledgeGraph.entities
+      );
+      directFromKeywords.forEach(id => {
+        if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
+      });
+    }
 
     // graphId가 있으면 임베딩 검색도 수행
     if (graphId) {
       const [entityResults, chunks] = await Promise.all([
         searchSimilarEntities(graphId, queryAnalysis.keywords, userApiKey || undefined, 10),
-        searchSimilarChunks(graphId, lastUserMessage?.content || '', userApiKey || undefined, 3),
+        searchSimilarChunks(graphId, lastUserMessage.content, userApiKey || undefined, 3),
       ]);
 
       entityResults.forEach(result => {
@@ -989,6 +1162,35 @@ export async function sendChatMessage(
 
   // 관련 관계
   const relatedEdges = findConnectedEdges(foundEntityIds, context.knowledgeGraph.hyperedges);
+
+  // [4단계] 연결 노드 필요 여부 판단 (LLM이 그래프 구조 보고 결정)
+  let connectedArray: string[] = [];
+  if (relatedEdges.length > 0 && lastUserMessage) {
+    const connectedNodeDecision = await decideConnectedNodes(
+      lastUserMessage.content,
+      foundEntityIds,
+      relatedEdges,
+      context.knowledgeGraph.entities,
+      userApiKey || undefined
+    );
+
+    if (connectedNodeDecision.needsConnectedNodes) {
+      const connectedEntityIds = new Set<string>();
+      // 필요하다고 판단된 연결 노드만 추가
+      connectedNodeDecision.selectedNodeIds.forEach((id: string) => {
+        if (!foundEntityIds.includes(id)) {
+          connectedEntityIds.add(id);
+        }
+      });
+      connectedArray = Array.from(connectedEntityIds).slice(0, 20);
+      connectedArray.forEach(id => foundEntityIds.push(id));
+      console.log(`[chat] 연결 노드 추가: ${connectedArray.length}개 (LLM 선택)`);
+    } else {
+      console.log(`[chat] 연결 노드 불필요 (LLM 판단)`);
+    }
+  }
+
+  console.log(`[chat] 최종 엔티티: ${foundEntityIds.length}개 (직접: ${foundEntityIds.length - connectedArray.length}, 연결: ${connectedArray.length})`);
 
   // [4단계] 컨텍스트 생성 - LLM 분석 결과를 intent로 변환
   const intentForContext: QueryIntent = {
