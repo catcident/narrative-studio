@@ -173,13 +173,15 @@ function sceneToString(scene: SceneSnapshot): string {
 
 const SYSTEM_PROMPT = `소설의 **설정 오류/모순**을 찾아주세요.
 
-## 중요: 원본 텍스트끼리 비교
-- 각 파일의 "## 원본 텍스트" 섹션이 실제 소설 내용입니다
-- "등장인물/엔티티", "관계" 섹션은 AI 분석 결과로 **틀릴 수 있으니 무시하세요**
-- **원본 텍스트끼리만 비교**해서 오류를 찾으세요
+## 데이터 구조
+- **[이전 파일 요약]**: 지식그래프로 정리된 기존 설정 (엔티티/관계/장면)
+- **[새 파일 원본]**: 검증할 새 챕터의 원본 텍스트
 
-## 찾아야 할 오류 (원본 텍스트끼리 비교)
-- 동일 캐릭터의 **종족/출신지/외형/성별**이 이전 원본과 다르게 언급됨
+## 검증 방법
+새 파일 원본에서 **기존 설정과 모순되는 내용**이 있는지 확인하세요.
+
+## 찾아야 할 오류
+- 동일 캐릭터의 **종족/출신지/외형/성별**이 기존 설정과 다르게 언급됨
 - 캐릭터가 **사망 장면 없이** 갑자기 죽어있음
 
 ## 오류가 아닌 것
@@ -219,23 +221,15 @@ function splitIntoChunks(
     return `${start}\n\n[...중략...]\n\n${middle}\n\n[...중략...]\n\n${end}`;
   };
 
-  const currentContext = `=== ${currentFile.fileName} ===
-## 원본 텍스트
-${truncateText(currentFile.originalText)}
-
-## 등장인물/엔티티
-${currentEntitiesStr || '없음'}
-
-## 관계
-${currentEdgesStr || '없음'}
-
-## 주요 장면
-${currentScenesStr || '없음'}`;
+  // 현재 파일: 원본 텍스트만 (검증 대상)
+  const currentContext = `[새 파일 원본: ${currentFile.fileName}]
+${truncateText(currentFile.originalText)}`;
 
   // 이전 파일들을 청크로 분할
   const chunks: { previousContext: string; currentContext: string }[] = [];
   let currentChunk = '';
 
+  // 이전 파일들: 지식그래프 정보만 (원본 텍스트 제외)
   for (const pf of previousFiles) {
     const entitiesStr = pf.entities.map(entityToString).join('\n');
     const edgesStr = pf.edges
@@ -243,18 +237,10 @@ ${currentScenesStr || '없음'}`;
       .join('\n');
     const scenesStr = pf.scenes.map(sceneToString).join('\n');
 
-    const fileContext = `=== ${pf.fileName} ===
-## 원본 텍스트
-${truncateText(pf.originalText)}
-
-## 등장인물/엔티티
-${entitiesStr || '없음'}
-
-## 관계
-${edgesStr || '없음'}
-
-## 주요 장면
-${scenesStr || '없음'}
+    const fileContext = `[${pf.fileName} 요약]
+엔티티: ${entitiesStr || '없음'}
+관계: ${edgesStr || '없음'}
+장면: ${scenesStr || '없음'}
 
 `;
 
