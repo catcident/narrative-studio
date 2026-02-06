@@ -33,20 +33,28 @@ export function SourceTextView() {
   const [isValidatingAll, setIsValidatingAll] = useState(false);
   const abortValidationRef = useRef(false);
 
-  // 검증 결과 로드 (knowledgeGraph에서)
+  // 검증 결과 로드 (knowledgeGraph에서) - 데이터 로드 시
   useEffect(() => {
     if (knowledgeGraph?.validationResults) {
       const resultsMap = new Map<string, FileValidationResult>();
       Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
         resultsMap.set(fileId, result);
       });
+      console.log('[validation] 검증 결과 로드:', resultsMap.size, '개 파일');
       setValidationResults(resultsMap);
     }
-  }, [knowledgeGraph?.metadata.id, setValidationResults]);
+  }, [currentDataId, setValidationResults]); // currentDataId가 바뀔 때만 로드 (새 데이터 로드 시)
 
-  // 검증 결과 저장 (변경 시 knowledgeGraph에 반영)
+  // 검증 결과 저장 (변경 시 knowledgeGraph에 반영) - store에서 최신 값을 직접 가져옴
   const saveValidationResults = useCallback(async (results: Map<string, FileValidationResult>) => {
-    if (!knowledgeGraph || !currentDataId) return;
+    const state = useStore.getState();
+    const currentGraph = state.knowledgeGraph;
+    const dataId = state.currentDataId;
+
+    if (!currentGraph || !dataId) {
+      console.error('[validation] saveValidationResults: knowledgeGraph 또는 currentDataId 없음');
+      return;
+    }
 
     const resultsObj: Record<string, FileValidationResult> = {};
     results.forEach((result, fileId) => {
@@ -54,17 +62,18 @@ export function SourceTextView() {
     });
 
     const updatedGraph: NovelKnowledgeGraph = {
-      ...knowledgeGraph,
+      ...currentGraph,
       validationResults: resultsObj,
       metadata: {
-        ...knowledgeGraph.metadata,
+        ...currentGraph.metadata,
         updatedAt: new Date().toISOString(),
       },
     };
 
+    console.log('[validation] 검증 결과 저장:', Object.keys(resultsObj).length, '개 파일');
     setKnowledgeGraph(updatedGraph);
-    await updateKnowledgeGraph(currentDataId, updatedGraph);
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
+    await updateKnowledgeGraph(dataId, updatedGraph);
+  }, [setKnowledgeGraph]);
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
