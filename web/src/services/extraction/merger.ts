@@ -726,16 +726,19 @@ function buildSnapshots(
 export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
-  // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
-  // 중요: 현재 존재하는 장면과 관련된 엔티티/관계만 복사 (삭제된 파일의 잔여물 제거)
+  // 중요: 기존 그래프의 엔티티/관계를 복사하지 않음
+  // - 파일 업로드 순서에 따라 결과가 달라지는 것을 방지
+  // - 새 파일 분석 결과만으로 그래프 구성
+  // - 기존 그래프의 장면 정보만 유지 (snapshots)
+  // - 기존 그래프의 엔티티 이름은 nameToId 매핑에만 사용 (같은 캐릭터 ID 재사용)
   let entities: Record<string, Entity> = {};
   let hyperedges: Record<string, HyperEdge> = {};
 
+  // 기존 그래프가 있으면 기존 엔티티/관계도 유지 (새 파일 추가 시)
+  // 단, 장면 정보는 현재 존재하는 장면에 대해서만 유효
   if (existingGraph) {
-    // 현재 존재하는 장면 ID 수집
     const existingSceneIds = new Set(Object.keys(existingGraph.snapshots || {}));
 
-    // 현재 장면에 등장하는 엔티티만 복사
     for (const [id, entity] of Object.entries(existingGraph.entities)) {
       const validScenes = (entity.scenes || []).filter(s => existingSceneIds.has(s));
       if (validScenes.length > 0) {
@@ -743,11 +746,9 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       }
     }
 
-    // 현재 장면과 관련된 관계만 복사
     for (const [id, edge] of Object.entries(existingGraph.hyperedges)) {
       const validScenes = (edge.scenes || []).filter(s => existingSceneIds.has(s));
       if (validScenes.length > 0) {
-        // 관계의 양쪽 엔티티가 모두 존재하는지 확인
         const allEntitiesExist = edge.entities.every(eid => entities[eid]);
         if (allEntitiesExist) {
           hyperedges[id] = { ...edge, scenes: validScenes };
@@ -755,7 +756,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       }
     }
 
-    console.log(`[extraction] 기존 그래프 정리: 엔티티 ${Object.keys(existingGraph.entities).length}→${Object.keys(entities).length}, 관계 ${Object.keys(existingGraph.hyperedges).length}→${Object.keys(hyperedges).length}`);
+    console.log(`[extraction] 기존 그래프 유지: 엔티티 ${Object.keys(existingGraph.entities).length}→${Object.keys(entities).length}, 관계 ${Object.keys(existingGraph.hyperedges).length}→${Object.keys(hyperedges).length}`);
   }
 
   const nameToId: Record<string, string> = {};
