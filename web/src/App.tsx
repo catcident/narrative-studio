@@ -24,7 +24,7 @@ import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { saveKnowledgeGraph, saveNovelText } from './services/storage';
-import { loadProgress } from './services/extraction';
+import { loadProgress, syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
 import { useResumeAnalysis } from './hooks/useResumeAnalysis';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
@@ -125,7 +125,7 @@ function App() {
   // 데이터 관리자에서 불러오기 (ID 포함)
   const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph, dataId?: string) => {
     setKnowledgeGraph(loaded, undefined, dataId);
-    setPartialAnalysis(null);
+    syncPartialAnalysis(setPartialAnalysis);
     setShowDataManager(false);
   };
 
