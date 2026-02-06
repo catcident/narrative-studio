@@ -332,9 +332,8 @@ export async function validateFile(
     model
   );
 
-  const status: ValidationStatus = issues.some((i) => i.severity === 'error')
-    ? 'failed'
-    : 'passed';
+  // 이슈가 하나라도 있으면 failed (error든 warning이든)
+  const status: ValidationStatus = issues.length > 0 ? 'failed' : 'passed';
 
   return {
     fileId,
