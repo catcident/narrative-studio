@@ -18,7 +18,10 @@ import { DEFAULT_MODEL } from '../types';
 // ==================== 상수 ====================
 
 // 청크당 최대 문자 수 (LLM 컨텍스트 제한 고려)
-const MAX_CONTEXT_CHARS = 8000;
+const MAX_CONTEXT_CHARS = 15000;
+
+// 원본 텍스트 최대 길이 (파일당)
+const MAX_TEXT_PER_FILE = 3000;
 
 // ==================== 타입 ====================
 
@@ -34,6 +37,7 @@ interface FileGraphData {
   entities: Entity[];
   edges: HyperEdge[];
   scenes: SceneSnapshot[];
+  originalText?: string;  // 원본 텍스트 (검증용)
 }
 
 // ==================== 헬퍼 함수 ====================
@@ -115,7 +119,10 @@ function extractFileGraphData(
     (edge) => edge.scenes?.some((sid) => sceneIds.has(sid))
   );
 
-  return { fileId, fileName, entities, edges, scenes };
+  // 원본 텍스트 전체
+  const originalText = file.text;
+
+  return { fileId, fileName, entities, edges, scenes, originalText };
 }
 
 /**
@@ -208,7 +215,21 @@ function splitIntoChunks(
     .join('\n');
   const currentScenesStr = currentFile.scenes.map(sceneToString).join('\n');
 
+  // 원본 텍스트가 길면 앞/중간/뒤 부분만 추출
+  const truncateText = (text: string | undefined): string => {
+    if (!text) return '없음';
+    if (text.length <= MAX_TEXT_PER_FILE) return text;
+    const partLen = Math.floor(MAX_TEXT_PER_FILE / 3);
+    const start = text.slice(0, partLen);
+    const middle = text.slice(Math.floor(text.length / 2) - partLen / 2, Math.floor(text.length / 2) + partLen / 2);
+    const end = text.slice(-partLen);
+    return `${start}\n\n[...중략...]\n\n${middle}\n\n[...중략...]\n\n${end}`;
+  };
+
   const currentContext = `=== ${currentFile.fileName} ===
+## 원본 텍스트
+${truncateText(currentFile.originalText)}
+
 ## 등장인물/엔티티
 ${currentEntitiesStr || '없음'}
 
@@ -230,6 +251,9 @@ ${currentScenesStr || '없음'}`;
     const scenesStr = pf.scenes.map(sceneToString).join('\n');
 
     const fileContext = `=== ${pf.fileName} ===
+## 원본 텍스트
+${truncateText(pf.originalText)}
+
 ## 등장인물/엔티티
 ${entitiesStr || '없음'}
 
