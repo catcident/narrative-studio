@@ -198,9 +198,12 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     chunkStartTime = Date.now();
 
     try {
-      // 축적 그래프 생성: existingGraph + 이전 청크 결과 (allExtracted)
-      // 한번에 올리기/따로 올리기 모두 동일한 방식으로 처리
-      const accumulatedGraph = buildAccumulatedGraph(allExtracted, existingGraph);
+      // 축적 그래프 생성: 이전 청크 결과만 사용 (allExtracted)
+      // 중요: existingGraph는 LLM 분석에 전달하지 않음
+      // - 파일 업로드 순서에 따라 결과가 달라지는 것을 방지
+      // - 예: 2화 업로드 → 1화 추가 시, 2화의 엔티티가 LLM에 전달되면 1화 분석 결과가 달라짐
+      // - 병합은 buildKnowledgeGraph에서 처리 (같은 이름의 엔티티는 기존 ID 재사용)
+      const accumulatedGraph = buildAccumulatedGraph(allExtracted);
       const totalKnownCount = Object.keys(accumulatedGraph.entities).length;
 
       let entitiesToUse: KnownEntity[] = [];

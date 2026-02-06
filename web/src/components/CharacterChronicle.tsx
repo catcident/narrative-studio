@@ -262,7 +262,8 @@ export function CharacterChronicle() {
       })
       .map((sceneId): SceneInfo => {
         const snapshot = knowledgeGraph.snapshots?.[sceneId];
-        const sceneNum = sceneId.replace('S', '').replace(/^0+/, '') || '?';
+        // order 필드 사용 (파일 순서 변경 시 업데이트됨), 없으면 sceneId에서 추출
+        const sceneNum = snapshot?.order?.toString() || sceneId.replace('S', '').replace(/^0+/, '') || '?';
 
         // 시간 정보 찾기
         let time = snapshot?.time || '';

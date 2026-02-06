@@ -562,6 +562,8 @@ function inferCoOccurrenceEdges(
   const characterEntities = allEntities.filter(e => e.category === 'character');
   const nonCharacterEntities = allEntities.filter(e => e.category !== 'character');
 
+  console.log(`[extraction] inferCoOccurrenceEdges: 캐릭터 ${characterEntities.length}개: ${characterEntities.map(c => `${c.name}(${c.id}, scenes=${c.scenes?.join(',')})`).join(', ')}`);
+
   // 캐릭터-캐릭터 동시 등장
   for (let i = 0; i < characterEntities.length; i++) {
     const char1 = characterEntities[i];
@@ -579,8 +581,14 @@ function inferCoOccurrenceEdges(
         commonScenes = commonScenes.filter(s => newSceneIds.has(s));
       }
 
-      if (commonScenes.length === 0) continue;
-      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
+      if (commonScenes.length === 0) {
+        console.log(`[extraction] 캐릭터 관계 스킵 (공통 장면 없음): ${char1.name} ↔ ${char2.name}, char1.scenes=${char1.scenes.join(',')}, char2.scenes=${char2.scenes?.join(',')}, newSceneIds=${newSceneIds ? [...newSceneIds].join(',') : 'null'}`);
+        continue;
+      }
+      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) {
+        console.log(`[extraction] 캐릭터 관계 스킵 (기존 관계 존재): ${char1.name} (${char1.id}) ↔ ${char2.name} (${char2.id})`);
+        continue;
+      }
 
       edgeCounter.value++;
       const id = formatId('H', edgeCounter.value);
@@ -718,21 +726,63 @@ function buildSnapshots(
 export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
-  // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
-  const entities: Record<string, Entity> = existingGraph ? { ...existingGraph.entities } : {};
-  const hyperedges: Record<string, HyperEdge> = existingGraph ? { ...existingGraph.hyperedges } : {};
+  // 기존 그래프의 엔티티/관계를 유지 (새 파일 추가 시 기존 데이터 보존)
+  // LLM 분석 시에는 기존 엔티티를 전달하지 않음 (orchestrator에서 처리)
+  // 여기서는 기존 데이터를 복사하고, 새 파일 분석 결과를 병합
+  let entities: Record<string, Entity> = {};
+  let hyperedges: Record<string, HyperEdge> = {};
   const nameToId: Record<string, string> = {};
 
   // 기존 장면의 최대 번호 추출 (새 장면 ID 계산용)
   let maxSceneNum = 0;
-  if (existingGraph?.snapshots) {
-    for (const sceneId of Object.keys(existingGraph.snapshots)) {
+  let entityCounter = 0;
+  let edgeCounterValue = 0;
+
+  if (existingGraph) {
+    // 기존 그래프의 엔티티/관계 복사 (기존 파일 데이터 유지)
+    for (const [id, entity] of Object.entries(existingGraph.entities)) {
+      entities[id] = { ...entity };
+    }
+    for (const [id, edge] of Object.entries(existingGraph.hyperedges)) {
+      hyperedges[id] = { ...edge };
+    }
+
+    // 기존 장면 최대 번호
+    for (const sceneId of Object.keys(existingGraph.snapshots || {})) {
       const numMatch = sceneId.match(/S0*(\d+)/);
       if (numMatch) {
         maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
       }
     }
+
+    // 기존 엔티티의 최대 번호 추출 (ID 충돌 방지용)
+    for (const entityId of Object.keys(existingGraph.entities)) {
+      const numMatch = entityId.match(/E0*(\d+)/);
+      if (numMatch) {
+        entityCounter = Math.max(entityCounter, parseInt(numMatch[1], 10));
+      }
+    }
+
+    // 기존 관계의 최대 번호 추출 (ID 충돌 방지용)
+    for (const edgeId of Object.keys(existingGraph.hyperedges)) {
+      const numMatch = edgeId.match(/H0*(\d+)/);
+      if (numMatch) {
+        edgeCounterValue = Math.max(edgeCounterValue, parseInt(numMatch[1], 10));
+      }
+    }
+
+    // 기존 엔티티의 이름 매핑 초기화 (같은 이름 → 같은 ID)
+    for (const e of Object.values(existingGraph.entities)) {
+      registerNameMapping(nameToId, e.name, e.id);
+      for (const alias of (e.aliases || [])) {
+        registerNameMapping(nameToId, alias, e.id);
+      }
+    }
+
+    console.log(`[extraction] 기존 그래프 유지: 엔티티 ${Object.keys(entities).length}개, 관계 ${Object.keys(hyperedges).length}개, maxSceneNum=${maxSceneNum}`);
   }
+
+  const edgeCounter = { value: edgeCounterValue };
 
   // 새로 추출된 장면 ID를 실제 ID로 매핑하는 맵 생성
   // 예: extracted.scenes의 id=1 → S0005 (maxSceneNum + 1)
@@ -745,37 +795,29 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   }
   console.log('[extraction] 장면 ID 매핑:', sceneIdMapping);
 
-  // 기존 엔티티의 이름 매핑 초기화
-  for (const e of Object.values(entities)) {
-    registerNameMapping(nameToId, e.name, e.id);
-    for (const alias of (e.aliases || [])) {
-      registerNameMapping(nameToId, alias, e.id);
-    }
-  }
-
-  let entityCounter = Object.keys(entities).length;
-  const edgeCounter = { value: Object.keys(hyperedges).length };
-
   // 엔티티 등록
+  console.log(`[extraction] LLM 추출 엔티티 수: ${extracted.entities.length}개`);
   for (const e of extracted.entities) {
     const existingId = nameToId[e.name] || nameToId[e.name.toLowerCase()] || nameToId[normalizeName(e.name)];
     // 새 장면 ID로 변환 (sceneIdMapping 사용)
     const newSceneIds = (e.scenes || []).map((s: number) => sceneIdMapping[s] || formatId('S', s));
 
-    if (existingId && entities[existingId]) {
-      // 기존 엔티티에 정보 추가 - 새 장면 ID만 추가
+    if (entities[existingId]) {
+      // 이미 이번 분석에서 생성된 엔티티에 정보 추가
       const existing = entities[existingId];
       existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
       if (e.description && !existing.description?.includes(e.description)) {
         existing.description = ((existing.description || '') + ' ' + e.description).slice(0, 500);
       }
       // 기존 scenes에 새 장면 ID 추가 (중복 제거)
+      const oldScenes = existing.scenes?.length || 0;
       existing.scenes = [...new Set([...(existing.scenes || []), ...newSceneIds])];
+      console.log(`[extraction] 기존 엔티티 업데이트: ${e.name} (${existingId}), scenes: ${oldScenes}→${existing.scenes.length}`);
       continue;
     }
 
-    entityCounter++;
-    const id = formatId('E', entityCounter);
+    // 기존 그래프에 같은 이름의 엔티티가 있으면 그 ID 재사용, 없으면 새 ID 생성
+    const id = existingId || formatId('E', ++entityCounter);
     entities[id] = {
       id,
       name: e.name,
@@ -787,6 +829,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       firstMention: { chapter: 1 },
       importance: e.importance || 5,
     };
+    console.log(`[extraction] 새 엔티티 생성: ${e.name} (${id}), category: ${e.category}, scenes: ${newSceneIds.join(',')}${existingId ? ' (기존 ID 재사용)' : ''}`);
     registerNameMapping(nameToId, e.name, id);
     for (const alias of (e.aliases || [])) {
       registerNameMapping(nameToId, alias, id);

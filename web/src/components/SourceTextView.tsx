@@ -209,10 +209,31 @@ export function SourceTextView() {
         }
       });
 
-      // 8. sourceFiles에서 해당 파일 제거
-      const newSourceFiles = remainingSourceFiles;
+      // 8. sourceFiles에서 해당 파일 제거 + 파일 ID 재정렬
+      // 기존 파일 ID → 새 파일 ID 매핑 생성
+      const fileIdMapping: Record<string, string> = {};
+      const newSourceFiles: SourceFile[] = remainingSourceFiles.map((file, index) => {
+        const newId = `F${String(index + 1).padStart(4, '0')}`;
+        fileIdMapping[file.id] = newId;
+        console.log(`[SourceTextView] 파일 ID 재매핑: ${file.id} → ${newId}`);
+        return {
+          ...file,
+          id: newId,
+        };
+      });
 
-      // 9. 새 지식 그래프 생성
+      // 9. 장면의 sourceFileId도 새 ID로 업데이트
+      Object.keys(newSnapshots).forEach(sceneId => {
+        const scene = newSnapshots[sceneId];
+        if (scene.sourceFileId && fileIdMapping[scene.sourceFileId]) {
+          newSnapshots[sceneId] = {
+            ...scene,
+            sourceFileId: fileIdMapping[scene.sourceFileId],
+          };
+        }
+      });
+
+      // 10. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -230,10 +251,10 @@ export function SourceTextView() {
         },
       };
 
-      // 8. 서버에 업데이트
+      // 11. 서버에 업데이트
       await updateKnowledgeGraph(currentDataId, updatedGraph);
 
-      // 9. 스토어 업데이트
+      // 12. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
       const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
@@ -270,19 +291,38 @@ export function SourceTextView() {
       newSourceFiles[fileIndex] = fileB;
       newSourceFiles[targetIndex] = fileA;
 
-      // 2. 각 파일의 장면들 찾기
-      const scenesA: SceneSnapshot[] = [];
-      const scenesB: SceneSnapshot[] = [];
-
-      Object.values(knowledgeGraph.snapshots).forEach(scene => {
-        const matchA = scene.sourceFile === fileA.fileName || scene.sourceFileId === fileA.id;
-        const matchB = scene.sourceFile === fileB.fileName || scene.sourceFileId === fileB.id;
-        if (matchA) scenesA.push(scene);
-        if (matchB) scenesB.push(scene);
+      // 2. 파일명 → 파일 ID 매핑 생성 (scenesByFile과 동일한 로직)
+      const fileNameToId: Record<string, string> = {};
+      currentFiles.forEach(f => {
+        fileNameToId[f.fileName] = f.id;
       });
 
-      console.log(`[SourceTextView] 파일A 장면: ${scenesA.map(s => s.sceneId).join(', ')}`);
-      console.log(`[SourceTextView] 파일B 장면: ${scenesB.map(s => s.sceneId).join(', ')}`);
+      // 장면 → 파일 ID 매핑 함수
+      const getFileIdForScene = (scene: SceneSnapshot): string | null => {
+        // 1. sourceFileId가 있으면 그걸 사용
+        if (scene.sourceFileId) {
+          return scene.sourceFileId;
+        }
+        // 2. sourceFile(파일명)이 있으면 ID로 변환
+        if (scene.sourceFile && fileNameToId[scene.sourceFile]) {
+          return fileNameToId[scene.sourceFile];
+        }
+        // 3. 파일 1개면 모든 장면이 그 파일
+        if (currentFiles.length === 1) {
+          return currentFiles[0].id;
+        }
+        // 4. chapterNumber로 파일 매핑 시도 (하위 호환)
+        if (scene.chapterNumber) {
+          const matchedFile = currentFiles.find(f => {
+            const match = f.fileName.match(/(\d+)/);
+            return match && parseInt(match[1]) === scene.chapterNumber;
+          });
+          if (matchedFile) {
+            return matchedFile.id;
+          }
+        }
+        return null;
+      };
 
       // 3. 장면 order 재계산
       // 모든 장면을 order 순으로 정렬 후 sourceFiles 순서대로 재배치
@@ -292,22 +332,73 @@ export function SourceTextView() {
       const allScenesInNewOrder: SceneSnapshot[] = [];
       for (const file of newSourceFiles) {
         const fileScenes = Object.values(knowledgeGraph.snapshots)
-          .filter(scene => scene.sourceFile === file.fileName || scene.sourceFileId === file.id)
+          .filter(scene => getFileIdForScene(scene) === file.id)
           .sort((a, b) => a.order - b.order);
         allScenesInNewOrder.push(...fileScenes);
+        console.log(`[SourceTextView] 파일 ${file.fileName} 장면: ${fileScenes.map(s => s.sceneId).join(', ')}`);
       }
 
-      // 연속된 order 재부여 (1부터 시작)
+      // 기존 order → 새 order 매핑 생성
+      const orderMapping: Record<number, number> = {};
       allScenesInNewOrder.forEach((scene, idx) => {
-        newSnapshots[scene.sceneId] = {
-          ...newSnapshots[scene.sceneId],
-          order: idx + 1,
-        };
+        orderMapping[scene.order] = idx + 1;
       });
 
-      console.log(`[SourceTextView] 새 장면 순서: ${allScenesInNewOrder.map(s => `${s.sceneId}(${s.order}→${allScenesInNewOrder.indexOf(s) + 1})`).join(', ')}`)
+      // "장면 N" 패턴을 새 order로 변환하는 함수
+      const updateSceneReferences = (text: string | null | undefined): string | null => {
+        if (!text) return text as null;
+        return text.replace(/장면\s*(\d+)/g, (match, num) => {
+          const oldOrder = parseInt(num);
+          const newOrder = orderMapping[oldOrder];
+          if (newOrder !== undefined) {
+            return `장면 ${newOrder}`;
+          }
+          return match; // 매핑 없으면 그대로
+        });
+      };
 
-      // 4. 새 지식 그래프 생성
+      // 파일 인덱스 → chapterNumber 매핑 생성
+      const fileIdToChapterNumber: Record<string, number> = {};
+      newSourceFiles.forEach((file, idx) => {
+        fileIdToChapterNumber[file.id] = idx + 1;
+      });
+
+      // 연속된 order 재부여 (1부터 시작) + chapterNumber도 파일 순서에 맞게 업데이트
+      allScenesInNewOrder.forEach((scene, idx) => {
+        const fileId = getFileIdForScene(scene);
+        const newChapterNumber = fileId ? fileIdToChapterNumber[fileId] : scene.chapterNumber;
+        const newOrder = idx + 1;
+        const updatedScene = {
+          ...newSnapshots[scene.sceneId],
+          order: newOrder,
+          chapterNumber: newChapterNumber ?? scene.chapterNumber,
+        };
+        // time 필드에서 "장면 N" 패턴 업데이트
+        if (updatedScene.time) {
+          updatedScene.time = updateSceneReferences(updatedScene.time) || updatedScene.time;
+        }
+        console.log(`[SourceTextView] 장면 업데이트: ${scene.sceneId} order ${scene.order}→${newOrder}, chapter ${scene.chapterNumber}→${newChapterNumber}`);
+        newSnapshots[scene.sceneId] = updatedScene;
+      });
+
+      // 최종 확인용 로그
+      console.log(`[SourceTextView] 업데이트된 snapshots:`, Object.values(newSnapshots).map(s => `${s.sceneId}(order=${s.order}, ch=${s.chapterNumber})`).join(', '));
+      console.log(`[SourceTextView] 새 장면 순서: ${allScenesInNewOrder.map(s => `${s.sceneId}(${s.order}→${allScenesInNewOrder.indexOf(s) + 1})`).join(', ')}`)
+      console.log(`[SourceTextView] order 매핑: ${JSON.stringify(orderMapping)}`)
+
+      // 4. hyperedges의 statement 필드도 업데이트 (장면 번호 텍스트 포함)
+      const newHyperedges = { ...knowledgeGraph.hyperedges };
+      Object.keys(newHyperedges).forEach(edgeId => {
+        const edge = newHyperedges[edgeId];
+        if (edge.statement) {
+          const updatedStatement = updateSceneReferences(edge.statement);
+          if (updatedStatement && updatedStatement !== edge.statement) {
+            newHyperedges[edgeId] = { ...edge, statement: updatedStatement };
+          }
+        }
+      });
+
+      // 5. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -316,6 +407,7 @@ export function SourceTextView() {
           updatedAt: new Date().toISOString(),
         },
         snapshots: newSnapshots,
+        hyperedges: newHyperedges,
       };
 
       // 5. 서버에 업데이트
