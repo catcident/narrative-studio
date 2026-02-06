@@ -562,6 +562,8 @@ function inferCoOccurrenceEdges(
   const characterEntities = allEntities.filter(e => e.category === 'character');
   const nonCharacterEntities = allEntities.filter(e => e.category !== 'character');
 
+  console.log(`[extraction] inferCoOccurrenceEdges: 캐릭터 ${characterEntities.length}개: ${characterEntities.map(c => `${c.name}(${c.id}, scenes=${c.scenes?.join(',')})`).join(', ')}`);
+
   // 캐릭터-캐릭터 동시 등장
   for (let i = 0; i < characterEntities.length; i++) {
     const char1 = characterEntities[i];
