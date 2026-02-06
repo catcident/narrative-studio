@@ -4,8 +4,8 @@
  * 각 파일에서 추출된 장면 목록도 표시
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle, PlayCircle } from 'lucide-react';
 import { useStore, useValidationResults, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile, invalidateFilesAfter } from '../services/validation';
@@ -30,6 +30,41 @@ export function SourceTextView() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
   const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
+  const [isValidatingAll, setIsValidatingAll] = useState(false);
+  const abortValidationRef = useRef(false);
+
+  // 검증 결과 로드 (knowledgeGraph에서)
+  useEffect(() => {
+    if (knowledgeGraph?.validationResults) {
+      const resultsMap = new Map<string, FileValidationResult>();
+      Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
+        resultsMap.set(fileId, result);
+      });
+      setValidationResults(resultsMap);
+    }
+  }, [knowledgeGraph?.metadata.id, setValidationResults]);
+
+  // 검증 결과 저장 (변경 시 knowledgeGraph에 반영)
+  const saveValidationResults = useCallback(async (results: Map<string, FileValidationResult>) => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    const resultsObj: Record<string, FileValidationResult> = {};
+    results.forEach((result, fileId) => {
+      resultsObj[fileId] = result;
+    });
+
+    const updatedGraph: NovelKnowledgeGraph = {
+      ...knowledgeGraph,
+      validationResults: resultsObj,
+      metadata: {
+        ...knowledgeGraph.metadata,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    setKnowledgeGraph(updatedGraph);
+    await updateKnowledgeGraph(currentDataId, updatedGraph);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
@@ -496,15 +531,22 @@ export function SourceTextView() {
         updatedResults.set(fileId, result);
         const newResults = invalidateFilesAfter(updatedResults, sourceFiles, fileId);
         setValidationResults(newResults);
+        // 저장
+        await saveValidationResults(newResults);
       } else {
         // passed인 경우 단순 업데이트
-        updateValidationResult(fileId, result);
+        const updatedResults = new Map(validationResults);
+        updatedResults.set(fileId, result);
+        setValidationResults(updatedResults);
+        // 저장
+        await saveValidationResults(updatedResults);
       }
 
       console.log(`[validation] 검증 완료: ${fileId} - ${result.status}, issues: ${result.issues.length}`);
+      return result;
     } catch (error) {
       console.error('[validation] 검증 실패:', error);
-      updateValidationResult(fileId, {
+      const errorResult: FileValidationResult = {
         fileId,
         status: 'failed',
         validatedAt: new Date().toISOString(),
@@ -515,12 +557,97 @@ export function SourceTextView() {
           description: '검증 중 오류가 발생했습니다.',
         }],
         comparedWith: [],
-      });
+      };
+      const updatedResults = new Map(validationResults);
+      updatedResults.set(fileId, errorResult);
+      setValidationResults(updatedResults);
+      await saveValidationResults(updatedResults);
+      return errorResult;
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
     }
-  }, [knowledgeGraph, isValidating, validationResults, setIsValidating, setValidatingFileId, updateValidationResult, setValidationResults]);
+  }, [knowledgeGraph, isValidating, validationResults, setIsValidating, setValidatingFileId, setValidationResults, saveValidationResults]);
+
+  // 전체/이어서 검증 핸들러
+  const handleValidateAll = useCallback(async (continueFromLast: boolean = false) => {
+    if (!knowledgeGraph || isValidating || isValidatingAll) return;
+
+    const files = knowledgeGraph.metadata.sourceFiles || [];
+    if (files.length <= 1) return; // 첫 번째 파일은 기준이므로 2개 이상이어야 함
+
+    setIsValidatingAll(true);
+    abortValidationRef.current = false;
+
+    try {
+      // 시작 인덱스 결정
+      let startIndex = 1; // 첫 파일(인덱스 0)은 기준이므로 건너뜀
+
+      if (continueFromLast) {
+        // 이어서 검증: 마지막 passed 또는 첫 번째 pending 찾기
+        for (let i = 1; i < files.length; i++) {
+          const result = validationResults.get(files[i].id);
+          if (!result || result.status === 'pending' || result.status === 'invalidated') {
+            startIndex = i;
+            break;
+          }
+          if (result.status === 'failed') {
+            // failed면 여기서 멈춤 (사용자가 확인 후 통과 처리하거나 수정해야 함)
+            startIndex = i;
+            break;
+          }
+        }
+      }
+
+      console.log(`[validation] 전체 검증 시작: ${startIndex}부터 ${files.length - 1}까지`);
+
+      for (let i = startIndex; i < files.length; i++) {
+        if (abortValidationRef.current) {
+          console.log('[validation] 검증 중단됨');
+          break;
+        }
+
+        const file = files[i];
+        console.log(`[validation] 파일 ${i}/${files.length - 1}: ${file.fileName}`);
+
+        setValidatingFileId(file.id);
+        setIsValidating(true);
+
+        const result = await validateFile(knowledgeGraph, file.id, {
+          apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
+          model: knowledgeGraph.metadata.model,
+        });
+
+        // 결과 저장
+        const updatedResults = new Map(validationResults);
+        updatedResults.set(file.id, result);
+
+        if (result.status === 'failed') {
+          // 실패 시 이후 파일들 invalidate
+          const newResults = invalidateFilesAfter(updatedResults, files, file.id);
+          setValidationResults(newResults);
+          await saveValidationResults(newResults);
+          setExpandedIssues(prev => new Set([...prev, file.id]));
+          console.log(`[validation] 파일 ${file.fileName} 검증 실패, 중단`);
+          break; // 실패하면 중단
+        } else {
+          setValidationResults(updatedResults);
+          await saveValidationResults(updatedResults);
+        }
+      }
+    } catch (error) {
+      console.error('[validation] 전체 검증 중 오류:', error);
+    } finally {
+      setIsValidating(false);
+      setValidatingFileId(null);
+      setIsValidatingAll(false);
+    }
+  }, [knowledgeGraph, isValidating, isValidatingAll, validationResults, setIsValidating, setValidatingFileId, setValidationResults, saveValidationResults]);
+
+  // 검증 중단
+  const handleAbortValidation = useCallback(() => {
+    abortValidationRef.current = true;
+  }, []);
 
   // 검증 버튼 렌더링 (글자 버튼)
   const renderValidationButton = (fileId: string, fileIndex: number) => {
@@ -733,13 +860,16 @@ export function SourceTextView() {
           </div>
           <div className="flex items-center gap-2 mt-3 pt-2 border-t border-red-200">
             <button
-              onClick={() => {
+              onClick={async () => {
                 // 이슈를 유지하면서 passed로 변경
                 const passedResult: FileValidationResult = {
                   ...result,
                   status: 'passed',
                 };
-                updateValidationResult(fileId, passedResult);
+                const updatedResults = new Map(validationResults);
+                updatedResults.set(fileId, passedResult);
+                setValidationResults(updatedResults);
+                await saveValidationResults(updatedResults);
                 setExpandedIssues(prev => {
                   const newSet = new Set(prev);
                   newSet.delete(fileId);
@@ -831,6 +961,51 @@ export function SourceTextView() {
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+
+        {/* 전체 검증 버튼 */}
+        {sourceFiles.length > 1 && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+            {isValidatingAll ? (
+              <>
+                <button
+                  onClick={handleAbortValidation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium"
+                >
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  검증 중단
+                </button>
+                <span className="text-xs text-gray-500">
+                  {validatingFileId && `검증 중: ${sourceFiles.find(f => f.id === validatingFileId)?.fileName || '...'}`}
+                </span>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleValidateAll(false)}
+                  disabled={isValidating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm font-medium disabled:opacity-50"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  처음부터 검증
+                </button>
+                <button
+                  onClick={() => handleValidateAll(true)}
+                  disabled={isValidating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium disabled:opacity-50"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  이어서 검증
+                </button>
+                <span className="text-xs text-gray-500 ml-auto">
+                  {(() => {
+                    const passedCount = Array.from(validationResults.values()).filter(r => r.status === 'passed').length;
+                    return passedCount > 0 ? `${passedCount}/${sourceFiles.length - 1}개 통과` : '';
+                  })()}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 파일 목록 */}

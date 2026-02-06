@@ -212,6 +212,7 @@ export interface NovelKnowledgeGraph {
   chapters?: Record<string, Chapter>;
   timeline: TimelinePoint[];
   snapshots: Record<string, SceneSnapshot>;
+  validationResults?: Record<string, FileValidationResult>;  // 파일별 검증 결과
   stats: {
     totalEntities: number;
     totalEdges: number;
