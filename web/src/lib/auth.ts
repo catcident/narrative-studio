@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { headers } from 'next/headers';
 
-// 환경 변수로 인증 활성화 여부 결정
-export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
+// 인증은 기본 활성 — AUTH_ENABLED=false로 명시적 비활성화만 가능 (보안 기본값)
+export const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
 
 // Catcident OIDC profile shape
 interface CatcidentProfile {

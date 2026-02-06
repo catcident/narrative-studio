@@ -69,7 +69,7 @@ Character-Relationship-Chart/
 
 | 변수 | 설명 |
 |------|------|
-| `AUTH_ENABLED` | `true`: 인증 활성화, `false`: 익명 모드 |
+| `AUTH_ENABLED` | 기본 활성. `false`로 명시적 비활성화 |
 | `AUTH_SECRET` | NextAuth.js 비밀 키 |
 | `AUTH_URL` | 앱 URL (예: `https://storygraph.catcident.com`) |
 | `AUTH_CATCIDENT_ISSUER` | Catcident OAuth issuer URL |
@@ -103,8 +103,8 @@ Character-Relationship-Chart/
 4. 지식 그래프 구조화
 
 ### 인증 모드
-- `AUTH_ENABLED=true`: Catcident OAuth 인증 필수
-- `AUTH_ENABLED=false`: 익명 모드 (userId='anonymous')
+- 기본값 (미설정 또는 `true`): Catcident OAuth 인증 필수
+- `AUTH_ENABLED=false`: 익명 모드 (userId='anonymous', Railway 데모용)
 
 ## 배포
 

@@ -2,25 +2,29 @@
  * 모델 비용 상수 및 크레딧 계산 유틸리티 (공유 모듈)
  *
  * 단일 진실 공급원(single source of truth): AVAILABLE_MODELS (types.ts)
- * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
- *
  * 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
  */
 
 import { AVAILABLE_MODELS, type ModelInfo } from '@/types';
 
-// 상수 (catcident-backend StorygraphEstimator와 동기화)
+// 상수
 export const MARGIN = 3.0;
 export const USD_TO_KRW = 1400;
 export const KRW_PER_CREDIT = 10;
 // 한국어 텍스트는 ~1.0 char/token이지만, 시스템 프롬프트(영문)와 혼합되므로 보수적으로 1.5 사용.
-// MARGIN=3.0이 한국어 과소추정분을 보상. 동기화 대상: catcident-backend StorygraphEstimator.
+// MARGIN=3.0이 한국어 과소추정분을 보상.
 export const CHARS_PER_TOKEN = 1.5;
 export const CHUNK_SIZE = 5000;
 export const CHUNK_OVERLAP = 300;
 export const OUTPUT_RATIO = 0.45;
 export const DEFAULT_INPUT_COST = 1.0; // per 1M tokens
 export const DEFAULT_OUTPUT_COST = 5.0; // per 1M tokens
+
+// Selector 추정 상수 (estimateUsageLocally에서 selector 호출 비용 추정용)
+// ENTITY_SELECTION_PROMPT(~500자) + textPreview(1000자) + SYSTEM_PROMPT(~250자) + entitySummaries 평균(~1000자)
+export const SELECTOR_PROMPT_CHARS = 2750;
+export const SELECTOR_OUTPUT_TOKENS = 100;
+export const SELECTOR_MODEL = 'google/gemini-2.0-flash-001';
 
 /** 모델 비용 조회: dynamicModels 우선, 없으면 AVAILABLE_MODELS, 없으면 기본값 */
 export function getModelCosts(model: string, dynamicModels?: ModelInfo[]): { inputCost: number; outputCost: number } {
