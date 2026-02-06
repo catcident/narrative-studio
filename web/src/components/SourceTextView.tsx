@@ -4,22 +4,63 @@
  * 각 파일에서 추출된 장면 목록도 표시
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-import { useStore } from '../store';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle, PlayCircle, Pencil, X, Save } from 'lucide-react';
+import { useStore, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
-import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile } from '../types';
+import { validateFile, invalidateFilesAfter } from '../services/validation';
+import { useAddFileAnalysis } from '../hooks/useAddFileAnalysis';
+import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile, ValidationStatus, FileValidationResult } from '../types';
 
 export function SourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const currentDataId = useStore((s) => s.currentDataId);
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
+  const isValidating = useIsValidating();
+  const validatingFileId = useValidatingFileId();
+  const setIsValidating = useStore((s) => s.setIsValidating);
+  const setValidatingFileId = useStore((s) => s.setValidatingFileId);
+
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
+  const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
+  const [isValidatingAll, setIsValidatingAll] = useState(false);
+  const abortValidationRef = useRef(false);
+  const [editingFileId, setEditingFileId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // 파일 추가 분석 훅 (수정 시 재분석용)
+  const { execute: executeAddFile, isAdding: isReanalyzing, progress: reanalyzeProgress } = useAddFileAnalysis();
+
+  // 검증 결과를 knowledgeGraph에서 직접 읽음 (store의 Map은 UI용)
+  const getValidationStatus = (fileId: string): FileValidationResult | undefined => {
+    return knowledgeGraph?.validationResults?.[fileId];
+  };
+
+  // 검증 결과 저장 - 최신 상태에서 가져와서 저장
+  const saveValidationResult = async (fileId: string, result: FileValidationResult) => {
+    const state = useStore.getState();
+    const latestGraph = state.knowledgeGraph;
+    const dataId = state.currentDataId;
+
+    if (!latestGraph || !dataId) return;
+
+    const updatedGraph: NovelKnowledgeGraph = {
+      ...latestGraph,
+      validationResults: {
+        ...latestGraph.validationResults,
+        [fileId]: result,
+      },
+    };
+
+    setKnowledgeGraph(updatedGraph);
+    await updateKnowledgeGraph(dataId, updatedGraph);
+  };
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
@@ -234,6 +275,23 @@ export function SourceTextView() {
       });
 
       // 10. 새 지식 그래프 생성
+      // 11. 검증 결과 정리 (삭제된 파일 제거 + 파일 ID 재매핑)
+      const oldValidationResults = knowledgeGraph.validationResults || {};
+      const newValidationResults: Record<string, FileValidationResult> = {};
+      Object.entries(oldValidationResults).forEach(([oldFileId, result]) => {
+        if (oldFileId === fileId) return; // 삭제된 파일 제외
+        const newId = fileIdMapping[oldFileId];
+        if (newId) {
+          newValidationResults[newId] = {
+            ...result,
+            fileId: newId,
+            comparedWith: result.comparedWith
+              .filter((id) => id !== fileId)
+              .map((id) => fileIdMapping[id] || id),
+          };
+        }
+      });
+
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -244,6 +302,7 @@ export function SourceTextView() {
         entities: finalEntities,
         hyperedges: newHyperedges,
         snapshots: newSnapshots,
+        validationResults: newValidationResults,
         stats: {
           ...knowledgeGraph.stats,
           totalEntities: Object.keys(finalEntities).length,
@@ -251,10 +310,10 @@ export function SourceTextView() {
         },
       };
 
-      // 11. 서버에 업데이트
+      // 12. 서버에 업데이트
       await updateKnowledgeGraph(currentDataId, updatedGraph);
 
-      // 12. 스토어 업데이트
+      // 13. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
       const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
@@ -398,7 +457,28 @@ export function SourceTextView() {
         }
       });
 
-      // 5. 새 지식 그래프 생성
+      // 5. 검증 결과 - 기존 결과 유지 (둘 다 통과면 순서 바꿔도 OK)
+      const newValidationResults: Record<string, FileValidationResult> = {};
+      newSourceFiles.forEach((file, idx) => {
+        if (idx === 0) {
+          // 첫 파일은 항상 기준
+          newValidationResults[file.id] = {
+            fileId: file.id,
+            status: 'passed',
+            validatedAt: new Date().toISOString(),
+            issues: [],
+            comparedWith: [],
+          };
+        } else {
+          // 기존 결과 유지
+          const oldResult = knowledgeGraph.validationResults?.[file.id];
+          if (oldResult) {
+            newValidationResults[file.id] = oldResult;
+          }
+        }
+      });
+
+      // 6. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -408,12 +488,13 @@ export function SourceTextView() {
         },
         snapshots: newSnapshots,
         hyperedges: newHyperedges,
+        validationResults: newValidationResults,
       };
 
-      // 5. 서버에 업데이트
+      // 7. 서버에 업데이트
       await updateKnowledgeGraph(currentDataId, updatedGraph);
 
-      // 6. 스토어 업데이트
+      // 8. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
       console.log(`[SourceTextView] 파일 순서 변경 완료`);
@@ -424,6 +505,561 @@ export function SourceTextView() {
       setMovingFileId(null);
     }
   }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
+
+  // 파일 검증 핸들러 - 단순화
+  const handleValidateFile = async (fileId: string) => {
+    if (!knowledgeGraph || !currentDataId || isValidating) return;
+
+    setIsValidating(true);
+    setValidatingFileId(fileId);
+
+    try {
+      const result = await validateFile(knowledgeGraph, fileId, {
+        apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
+        model: knowledgeGraph.metadata.model,
+      });
+
+      // 결과 저장
+      await saveValidationResult(fileId, result);
+
+      if (result.status === 'failed') {
+        setExpandedIssues(prev => new Set([...prev, fileId]));
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[validation] 검증 실패:', error);
+    } finally {
+      setIsValidating(false);
+      setValidatingFileId(null);
+    }
+  };
+
+  // 전체/이어서 검증 핸들러 - 단순화
+  const handleValidateAll = async (continueFromLast: boolean = false) => {
+    if (!knowledgeGraph || !currentDataId || isValidating || isValidatingAll) return;
+
+    const files = knowledgeGraph.metadata.sourceFiles || [];
+    if (files.length <= 1) return;
+
+    setIsValidatingAll(true);
+    abortValidationRef.current = false;
+
+    try {
+      // 시작 인덱스: 처음부터면 1, 이어서면 통과 안 된 첫 번째 파일
+      let startIndex = 1;
+      if (continueFromLast) {
+        for (let i = 1; i < files.length; i++) {
+          const result = knowledgeGraph.validationResults?.[files[i].id];
+          if (!result || result.status !== 'passed') {
+            startIndex = i;
+            break;
+          }
+        }
+      }
+
+      for (let i = startIndex; i < files.length; i++) {
+        if (abortValidationRef.current) break;
+
+        const file = files[i];
+        setValidatingFileId(file.id);
+        setIsValidating(true);
+
+        // 검증 실행
+        const result = await validateFile(knowledgeGraph, file.id, {
+          apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
+          model: knowledgeGraph.metadata.model,
+        });
+
+        // 결과 저장
+        await saveValidationResult(file.id, result);
+
+        if (result.status === 'failed') {
+          setExpandedIssues(prev => new Set([...prev, file.id]));
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('[validation] 전체 검증 중 오류:', error);
+    } finally {
+      setIsValidating(false);
+      setValidatingFileId(null);
+      setIsValidatingAll(false);
+    }
+  };
+
+  // 검증 중단
+  const handleAbortValidation = () => {
+    abortValidationRef.current = true;
+  };
+
+  // 텍스트 수정 시작
+  const handleStartEdit = (fileId: string, text: string) => {
+    setEditingFileId(fileId);
+    setEditingText(text);
+  };
+
+  // 텍스트 수정 취소
+  const handleCancelEdit = () => {
+    setEditingFileId(null);
+    setEditingText('');
+  };
+
+  // 텍스트 수정 저장 + 재분석
+  const handleSaveEdit = async (fileId: string) => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    const currentFiles = knowledgeGraph.metadata.sourceFiles || [];
+    const fileIndex = currentFiles.findIndex(f => f.id === fileId);
+    if (fileIndex < 0) return;
+
+    const file = currentFiles[fileIndex];
+    if (file.text === editingText) {
+      // 변경 없음
+      handleCancelEdit();
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      console.log(`[SourceTextView] 텍스트 수정 시작: ${file.fileName} (위치: ${fileIndex})`);
+
+      // 1. 해당 파일 삭제 (handleDeleteFile 로직 사용)
+      await handleDeleteFile(fileId, file.fileName);
+
+      // 2. 삭제 후 최신 상태 가져오기
+      const afterDeleteGraph = useStore.getState().knowledgeGraph;
+
+      // 3. 수정된 텍스트로 재분석 (파일이 맨 뒤에 추가됨)
+      console.log(`[SourceTextView] 재분석 시작: ${file.fileName}`);
+      handleCancelEdit(); // 편집 모드 종료 (UI 갱신)
+
+      await executeAddFile(editingText, file.fileName, afterDeleteGraph);
+
+      // 3. 재분석 완료 후 파일을 원래 위치로 이동
+      // (executeAddFile이 완료되면 store가 업데이트되므로 최신 상태 사용)
+      const state = useStore.getState();
+      const updatedGraph = state.knowledgeGraph;
+      const updatedDataId = state.currentDataId;
+
+      if (updatedGraph && updatedDataId) {
+        const updatedFiles = updatedGraph.metadata.sourceFiles || [];
+        const newFileIndex = updatedFiles.findIndex(f => f.fileName === file.fileName);
+
+        // 새로 추가된 파일이 맨 뒤에 있고, 원래 위치와 다르면 이동
+        if (newFileIndex >= 0 && newFileIndex !== fileIndex && newFileIndex === updatedFiles.length - 1) {
+          console.log(`[SourceTextView] 파일 원래 위치로 이동: ${newFileIndex} → ${fileIndex}`);
+
+          // 파일을 맨 뒤에서 원래 위치로 이동
+          const reorderedFiles = [...updatedFiles];
+          const [movedFile] = reorderedFiles.splice(newFileIndex, 1);
+          reorderedFiles.splice(fileIndex, 0, movedFile);
+
+          // 파일 ID 재정렬
+          const reorderedWithIds = reorderedFiles.map((f, idx) => ({
+            ...f,
+            id: `F${String(idx + 1).padStart(4, '0')}`,
+          }));
+
+          // 파일명 → 파일 ID 매핑 (reorderedFiles 기준)
+          const fileNameToNewId: Record<string, string> = {};
+          reorderedWithIds.forEach(f => {
+            fileNameToNewId[f.fileName] = f.id;
+          });
+
+          // 장면 → 파일 ID 매핑 함수 (파일명 기준)
+          const getFileIdForScene = (scene: SceneSnapshot): string | null => {
+            if (scene.sourceFile && fileNameToNewId[scene.sourceFile]) {
+              return fileNameToNewId[scene.sourceFile];
+            }
+            // sourceFileId가 있으면 매핑
+            if (scene.sourceFileId) {
+              const oldFile = updatedFiles.find(f => f.id === scene.sourceFileId);
+              if (oldFile && fileNameToNewId[oldFile.fileName]) {
+                return fileNameToNewId[oldFile.fileName];
+              }
+            }
+            return null;
+          };
+
+          // 새 sourceFiles 순서대로 모든 장면 수집 + order 재계산
+          const allScenesInNewOrder: SceneSnapshot[] = [];
+          for (const f of reorderedWithIds) {
+            const fileScenes = Object.values(updatedGraph.snapshots)
+              .filter(scene => {
+                const sceneFileId = getFileIdForScene(scene);
+                return sceneFileId === f.id;
+              })
+              .sort((a, b) => a.order - b.order);
+            allScenesInNewOrder.push(...fileScenes);
+            console.log(`[SourceTextView] 파일 ${f.fileName} 장면: ${fileScenes.map(s => s.sceneId).join(', ')}`);
+          }
+
+          // 기존 order → 새 order 매핑 생성
+          const orderMapping: Record<number, number> = {};
+          allScenesInNewOrder.forEach((scene, idx) => {
+            orderMapping[scene.order] = idx + 1;
+          });
+
+          // "장면 N" 패턴을 새 order로 변환하는 함수
+          const updateSceneReferences = (text: string | null | undefined): string | null => {
+            if (!text) return text as null;
+            return text.replace(/장면\s*(\d+)/g, (match, num) => {
+              const oldOrder = parseInt(num);
+              const newOrder = orderMapping[oldOrder];
+              if (newOrder !== undefined) {
+                return `장면 ${newOrder}`;
+              }
+              return match;
+            });
+          };
+
+          // 파일 ID → chapterNumber 매핑
+          const fileIdToChapterNumber: Record<string, number> = {};
+          reorderedWithIds.forEach((f, idx) => {
+            fileIdToChapterNumber[f.id] = idx + 1;
+          });
+
+          // 장면 order + sourceFileId + chapterNumber 업데이트
+          const reorderedSnapshots: Record<string, SceneSnapshot> = {};
+          allScenesInNewOrder.forEach((scene, idx) => {
+            const newFileId = getFileIdForScene(scene);
+            const newChapterNumber = newFileId ? fileIdToChapterNumber[newFileId] : scene.chapterNumber;
+            const newOrder = idx + 1;
+            const updatedScene = {
+              ...scene,
+              order: newOrder,
+              sourceFileId: newFileId || scene.sourceFileId,
+              chapterNumber: newChapterNumber ?? scene.chapterNumber,
+            };
+            // time 필드에서 "장면 N" 패턴 업데이트
+            if (updatedScene.time) {
+              updatedScene.time = updateSceneReferences(updatedScene.time) || updatedScene.time;
+            }
+            console.log(`[SourceTextView] 장면 업데이트: ${scene.sceneId} order ${scene.order}→${newOrder}`);
+            reorderedSnapshots[scene.sceneId] = updatedScene;
+          });
+
+          // hyperedges의 statement 필드도 업데이트
+          const newHyperedges = { ...updatedGraph.hyperedges };
+          Object.keys(newHyperedges).forEach(edgeId => {
+            const edge = newHyperedges[edgeId];
+            if (edge.statement) {
+              const updatedStatement = updateSceneReferences(edge.statement);
+              if (updatedStatement && updatedStatement !== edge.statement) {
+                newHyperedges[edgeId] = { ...edge, statement: updatedStatement };
+              }
+            }
+          });
+
+          // 검증 결과 초기화 (fileIndex 이후)
+          const newValidationResults: Record<string, FileValidationResult> = {};
+          reorderedWithIds.forEach((f, idx) => {
+            if (idx < fileIndex) {
+              // 이전 파일들의 검증 결과 유지 (ID 매핑 적용)
+              const oldFile = updatedFiles.find(uf => uf.fileName === f.fileName);
+              if (oldFile && updatedGraph.validationResults?.[oldFile.id]) {
+                newValidationResults[f.id] = {
+                  ...updatedGraph.validationResults[oldFile.id],
+                  fileId: f.id,
+                };
+              }
+            }
+          });
+
+          const finalGraph: NovelKnowledgeGraph = {
+            ...updatedGraph,
+            metadata: {
+              ...updatedGraph.metadata,
+              sourceFiles: reorderedWithIds,
+              updatedAt: new Date().toISOString(),
+            },
+            snapshots: reorderedSnapshots,
+            hyperedges: newHyperedges,
+            validationResults: newValidationResults,
+          };
+
+          await updateKnowledgeGraph(updatedDataId, finalGraph);
+          setKnowledgeGraph(finalGraph, undefined, updatedDataId);
+
+          console.log(`[SourceTextView] 텍스트 수정 + 재분석 + 위치 복원 완료: ${file.fileName}`);
+        } else {
+          console.log(`[SourceTextView] 텍스트 수정 + 재분석 완료: ${file.fileName}`);
+        }
+      }
+    } catch (error) {
+      console.error('[SourceTextView] 텍스트 수정 실패:', error);
+      alert('텍스트 수정에 실패했습니다.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // 검증 버튼 렌더링 (글자 버튼)
+  const renderValidationButton = (fileId: string, fileIndex: number) => {
+    // 첫 번째 파일은 기준 파일
+    if (fileIndex === 0) {
+      return (
+        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-400 rounded">
+          기준
+        </span>
+      );
+    }
+
+    const result = getValidationStatus(fileId);
+    const isCurrentlyValidating = validatingFileId === fileId;
+
+    if (isCurrentlyValidating) {
+      return (
+        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded flex items-center gap-1">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          검증중
+        </span>
+      );
+    }
+
+    if (!result || result.status === 'pending') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleValidateFile(fileId);
+          }}
+          disabled={isValidating}
+          className="text-xs px-2 py-1 bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-600 rounded transition-colors disabled:opacity-50"
+        >
+          검증하기
+        </button>
+      );
+    }
+
+    if (result.status === 'passed') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedIssues(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(fileId)) {
+                newSet.delete(fileId);
+              } else {
+                newSet.add(fileId);
+              }
+              return newSet;
+            });
+          }}
+          className="text-xs px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors font-medium"
+        >
+          통과 {expandedIssues.has(fileId) ? '▲' : '▼'}
+        </button>
+      );
+    }
+
+    if (result.status === 'failed') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedIssues(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(fileId)) {
+                newSet.delete(fileId);
+              } else {
+                newSet.add(fileId);
+              }
+              return newSet;
+            });
+          }}
+          className="text-xs px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors font-medium"
+        >
+          이슈 {result.issues.length}개 {expandedIssues.has(fileId) ? '▲' : '▼'}
+        </button>
+      );
+    }
+
+    if (result.status === 'invalidated') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedIssues(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(fileId)) {
+                newSet.delete(fileId);
+              } else {
+                newSet.add(fileId);
+              }
+              return newSet;
+            });
+          }}
+          className="text-xs px-2 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors font-medium"
+        >
+          재검증 필요 {expandedIssues.has(fileId) ? '▲' : '▼'}
+        </button>
+      );
+    }
+
+    return null;
+  };
+
+  // 검증 결과 패널 렌더링 (passed/failed 모두)
+  const renderValidationPanel = (fileId: string, fileIndex: number) => {
+    // 첫 번째 파일은 검증 패널 없음
+    if (fileIndex === 0) return null;
+
+    const result = getValidationStatus(fileId);
+    if (!result || !expandedIssues.has(fileId)) return null;
+
+    // passed 상태
+    if (result.status === 'passed') {
+      return (
+        <div className="bg-green-50 border-t border-green-200 p-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-medium text-green-800">
+              검증 통과
+            </span>
+            <span className="text-xs text-green-600">
+              - 이전 {result.comparedWith.length}개 파일과 비교
+            </span>
+            <button
+              onClick={() => handleValidateFile(fileId)}
+              disabled={isValidating}
+              className="ml-auto text-xs text-green-600 hover:text-green-800 underline disabled:opacity-50"
+            >
+              다시 검증
+            </button>
+          </div>
+          {result.summary && (
+            <p className="text-sm text-green-700 mt-2 bg-green-100 p-2 rounded">
+              📋 {result.summary}
+            </p>
+          )}
+          {result.validatedAt && (
+            <p className="text-xs text-green-500 mt-1">
+              검증 시간: {new Date(result.validatedAt).toLocaleString('ko-KR')}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    // failed 상태 (이슈가 있음)
+    if (result.status === 'failed' && result.issues.length > 0) {
+      return (
+        <div className="bg-red-50 border-t border-red-200 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-medium text-red-800">
+              검증 이슈 ({result.issues.length}개)
+            </span>
+            <span className="text-xs text-red-500">
+              - 이전 {result.comparedWith.length}개 파일과 비교
+            </span>
+            <button
+              onClick={() => handleValidateFile(fileId)}
+              disabled={isValidating}
+              className="ml-auto text-xs text-red-600 hover:text-red-800 underline disabled:opacity-50"
+            >
+              다시 검증
+            </button>
+          </div>
+          {result.summary && (
+            <p className="text-sm text-red-700 mb-2 bg-red-100 p-2 rounded">
+              📋 {result.summary}
+            </p>
+          )}
+          <div className="space-y-2">
+            {result.issues.map((issue) => (
+              <div
+                key={issue.id}
+                className={`text-sm p-2 rounded ${
+                  issue.severity === 'error'
+                    ? 'bg-red-100 border border-red-300'
+                    : 'bg-yellow-100 border border-yellow-300'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <span
+                    className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                      issue.severity === 'error'
+                        ? 'bg-red-200 text-red-800'
+                        : 'bg-yellow-200 text-yellow-800'
+                    }`}
+                  >
+                    {issue.severity === 'error' ? '오류' : '경고'}
+                  </span>
+                  <span
+                    className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded"
+                  >
+                    {issue.type.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <p className="mt-1 text-gray-700">{issue.description}</p>
+                {issue.suggestion && (
+                  <p className="mt-1 text-gray-500 text-xs">
+                    💡 {issue.suggestion}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-red-200">
+            <button
+              onClick={async () => {
+                // 이슈를 유지하면서 passed로 변경
+                const passedResult: FileValidationResult = {
+                  ...result,
+                  status: 'passed',
+                };
+                await saveValidationResult(fileId, passedResult);
+                setExpandedIssues(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(fileId);
+                  return newSet;
+                });
+              }}
+              className="text-xs px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded font-medium"
+            >
+              ✓ 확인 후 통과 처리
+            </button>
+            <span className="text-xs text-gray-500">
+              이슈를 확인했고 문제없다고 판단하면 클릭
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // invalidated 상태 - 이전 파일 검증 안 됨
+    if (result.status === 'invalidated') {
+      return (
+        <div className="bg-yellow-50 border-t border-yellow-200 p-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+            <span className="text-sm font-medium text-yellow-800">
+              재검증 필요
+            </span>
+            <span className="text-xs text-yellow-600">
+              - 이전 파일이 아직 검증되지 않았습니다
+            </span>
+          </div>
+          <p className="text-xs text-yellow-600 mt-2">
+            앞 파일들을 먼저 검증한 후 이 파일을 검증해주세요.
+          </p>
+          <button
+            onClick={() => handleValidateFile(fileId)}
+            disabled={isValidating}
+            className="mt-2 text-xs px-3 py-1 bg-yellow-200 hover:bg-yellow-300 text-yellow-800 rounded disabled:opacity-50"
+          >
+            그래도 검증하기
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   if (sourceFiles.length === 0) {
     return (
@@ -468,6 +1104,52 @@ export function SourceTextView() {
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+
+        {/* 전체 검증 버튼 */}
+        {sourceFiles.length > 1 && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+            {isValidatingAll ? (
+              <>
+                <button
+                  onClick={handleAbortValidation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium"
+                >
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  검증 중단
+                </button>
+                <span className="text-xs text-gray-500">
+                  {validatingFileId && `검증 중: ${sourceFiles.find(f => f.id === validatingFileId)?.fileName || '...'}`}
+                </span>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleValidateAll(false)}
+                  disabled={isValidating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm font-medium disabled:opacity-50"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  처음부터 검증
+                </button>
+                <button
+                  onClick={() => handleValidateAll(true)}
+                  disabled={isValidating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium disabled:opacity-50"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  이어서 검증
+                </button>
+                <span className="text-xs text-gray-500 ml-auto">
+                  {(() => {
+                    const results = knowledgeGraph?.validationResults || {};
+                    const passedCount = Object.values(results).filter(r => r.status === 'passed').length;
+                    return passedCount > 0 ? `${passedCount}/${sourceFiles.length - 1}개 통과` : '';
+                  })()}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 파일 목록 */}
@@ -475,16 +1157,27 @@ export function SourceTextView() {
         {filteredFiles.map((file, index) => {
           const isExpanded = expandedFiles.has(file.id);
           const isCopied = copiedId === file.id;
+          const validationResult = getValidationStatus(file.id);
+          const validationStatus = validationResult?.status;
+
+          // 검증 상태에 따른 배경색
+          const getBorderColor = () => {
+            if (index === 0) return 'border-gray-200'; // 첫 파일은 기준
+            if (validationStatus === 'passed') return 'border-green-300 bg-green-50';
+            if (validationStatus === 'failed') return 'border-red-300 bg-red-50';
+            if (validationStatus === 'invalidated') return 'border-yellow-300 bg-yellow-50';
+            return 'border-gray-200';
+          };
 
           return (
             <div
               key={file.id}
-              className="border rounded-lg overflow-hidden bg-white shadow-sm"
+              className={`border rounded-lg overflow-hidden shadow-sm ${getBorderColor()}`}
             >
               {/* 파일 헤더 */}
               <button
                 onClick={() => toggleFile(file.id)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 hover:bg-opacity-80 transition-colors text-left"
               >
                 {isExpanded ? (
                   <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" />
@@ -512,6 +1205,11 @@ export function SourceTextView() {
                   </div>
                 </div>
 
+                {/* 검증 상태 버튼 */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  {renderValidationButton(file.id, index)}
+                </div>
+
                 {/* 순서 이동 버튼 */}
                 {sourceFiles.length > 1 && (
                   <div className="flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
@@ -535,6 +1233,20 @@ export function SourceTextView() {
                     </button>
                   </div>
                 )}
+
+                {/* 편집 버튼 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(file.id, file.text);
+                    if (!isExpanded) toggleFile(file.id);
+                  }}
+                  className="p-1.5 hover:bg-blue-100 rounded transition-colors"
+                  title="텍스트 수정"
+                  aria-label="텍스트 수정"
+                >
+                  <Pencil className="w-4 h-4 text-gray-400 hover:text-blue-500" aria-hidden="true" />
+                </button>
 
                 {/* 복사 버튼 */}
                 <button
@@ -585,6 +1297,9 @@ export function SourceTextView() {
                 )}
               </button>
 
+              {/* 검증 결과 패널 */}
+              {renderValidationPanel(file.id, index)}
+
               {/* 파일 내용 */}
               {isExpanded && (
                 <div className="border-t">
@@ -620,11 +1335,56 @@ export function SourceTextView() {
                     return null;
                   })()}
 
-                  <div className="bg-gray-50">
-                    <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
-                      {searchQuery ? highlightText(file.text, searchQuery) : file.text}
-                    </pre>
-                  </div>
+                  {editingFileId === file.id ? (
+                    <div className="bg-yellow-50 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Pencil className="w-4 h-4 text-yellow-600" />
+                        <span className="text-sm font-medium text-yellow-800">
+                          텍스트 수정 중
+                        </span>
+                        <span className="text-xs text-yellow-600">
+                          (수정 시 이 파일과 이후 파일들의 검증 결과가 초기화됩니다)
+                        </span>
+                      </div>
+                      <textarea
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="w-full h-[400px] p-3 text-sm text-gray-700 font-sans leading-relaxed border rounded resize-y focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        placeholder="텍스트를 입력하세요..."
+                      />
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={() => handleSaveEdit(file.id)}
+                          disabled={isSavingEdit}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium disabled:opacity-50"
+                        >
+                          {isSavingEdit ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4" />
+                          )}
+                          {isSavingEdit ? '저장 중...' : '저장'}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isSavingEdit}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm font-medium disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                          취소
+                        </button>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {editingText.length.toLocaleString()}자
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50">
+                      <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
+                        {searchQuery ? highlightText(file.text, searchQuery) : file.text}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

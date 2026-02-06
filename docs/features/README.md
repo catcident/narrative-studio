@@ -11,6 +11,7 @@
 | [knowledge-graph-structure.md](knowledge-graph-structure.md) | 지식 그래프 데이터 구조 |
 | [chat.md](chat.md) | AI 채팅 기능 |
 | [storage.md](storage.md) | 저장소 및 동기화 |
+| [validation.md](validation.md) | 파일 일관성 검증 |
 
 ## 주요 흐름
 
