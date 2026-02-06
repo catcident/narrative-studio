@@ -35,20 +35,24 @@ export function SourceTextView() {
     return knowledgeGraph?.validationResults?.[fileId];
   };
 
-  // 검증 결과 저장 - 단순하게 knowledgeGraph.validationResults에 저장
+  // 검증 결과 저장 - 최신 상태에서 가져와서 저장
   const saveValidationResult = async (fileId: string, result: FileValidationResult) => {
-    if (!knowledgeGraph || !currentDataId) return;
+    const state = useStore.getState();
+    const latestGraph = state.knowledgeGraph;
+    const dataId = state.currentDataId;
+
+    if (!latestGraph || !dataId) return;
 
     const updatedGraph: NovelKnowledgeGraph = {
-      ...knowledgeGraph,
+      ...latestGraph,
       validationResults: {
-        ...knowledgeGraph.validationResults,
+        ...latestGraph.validationResults,
         [fileId]: result,
       },
     };
 
     setKnowledgeGraph(updatedGraph);
-    await updateKnowledgeGraph(currentDataId, updatedGraph);
+    await updateKnowledgeGraph(dataId, updatedGraph);
   };
 
   const sourceFiles = useMemo(() => {
