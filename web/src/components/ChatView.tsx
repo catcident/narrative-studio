@@ -4,11 +4,12 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare, AlertTriangle, Key } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useStore, useModels, useBillingSubscription, useCreditBalance } from '../store';
+import { useStore, useModels, useBillingSubscription, useCreditBalance, useByokEnabled } from '../store';
 import { sendChatMessage, estimateChatCost, generateMessageId, type ChatMessage } from '../services/chat';
 import { ensureSufficientBalance } from '../services/billing';
+import { hasApiKey } from '../services/extraction';
 import { DEFAULT_MODEL } from '../types';
 
 // 대화 세션 타입
@@ -133,6 +134,8 @@ export function ChatView() {
   const subscription = useBillingSubscription();
   const creditBalance = useCreditBalance();
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const byokEnabled = useByokEnabled();
+  const isUsingPersonalKey = byokEnabled && hasApiKey();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -241,8 +244,8 @@ export function ChatView() {
     if (!input.trim() || isLoading || !knowledgeGraph) return;
     setInsufficientCredits(null);
 
-    // 잔액 사전 확인 (subscription이 있을 때만 = AUTH_ENABLED=true)
-    if (subscription) {
+    // 잔액 사전 확인 (subscription이 있고, BYOK가 아닐 때만)
+    if (subscription && !isUsingPersonalKey) {
       try {
         await ensureSufficientBalance(subscription);
       } catch {
@@ -287,8 +290,8 @@ export function ChatView() {
         knowledgeGraph.metadata.id
       );
 
-      // billing 잔액 갱신
-      if (result.billing?.finalBalanceAfter != null) {
+      // billing 잔액 갱신 (BYOK가 아닌 경우에만)
+      if (!isUsingPersonalKey && result.billing?.finalBalanceAfter != null) {
         updateCreditBalance(result.billing.finalBalanceAfter);
       }
 
@@ -413,9 +416,17 @@ export function ChatView() {
             <h2 className="text-lg font-semibold text-gray-800">
               소설 채팅
             </h2>
-            <p className="text-xs text-gray-500">
-              "{knowledgeGraph.metadata.title}"에 대해 질문하세요
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-500">
+                "{knowledgeGraph.metadata.title}"에 대해 질문하세요
+              </p>
+              {isUsingPersonalKey && (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                  <Key aria-hidden="true" className="w-3 h-3" />
+                  개인 키
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -425,9 +436,9 @@ export function ChatView() {
                 onClick={() => setShowModelSelect(!showModelSelect)}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
-                <Settings className="w-4 h-4" />
+                <Settings aria-hidden="true" className="w-4 h-4" />
                 <span className="max-w-[120px] truncate">{currentModel.name}</span>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown aria-hidden="true" className="w-4 h-4" />
               </button>
 
               {showModelSelect && (
@@ -471,7 +482,7 @@ export function ChatView() {
               }`}
               title="대화 기록"
             >
-              <History className="w-4 h-4" />
+              <History aria-hidden="true" className="w-4 h-4" />
               <span>기록</span>
               {sessions.length > 1 && (
                 <span className="text-xs bg-gray-200 px-1.5 py-0.5 rounded-full">
@@ -487,7 +498,7 @@ export function ChatView() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="대화 초기화"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 aria-hidden="true" className="w-4 h-4" />
               <span>초기화</span>
             </button>
           </div>
@@ -504,7 +515,7 @@ export function ChatView() {
                 onClick={handleNewChat}
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
               >
-                <Plus className="w-3 h-3" />
+                <Plus aria-hidden="true" className="w-3 h-3" />
                 새 대화
               </button>
             </div>
@@ -527,7 +538,7 @@ export function ChatView() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <MessageSquare aria-hidden="true" className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         <span className="text-sm font-medium text-gray-800 truncate">
                           {session.preview || session.title}
                         </span>
@@ -539,9 +550,10 @@ export function ChatView() {
                     <button
                       onClick={(e) => handleDeleteSession(session.id, e)}
                       className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="삭제"
                       title="삭제"
                     >
-                      <X className="w-4 h-4" />
+                      <X aria-hidden="true" className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -598,7 +610,7 @@ export function ChatView() {
         {isLoading && !streamingContent && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
             </div>
             <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
               <span className="text-gray-500">생각 중...</span>
@@ -643,12 +655,13 @@ export function ChatView() {
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
+            aria-label={isLoading ? '전송 중' : '전송'}
             className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
             ) : (
-              <Send className="w-5 h-5" />
+              <Send aria-hidden="true" className="w-5 h-5" />
             )}
           </button>
         </div>

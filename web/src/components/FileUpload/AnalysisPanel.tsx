@@ -17,6 +17,11 @@ interface AnalysisPanelProps {
   apiKeyInput: string;
   setApiKeyInput: (v: string) => void;
   handleSaveApiKey: () => void;
+  byokEnabled: boolean;
+  onRemoveApiKey: () => void;
+  onClearKeyValidationError: () => void;
+  keyValidationLoading: boolean;
+  keyValidationError: string | null;
   // Model
   currentModel: string;
   lockedModel: string | undefined;
@@ -60,6 +65,11 @@ export function AnalysisPanel({
   apiKeyInput,
   setApiKeyInput,
   handleSaveApiKey,
+  byokEnabled,
+  onRemoveApiKey,
+  onClearKeyValidationError,
+  keyValidationLoading,
+  keyValidationError,
   currentModel,
   lockedModel,
   localLoading,
@@ -122,9 +132,9 @@ export function AnalysisPanel({
         </div>
       )}
 
-      {/* 자신의 API 키 사용 옵션 */}
-      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && (
-        <div className="text-center">
+      {/* 자신의 API 키 사용 옵션 — byokEnabled일 때만 표시 (서버키 없는 경우 제외) */}
+      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && byokEnabled && (
+        <div className="text-center space-y-1">
           <button
             onClick={() => setShowApiKeyInput(true)}
             className="text-xs text-gray-400 hover:text-gray-600"
@@ -132,6 +142,31 @@ export function AnalysisPanel({
             <Key aria-hidden="true" className="w-3 h-3 inline mr-1" />
             {hasLocalKey ? '내 API 키 변경' : '내 API 키 사용하기'}
           </button>
+          {hasLocalKey && (
+            <button
+              onClick={onRemoveApiKey}
+              className="block mx-auto text-xs text-red-400 hover:text-red-600"
+            >
+              개인 키 삭제 (서버 키로 복귀)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* byok 미지원 플랜: 안내 + 로컬키 있으면 삭제 버튼 표시 */}
+      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && !byokEnabled && (
+        <div className="text-center space-y-1">
+          {hasEnvKey && !hasLocalKey && (
+            <p className="text-xs text-gray-400">Pro 플랜에서 개인 API 키를 사용할 수 있습니다</p>
+          )}
+          {hasLocalKey && (
+            <button
+              onClick={onRemoveApiKey}
+              className="text-xs text-red-400 hover:text-red-600"
+            >
+              개인 키 삭제 (서버 키로 복귀)
+            </button>
+          )}
         </div>
       )}
 
@@ -144,20 +179,26 @@ export function AnalysisPanel({
               onChange={(e) => setApiKeyInput(e.target.value)}
               placeholder={hasLocalKey ? '••••••••' : 'sk-or-...'}
               className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+              disabled={keyValidationLoading}
             />
             <button
               onClick={handleSaveApiKey}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+              disabled={keyValidationLoading || !apiKeyInput.trim()}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             >
-              저장
+              {keyValidationLoading && <Loader2 aria-hidden="true" className="w-3 h-3 animate-spin" />}
+              {keyValidationLoading ? '검증 중' : '저장'}
             </button>
             <button
-              onClick={() => setShowApiKeyInput(false)}
+              onClick={() => { setShowApiKeyInput(false); onClearKeyValidationError(); }}
               className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
             >
               취소
             </button>
           </div>
+          {keyValidationError && (
+            <p className="text-xs text-red-600 mt-1.5">{keyValidationError}</p>
+          )}
         </div>
       )}
 

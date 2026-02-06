@@ -135,7 +135,9 @@ NextAuth.js SessionProvider 래퍼
 
 ### SubscriptionPage.tsx
 
-구독 관리 모달 (탭: 플랜 비교 | 크레딧 구매 | 사용 내역).
+구독 관리 모달 (탭: 플랜 비교 | 크레딧 구매 | 사용 내역 | API 키).
+- "API 키" 탭은 `byokEnabled` 시에만 표시
+- 키 마스킹: `key.length <= 10`이면 완전 마스킹 (`'••••••••••'`), 그 외 `sk-or-...xxxx`
 
 ### UsageHistory.tsx
 

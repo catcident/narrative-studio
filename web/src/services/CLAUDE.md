@@ -231,7 +231,7 @@ calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
 ensureSufficientBalance(subscription)  // subscription 있으면 잔액 확인, 없으면 통과
 
-// Billing 콜백 생성
+// Billing 콜백 생성 (리턴 타입: ChunkBillingCallback)
 createBillingCallback(addChunkUsage, updateCreditBalance?)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백
 ```
 

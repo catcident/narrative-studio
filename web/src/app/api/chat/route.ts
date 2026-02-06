@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache';
+import { checkAnalyzeEligibility, updateBalanceCache, isCachedByokEnabled } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getCachedModels } from '@/lib/modelCache';
 import {
@@ -14,24 +14,9 @@ import {
   resolveTokenBilling, type DeductResult,
 } from '@/lib/modelCosts';
 import { proxyToCatcident } from '@/services/billingProxy';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
-
-// 타임아웃 유틸리티 (analyze route와 동일)
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 120000): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
 
 /** 토큰 기반 크레딧 차감 (스트리밍/비스트리밍 공용) */
 async function deductForTokens(
@@ -158,12 +143,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // BYOK 판정
+    const isUsingPersonalKey = !!userApiKey && userApiKey !== ENV_API_KEY;
+
+    // BYOK 권한 확인
+    if (AUTH_ENABLED && isUsingPersonalKey && userId) {
+      const byokAllowed = isCachedByokEnabled(userId);
+      if (!byokAllowed) {
+        return NextResponse.json(
+          { error: 'BYOK는 Pro 이상 플랜에서 사용 가능합니다.' },
+          { status: 403 },
+        );
+      }
+    }
+
     // 프롬프트 크기 계산 (billing용)
     const totalPromptChars = (messages as Array<{ content?: string }>).reduce(
       (sum: number, m) => sum + (m.content?.length || 0), 0,
     );
 
-    console.log(`[chat] 모델: ${model}, 메시지 수: ${messages.length}, 스트리밍: ${stream}, 프롬프트: ${totalPromptChars}자`);
+    console.log(`[chat] 모델: ${model}, 메시지 수: ${messages.length}, 스트리밍: ${stream}, 프롬프트: ${totalPromptChars}자, BYOK: ${isUsingPersonalKey}`);
 
     // billing 활성 시 모델 캐시 사전 워밍 (OpenRouter 호출과 병렬)
     const dynamicModelsPromise = userId ? getCachedModels() : null;
@@ -202,9 +201,24 @@ export async function POST(request: NextRequest) {
     if (!stream) {
       const data = await response.json();
 
-      await deductCreditsForResponse(
-        data, totalPromptChars, model, userId ?? '', accessToken, dynamicModelsPromise, '[chat]',
-      );
+      if (isUsingPersonalKey) {
+        // BYOK: 차감 스킵, billing 정보만 추가
+        const billing = resolveTokenBilling(data, totalPromptChars, '[chat]');
+        if (billing) {
+          data._billing = {
+            ...billing,
+            credits_deducted: 0,
+            balance_after: null,
+            insufficient_balance: false,
+            byok: true,
+            model,
+          };
+        }
+      } else {
+        await deductCreditsForResponse(
+          data, totalPromptChars, model, userId ?? '', accessToken, dynamicModelsPromise, '[chat]',
+        );
+      }
 
       return NextResponse.json(data);
     }
@@ -226,8 +240,9 @@ export async function POST(request: NextRequest) {
     // SSE 라인 버퍼: TCP 세그먼트 경계에서 잘린 불완전한 행 처리
     let lineBuffer = '';
 
-    // userId를 로컬 상수로 캡처 (non-null assertion 방지)
+    // 로컬 상수로 캡처 (non-null assertion 방지)
     const billingUserId = userId;
+    const billingByok = isUsingPersonalKey;
 
     const outputStream = new ReadableStream({
       async pull(controller) {
@@ -249,20 +264,33 @@ export async function POST(request: NextRequest) {
                   console.warn(`[chat] 스트리밍 usage 누락, 추정값 사용: prompt~${promptTokens}, completion~${completionTokens}`);
                 }
 
-                const { deductResult, insufficientBalance } = await deductForTokens(
-                  promptTokens, completionTokens,
-                  model, billingUserId, accessToken, dynamicModelsPromise, '[chat]',
-                );
+                let billingEvent: Record<string, unknown>;
 
-                // billing SSE 이벤트 구성 + 전송
-                const billingEvent: Record<string, unknown> = {
-                  prompt_tokens: promptTokens,
-                  completion_tokens: completionTokens,
-                  model,
-                  credits_deducted: deductResult?.amount_deducted ?? 0,
-                  balance_after: deductResult?.balance_after ?? null,
-                  insufficient_balance: insufficientBalance,
-                };
+                if (billingByok) {
+                  // BYOK: 차감 스킵
+                  billingEvent = {
+                    prompt_tokens: promptTokens,
+                    completion_tokens: completionTokens,
+                    model,
+                    credits_deducted: 0,
+                    balance_after: null,
+                    insufficient_balance: false,
+                    byok: true,
+                  };
+                } else {
+                  const { deductResult, insufficientBalance } = await deductForTokens(
+                    promptTokens, completionTokens,
+                    model, billingUserId, accessToken, dynamicModelsPromise, '[chat]',
+                  );
+                  billingEvent = {
+                    prompt_tokens: promptTokens,
+                    completion_tokens: completionTokens,
+                    model,
+                    credits_deducted: deductResult?.amount_deducted ?? 0,
+                    balance_after: deductResult?.balance_after ?? null,
+                    insufficient_balance: insufficientBalance,
+                  };
+                }
 
                 const sseEvent = `event: billing\ndata: ${JSON.stringify(billingEvent)}\n\n`;
                 controller.enqueue(new TextEncoder().encode(sseEvent));

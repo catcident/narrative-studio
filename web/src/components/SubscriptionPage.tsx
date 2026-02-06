@@ -4,13 +4,14 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check } from 'lucide-react';
-import { useBillingSubscription } from '../store';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink } from 'lucide-react';
+import { useBillingSubscription, useByokEnabled } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
+import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
 import { ModalOverlay } from './ModalOverlay';
 
-type Tab = 'plans' | 'packages' | 'history';
+type Tab = 'plans' | 'packages' | 'history' | 'apikey';
 
 interface SubscriptionPageProps {
   onClose: () => void;
@@ -18,11 +19,23 @@ interface SubscriptionPageProps {
 
 export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const subscription = useBillingSubscription();
+  const byokEnabled = useByokEnabled();
   const [activeTab, setActiveTab] = useState<Tab>('plans');
   const [plans, setPlans] = useState<ServicePlan[]>([]);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // API 키 탭 상태
+  const [hasLocalKey, setHasLocalKey] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [keyValidating, setKeyValidating] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [keySuccess, setKeySuccess] = useState(false);
+
+  useEffect(() => {
+    setHasLocalKey(hasApiKey());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +60,46 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
     { id: 'plans', label: '플랜 비교' },
     { id: 'packages', label: '크레딧 구매' },
     { id: 'history', label: '사용 내역' },
+    ...(byokEnabled ? [{ id: 'apikey' as Tab, label: 'API 키' }] : []),
   ];
+
+  const handleSaveKey = async () => {
+    const key = apiKeyInput.trim();
+    if (!key) return;
+    setKeyValidating(true);
+    setKeyError(null);
+    setKeySuccess(false);
+    try {
+      const result = await validateApiKey(key);
+      if (result.valid) {
+        setApiKey(key);
+        setHasLocalKey(true);
+        setApiKeyInput('');
+        setKeySuccess(true);
+        setKeyError(null);
+        setTimeout(() => setKeySuccess(false), 3000);
+      } else {
+        setKeyError(result.error || '유효하지 않은 API 키입니다.');
+      }
+    } finally {
+      setKeyValidating(false);
+    }
+  };
+
+  const handleRemoveKey = () => {
+    removeApiKey();
+    setHasLocalKey(false);
+    setApiKeyInput('');
+    setKeyError(null);
+  };
+
+  const maskedKey = (() => {
+    if (!hasLocalKey) return null;
+    const key = getApiKey();
+    if (!key) return null;
+    if (key.length <= 10) return '••••••••••';
+    return `${key.slice(0, 6)}...${key.slice(-4)}`;
+  })();
 
   const planIcon = (code: string) => {
     switch (code) {
@@ -220,10 +272,88 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === 'history' ? (
             /* 사용 내역 */
             <UsageHistory />
-          )}
+          ) : activeTab === 'apikey' ? (
+            /* API 키 관리 */
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                  <Key aria-hidden="true" className="w-5 h-5 text-gray-600" />
+                  개인 API 키
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  개인 OpenRouter API 키를 사용하면 크레딧이 차감되지 않고, OpenRouter에 직접 과금됩니다.
+                </p>
+              </div>
+
+              {/* 현재 키 상태 */}
+              {hasLocalKey && maskedKey && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-800">현재 키</p>
+                      <p className="text-sm text-green-600 font-mono mt-1">{maskedKey}</p>
+                    </div>
+                    <button
+                      onClick={handleRemoveKey}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                    >
+                      <Trash2 aria-hidden="true" className="w-4 h-4" />
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 키 입력/변경 */}
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-sm font-medium text-gray-700 mb-3">
+                  {hasLocalKey ? 'API 키 변경' : 'API 키 등록'}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    placeholder="sk-or-..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    disabled={keyValidating}
+                  />
+                  <button
+                    onClick={handleSaveKey}
+                    disabled={keyValidating || !apiKeyInput.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    {keyValidating && <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />}
+                    {keyValidating ? '검증 중...' : '저장'}
+                  </button>
+                </div>
+                {keyError && (
+                  <p className="text-xs text-red-600 mt-2">{keyError}</p>
+                )}
+                {keySuccess && (
+                  <p className="text-xs text-green-600 mt-2">API 키가 저장되었습니다.</p>
+                )}
+              </div>
+
+              {/* 안내 */}
+              <div className="text-sm text-gray-500 space-y-2">
+                <p>개인 키 사용 시 크레딧이 차감되지 않습니다. OpenRouter에 직접 과금됩니다.</p>
+                <p>키를 삭제하면 서버 키 모드로 복귀하며, 이후 분석부터 크레딧이 정상 차감됩니다.</p>
+                <a
+                  href="https://openrouter.ai/settings/keys"
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                >
+                  <ExternalLink aria-hidden="true" className="w-3.5 h-3.5" />
+                  OpenRouter 키 관리 페이지
+                </a>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </ModalOverlay>

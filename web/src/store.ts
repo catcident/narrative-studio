@@ -248,6 +248,7 @@ export const useAuthEnabled = () => useStore((s) => s.authEnabled);
 export const useModels = () => useStore((s) => s.models);
 export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);
 export const usePartialAnalysis = () => useStore((s) => s.partialAnalysis);
+export const useByokEnabled = () => useStore((s) => s.subscription?.features?.byok ?? false);
 
 export const useCharacters = (): Entity[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);

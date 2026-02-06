@@ -40,6 +40,7 @@ export interface ChunkBilling {
   credits_deducted?: number;
   balance_after?: number | null;
   insufficient_balance?: boolean;
+  byok?: boolean;
 }
 
 /** LLM이 단일 청크에서 추출한 데이터 */
@@ -197,6 +198,29 @@ export function setApiKey(key: string): void {
 
 export function hasApiKey(): boolean {
   return !!getApiKey();
+}
+
+export function removeApiKey(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('OPENROUTER_API_KEY');
+  }
+}
+
+export async function validateApiKey(key: string): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/validate-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: key }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      return { valid: false, error: data?.error || `서버 오류 (${response.status})` };
+    }
+    return await response.json();
+  } catch {
+    return { valid: false, error: '키 검증 중 네트워크 오류가 발생했습니다.' };
+  }
 }
 
 // 클라이언트 측 fetch with timeout

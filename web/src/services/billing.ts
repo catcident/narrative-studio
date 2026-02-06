@@ -13,6 +13,7 @@ import type {
   ChunkUsage,
   ModelInfo,
 } from '../types';
+import type { ChunkBillingCallback } from './extraction/types';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
   SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
@@ -256,7 +257,7 @@ export async function ensureSufficientBalance(subscription: BillingSubscription 
 export function createBillingCallback(
   addChunkUsage: (chunk: ChunkUsage) => void,
   updateCreditBalance?: (n: number) => void,
-): (chunkIndex: number, billing: { prompt_tokens: number; completion_tokens: number; model: string; balance_after?: number | null }) => void {
+): ChunkBillingCallback {
   return (chunkIndex, billing) => {
     addChunkUsage({
       chunkIndex,
@@ -264,7 +265,8 @@ export function createBillingCallback(
       completionTokens: billing.completion_tokens,
       model: billing.model,
     });
-    if (updateCreditBalance && billing.balance_after != null) {
+    // BYOK 시 잔액 갱신 스킵
+    if (!billing.byok && updateCreditBalance && billing.balance_after != null) {
       updateCreditBalance(billing.balance_after);
     }
   };

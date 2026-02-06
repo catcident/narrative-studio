@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
-import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache';
+import { checkAnalyzeEligibility, updateBalanceCache, isCachedByokEnabled } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { getModelCosts, tokenCostUsd, costUsdToCredits, resolveTokenBilling, type DeductResult } from '@/lib/modelCosts';
 import { getCachedModels } from '@/lib/modelCache';
 import { proxyToCatcident } from '@/services/billingProxy';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -20,22 +21,6 @@ const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍
 6. 물건/아이템은 반드시 item 카테고리로 추출하고, 소유자/사용자 관계 필수
 7. 세계관/시대배경/사회적 맥락은 concept 카테고리로 추출
 8. JSON만 출력 (설명 없이)`;
-
-// 타임아웃 유틸리티
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 120000): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,8 +63,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // BYOK 판정: 사용자가 개인 키를 제공하고 그것이 서버 키와 다른 경우
+    const isUsingPersonalKey = !!userApiKey && userApiKey !== ENV_API_KEY;
+
+    // BYOK 권한 확인: AUTH_ENABLED이고 개인 키 사용 시 byok 플래그 필요
+    if (AUTH_ENABLED && isUsingPersonalKey && userId) {
+      const byokAllowed = isCachedByokEnabled(userId);
+      if (!byokAllowed) {
+        return NextResponse.json(
+          { error: 'BYOK는 Pro 이상 플랜에서 사용 가능합니다.' },
+          { status: 403 },
+        );
+      }
+    }
+
     // 프롬프트 크기 로깅
-    console.log(`[analyze] 모델: ${model}, 프롬프트 크기: ${prompt.length}자`);
+    console.log(`[analyze] 모델: ${model}, 프롬프트 크기: ${prompt.length}자, BYOK: ${isUsingPersonalKey}`);
 
     // billing 활성 시 모델 캐시 사전 워밍 (OpenRouter 호출과 병렬)
     const dynamicModelsPromise = userId ? getCachedModels() : null;
@@ -121,11 +120,11 @@ export async function POST(request: NextRequest) {
     // 토큰 사용량 결정: usage 필드 우선, 없으면 텍스트 길이에서 추정
     const billing = resolveTokenBilling(data, prompt.length, '[analyze]');
 
-    // 청크별 실시간 크레딧 차감
+    // 청크별 실시간 크레딧 차감 (BYOK 시 스킵)
     let deductResult: DeductResult | null = null;
     let insufficientBalance = false;
 
-    if (userId && userId !== 'anonymous' && billing) {
+    if (!isUsingPersonalKey && userId && userId !== 'anonymous' && billing) {
       const dynamicModels = dynamicModelsPromise ? await dynamicModelsPromise : [];
       const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
       const credits = costUsdToCredits(
@@ -165,9 +164,11 @@ export async function POST(request: NextRequest) {
     if (billing) {
       data._billing = {
         ...billing,
-        credits_deducted: deductResult?.amount_deducted ?? 0,
-        balance_after: deductResult?.balance_after ?? null,
+        model,
+        credits_deducted: isUsingPersonalKey ? 0 : (deductResult?.amount_deducted ?? 0),
+        balance_after: isUsingPersonalKey ? null : (deductResult?.balance_after ?? null),
         insufficient_balance: insufficientBalance,
+        byok: isUsingPersonalKey,
       };
     }
 

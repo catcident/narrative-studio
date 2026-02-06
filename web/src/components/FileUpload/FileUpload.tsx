@@ -3,8 +3,8 @@
  */
 
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { useStore, useBillingSubscription, useModels } from '../../store';
-import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
+import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../../store';
+import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
@@ -76,6 +76,7 @@ export function FileUpload() {
   const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
   const subscription = useBillingSubscription();
   const allModels = useModels();
+  const byokEnabled = useByokEnabled();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -100,6 +101,8 @@ export function FileUpload() {
   const [directText, setDirectText] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [existingTitles, setExistingTitles] = useState<string[]>([]);
+  const [keyValidationLoading, setKeyValidationLoading] = useState(false);
+  const [keyValidationError, setKeyValidationError] = useState<string | null>(null);
   const { addFile: addFileFromHook, execute: executeAddFromHook } = useAddFileAnalysis();
 
   // 기존 지식그래프가 있으면 해당 모델로 고정
@@ -240,13 +243,31 @@ export function FileUpload() {
 
   // ==================== 단순 핸들러 ====================
 
-  const handleSaveApiKey = () => {
-    if (apiKeyInput.trim()) {
-      setApiKey(apiKeyInput.trim());
-      setHasLocalKey(true);
-      setApiKeyInput('');
-      setShowApiKeyInput(false);
+  const handleSaveApiKey = async () => {
+    const key = apiKeyInput.trim();
+    if (!key) return;
+    setKeyValidationLoading(true);
+    setKeyValidationError(null);
+    try {
+      const result = await validateApiKey(key);
+      if (result.valid) {
+        setApiKey(key);
+        setHasLocalKey(true);
+        setApiKeyInput('');
+        setShowApiKeyInput(false);
+        setKeyValidationError(null);
+      } else {
+        setKeyValidationError(result.error || '유효하지 않은 API 키입니다.');
+      }
+    } finally {
+      setKeyValidationLoading(false);
     }
+  };
+
+  const handleRemoveApiKey = () => {
+    removeApiKey();
+    setHasLocalKey(false);
+    setApiKeyInput('');
   };
 
   const handleClearProgress = useCallback(() => {
@@ -305,7 +326,11 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      await ensureSufficientBalance(subscription);
+      // BYOK 시 잔액 체크 스킵 (개인 키로 직접 과금)
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription);
+      }
 
       const newKnowledgeGraph = await extractKnowledgeGraph({
         text: combinedText,
@@ -374,7 +399,11 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     await runExtraction(async () => {
-      await ensureSufficientBalance(subscription);
+      // BYOK 시 잔액 체크 스킵
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription);
+      }
 
       // 만료 모델이면 현재 선택된 모델로 override
       const resumeData = invalidSavedModel
@@ -469,7 +498,11 @@ export function FileUpload() {
         throw new Error('내용이 비어있습니다.');
       }
 
-      await ensureSufficientBalance(subscription);
+      // BYOK 시 잔액 체크 스킵
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription);
+      }
 
       setProgress('분석 중...');
       const newKnowledgeGraph = await extractKnowledgeGraph({
@@ -581,6 +614,11 @@ export function FileUpload() {
         apiKeyInput={apiKeyInput}
         setApiKeyInput={setApiKeyInput}
         handleSaveApiKey={handleSaveApiKey}
+        byokEnabled={byokEnabled}
+        onRemoveApiKey={handleRemoveApiKey}
+        onClearKeyValidationError={() => setKeyValidationError(null)}
+        keyValidationLoading={keyValidationLoading}
+        keyValidationError={keyValidationError}
         currentModel={currentModel}
         lockedModel={lockedModel}
         localLoading={localLoading}

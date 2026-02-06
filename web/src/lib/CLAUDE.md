@@ -159,19 +159,54 @@ const body = JSON.stringify({ amount, description, metadata, idempotency_key, se
 
 ---
 
-## balanceCache.ts — 서버 측 잔액 캐시
+## fetchWithTimeout.ts — 서버 측 타임아웃 유틸리티
 
-`/api/analyze`에서 사용하는 사용자별 잔액 캐시.
+외부 API 호출 시 AbortController 기반 타임아웃. **기본값 없음** — 호출부에서 반드시 명시적으로 전달.
+
+```typescript
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+
+// 사용법 — 타임아웃 명시 필수
+const response = await fetchWithTimeout(url, options, 120000);
+```
+
+**사용처**: analyze, chat, validate-key, embeddings, chunk-embeddings 라우트.
+
+**⚠️ 클라이언트용은 별도**: `extraction/types.ts`의 `fetchWithClientTimeout` (기본 150초). 혼동 주의.
+
+---
+
+## embeddingUtils.ts — 임베딩 공유 유틸리티
+
+`embeddings/route.ts`와 `chunk-embeddings/route.ts`가 공유하는 함수.
+
+- `getEmbeddings(texts, apiKey)` — OpenRouter embedding API 호출 (모델: `openai/text-embedding-3-small`)
+- `cosineSimilarity(a, b)` — 벡터 간 코사인 유사도
+
+---
+
+## balanceCache.ts — 서버 측 잔액 + BYOK 캐시
+
+`/api/analyze`, `/api/chat`에서 사용하는 사용자별 잔액/BYOK 캐시.
 
 - 잔액 0 사용자의 OpenRouter 호출을 서버 측에서 차단
 - 5분 TTL, 최대 100 엔트리
 - Fail-open: billing 서비스 장애 시 분석 허용
 - `AUTH_ENABLED=false`이면 항상 통과
+- **BYOK 캐시**: `CacheEntry.byok` 플래그로 개인 키 사용 권한 캐싱
+- **BYOK 사용자 zero balance 보존**: `updateBalanceCache()`에서 byok=true면 zero balance여도 캐시 유지
 
 ```typescript
 // /api/analyze에서 사용 (사전 해결된 auth 정보 전달 — requireAuth() 중복 호출 방지)
 const balanceError = await checkAnalyzeEligibility(userId, accessToken);
 if (balanceError) return NextResponse.json({ error: balanceError }, { status: 402 });
+
+// BYOK 권한 확인 (fail-open: 캐시 미스 → 허용)
+const isUsingPersonalKey = !!userApiKey && userApiKey !== ENV_API_KEY;
+if (AUTH_ENABLED && isUsingPersonalKey && userId) {
+  const byokAllowed = isCachedByokEnabled(userId);
+  if (!byokAllowed) return 403;
+}
 
 // 차감 후 캐시 갱신
 updateBalanceCache(userId, balance_after);
@@ -179,6 +214,10 @@ updateBalanceCache(userId, balance_after);
 
 **⚠️ 주의**: `checkAnalyzeEligibility()`는 내부적으로 `requireAuth()`를 호출하지 않음.
 동일 request 내 `requireAuth()` 중복 호출을 방지하기 위해, 호출자가 사전 해결한 `userId`와 `accessToken`을 전달해야 함.
+
+**⚠️ BYOK fail-open**: `isCachedByokEnabled()`는 캐시 미스 시 `true` 반환.
+`checkAnalyzeEligibility()`가 먼저 실행되어 캐시를 갱신하므로, 캐시 미스는 billing 서비스 장애를 의미.
+개인 키 사용 시 서버 비용 없으므로 fail-open이 안전.
 
 ---
 
