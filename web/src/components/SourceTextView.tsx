@@ -580,9 +580,12 @@ export function SourceTextView() {
 
   // 전체/이어서 검증 핸들러
   const handleValidateAll = useCallback(async (continueFromLast: boolean = false) => {
-    if (!knowledgeGraph || isValidating || isValidatingAll) return;
+    const state = useStore.getState();
+    const currentGraph = state.knowledgeGraph;
 
-    const files = knowledgeGraph.metadata.sourceFiles || [];
+    if (!currentGraph || isValidating || isValidatingAll) return;
+
+    const files = currentGraph.metadata.sourceFiles || [];
     if (files.length <= 1) return; // 첫 번째 파일은 기준이므로 2개 이상이어야 함
 
     setIsValidatingAll(true);
@@ -593,9 +596,10 @@ export function SourceTextView() {
       let startIndex = 1; // 첫 파일(인덱스 0)은 기준이므로 건너뜀
 
       if (continueFromLast) {
-        // 이어서 검증: 마지막 passed 또는 첫 번째 pending 찾기
+        // 이어서 검증: store에서 최신 결과 가져와서 확인
+        const currentResults = useStore.getState().validationResults;
         for (let i = 1; i < files.length; i++) {
-          const result = validationResults.get(files[i].id);
+          const result = currentResults.get(files[i].id);
           if (!result || result.status === 'pending' || result.status === 'invalidated') {
             startIndex = i;
             break;
@@ -622,13 +626,14 @@ export function SourceTextView() {
         setValidatingFileId(file.id);
         setIsValidating(true);
 
-        const result = await validateFile(knowledgeGraph, file.id, {
+        const result = await validateFile(currentGraph, file.id, {
           apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
-          model: knowledgeGraph.metadata.model,
+          model: currentGraph.metadata.model,
         });
 
-        // 결과 저장
-        const updatedResults = new Map(validationResults);
+        // store에서 최신 결과를 가져와서 업데이트
+        const latestResults = useStore.getState().validationResults;
+        const updatedResults = new Map(latestResults);
         updatedResults.set(file.id, result);
 
         if (result.status === 'failed') {
@@ -651,7 +656,7 @@ export function SourceTextView() {
       setValidatingFileId(null);
       setIsValidatingAll(false);
     }
-  }, [knowledgeGraph, isValidating, isValidatingAll, validationResults, setIsValidating, setValidatingFileId, setValidationResults, saveValidationResults]);
+  }, [isValidating, isValidatingAll, setIsValidating, setValidatingFileId, setValidationResults, saveValidationResults]);
 
   // 검증 중단
   const handleAbortValidation = useCallback(() => {
