@@ -723,16 +723,27 @@ export function SourceTextView() {
         {filteredFiles.map((file, index) => {
           const isExpanded = expandedFiles.has(file.id);
           const isCopied = copiedId === file.id;
+          const validationResult = validationResults.get(file.id);
+          const validationStatus = validationResult?.status;
+
+          // 검증 상태에 따른 배경색
+          const getBorderColor = () => {
+            if (index === 0) return 'border-gray-200'; // 첫 파일은 기준
+            if (validationStatus === 'passed') return 'border-green-300 bg-green-50';
+            if (validationStatus === 'failed') return 'border-red-300 bg-red-50';
+            if (validationStatus === 'invalidated') return 'border-yellow-300 bg-yellow-50';
+            return 'border-gray-200';
+          };
 
           return (
             <div
               key={file.id}
-              className="border rounded-lg overflow-hidden bg-white shadow-sm"
+              className={`border rounded-lg overflow-hidden shadow-sm ${getBorderColor()}`}
             >
               {/* 파일 헤더 */}
               <button
                 onClick={() => toggleFile(file.id)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 hover:bg-opacity-80 transition-colors text-left"
               >
                 {isExpanded ? (
                   <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" />
