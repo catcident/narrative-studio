@@ -357,9 +357,21 @@ export function SourceTextView() {
         });
       };
 
-      // 연속된 order 재부여 (1부터 시작) + time 필드의 "장면 N" 패턴도 업데이트
+      // 파일 인덱스 → chapterNumber 매핑 생성
+      const fileIdToChapterNumber: Record<string, number> = {};
+      newSourceFiles.forEach((file, idx) => {
+        fileIdToChapterNumber[file.id] = idx + 1;
+      });
+
+      // 연속된 order 재부여 (1부터 시작) + chapterNumber도 파일 순서에 맞게 업데이트
       allScenesInNewOrder.forEach((scene, idx) => {
-        const updatedScene = { ...newSnapshots[scene.sceneId], order: idx + 1 };
+        const fileId = getFileIdForScene(scene);
+        const newChapterNumber = fileId ? fileIdToChapterNumber[fileId] : scene.chapterNumber;
+        const updatedScene = {
+          ...newSnapshots[scene.sceneId],
+          order: idx + 1,
+          chapterNumber: newChapterNumber ?? scene.chapterNumber,
+        };
         // time 필드에서 "장면 N" 패턴 업데이트
         if (updatedScene.time) {
           updatedScene.time = updateSceneReferences(updatedScene.time) || updatedScene.time;
