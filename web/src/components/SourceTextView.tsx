@@ -382,7 +382,19 @@ export function SourceTextView() {
       console.log(`[SourceTextView] 새 장면 순서: ${allScenesInNewOrder.map(s => `${s.sceneId}(${s.order}→${allScenesInNewOrder.indexOf(s) + 1})`).join(', ')}`)
       console.log(`[SourceTextView] order 매핑: ${JSON.stringify(orderMapping)}`)
 
-      // 4. 새 지식 그래프 생성
+      // 4. hyperedges의 statement 필드도 업데이트 (장면 번호 텍스트 포함)
+      const newHyperedges = { ...knowledgeGraph.hyperedges };
+      Object.keys(newHyperedges).forEach(edgeId => {
+        const edge = newHyperedges[edgeId];
+        if (edge.statement) {
+          const updatedStatement = updateSceneReferences(edge.statement);
+          if (updatedStatement && updatedStatement !== edge.statement) {
+            newHyperedges[edgeId] = { ...edge, statement: updatedStatement };
+          }
+        }
+      });
+
+      // 5. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -391,6 +403,7 @@ export function SourceTextView() {
           updatedAt: new Date().toISOString(),
         },
         snapshots: newSnapshots,
+        hyperedges: newHyperedges,
       };
 
       // 5. 서버에 업데이트
