@@ -796,8 +796,8 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
     // 새 장면 ID로 변환 (sceneIdMapping 사용)
     const newSceneIds = (e.scenes || []).map((s: number) => sceneIdMapping[s] || formatId('S', s));
 
-    if (existingId && entities[existingId]) {
-      // 기존 엔티티에 정보 추가 - 새 장면 ID만 추가
+    if (entities[existingId]) {
+      // 이미 이번 분석에서 생성된 엔티티에 정보 추가
       const existing = entities[existingId];
       existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
       if (e.description && !existing.description?.includes(e.description)) {
@@ -810,8 +810,8 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       continue;
     }
 
-    entityCounter++;
-    const id = formatId('E', entityCounter);
+    // 기존 그래프에 같은 이름의 엔티티가 있으면 그 ID 재사용, 없으면 새 ID 생성
+    const id = existingId || formatId('E', ++entityCounter);
     entities[id] = {
       id,
       name: e.name,
@@ -823,7 +823,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       firstMention: { chapter: 1 },
       importance: e.importance || 5,
     };
-    console.log(`[extraction] 새 엔티티 생성: ${e.name} (${id}), category: ${e.category}, scenes: ${newSceneIds.join(',')}`);
+    console.log(`[extraction] 새 엔티티 생성: ${e.name} (${id}), category: ${e.category}, scenes: ${newSceneIds.join(',')}${existingId ? ' (기존 ID 재사용)' : ''}`);
     registerNameMapping(nameToId, e.name, id);
     for (const alias of (e.aliases || [])) {
       registerNameMapping(nameToId, alias, id);
