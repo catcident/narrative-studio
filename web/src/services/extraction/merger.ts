@@ -726,43 +726,20 @@ function buildSnapshots(
 export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
-  // 중요: 기존 그래프의 엔티티/관계를 복사하지 않음
+  // 중요: 기존 그래프의 엔티티/관계를 직접 복사하지 않음
   // - 파일 업로드 순서에 따라 결과가 달라지는 것을 방지
-  // - 새 파일 분석 결과만으로 그래프 구성
-  // - 기존 그래프의 장면 정보만 유지 (snapshots)
-  // - 기존 그래프의 엔티티 이름은 nameToId 매핑에만 사용 (같은 캐릭터 ID 재사용)
+  // - 새 파일 분석 결과만으로 엔티티/관계 구성
+  // - 기존 그래프의 snapshots만 유지 (이미 분석된 다른 파일의 장면)
+  // - 기존 그래프의 엔티티 ID는 nameToId 매핑에만 사용 (같은 캐릭터 ID 재사용)
   let entities: Record<string, Entity> = {};
   let hyperedges: Record<string, HyperEdge> = {};
-
-  // 기존 그래프가 있으면 기존 엔티티/관계도 유지 (새 파일 추가 시)
-  // 단, 장면 정보는 현재 존재하는 장면에 대해서만 유효
-  if (existingGraph) {
-    const existingSceneIds = new Set(Object.keys(existingGraph.snapshots || {}));
-
-    for (const [id, entity] of Object.entries(existingGraph.entities)) {
-      const validScenes = (entity.scenes || []).filter(s => existingSceneIds.has(s));
-      if (validScenes.length > 0) {
-        entities[id] = { ...entity, scenes: validScenes };
-      }
-    }
-
-    for (const [id, edge] of Object.entries(existingGraph.hyperedges)) {
-      const validScenes = (edge.scenes || []).filter(s => existingSceneIds.has(s));
-      if (validScenes.length > 0) {
-        const allEntitiesExist = edge.entities.every(eid => entities[eid]);
-        if (allEntitiesExist) {
-          hyperedges[id] = { ...edge, scenes: validScenes };
-        }
-      }
-    }
-
-    console.log(`[extraction] 기존 그래프 유지: 엔티티 ${Object.keys(existingGraph.entities).length}→${Object.keys(entities).length}, 관계 ${Object.keys(existingGraph.hyperedges).length}→${Object.keys(hyperedges).length}`);
-  }
-
   const nameToId: Record<string, string> = {};
 
   // 기존 장면의 최대 번호 추출 (새 장면 ID 계산용)
   let maxSceneNum = 0;
+  let entityCounter = 0;
+  let edgeCounterValue = 0;
+
   if (existingGraph?.snapshots) {
     for (const sceneId of Object.keys(existingGraph.snapshots)) {
       const numMatch = sceneId.match(/S0*(\d+)/);
@@ -770,7 +747,36 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
         maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
       }
     }
+
+    // 기존 엔티티의 최대 번호 추출 (ID 충돌 방지용)
+    for (const entityId of Object.keys(existingGraph.entities)) {
+      const numMatch = entityId.match(/E0*(\d+)/);
+      if (numMatch) {
+        entityCounter = Math.max(entityCounter, parseInt(numMatch[1], 10));
+      }
+    }
+
+    // 기존 관계의 최대 번호 추출 (ID 충돌 방지용)
+    for (const edgeId of Object.keys(existingGraph.hyperedges)) {
+      const numMatch = edgeId.match(/H0*(\d+)/);
+      if (numMatch) {
+        edgeCounterValue = Math.max(edgeCounterValue, parseInt(numMatch[1], 10));
+      }
+    }
+
+    // 기존 엔티티의 이름 매핑만 초기화 (ID 재사용을 위해)
+    // 엔티티 자체는 복사하지 않음 - 새 파일에 등장하는 엔티티만 그래프에 추가됨
+    for (const e of Object.values(existingGraph.entities)) {
+      registerNameMapping(nameToId, e.name, e.id);
+      for (const alias of (e.aliases || [])) {
+        registerNameMapping(nameToId, alias, e.id);
+      }
+    }
+
+    console.log(`[extraction] 기존 그래프: 엔티티 매핑 ${Object.keys(nameToId).length}개, maxSceneNum=${maxSceneNum}, entityCounter=${entityCounter}, edgeCounter=${edgeCounterValue}`);
   }
+
+  const edgeCounter = { value: edgeCounterValue };
 
   // 새로 추출된 장면 ID를 실제 ID로 매핑하는 맵 생성
   // 예: extracted.scenes의 id=1 → S0005 (maxSceneNum + 1)
@@ -782,17 +788,6 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
     sceneIdMapping[s.id] = formatId('S', actualSceneNum);
   }
   console.log('[extraction] 장면 ID 매핑:', sceneIdMapping);
-
-  // 기존 엔티티의 이름 매핑 초기화
-  for (const e of Object.values(entities)) {
-    registerNameMapping(nameToId, e.name, e.id);
-    for (const alias of (e.aliases || [])) {
-      registerNameMapping(nameToId, alias, e.id);
-    }
-  }
-
-  let entityCounter = Object.keys(entities).length;
-  const edgeCounter = { value: Object.keys(hyperedges).length };
 
   // 엔티티 등록
   console.log(`[extraction] LLM 추출 엔티티 수: ${extracted.entities.length}개`);
