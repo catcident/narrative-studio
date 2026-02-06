@@ -179,35 +179,21 @@ export function SourceTextView() {
         }
       });
 
-      // 5. hyperedges의 scenes 배열에서 삭제된 장면 제거 + 빈 관계 삭제
+      // 5. hyperedges의 scenes 배열에서 삭제된 장면 제거 (관계 자체는 유지)
+      // 엔티티/관계를 삭제하지 않고 scenes만 업데이트하여 나중에 같은 파일 재추가 시 재사용 가능
       const newHyperedges: typeof knowledgeGraph.hyperedges = {};
       Object.entries(knowledgeGraph.hyperedges).forEach(([edgeId, edge]) => {
         const filteredScenes = edge.scenes?.filter(sceneId => !scenesToDelete.has(sceneId)) || [];
-        // 장면이 남아있는 관계만 유지
-        if (filteredScenes.length > 0) {
-          newHyperedges[edgeId] = {
-            ...edge,
-            scenes: filteredScenes,
-          };
-        }
+        newHyperedges[edgeId] = {
+          ...edge,
+          scenes: filteredScenes,
+        };
       });
 
-      // 6. 관계가 있는 엔티티 ID 수집 (양쪽 노드)
-      const entitiesWithRelations = new Set<string>();
-      Object.values(newHyperedges).forEach(edge => {
-        edge.entities.forEach(entityId => entitiesWithRelations.add(entityId));
-      });
-
-      // 7. entities에서 관계가 없는 엔티티 삭제
-      const finalEntities: typeof knowledgeGraph.entities = {};
-      Object.entries(newEntities).forEach(([entityId, entity]) => {
-        // 관계가 있거나 장면이 남아있는 엔티티만 유지
-        const hasRelations = entitiesWithRelations.has(entityId);
-        const hasScenes = entity.scenes && entity.scenes.length > 0;
-        if (hasRelations || hasScenes) {
-          finalEntities[entityId] = entity;
-        }
-      });
+      // 6. 엔티티는 삭제하지 않음 (scenes 배열만 비워짐)
+      // 관계도 삭제하지 않음 (scenes 배열만 비워짐)
+      // 이렇게 하면 같은 파일을 다시 추가할 때 기존 엔티티/관계가 재사용됨
+      const finalEntities = newEntities;
 
       // 8. sourceFiles에서 해당 파일 제거 + 파일 ID 재정렬
       // 기존 파일 ID → 새 파일 ID 매핑 생성
