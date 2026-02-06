@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult } from './types';
 import { AVAILABLE_MODELS } from './types';
 import { getSubscription } from './services/billing';
 
@@ -25,6 +25,11 @@ interface AppState {
 
   // 채팅 관련
   chatMentionedEntities: string[];  // 채팅에서 언급된 엔티티 ID 목록
+
+  // 파일 검증 관련
+  validationResults: Map<string, FileValidationResult>;  // 파일별 검증 결과
+  isValidating: boolean;  // 검증 진행 중 여부
+  validatingFileId: string | null;  // 현재 검증 중인 파일 ID
 
   // Billing
   subscription: BillingSubscription | null;
@@ -51,6 +56,13 @@ interface AppState {
   setViewMode: (mode: ViewMode) => void;
   setChatMentionedEntities: (entityIds: string[]) => void;
   reset: () => void;
+
+  // 검증 액션
+  setValidationResults: (results: Map<string, FileValidationResult>) => void;
+  updateValidationResult: (fileId: string, result: FileValidationResult) => void;
+  setIsValidating: (isValidating: boolean) => void;
+  setValidatingFileId: (fileId: string | null) => void;
+  clearValidationResults: () => void;
 
   // Billing 액션
   loadSubscription: () => Promise<void>;
@@ -79,6 +91,9 @@ export const useStore = create<AppState>((set, get) => ({
   sceneRangeEnd: null,
   viewMode: 'graph',
   chatMentionedEntities: [],
+  validationResults: new Map(),
+  isValidating: false,
+  validatingFileId: null,
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
@@ -115,6 +130,18 @@ export const useStore = create<AppState>((set, get) => ({
   selectSceneRange: (sceneRangeStart, sceneRangeEnd) => set({ sceneRangeStart, sceneRangeEnd, selectedSceneId: null }),
   setViewMode: (viewMode) => set({ viewMode }),
   setChatMentionedEntities: (chatMentionedEntities) => set({ chatMentionedEntities }),
+
+  // 검증 액션
+  setValidationResults: (validationResults) => set({ validationResults }),
+  updateValidationResult: (fileId, result) => set((state) => {
+    const newResults = new Map(state.validationResults);
+    newResults.set(fileId, result);
+    return { validationResults: newResults };
+  }),
+  setIsValidating: (isValidating) => set({ isValidating }),
+  setValidatingFileId: (validatingFileId) => set({ validatingFileId }),
+  clearValidationResults: () => set({ validationResults: new Map(), isValidating: false, validatingFileId: null }),
+
   reset: () => set({
     knowledgeGraph: null,
     originalText: null,
@@ -125,6 +152,9 @@ export const useStore = create<AppState>((set, get) => ({
     sceneRangeStart: null,
     sceneRangeEnd: null,
     chatMentionedEntities: [],
+    validationResults: new Map(),
+    isValidating: false,
+    validatingFileId: null,
     error: null,
     currentUsage: initialUsage,
     showUsageSummary: false,
@@ -195,3 +225,7 @@ export const useCharacters = (): Entity[] => {
     (e) => e.category === 'character'
   );
 };
+
+export const useValidationResults = () => useStore((s) => s.validationResults);
+export const useIsValidating = () => useStore((s) => s.isValidating);
+export const useValidatingFileId = () => useStore((s) => s.validatingFileId);

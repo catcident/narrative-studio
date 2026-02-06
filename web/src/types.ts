@@ -277,3 +277,39 @@ export interface CreditTransaction {
   metadata: Record<string, unknown>;
   created_at: string;
 }
+
+// ==================== Validation ====================
+
+/** 파일 검증 상태 */
+export type ValidationStatus = 'pending' | 'validating' | 'passed' | 'failed' | 'invalidated';
+
+/** 검증 이슈 유형 */
+export type ValidationIssueType =
+  | 'character_inconsistency'  // 캐릭터 설정 불일치
+  | 'worldbuilding_error'      // 세계관 설정 오류
+  | 'timeline_conflict'        // 시간축 충돌
+  | 'location_inconsistency'   // 장소 설정 불일치
+  | 'relationship_conflict'    // 관계 설정 충돌
+  | 'item_inconsistency'       // 아이템/소품 불일치
+  | 'other';                   // 기타
+
+/** 검증 이슈 */
+export interface ValidationIssue {
+  id: string;
+  type: ValidationIssueType;
+  severity: 'error' | 'warning';  // error: 명백한 오류, warning: 의심스러운 부분
+  description: string;
+  entityIds?: string[];       // 관련 엔티티
+  sceneIds?: string[];        // 관련 장면
+  previousFileId?: string;    // 충돌하는 이전 파일 ID
+  suggestion?: string;        // 수정 제안
+}
+
+/** 파일별 검증 결과 */
+export interface FileValidationResult {
+  fileId: string;
+  status: ValidationStatus;
+  validatedAt: string | null;
+  issues: ValidationIssue[];
+  comparedWith: string[];     // 비교한 파일 ID 목록
+}

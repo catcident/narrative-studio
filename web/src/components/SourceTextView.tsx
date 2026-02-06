@@ -5,21 +5,31 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-import { useStore } from '../store';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, Shield, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, AlertTriangle } from 'lucide-react';
+import { useStore, useValidationResults, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
-import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile } from '../types';
+import { validateFile, invalidateFilesAfter } from '../services/validation';
+import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile, ValidationStatus, FileValidationResult } from '../types';
 
 export function SourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const currentDataId = useStore((s) => s.currentDataId);
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
+  const validationResults = useValidationResults();
+  const isValidating = useIsValidating();
+  const validatingFileId = useValidatingFileId();
+  const setValidationResults = useStore((s) => s.setValidationResults);
+  const updateValidationResult = useStore((s) => s.updateValidationResult);
+  const setIsValidating = useStore((s) => s.setIsValidating);
+  const setValidatingFileId = useStore((s) => s.setValidatingFileId);
+
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
+  const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
@@ -260,6 +270,23 @@ export function SourceTextView() {
       const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
       const deletedEdges = Object.keys(knowledgeGraph.hyperedges).length - Object.keys(newHyperedges).length;
       console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개, 삭제된 엔티티: ${deletedEntities}개, 삭제된 관계: ${deletedEdges}개`);
+
+      // 13. 검증 결과 정리 (삭제된 파일 제거 + 파일 ID 재매핑)
+      const newValidationResults = new Map<string, FileValidationResult>();
+      validationResults.forEach((result, oldFileId) => {
+        if (oldFileId === fileId) return; // 삭제된 파일 제외
+        const newId = fileIdMapping[oldFileId];
+        if (newId) {
+          newValidationResults.set(newId, {
+            ...result,
+            fileId: newId,
+            comparedWith: result.comparedWith
+              .filter((id) => id !== fileId)
+              .map((id) => fileIdMapping[id] || id),
+          });
+        }
+      });
+      setValidationResults(newValidationResults);
     } catch (error) {
       console.error('[SourceTextView] 파일 삭제 실패:', error);
       alert('파일 삭제에 실패했습니다.');
@@ -267,7 +294,7 @@ export function SourceTextView() {
       setDeletingFileId(null);
       setConfirmDeleteId(null);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, validationResults, setValidationResults]);
 
   // 파일 순서 변경 핸들러 (위로/아래로 이동)
   const handleMoveFile = useCallback(async (fileIndex: number, direction: 'up' | 'down') => {
@@ -416,6 +443,20 @@ export function SourceTextView() {
       // 6. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
+      // 7. 검증 결과 초기화 (순서 변경 시 전체 재검증 필요)
+      // 첫 번째 파일만 passed 유지, 나머지는 pending으로
+      const newValidationResults = new Map<string, FileValidationResult>();
+      newSourceFiles.forEach((file, idx) => {
+        newValidationResults.set(file.id, {
+          fileId: file.id,
+          status: idx === 0 ? 'passed' : 'pending',
+          validatedAt: idx === 0 ? new Date().toISOString() : null,
+          issues: [],
+          comparedWith: [],
+        });
+      });
+      setValidationResults(newValidationResults);
+
       console.log(`[SourceTextView] 파일 순서 변경 완료`);
     } catch (error) {
       console.error('[SourceTextView] 파일 순서 변경 실패:', error);
@@ -423,7 +464,218 @@ export function SourceTextView() {
     } finally {
       setMovingFileId(null);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setValidationResults]);
+
+  // 파일 검증 핸들러
+  const handleValidateFile = useCallback(async (fileId: string) => {
+    if (!knowledgeGraph || isValidating) return;
+
+    // API 키 가져오기 (localStorage에서)
+    const apiKey = localStorage.getItem('openrouter_api_key') || '';
+    if (!apiKey) {
+      alert('API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
+      return;
+    }
+
+    setIsValidating(true);
+    setValidatingFileId(fileId);
+
+    try {
+      const result = await validateFile(knowledgeGraph, fileId, {
+        apiKey,
+        model: knowledgeGraph.metadata.model,
+        onProgress: (fId, status) => {
+          console.log(`[validation] ${fId}: ${status}`);
+        },
+      });
+
+      updateValidationResult(fileId, result);
+
+      // 검증 실패 시 이후 파일들 invalidate
+      if (result.status === 'failed') {
+        const sourceFiles = knowledgeGraph.metadata.sourceFiles || [];
+        const newResults = invalidateFilesAfter(validationResults, sourceFiles, fileId);
+        setValidationResults(newResults);
+      }
+
+      console.log(`[validation] 검증 완료: ${fileId} - ${result.status}`);
+    } catch (error) {
+      console.error('[validation] 검증 실패:', error);
+      updateValidationResult(fileId, {
+        fileId,
+        status: 'failed',
+        validatedAt: new Date().toISOString(),
+        issues: [{
+          id: `${fileId}_error`,
+          type: 'other',
+          severity: 'error',
+          description: '검증 중 오류가 발생했습니다.',
+        }],
+        comparedWith: [],
+      });
+    } finally {
+      setIsValidating(false);
+      setValidatingFileId(null);
+    }
+  }, [knowledgeGraph, isValidating, validationResults, setIsValidating, setValidatingFileId, updateValidationResult, setValidationResults]);
+
+  // 검증 상태 아이콘 렌더링
+  const renderValidationIcon = (fileId: string, fileIndex: number) => {
+    // 첫 번째 파일은 검증 불필요
+    if (fileIndex === 0) {
+      return (
+        <div className="p-1.5" title="기준 파일 (검증 불필요)">
+          <Shield className="w-4 h-4 text-gray-300" />
+        </div>
+      );
+    }
+
+    const result = validationResults.get(fileId);
+    const isCurrentlyValidating = validatingFileId === fileId;
+
+    if (isCurrentlyValidating) {
+      return (
+        <div className="p-1.5" title="검증 중...">
+          <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+        </div>
+      );
+    }
+
+    if (!result || result.status === 'pending') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleValidateFile(fileId);
+          }}
+          disabled={isValidating}
+          className="p-1.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
+          title="일관성 검증하기"
+        >
+          <ShieldQuestion className="w-4 h-4 text-gray-400 hover:text-blue-500" />
+        </button>
+      );
+    }
+
+    if (result.status === 'passed') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleValidateFile(fileId);
+          }}
+          disabled={isValidating}
+          className="p-1.5 hover:bg-green-100 rounded transition-colors"
+          title="검증 통과 (다시 검증하려면 클릭)"
+        >
+          <ShieldCheck className="w-4 h-4 text-green-500" />
+        </button>
+      );
+    }
+
+    if (result.status === 'failed') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // 이슈 목록 토글
+            setExpandedIssues(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(fileId)) {
+                newSet.delete(fileId);
+              } else {
+                newSet.add(fileId);
+              }
+              return newSet;
+            });
+          }}
+          className="p-1.5 hover:bg-red-100 rounded transition-colors"
+          title={`검증 실패 (${result.issues.length}개 이슈) - 클릭하여 상세 보기`}
+        >
+          <ShieldAlert className="w-4 h-4 text-red-500" />
+        </button>
+      );
+    }
+
+    if (result.status === 'invalidated') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleValidateFile(fileId);
+          }}
+          disabled={isValidating}
+          className="p-1.5 hover:bg-yellow-100 rounded transition-colors"
+          title="이전 파일 실패로 재검증 필요 (클릭하여 검증)"
+        >
+          <AlertTriangle className="w-4 h-4 text-yellow-500" />
+        </button>
+      );
+    }
+
+    return null;
+  };
+
+  // 이슈 목록 렌더링
+  const renderIssues = (fileId: string) => {
+    const result = validationResults.get(fileId);
+    if (!result || result.issues.length === 0 || !expandedIssues.has(fileId)) {
+      return null;
+    }
+
+    return (
+      <div className="bg-red-50 border-t border-red-200 p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <ShieldAlert className="w-4 h-4 text-red-600" />
+          <span className="text-sm font-medium text-red-800">
+            검증 이슈 ({result.issues.length}개)
+          </span>
+          <button
+            onClick={() => handleValidateFile(fileId)}
+            disabled={isValidating}
+            className="ml-auto text-xs text-red-600 hover:text-red-800 underline disabled:opacity-50"
+          >
+            다시 검증
+          </button>
+        </div>
+        <div className="space-y-2">
+          {result.issues.map((issue) => (
+            <div
+              key={issue.id}
+              className={`text-sm p-2 rounded ${
+                issue.severity === 'error'
+                  ? 'bg-red-100 border border-red-300'
+                  : 'bg-yellow-100 border border-yellow-300'
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                <span
+                  className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                    issue.severity === 'error'
+                      ? 'bg-red-200 text-red-800'
+                      : 'bg-yellow-200 text-yellow-800'
+                  }`}
+                >
+                  {issue.severity === 'error' ? '오류' : '경고'}
+                </span>
+                <span
+                  className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded"
+                >
+                  {issue.type.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <p className="mt-1 text-gray-700">{issue.description}</p>
+              {issue.suggestion && (
+                <p className="mt-1 text-gray-500 text-xs">
+                  💡 {issue.suggestion}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   if (sourceFiles.length === 0) {
     return (
@@ -512,6 +764,11 @@ export function SourceTextView() {
                   </div>
                 </div>
 
+                {/* 검증 상태 아이콘 */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  {renderValidationIcon(file.id, index)}
+                </div>
+
                 {/* 순서 이동 버튼 */}
                 {sourceFiles.length > 1 && (
                   <div className="flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
@@ -584,6 +841,9 @@ export function SourceTextView() {
                   </button>
                 )}
               </button>
+
+              {/* 검증 이슈 목록 */}
+              {renderIssues(file.id)}
 
               {/* 파일 내용 */}
               {isExpanded && (
