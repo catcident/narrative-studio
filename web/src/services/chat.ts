@@ -954,22 +954,33 @@ export async function sendChatMessage(
     foundEntityIds = categoryEntities;
   }
 
-  // (B) 키워드 기반 검색
-  if (queryAnalysis.keywords.length > 0) {
-    // 먼저 직접 매칭 시도
-    const directMatches = findMentionedEntityIds(
-      queryAnalysis.keywords.join(' '),
+  // (B) 키워드 기반 검색 + 원본 질문으로도 검색
+  if (lastUserMessage) {
+    // 원본 질문으로 직접 매칭 (띄어쓰기 무시 검색 포함)
+    const directFromQuery = findMentionedEntityIds(
+      lastUserMessage.content,
       context.knowledgeGraph.entities
     );
-    directMatches.forEach(id => {
+    directFromQuery.forEach(id => {
       if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
     });
+
+    // LLM 키워드로도 추가 검색
+    if (queryAnalysis.keywords.length > 0) {
+      const directFromKeywords = findMentionedEntityIds(
+        queryAnalysis.keywords.join(' '),
+        context.knowledgeGraph.entities
+      );
+      directFromKeywords.forEach(id => {
+        if (!foundEntityIds.includes(id)) foundEntityIds.push(id);
+      });
+    }
 
     // graphId가 있으면 임베딩 검색도 수행
     if (graphId) {
       const [entityResults, chunks] = await Promise.all([
         searchSimilarEntities(graphId, queryAnalysis.keywords, userApiKey || undefined, 10),
-        searchSimilarChunks(graphId, lastUserMessage?.content || '', userApiKey || undefined, 3),
+        searchSimilarChunks(graphId, lastUserMessage.content, userApiKey || undefined, 3),
       ]);
 
       entityResults.forEach(result => {
