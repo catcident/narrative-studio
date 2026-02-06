@@ -450,8 +450,7 @@ export function SourceTextView() {
         }
       });
 
-      // 5. 검증 결과 - 이동한 위치 이전은 유지, 이후만 pending으로
-      const movedToIndex = Math.min(fileIndex, targetIndex);
+      // 5. 검증 결과 - 기존 결과 유지 (둘 다 통과면 순서 바꿔도 OK)
       const newValidationResults: Record<string, FileValidationResult> = {};
       newSourceFiles.forEach((file, idx) => {
         if (idx === 0) {
@@ -463,21 +462,12 @@ export function SourceTextView() {
             issues: [],
             comparedWith: [],
           };
-        } else if (idx < movedToIndex) {
-          // 이동한 위치 이전 파일은 기존 결과 유지
+        } else {
+          // 기존 결과 유지
           const oldResult = knowledgeGraph.validationResults?.[file.id];
           if (oldResult) {
             newValidationResults[file.id] = oldResult;
           }
-        } else {
-          // 이동한 위치부터 이후는 pending
-          newValidationResults[file.id] = {
-            fileId: file.id,
-            status: 'pending',
-            validatedAt: null,
-            issues: [],
-            comparedWith: [],
-          };
         }
       });
 
