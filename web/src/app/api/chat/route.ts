@@ -9,6 +9,7 @@ import { DEFAULT_MODEL } from '@/types';
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
 export async function POST(request: NextRequest) {
+  console.log('[chat] POST 요청 수신');
   try {
     const { messages, apiKey: userApiKey, model: userModel, stream: userStream } = await request.json();
 
