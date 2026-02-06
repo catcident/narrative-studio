@@ -727,8 +727,37 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   const now = new Date().toISOString();
 
   // 기존 그래프가 있으면 거기서 시작, 없으면 빈 값으로 시작
-  const entities: Record<string, Entity> = existingGraph ? { ...existingGraph.entities } : {};
-  const hyperedges: Record<string, HyperEdge> = existingGraph ? { ...existingGraph.hyperedges } : {};
+  // 중요: 현재 존재하는 장면과 관련된 엔티티/관계만 복사 (삭제된 파일의 잔여물 제거)
+  let entities: Record<string, Entity> = {};
+  let hyperedges: Record<string, HyperEdge> = {};
+
+  if (existingGraph) {
+    // 현재 존재하는 장면 ID 수집
+    const existingSceneIds = new Set(Object.keys(existingGraph.snapshots || {}));
+
+    // 현재 장면에 등장하는 엔티티만 복사
+    for (const [id, entity] of Object.entries(existingGraph.entities)) {
+      const validScenes = (entity.scenes || []).filter(s => existingSceneIds.has(s));
+      if (validScenes.length > 0) {
+        entities[id] = { ...entity, scenes: validScenes };
+      }
+    }
+
+    // 현재 장면과 관련된 관계만 복사
+    for (const [id, edge] of Object.entries(existingGraph.hyperedges)) {
+      const validScenes = (edge.scenes || []).filter(s => existingSceneIds.has(s));
+      if (validScenes.length > 0) {
+        // 관계의 양쪽 엔티티가 모두 존재하는지 확인
+        const allEntitiesExist = edge.entities.every(eid => entities[eid]);
+        if (allEntitiesExist) {
+          hyperedges[id] = { ...edge, scenes: validScenes };
+        }
+      }
+    }
+
+    console.log(`[extraction] 기존 그래프 정리: 엔티티 ${Object.keys(existingGraph.entities).length}→${Object.keys(entities).length}, 관계 ${Object.keys(existingGraph.hyperedges).length}→${Object.keys(hyperedges).length}`);
+  }
+
   const nameToId: Record<string, string> = {};
 
   // 기존 장면의 최대 번호 추출 (새 장면 ID 계산용)
