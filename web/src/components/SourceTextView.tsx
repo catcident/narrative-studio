@@ -33,17 +33,21 @@ export function SourceTextView() {
   const [isValidatingAll, setIsValidatingAll] = useState(false);
   const abortValidationRef = useRef(false);
 
-  // 검증 결과 로드 (knowledgeGraph에서) - 데이터 로드 시
+  // 검증 결과 로드 (knowledgeGraph에서) - knowledgeGraph가 변경될 때마다 로드
   useEffect(() => {
     if (knowledgeGraph?.validationResults) {
       const resultsMap = new Map<string, FileValidationResult>();
       Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
         resultsMap.set(fileId, result);
       });
-      console.log('[validation] 검증 결과 로드:', resultsMap.size, '개 파일');
-      setValidationResults(resultsMap);
+      // 현재 store 결과와 다를 때만 업데이트 (무한 루프 방지)
+      const currentResults = useStore.getState().validationResults;
+      if (resultsMap.size !== currentResults.size) {
+        console.log('[validation] 검증 결과 로드:', resultsMap.size, '개 파일');
+        setValidationResults(resultsMap);
+      }
     }
-  }, [currentDataId, setValidationResults]); // currentDataId가 바뀔 때만 로드 (새 데이터 로드 시)
+  }, [knowledgeGraph?.validationResults, setValidationResults]);
 
   // 검증 결과 저장 (변경 시 knowledgeGraph에 반영) - store에서 최신 값을 직접 가져옴
   const saveValidationResults = useCallback(async (results: Map<string, FileValidationResult>) => {
