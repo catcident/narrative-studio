@@ -367,18 +367,22 @@ export function SourceTextView() {
       allScenesInNewOrder.forEach((scene, idx) => {
         const fileId = getFileIdForScene(scene);
         const newChapterNumber = fileId ? fileIdToChapterNumber[fileId] : scene.chapterNumber;
+        const newOrder = idx + 1;
         const updatedScene = {
           ...newSnapshots[scene.sceneId],
-          order: idx + 1,
+          order: newOrder,
           chapterNumber: newChapterNumber ?? scene.chapterNumber,
         };
         // time 필드에서 "장면 N" 패턴 업데이트
         if (updatedScene.time) {
           updatedScene.time = updateSceneReferences(updatedScene.time) || updatedScene.time;
         }
+        console.log(`[SourceTextView] 장면 업데이트: ${scene.sceneId} order ${scene.order}→${newOrder}, chapter ${scene.chapterNumber}→${newChapterNumber}`);
         newSnapshots[scene.sceneId] = updatedScene;
       });
 
+      // 최종 확인용 로그
+      console.log(`[SourceTextView] 업데이트된 snapshots:`, Object.values(newSnapshots).map(s => `${s.sceneId}(order=${s.order}, ch=${s.chapterNumber})`).join(', '));
       console.log(`[SourceTextView] 새 장면 순서: ${allScenesInNewOrder.map(s => `${s.sceneId}(${s.order}→${allScenesInNewOrder.indexOf(s) + 1})`).join(', ')}`)
       console.log(`[SourceTextView] order 매핑: ${JSON.stringify(orderMapping)}`)
 
