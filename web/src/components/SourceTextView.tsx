@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle, PlayCircle } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle, PlayCircle, Pencil, X, Save } from 'lucide-react';
 import { useStore, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile, invalidateFilesAfter } from '../services/validation';
@@ -29,6 +29,9 @@ export function SourceTextView() {
   const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
   const [isValidatingAll, setIsValidatingAll] = useState(false);
   const abortValidationRef = useRef(false);
+  const [editingFileId, setEditingFileId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // 검증 결과를 knowledgeGraph에서 직접 읽음 (store의 Map은 UI용)
   const getValidationStatus = (fileId: string): FileValidationResult | undefined => {
@@ -586,6 +589,158 @@ export function SourceTextView() {
     abortValidationRef.current = true;
   };
 
+  // 텍스트 수정 시작
+  const handleStartEdit = (fileId: string, text: string) => {
+    setEditingFileId(fileId);
+    setEditingText(text);
+  };
+
+  // 텍스트 수정 취소
+  const handleCancelEdit = () => {
+    setEditingFileId(null);
+    setEditingText('');
+  };
+
+  // 텍스트 수정 저장
+  const handleSaveEdit = async (fileId: string) => {
+    if (!knowledgeGraph || !currentDataId) return;
+
+    const currentFiles = knowledgeGraph.metadata.sourceFiles || [];
+    const fileIndex = currentFiles.findIndex(f => f.id === fileId);
+    if (fileIndex < 0) return;
+
+    const file = currentFiles[fileIndex];
+    if (file.text === editingText) {
+      // 변경 없음
+      handleCancelEdit();
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      console.log(`[SourceTextView] 텍스트 수정: ${file.fileName}`);
+
+      // 1. sourceFiles 업데이트
+      const newSourceFiles = currentFiles.map((f, idx) => {
+        if (idx === fileIndex) {
+          return {
+            ...f,
+            text: editingText,
+            charCount: editingText.length,
+            uploadedAt: new Date().toISOString(), // 수정 시간 갱신
+          };
+        }
+        return f;
+      });
+
+      // 2. 해당 파일 + 이후 파일들의 검증 결과 초기화
+      const newValidationResults: Record<string, FileValidationResult> = {};
+      Object.entries(knowledgeGraph.validationResults || {}).forEach(([fid, result]) => {
+        const fidIndex = currentFiles.findIndex(f => f.id === fid);
+        if (fidIndex < fileIndex) {
+          // 이전 파일들의 검증 결과는 유지
+          newValidationResults[fid] = result;
+        }
+        // fileIndex 이후는 초기화 (저장 안 함)
+      });
+
+      // 3. 수정된 파일과 관련된 장면/엔티티/관계 삭제 (재분석 필요)
+      // 3-1. 삭제할 장면 찾기
+      const scenesToDelete = new Set<string>();
+      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
+        const matchByName = scene.sourceFile === file.fileName;
+        const matchById = scene.sourceFileId === fileId;
+        if (matchByName || matchById) {
+          scenesToDelete.add(sceneId);
+        }
+      });
+
+      console.log(`[SourceTextView] 삭제할 장면: ${scenesToDelete.size}개`);
+
+      // 3-2. 새 snapshots 생성 (삭제된 장면 제외)
+      const newSnapshots: Record<string, SceneSnapshot> = {};
+      Object.entries(knowledgeGraph.snapshots).forEach(([sceneId, scene]) => {
+        if (!scenesToDelete.has(sceneId)) {
+          newSnapshots[sceneId] = scene;
+        }
+      });
+
+      // 3-3. entities의 scenes 배열에서 삭제된 장면 제거
+      const newEntities = { ...knowledgeGraph.entities };
+      Object.keys(newEntities).forEach(entityId => {
+        const entity = newEntities[entityId];
+        if (entity.scenes) {
+          newEntities[entityId] = {
+            ...entity,
+            scenes: entity.scenes.filter(sceneId => !scenesToDelete.has(sceneId)),
+          };
+        }
+      });
+
+      // 3-4. hyperedges의 scenes 배열에서 삭제된 장면 제거 + 빈 관계 삭제
+      const newHyperedges: typeof knowledgeGraph.hyperedges = {};
+      Object.entries(knowledgeGraph.hyperedges).forEach(([edgeId, edge]) => {
+        const filteredScenes = edge.scenes?.filter(sceneId => !scenesToDelete.has(sceneId)) || [];
+        if (filteredScenes.length > 0) {
+          newHyperedges[edgeId] = {
+            ...edge,
+            scenes: filteredScenes,
+          };
+        }
+      });
+
+      // 3-5. 관계가 있는 엔티티만 유지
+      const entitiesWithRelations = new Set<string>();
+      Object.values(newHyperedges).forEach(edge => {
+        edge.entities.forEach(entityId => entitiesWithRelations.add(entityId));
+      });
+
+      const finalEntities: typeof knowledgeGraph.entities = {};
+      Object.entries(newEntities).forEach(([entityId, entity]) => {
+        const hasRelations = entitiesWithRelations.has(entityId);
+        const hasScenes = entity.scenes && entity.scenes.length > 0;
+        if (hasRelations || hasScenes) {
+          finalEntities[entityId] = entity;
+        }
+      });
+
+      // 4. 새 지식 그래프 생성
+      const updatedGraph: NovelKnowledgeGraph = {
+        ...knowledgeGraph,
+        metadata: {
+          ...knowledgeGraph.metadata,
+          sourceFiles: newSourceFiles,
+          updatedAt: new Date().toISOString(),
+        },
+        entities: finalEntities,
+        hyperedges: newHyperedges,
+        snapshots: newSnapshots,
+        validationResults: newValidationResults,
+        stats: {
+          ...knowledgeGraph.stats,
+          totalEntities: Object.keys(finalEntities).length,
+          totalEdges: Object.keys(newHyperedges).length,
+        },
+      };
+
+      // 5. 서버에 업데이트
+      await updateKnowledgeGraph(currentDataId, updatedGraph);
+
+      // 6. 스토어 업데이트
+      setKnowledgeGraph(updatedGraph, undefined, currentDataId);
+
+      console.log(`[SourceTextView] 텍스트 수정 완료: ${file.fileName}`);
+      console.log(`[SourceTextView] 삭제된 장면: ${scenesToDelete.size}개, 초기화된 검증: ${Object.keys(knowledgeGraph.validationResults || {}).length - Object.keys(newValidationResults).length}개`);
+
+      handleCancelEdit();
+    } catch (error) {
+      console.error('[SourceTextView] 텍스트 수정 실패:', error);
+      alert('텍스트 수정에 실패했습니다.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   // 검증 버튼 렌더링 (글자 버튼)
   const renderValidationButton = (fileId: string, fileIndex: number) => {
     // 첫 번째 파일은 기준 파일
@@ -1025,6 +1180,20 @@ export function SourceTextView() {
                   </div>
                 )}
 
+                {/* 편집 버튼 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(file.id, file.text);
+                    if (!isExpanded) toggleFile(file.id);
+                  }}
+                  className="p-1.5 hover:bg-blue-100 rounded transition-colors"
+                  title="텍스트 수정"
+                  aria-label="텍스트 수정"
+                >
+                  <Pencil className="w-4 h-4 text-gray-400 hover:text-blue-500" aria-hidden="true" />
+                </button>
+
                 {/* 복사 버튼 */}
                 <button
                   onClick={(e) => {
@@ -1112,11 +1281,56 @@ export function SourceTextView() {
                     return null;
                   })()}
 
-                  <div className="bg-gray-50">
-                    <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
-                      {searchQuery ? highlightText(file.text, searchQuery) : file.text}
-                    </pre>
-                  </div>
+                  {editingFileId === file.id ? (
+                    <div className="bg-yellow-50 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Pencil className="w-4 h-4 text-yellow-600" />
+                        <span className="text-sm font-medium text-yellow-800">
+                          텍스트 수정 중
+                        </span>
+                        <span className="text-xs text-yellow-600">
+                          (수정 시 이 파일과 이후 파일들의 검증 결과가 초기화됩니다)
+                        </span>
+                      </div>
+                      <textarea
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="w-full h-[400px] p-3 text-sm text-gray-700 font-sans leading-relaxed border rounded resize-y focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        placeholder="텍스트를 입력하세요..."
+                      />
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={() => handleSaveEdit(file.id)}
+                          disabled={isSavingEdit}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium disabled:opacity-50"
+                        >
+                          {isSavingEdit ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4" />
+                          )}
+                          {isSavingEdit ? '저장 중...' : '저장'}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isSavingEdit}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm font-medium disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                          취소
+                        </button>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {editingText.length.toLocaleString()}자
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50">
+                      <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
+                        {searchQuery ? highlightText(file.text, searchQuery) : file.text}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
