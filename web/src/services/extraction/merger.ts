@@ -579,8 +579,14 @@ function inferCoOccurrenceEdges(
         commonScenes = commonScenes.filter(s => newSceneIds.has(s));
       }
 
-      if (commonScenes.length === 0) continue;
-      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
+      if (commonScenes.length === 0) {
+        console.log(`[extraction] 캐릭터 관계 스킵 (공통 장면 없음): ${char1.name} ↔ ${char2.name}, char1.scenes=${char1.scenes.join(',')}, char2.scenes=${char2.scenes?.join(',')}, newSceneIds=${newSceneIds ? [...newSceneIds].join(',') : 'null'}`);
+        continue;
+      }
+      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) {
+        console.log(`[extraction] 캐릭터 관계 스킵 (기존 관계 존재): ${char1.name} (${char1.id}) ↔ ${char2.name} (${char2.id})`);
+        continue;
+      }
 
       edgeCounter.value++;
       const id = formatId('H', edgeCounter.value);
