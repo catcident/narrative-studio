@@ -450,17 +450,35 @@ export function SourceTextView() {
         }
       });
 
-      // 5. 검증 결과 초기화 (순서 변경 시 전체 재검증 필요)
-      // 첫 번째 파일만 passed 유지, 나머지는 pending으로
+      // 5. 검증 결과 - 이동한 위치 이전은 유지, 이후만 pending으로
+      const movedToIndex = Math.min(fileIndex, targetIndex);
       const newValidationResults: Record<string, FileValidationResult> = {};
       newSourceFiles.forEach((file, idx) => {
-        newValidationResults[file.id] = {
-          fileId: file.id,
-          status: idx === 0 ? 'passed' : 'pending',
-          validatedAt: idx === 0 ? new Date().toISOString() : null,
-          issues: [],
-          comparedWith: [],
-        };
+        if (idx === 0) {
+          // 첫 파일은 항상 기준
+          newValidationResults[file.id] = {
+            fileId: file.id,
+            status: 'passed',
+            validatedAt: new Date().toISOString(),
+            issues: [],
+            comparedWith: [],
+          };
+        } else if (idx < movedToIndex) {
+          // 이동한 위치 이전 파일은 기존 결과 유지
+          const oldResult = knowledgeGraph.validationResults?.[file.id];
+          if (oldResult) {
+            newValidationResults[file.id] = oldResult;
+          }
+        } else {
+          // 이동한 위치부터 이후는 pending
+          newValidationResults[file.id] = {
+            fileId: file.id,
+            status: 'pending',
+            validatedAt: null,
+            issues: [],
+            comparedWith: [],
+          };
+        }
       });
 
       // 6. 새 지식 그래프 생성
