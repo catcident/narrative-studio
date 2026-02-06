@@ -726,11 +726,9 @@ function buildSnapshots(
 export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
-  // 중요: 기존 그래프의 엔티티/관계를 직접 복사하지 않음
-  // - 파일 업로드 순서에 따라 결과가 달라지는 것을 방지
-  // - 새 파일 분석 결과만으로 엔티티/관계 구성
-  // - 기존 그래프의 snapshots만 유지 (이미 분석된 다른 파일의 장면)
-  // - 기존 그래프의 엔티티 ID는 nameToId 매핑에만 사용 (같은 캐릭터 ID 재사용)
+  // 기존 그래프의 엔티티/관계를 유지 (새 파일 추가 시 기존 데이터 보존)
+  // LLM 분석 시에는 기존 엔티티를 전달하지 않음 (orchestrator에서 처리)
+  // 여기서는 기존 데이터를 복사하고, 새 파일 분석 결과를 병합
   let entities: Record<string, Entity> = {};
   let hyperedges: Record<string, HyperEdge> = {};
   const nameToId: Record<string, string> = {};
@@ -740,8 +738,17 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   let entityCounter = 0;
   let edgeCounterValue = 0;
 
-  if (existingGraph?.snapshots) {
-    for (const sceneId of Object.keys(existingGraph.snapshots)) {
+  if (existingGraph) {
+    // 기존 그래프의 엔티티/관계 복사 (기존 파일 데이터 유지)
+    for (const [id, entity] of Object.entries(existingGraph.entities)) {
+      entities[id] = { ...entity };
+    }
+    for (const [id, edge] of Object.entries(existingGraph.hyperedges)) {
+      hyperedges[id] = { ...edge };
+    }
+
+    // 기존 장면 최대 번호
+    for (const sceneId of Object.keys(existingGraph.snapshots || {})) {
       const numMatch = sceneId.match(/S0*(\d+)/);
       if (numMatch) {
         maxSceneNum = Math.max(maxSceneNum, parseInt(numMatch[1], 10));
@@ -764,8 +771,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       }
     }
 
-    // 기존 엔티티의 이름 매핑만 초기화 (ID 재사용을 위해)
-    // 엔티티 자체는 복사하지 않음 - 새 파일에 등장하는 엔티티만 그래프에 추가됨
+    // 기존 엔티티의 이름 매핑 초기화 (같은 이름 → 같은 ID)
     for (const e of Object.values(existingGraph.entities)) {
       registerNameMapping(nameToId, e.name, e.id);
       for (const alias of (e.aliases || [])) {
@@ -773,7 +779,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       }
     }
 
-    console.log(`[extraction] 기존 그래프: 엔티티 매핑 ${Object.keys(nameToId).length}개, maxSceneNum=${maxSceneNum}, entityCounter=${entityCounter}, edgeCounter=${edgeCounterValue}`);
+    console.log(`[extraction] 기존 그래프 유지: 엔티티 ${Object.keys(entities).length}개, 관계 ${Object.keys(hyperedges).length}개, maxSceneNum=${maxSceneNum}`);
   }
 
   const edgeCounter = { value: edgeCounterValue };
