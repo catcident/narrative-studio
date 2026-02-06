@@ -33,21 +33,28 @@ export function SourceTextView() {
   const [isValidatingAll, setIsValidatingAll] = useState(false);
   const abortValidationRef = useRef(false);
 
-  // 검증 결과 로드 (knowledgeGraph에서) - knowledgeGraph.validationResults가 있을 때만 로드
-  const loadedDataIdRef = useRef<string | null>(null);
+  // 검증 결과 로드 - knowledgeGraph.validationResults가 바뀔 때마다 store와 동기화
+  // validationResults의 JSON 문자열을 메모이제이션해서 실제 변경 감지
+  const validationResultsJson = useMemo(() => {
+    if (!knowledgeGraph?.validationResults) return null;
+    return JSON.stringify(knowledgeGraph.validationResults);
+  }, [knowledgeGraph?.validationResults]);
+
   useEffect(() => {
-    // knowledgeGraph와 validationResults가 모두 있을 때만 로드
-    // dataId가 바뀌었거나 처음 로드할 때만 실행
-    if (currentDataId && knowledgeGraph?.validationResults && currentDataId !== loadedDataIdRef.current) {
-      loadedDataIdRef.current = currentDataId;
+    if (validationResultsJson && knowledgeGraph?.validationResults) {
       const resultsMap = new Map<string, FileValidationResult>();
       Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
         resultsMap.set(fileId, result);
       });
-      console.log('[validation] 검증 결과 로드:', resultsMap.size, '개 파일, dataId:', currentDataId);
-      setValidationResults(resultsMap);
+      // store의 현재 결과와 비교해서 다를 때만 업데이트
+      const currentStore = useStore.getState().validationResults;
+      const storeJson = JSON.stringify(Object.fromEntries(currentStore));
+      if (validationResultsJson !== storeJson) {
+        console.log('[validation] 검증 결과 동기화:', resultsMap.size, '개 파일');
+        setValidationResults(resultsMap);
+      }
     }
-  }, [currentDataId, knowledgeGraph?.validationResults, setValidationResults]);
+  }, [validationResultsJson, setValidationResults]);
 
   // 검증 결과 저장 (변경 시 knowledgeGraph에 반영) - store에서 최신 값을 직접 가져옴
   const saveValidationResults = useCallback(async (results: Map<string, FileValidationResult>) => {
