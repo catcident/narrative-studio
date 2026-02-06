@@ -23,7 +23,7 @@ import { UserMenu } from './components/UserMenu';
 import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
-import { saveKnowledgeGraph, saveNovelText } from './services/storage';
+import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeGraphById } from './services/storage';
 import { loadProgress, syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
 import { useResumeAnalysis } from './hooks/useResumeAnalysis';
@@ -52,6 +52,7 @@ function App() {
   const sceneRangeEnd = useStore((s) => s.sceneRangeEnd);
   const selectSceneRange = useStore((s) => s.selectSceneRange);
   const selectedEntityId = useStore((s) => s.selectedEntityId);
+  const setCurrentDataId = useStore((s) => s.setCurrentDataId);
   const loadSubscription = useStore((s) => s.loadSubscription);
   const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
   const partialAnalysis = usePartialAnalysis();
@@ -61,9 +62,16 @@ function App() {
   const { addFile, isAdding: isAddingFile, progress: addProgress } = useAddFileAnalysis();
   const { resume, clearSavedProgress, isResuming, progress: resumeProgress } = useResumeAnalysis();
 
-  // 로그인 시 구독 정보 로드
+  // 로그인 시 구독 정보 로드 + 탭 복귀 시 자동 갱신
   useEffect(() => {
     loadSubscription();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadSubscription();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [loadSubscription]);
 
   // 마운트 시 부분 분석 상태 동기화 (타이틀 매칭)
@@ -77,6 +85,21 @@ function App() {
         title: progress.title,
         timestamp: progress.timestamp,
         model: progress.model,
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만
+
+  // 마운트 시 sessionStorage에서 세션 복원
+  useEffect(() => {
+    const savedDataId = sessionStorage.getItem('currentDataId');
+    if (savedDataId && !knowledgeGraph) {
+      loadKnowledgeGraphById(savedDataId).then((loaded) => {
+        if (loaded) {
+          setKnowledgeGraph(loaded, undefined, savedDataId);
+          syncPartialAnalysis(setPartialAnalysis);
+        } else {
+          sessionStorage.removeItem('currentDataId');
+        }
       });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만
@@ -101,6 +124,7 @@ function App() {
 
           const saved = await saveKnowledgeGraph(knowledgeGraph, novelId);
           if (cancelled) return;
+          setCurrentDataId(saved.id);
           console.log('[storage] 지식그래프 저장 완료:', saved.title, 'v' + saved.version);
           setSaveStatus('saved');
         } catch (err: unknown) {

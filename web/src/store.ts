@@ -50,6 +50,7 @@ interface AppState {
 
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
+  setCurrentDataId: (id: string | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   selectEntity: (id: string | null) => void;
@@ -93,7 +94,7 @@ export const useStore = create<AppState>((set, get) => ({
   selectedSceneId: null,
   sceneRangeStart: null,
   sceneRangeEnd: null,
-  viewMode: 'graph',
+  viewMode: (typeof window !== 'undefined' ? sessionStorage.getItem('viewMode') as ViewMode : null) || 'graph',
   chatMentionedEntities: [],
   validationResults: new Map(),
   isValidating: false,
@@ -121,19 +122,35 @@ export const useStore = create<AppState>((set, get) => ({
   authEnabled: null,
 
   setAuthEnabled: (authEnabled) => set({ authEnabled }),
-  setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => set((state) => ({
-    knowledgeGraph,
-    originalText: originalText !== undefined ? originalText : state.originalText,
-    currentDataId: dataId !== undefined ? dataId : state.currentDataId,
-    error: null,
-  })),
+  setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => {
+    if (dataId) {
+      sessionStorage.setItem('currentDataId', dataId);
+    }
+    set({
+      knowledgeGraph,
+      originalText: originalText || null,
+      currentDataId: dataId || null,
+      error: null,
+    });
+  },
+  setCurrentDataId: (id) => {
+    if (id) {
+      sessionStorage.setItem('currentDataId', id);
+    } else {
+      sessionStorage.removeItem('currentDataId');
+    }
+    set({ currentDataId: id });
+  },
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   selectEntity: (selectedEntityId) => set({ selectedEntityId }),
   selectTimePoint: (selectedTimePoint) => set({ selectedTimePoint }),
   selectScene: (selectedSceneId) => set({ selectedSceneId, sceneRangeStart: null, sceneRangeEnd: null }),
   selectSceneRange: (sceneRangeStart, sceneRangeEnd) => set({ sceneRangeStart, sceneRangeEnd, selectedSceneId: null }),
-  setViewMode: (viewMode) => set({ viewMode }),
+  setViewMode: (viewMode) => {
+    sessionStorage.setItem('viewMode', viewMode);
+    set({ viewMode });
+  },
   setChatMentionedEntities: (chatMentionedEntities) => set({ chatMentionedEntities }),
 
 
@@ -149,24 +166,29 @@ export const useStore = create<AppState>((set, get) => ({
   clearValidationResults: () => set({ validationResults: new Map(), isValidating: false, validatingFileId: null }),
 
   setPartialAnalysis: (partialAnalysis) => set({ partialAnalysis }),
-  reset: () => set({
-    knowledgeGraph: null,
-    originalText: null,
-    currentDataId: null,
-    selectedEntityId: null,
-    selectedTimePoint: null,
-    selectedSceneId: null,
-    sceneRangeStart: null,
-    sceneRangeEnd: null,
-    chatMentionedEntities: [],
-    validationResults: new Map(),
-    isValidating: false,
-    validatingFileId: null,
-    partialAnalysis: null,
-    error: null,
-    currentUsage: initialUsage,
-    showUsageSummary: false,
-  }),
+  reset: () => {
+    sessionStorage.removeItem('currentDataId');
+    sessionStorage.removeItem('viewMode');
+    set({
+      knowledgeGraph: null,
+      originalText: null,
+      currentDataId: null,
+      selectedEntityId: null,
+      selectedTimePoint: null,
+      selectedSceneId: null,
+      sceneRangeStart: null,
+      sceneRangeEnd: null,
+      viewMode: 'graph',
+      chatMentionedEntities: [],
+      validationResults: new Map(),
+      isValidating: false,
+      validatingFileId: null,
+      partialAnalysis: null,
+      error: null,
+      currentUsage: initialUsage,
+      showUsageSummary: false,
+    });
+  },
 
   // Billing 액션
   loadSubscription: async () => {
