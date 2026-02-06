@@ -14,6 +14,7 @@ interface LLMQueryAnalysis {
   keywords: string[];           // 검색 키워드
   wantsCategoryList: boolean;   // 카테고리 전체 목록 요청 여부
   targetCategory: string | null; // 요청된 카테고리 (character/item/location/organization/event/concept)
+  needsConnectedNodes: boolean; // 연결된 노드 정보도 필요한지 (관계, 다른 캐릭터 등)
 }
 
 /**
@@ -27,6 +28,7 @@ async function analyzeQueryWithLLM(
     keywords: fallbackExtractKeywords(query),
     wantsCategoryList: false,
     targetCategory: null,
+    needsConnectedNodes: true, // 기본적으로 연결 노드 포함
   };
 
   try {
@@ -45,18 +47,18 @@ async function analyzeQueryWithLLM(
 1. keywords: 검색에 필요한 핵심 키워드 (인물명, 물건명, 장소명, 사건명 등). 최대 5개. 질문 표현("뭐야", "알려줘" 등)은 제외.
 2. wantsCategoryList: 특정 카테고리의 전체 목록을 요청하는지 (true/false)
 3. targetCategory: 요청된 카테고리. 다음 중 하나만: character(인물), item(물건/아이템), location(장소), organization(조직/단체), event(사건), concept(개념/설정/무공/기술). 목록 요청이 아니면 null.
+4. needsConnectedNodes: 연결된 노드 정보가 필요한지 (true/false). 관계, 상호작용, 연관된 캐릭터/장소/아이템 정보가 필요하면 true.
 
 응답 형식 (JSON만):
-{"keywords": ["키워드1", "키워드2"], "wantsCategoryList": false, "targetCategory": null}
+{"keywords": ["키워드1"], "wantsCategoryList": false, "targetCategory": null, "needsConnectedNodes": true}
 
 예시:
-- "장소는 뭐뭐가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "location"}
-- "아이템 목록 알려줘" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "item"}
-- "등장인물 누가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "character"}
-- "김철수가 누구야?" → {"keywords": ["김철수"], "wantsCategoryList": false, "targetCategory": null}
-- "주인공이 얻은 검이 뭐야?" → {"keywords": ["주인공", "검"], "wantsCategoryList": false, "targetCategory": null}
-- "What items are there?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "item"}
-- "Who is the main character?" → {"keywords": ["main character"], "wantsCategoryList": false, "targetCategory": null}`
+- "장소는 뭐뭐가 있어?" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "location", "needsConnectedNodes": false}
+- "김철수가 누구야?" → {"keywords": ["김철수"], "wantsCategoryList": false, "targetCategory": null, "needsConnectedNodes": true}
+- "김철수에 대해 자세히" → {"keywords": ["김철수"], "wantsCategoryList": false, "targetCategory": null, "needsConnectedNodes": true}
+- "검은 고양이의 외모만 알려줘" → {"keywords": ["검은 고양이"], "wantsCategoryList": false, "targetCategory": null, "needsConnectedNodes": false}
+- "주인공과 검은 고양이 관계" → {"keywords": ["주인공", "검은 고양이"], "wantsCategoryList": false, "targetCategory": null, "needsConnectedNodes": true}
+- "등장인물 이름만 나열해줘" → {"keywords": [], "wantsCategoryList": true, "targetCategory": "character", "needsConnectedNodes": false}`
           },
           { role: 'user', content: query }
         ],
@@ -81,6 +83,7 @@ async function analyzeQueryWithLLM(
         keywords: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 5) : [],
         wantsCategoryList: !!parsed.wantsCategoryList,
         targetCategory: parsed.targetCategory || null,
+        needsConnectedNodes: parsed.needsConnectedNodes !== false, // 기본 true
       };
       console.log('[analyzeQuery] LLM 분석 결과:', result);
       return result;
@@ -956,7 +959,7 @@ export async function sendChatMessage(
     : '';
   const queryAnalysis = lastUserMessage
     ? await analyzeQueryWithLLM(queryForAnalysis, userApiKey || undefined)
-    : { keywords: [], wantsCategoryList: false, targetCategory: null };
+    : { keywords: [], wantsCategoryList: false, targetCategory: null, needsConnectedNodes: true };
 
   // [2단계] 데이터 수집
   let foundEntityIds: string[] = [];
@@ -1058,6 +1061,27 @@ export async function sendChatMessage(
 
   // 관련 관계
   const relatedEdges = findConnectedEdges(foundEntityIds, context.knowledgeGraph.hyperedges);
+
+  // 관계에 연결된 엔티티들도 추가 (LLM이 필요하다고 판단한 경우만)
+  const connectedEntityIds = new Set<string>();
+  if (queryAnalysis.needsConnectedNodes) {
+    relatedEdges.forEach(edge => {
+      edge.entities.forEach(entityId => {
+        if (!foundEntityIds.includes(entityId)) {
+          connectedEntityIds.add(entityId);
+        }
+      });
+    });
+    console.log(`[chat] needsConnectedNodes=true → 연결된 노드 ${connectedEntityIds.size}개 추가`);
+  } else {
+    console.log(`[chat] needsConnectedNodes=false → 연결 노드 생략`);
+  }
+
+  // 연결된 엔티티 추가 (최대 20개까지)
+  const connectedArray = Array.from(connectedEntityIds).slice(0, 20);
+  connectedArray.forEach(id => foundEntityIds.push(id));
+
+  console.log(`[chat] 검색된 엔티티: ${foundEntityIds.length}개 (직접: ${foundEntityIds.length - connectedArray.length}, 연결: ${connectedArray.length})`);
 
   // [4단계] 컨텍스트 생성 - LLM 분석 결과를 intent로 변환
   const intentForContext: QueryIntent = {
