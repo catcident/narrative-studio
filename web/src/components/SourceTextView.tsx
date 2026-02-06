@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { FileText, ChevronDown, ChevronRight, Search, Copy, Check, Film, Trash2, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, Loader2, AlertTriangle, PlayCircle } from 'lucide-react';
-import { useStore, useValidationResults, useIsValidating, useValidatingFileId } from '../store';
+import { useStore, useIsValidating, useValidatingFileId } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile, invalidateFilesAfter } from '../services/validation';
 import type { SceneSnapshot, NovelKnowledgeGraph, SourceFile, ValidationStatus, FileValidationResult } from '../types';
@@ -15,11 +15,8 @@ export function SourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const currentDataId = useStore((s) => s.currentDataId);
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
-  const validationResults = useValidationResults();
   const isValidating = useIsValidating();
   const validatingFileId = useValidatingFileId();
-  const setValidationResults = useStore((s) => s.setValidationResults);
-  const updateValidationResult = useStore((s) => s.updateValidationResult);
   const setIsValidating = useStore((s) => s.setIsValidating);
   const setValidatingFileId = useStore((s) => s.setValidatingFileId);
 
@@ -33,69 +30,26 @@ export function SourceTextView() {
   const [isValidatingAll, setIsValidatingAll] = useState(false);
   const abortValidationRef = useRef(false);
 
-  // 검증 결과 로드 - knowledgeGraph.validationResults가 바뀔 때마다 store와 동기화
-  // validationResults의 JSON 문자열을 메모이제이션해서 실제 변경 감지
-  const validationResultsJson = useMemo(() => {
-    if (!knowledgeGraph?.validationResults) return null;
-    return JSON.stringify(knowledgeGraph.validationResults);
-  }, [knowledgeGraph?.validationResults]);
+  // 검증 결과를 knowledgeGraph에서 직접 읽음 (store의 Map은 UI용)
+  const getValidationStatus = (fileId: string): FileValidationResult | undefined => {
+    return knowledgeGraph?.validationResults?.[fileId];
+  };
 
-  useEffect(() => {
-    if (validationResultsJson && knowledgeGraph?.validationResults) {
-      const resultsMap = new Map<string, FileValidationResult>();
-      Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
-        resultsMap.set(fileId, result);
-      });
-      // store의 현재 결과와 비교해서 다를 때만 업데이트
-      const currentStore = useStore.getState().validationResults;
-      const storeJson = JSON.stringify(Object.fromEntries(currentStore));
-      if (validationResultsJson !== storeJson) {
-        console.log('[validation] 검증 결과 동기화:', resultsMap.size, '개 파일');
-        setValidationResults(resultsMap);
-      }
-    }
-  }, [validationResultsJson, setValidationResults]);
-
-  // 검증 결과 저장 - 기존 결과와 병합해서 저장
-  const saveValidationResults = useCallback(async (results: Map<string, FileValidationResult>) => {
-    const state = useStore.getState();
-    const currentGraph = state.knowledgeGraph;
-    const dataId = state.currentDataId;
-
-    if (!currentGraph || !dataId) {
-      console.error('[validation] saveValidationResults: knowledgeGraph 또는 currentDataId 없음');
-      return;
-    }
-
-    // 기존 결과와 새 결과 병합
-    const existingResults = currentGraph.validationResults || {};
-    const newResultsObj: Record<string, FileValidationResult> = { ...existingResults };
-    results.forEach((result, fileId) => {
-      newResultsObj[fileId] = result;
-    });
+  // 검증 결과 저장 - 단순하게 knowledgeGraph.validationResults에 저장
+  const saveValidationResult = async (fileId: string, result: FileValidationResult) => {
+    if (!knowledgeGraph || !currentDataId) return;
 
     const updatedGraph: NovelKnowledgeGraph = {
-      ...currentGraph,
-      validationResults: newResultsObj,
-      metadata: {
-        ...currentGraph.metadata,
-        updatedAt: new Date().toISOString(),
+      ...knowledgeGraph,
+      validationResults: {
+        ...knowledgeGraph.validationResults,
+        [fileId]: result,
       },
     };
 
-    console.log('[validation] 검증 결과 저장:', Object.keys(newResultsObj).length, '개 파일');
-
-    // store 먼저 업데이트
     setKnowledgeGraph(updatedGraph);
-
-    // API 저장은 비동기로 (실패해도 store에는 저장됨)
-    try {
-      await updateKnowledgeGraph(dataId, updatedGraph);
-      console.log('[validation] API 저장 완료');
-    } catch (err) {
-      console.error('[validation] API 저장 실패:', err);
-    }
-  }, [setKnowledgeGraph]);
+    await updateKnowledgeGraph(currentDataId, updatedGraph);
+  };
 
   const sourceFiles = useMemo(() => {
     return knowledgeGraph?.metadata.sourceFiles || [];
@@ -310,6 +264,23 @@ export function SourceTextView() {
       });
 
       // 10. 새 지식 그래프 생성
+      // 11. 검증 결과 정리 (삭제된 파일 제거 + 파일 ID 재매핑)
+      const oldValidationResults = knowledgeGraph.validationResults || {};
+      const newValidationResults: Record<string, FileValidationResult> = {};
+      Object.entries(oldValidationResults).forEach(([oldFileId, result]) => {
+        if (oldFileId === fileId) return; // 삭제된 파일 제외
+        const newId = fileIdMapping[oldFileId];
+        if (newId) {
+          newValidationResults[newId] = {
+            ...result,
+            fileId: newId,
+            comparedWith: result.comparedWith
+              .filter((id) => id !== fileId)
+              .map((id) => fileIdMapping[id] || id),
+          };
+        }
+      });
+
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -320,6 +291,7 @@ export function SourceTextView() {
         entities: finalEntities,
         hyperedges: newHyperedges,
         snapshots: newSnapshots,
+        validationResults: newValidationResults,
         stats: {
           ...knowledgeGraph.stats,
           totalEntities: Object.keys(finalEntities).length,
@@ -327,32 +299,15 @@ export function SourceTextView() {
         },
       };
 
-      // 11. 서버에 업데이트
+      // 12. 서버에 업데이트
       await updateKnowledgeGraph(currentDataId, updatedGraph);
 
-      // 12. 스토어 업데이트
+      // 13. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
       const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
       const deletedEdges = Object.keys(knowledgeGraph.hyperedges).length - Object.keys(newHyperedges).length;
       console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개, 삭제된 엔티티: ${deletedEntities}개, 삭제된 관계: ${deletedEdges}개`);
-
-      // 13. 검증 결과 정리 (삭제된 파일 제거 + 파일 ID 재매핑)
-      const newValidationResults = new Map<string, FileValidationResult>();
-      validationResults.forEach((result, oldFileId) => {
-        if (oldFileId === fileId) return; // 삭제된 파일 제외
-        const newId = fileIdMapping[oldFileId];
-        if (newId) {
-          newValidationResults.set(newId, {
-            ...result,
-            fileId: newId,
-            comparedWith: result.comparedWith
-              .filter((id) => id !== fileId)
-              .map((id) => fileIdMapping[id] || id),
-          });
-        }
-      });
-      setValidationResults(newValidationResults);
     } catch (error) {
       console.error('[SourceTextView] 파일 삭제 실패:', error);
       alert('파일 삭제에 실패했습니다.');
@@ -360,7 +315,7 @@ export function SourceTextView() {
       setDeletingFileId(null);
       setConfirmDeleteId(null);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, validationResults, setValidationResults]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
   // 파일 순서 변경 핸들러 (위로/아래로 이동)
   const handleMoveFile = useCallback(async (fileIndex: number, direction: 'up' | 'down') => {
@@ -491,7 +446,20 @@ export function SourceTextView() {
         }
       });
 
-      // 5. 새 지식 그래프 생성
+      // 5. 검증 결과 초기화 (순서 변경 시 전체 재검증 필요)
+      // 첫 번째 파일만 passed 유지, 나머지는 pending으로
+      const newValidationResults: Record<string, FileValidationResult> = {};
+      newSourceFiles.forEach((file, idx) => {
+        newValidationResults[file.id] = {
+          fileId: file.id,
+          status: idx === 0 ? 'passed' : 'pending',
+          validatedAt: idx === 0 ? new Date().toISOString() : null,
+          issues: [],
+          comparedWith: [],
+        };
+      });
+
+      // 6. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -501,27 +469,14 @@ export function SourceTextView() {
         },
         snapshots: newSnapshots,
         hyperedges: newHyperedges,
+        validationResults: newValidationResults,
       };
 
-      // 5. 서버에 업데이트
+      // 7. 서버에 업데이트
       await updateKnowledgeGraph(currentDataId, updatedGraph);
 
-      // 6. 스토어 업데이트
+      // 8. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
-
-      // 7. 검증 결과 초기화 (순서 변경 시 전체 재검증 필요)
-      // 첫 번째 파일만 passed 유지, 나머지는 pending으로
-      const newValidationResults = new Map<string, FileValidationResult>();
-      newSourceFiles.forEach((file, idx) => {
-        newValidationResults.set(file.id, {
-          fileId: file.id,
-          status: idx === 0 ? 'passed' : 'pending',
-          validatedAt: idx === 0 ? new Date().toISOString() : null,
-          issues: [],
-          comparedWith: [],
-        });
-      });
-      setValidationResults(newValidationResults);
 
       console.log(`[SourceTextView] 파일 순서 변경 완료`);
     } catch (error) {
@@ -530,145 +485,79 @@ export function SourceTextView() {
     } finally {
       setMovingFileId(null);
     }
-  }, [knowledgeGraph, currentDataId, setKnowledgeGraph, setValidationResults]);
+  }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
-  // 파일 검증 핸들러
-  const handleValidateFile = useCallback(async (fileId: string) => {
-    if (!knowledgeGraph || isValidating) return;
-
-    // API 키는 localStorage에서 가져오거나, 서버에서 환경변수 사용
-    const apiKey = localStorage.getItem('OPENROUTER_API_KEY') || undefined;
+  // 파일 검증 핸들러 - 단순화
+  const handleValidateFile = async (fileId: string) => {
+    if (!knowledgeGraph || !currentDataId || isValidating) return;
 
     setIsValidating(true);
     setValidatingFileId(fileId);
 
     try {
       const result = await validateFile(knowledgeGraph, fileId, {
-        apiKey,  // undefined면 서버에서 환경변수 사용
+        apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
         model: knowledgeGraph.metadata.model,
-        onProgress: (fId, status) => {
-          console.log(`[validation] ${fId}: ${status}`);
-        },
       });
 
-      // 검증 실패 시 이슈 목록 자동 펼치기 + 이후 파일들 invalidate
-      if (result.status === 'failed') {
-        // 이슈 목록 자동 펼치기
-        setExpandedIssues(prev => new Set([...prev, fileId]));
+      // 결과 저장
+      await saveValidationResult(fileId, result);
 
-        const sourceFiles = knowledgeGraph.metadata.sourceFiles || [];
-        // 현재 결과를 먼저 포함한 후 invalidate 처리
-        const updatedResults = new Map(validationResults);
-        updatedResults.set(fileId, result);
-        const newResults = invalidateFilesAfter(updatedResults, sourceFiles, fileId);
-        setValidationResults(newResults);
-        // 저장
-        await saveValidationResults(newResults);
-      } else {
-        // passed인 경우 단순 업데이트
-        const updatedResults = new Map(validationResults);
-        updatedResults.set(fileId, result);
-        setValidationResults(updatedResults);
-        // 저장
-        await saveValidationResults(updatedResults);
+      if (result.status === 'failed') {
+        setExpandedIssues(prev => new Set([...prev, fileId]));
       }
 
-      console.log(`[validation] 검증 완료: ${fileId} - ${result.status}, issues: ${result.issues.length}`);
       return result;
     } catch (error) {
       console.error('[validation] 검증 실패:', error);
-      const errorResult: FileValidationResult = {
-        fileId,
-        status: 'failed',
-        validatedAt: new Date().toISOString(),
-        issues: [{
-          id: `${fileId}_error`,
-          type: 'other',
-          severity: 'error',
-          description: '검증 중 오류가 발생했습니다.',
-        }],
-        comparedWith: [],
-      };
-      const updatedResults = new Map(validationResults);
-      updatedResults.set(fileId, errorResult);
-      setValidationResults(updatedResults);
-      await saveValidationResults(updatedResults);
-      return errorResult;
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
     }
-  }, [knowledgeGraph, isValidating, validationResults, setIsValidating, setValidatingFileId, setValidationResults, saveValidationResults]);
+  };
 
-  // 전체/이어서 검증 핸들러
-  const handleValidateAll = useCallback(async (continueFromLast: boolean = false) => {
-    const state = useStore.getState();
-    const currentGraph = state.knowledgeGraph;
+  // 전체/이어서 검증 핸들러 - 단순화
+  const handleValidateAll = async (continueFromLast: boolean = false) => {
+    if (!knowledgeGraph || !currentDataId || isValidating || isValidatingAll) return;
 
-    if (!currentGraph || isValidating || isValidatingAll) return;
-
-    const files = currentGraph.metadata.sourceFiles || [];
-    if (files.length <= 1) return; // 첫 번째 파일은 기준이므로 2개 이상이어야 함
+    const files = knowledgeGraph.metadata.sourceFiles || [];
+    if (files.length <= 1) return;
 
     setIsValidatingAll(true);
     abortValidationRef.current = false;
 
     try {
-      // 시작 인덱스 결정
-      let startIndex = 1; // 첫 파일(인덱스 0)은 기준이므로 건너뜀
-
+      // 시작 인덱스: 처음부터면 1, 이어서면 통과 안 된 첫 번째 파일
+      let startIndex = 1;
       if (continueFromLast) {
-        // 이어서 검증: store에서 최신 결과 가져와서 확인
-        const currentResults = useStore.getState().validationResults;
         for (let i = 1; i < files.length; i++) {
-          const result = currentResults.get(files[i].id);
-          if (!result || result.status === 'pending' || result.status === 'invalidated') {
-            startIndex = i;
-            break;
-          }
-          if (result.status === 'failed') {
-            // failed면 여기서 멈춤 (사용자가 확인 후 통과 처리하거나 수정해야 함)
+          const result = knowledgeGraph.validationResults?.[files[i].id];
+          if (!result || result.status !== 'passed') {
             startIndex = i;
             break;
           }
         }
       }
 
-      console.log(`[validation] 전체 검증 시작: ${startIndex}부터 ${files.length - 1}까지`);
-
       for (let i = startIndex; i < files.length; i++) {
-        if (abortValidationRef.current) {
-          console.log('[validation] 검증 중단됨');
-          break;
-        }
+        if (abortValidationRef.current) break;
 
         const file = files[i];
-        console.log(`[validation] 파일 ${i}/${files.length - 1}: ${file.fileName}`);
-
         setValidatingFileId(file.id);
         setIsValidating(true);
 
-        const result = await validateFile(currentGraph, file.id, {
+        // 검증 실행
+        const result = await validateFile(knowledgeGraph, file.id, {
           apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
-          model: currentGraph.metadata.model,
+          model: knowledgeGraph.metadata.model,
         });
 
-        // store에서 최신 결과를 가져와서 업데이트
-        const latestResults = useStore.getState().validationResults;
-        const updatedResults = new Map(latestResults);
-        updatedResults.set(file.id, result);
+        // 결과 저장
+        await saveValidationResult(file.id, result);
 
         if (result.status === 'failed') {
-          // 실패 시 이후 파일들 invalidate
-          const newResults = invalidateFilesAfter(updatedResults, files, file.id);
-          setValidationResults(newResults);
-          await saveValidationResults(newResults);
           setExpandedIssues(prev => new Set([...prev, file.id]));
-          console.log(`[validation] 파일 ${file.fileName} 검증 실패, 중단`);
-          break; // 실패하면 중단
-        } else {
-          setValidationResults(updatedResults);
-          await saveValidationResults(updatedResults);
+          break;
         }
       }
     } catch (error) {
@@ -678,12 +567,12 @@ export function SourceTextView() {
       setValidatingFileId(null);
       setIsValidatingAll(false);
     }
-  }, [isValidating, isValidatingAll, setIsValidating, setValidatingFileId, setValidationResults, saveValidationResults]);
+  };
 
   // 검증 중단
-  const handleAbortValidation = useCallback(() => {
+  const handleAbortValidation = () => {
     abortValidationRef.current = true;
-  }, []);
+  };
 
   // 검증 버튼 렌더링 (글자 버튼)
   const renderValidationButton = (fileId: string, fileIndex: number) => {
@@ -696,7 +585,7 @@ export function SourceTextView() {
       );
     }
 
-    const result = validationResults.get(fileId);
+    const result = getValidationStatus(fileId);
     const isCurrentlyValidating = validatingFileId === fileId;
 
     if (isCurrentlyValidating) {
@@ -797,7 +686,7 @@ export function SourceTextView() {
     // 첫 번째 파일은 검증 패널 없음
     if (fileIndex === 0) return null;
 
-    const result = validationResults.get(fileId);
+    const result = getValidationStatus(fileId);
     if (!result || !expandedIssues.has(fileId)) return null;
 
     // passed 상태
@@ -902,10 +791,7 @@ export function SourceTextView() {
                   ...result,
                   status: 'passed',
                 };
-                const updatedResults = new Map(validationResults);
-                updatedResults.set(fileId, passedResult);
-                setValidationResults(updatedResults);
-                await saveValidationResults(updatedResults);
+                await saveValidationResult(fileId, passedResult);
                 setExpandedIssues(prev => {
                   const newSet = new Set(prev);
                   newSet.delete(fileId);
@@ -1034,7 +920,8 @@ export function SourceTextView() {
                 </button>
                 <span className="text-xs text-gray-500 ml-auto">
                   {(() => {
-                    const passedCount = Array.from(validationResults.values()).filter(r => r.status === 'passed').length;
+                    const results = knowledgeGraph?.validationResults || {};
+                    const passedCount = Object.values(results).filter(r => r.status === 'passed').length;
                     return passedCount > 0 ? `${passedCount}/${sourceFiles.length - 1}개 통과` : '';
                   })()}
                 </span>
@@ -1049,7 +936,7 @@ export function SourceTextView() {
         {filteredFiles.map((file, index) => {
           const isExpanded = expandedFiles.has(file.id);
           const isCopied = copiedId === file.id;
-          const validationResult = validationResults.get(file.id);
+          const validationResult = getValidationStatus(file.id);
           const validationStatus = validationResult?.status;
 
           // 검증 상태에 따른 배경색
