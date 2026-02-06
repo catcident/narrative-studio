@@ -485,19 +485,23 @@ export function SourceTextView() {
         },
       });
 
-      updateValidationResult(fileId, result);
-
       // 검증 실패 시 이슈 목록 자동 펼치기 + 이후 파일들 invalidate
       if (result.status === 'failed') {
         // 이슈 목록 자동 펼치기
         setExpandedIssues(prev => new Set([...prev, fileId]));
 
         const sourceFiles = knowledgeGraph.metadata.sourceFiles || [];
-        const newResults = invalidateFilesAfter(validationResults, sourceFiles, fileId);
+        // 현재 결과를 먼저 포함한 후 invalidate 처리
+        const updatedResults = new Map(validationResults);
+        updatedResults.set(fileId, result);
+        const newResults = invalidateFilesAfter(updatedResults, sourceFiles, fileId);
         setValidationResults(newResults);
+      } else {
+        // passed인 경우 단순 업데이트
+        updateValidationResult(fileId, result);
       }
 
-      console.log(`[validation] 검증 완료: ${fileId} - ${result.status}`);
+      console.log(`[validation] 검증 완료: ${fileId} - ${result.status}, issues: ${result.issues.length}`);
     } catch (error) {
       console.error('[validation] 검증 실패:', error);
       updateValidationResult(fileId, {
