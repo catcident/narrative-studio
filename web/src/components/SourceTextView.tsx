@@ -33,25 +33,19 @@ export function SourceTextView() {
   const [isValidatingAll, setIsValidatingAll] = useState(false);
   const abortValidationRef = useRef(false);
 
-  // 검증 결과 로드 (knowledgeGraph에서) - currentDataId가 변경될 때 로드
-  const prevDataIdRef = useRef<string | null>(null);
+  // 검증 결과 로드 (knowledgeGraph에서) - knowledgeGraph.validationResults가 있을 때만 로드
+  const loadedDataIdRef = useRef<string | null>(null);
   useEffect(() => {
-    // 데이터 ID가 바뀌었을 때만 로드 (새 데이터 로드 시)
-    if (currentDataId && currentDataId !== prevDataIdRef.current) {
-      prevDataIdRef.current = currentDataId;
-
-      if (knowledgeGraph?.validationResults) {
-        const resultsMap = new Map<string, FileValidationResult>();
-        Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
-          resultsMap.set(fileId, result);
-        });
-        console.log('[validation] 검증 결과 로드:', resultsMap.size, '개 파일');
-        setValidationResults(resultsMap);
-      } else {
-        // validationResults가 없으면 빈 Map으로 초기화
-        console.log('[validation] 검증 결과 없음, 초기화');
-        setValidationResults(new Map());
-      }
+    // knowledgeGraph와 validationResults가 모두 있을 때만 로드
+    // dataId가 바뀌었거나 처음 로드할 때만 실행
+    if (currentDataId && knowledgeGraph?.validationResults && currentDataId !== loadedDataIdRef.current) {
+      loadedDataIdRef.current = currentDataId;
+      const resultsMap = new Map<string, FileValidationResult>();
+      Object.entries(knowledgeGraph.validationResults).forEach(([fileId, result]) => {
+        resultsMap.set(fileId, result);
+      });
+      console.log('[validation] 검증 결과 로드:', resultsMap.size, '개 파일, dataId:', currentDataId);
+      setValidationResults(resultsMap);
     }
   }, [currentDataId, knowledgeGraph?.validationResults, setValidationResults]);
 
