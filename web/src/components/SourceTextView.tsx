@@ -661,32 +661,106 @@ export function SourceTextView() {
             id: `F${String(idx + 1).padStart(4, '0')}`,
           }));
 
-          // 장면의 sourceFileId도 업데이트
-          const fileIdMapping: Record<string, string> = {};
-          updatedFiles.forEach((oldFile, oldIdx) => {
-            const newIdx = reorderedFiles.findIndex(f => f.fileName === oldFile.fileName);
-            if (newIdx >= 0) {
-              fileIdMapping[oldFile.id] = `F${String(newIdx + 1).padStart(4, '0')}`;
-            }
+          // 파일명 → 파일 ID 매핑 (reorderedFiles 기준)
+          const fileNameToNewId: Record<string, string> = {};
+          reorderedWithIds.forEach(f => {
+            fileNameToNewId[f.fileName] = f.id;
           });
 
+          // 장면 → 파일 ID 매핑 함수 (파일명 기준)
+          const getFileIdForScene = (scene: SceneSnapshot): string | null => {
+            if (scene.sourceFile && fileNameToNewId[scene.sourceFile]) {
+              return fileNameToNewId[scene.sourceFile];
+            }
+            // sourceFileId가 있으면 매핑
+            if (scene.sourceFileId) {
+              const oldFile = updatedFiles.find(f => f.id === scene.sourceFileId);
+              if (oldFile && fileNameToNewId[oldFile.fileName]) {
+                return fileNameToNewId[oldFile.fileName];
+              }
+            }
+            return null;
+          };
+
+          // 새 sourceFiles 순서대로 모든 장면 수집 + order 재계산
+          const allScenesInNewOrder: SceneSnapshot[] = [];
+          for (const f of reorderedWithIds) {
+            const fileScenes = Object.values(updatedGraph.snapshots)
+              .filter(scene => {
+                const sceneFileId = getFileIdForScene(scene);
+                return sceneFileId === f.id;
+              })
+              .sort((a, b) => a.order - b.order);
+            allScenesInNewOrder.push(...fileScenes);
+            console.log(`[SourceTextView] 파일 ${f.fileName} 장면: ${fileScenes.map(s => s.sceneId).join(', ')}`);
+          }
+
+          // 기존 order → 새 order 매핑 생성
+          const orderMapping: Record<number, number> = {};
+          allScenesInNewOrder.forEach((scene, idx) => {
+            orderMapping[scene.order] = idx + 1;
+          });
+
+          // "장면 N" 패턴을 새 order로 변환하는 함수
+          const updateSceneReferences = (text: string | null | undefined): string | null => {
+            if (!text) return text as null;
+            return text.replace(/장면\s*(\d+)/g, (match, num) => {
+              const oldOrder = parseInt(num);
+              const newOrder = orderMapping[oldOrder];
+              if (newOrder !== undefined) {
+                return `장면 ${newOrder}`;
+              }
+              return match;
+            });
+          };
+
+          // 파일 ID → chapterNumber 매핑
+          const fileIdToChapterNumber: Record<string, number> = {};
+          reorderedWithIds.forEach((f, idx) => {
+            fileIdToChapterNumber[f.id] = idx + 1;
+          });
+
+          // 장면 order + sourceFileId + chapterNumber 업데이트
           const reorderedSnapshots: Record<string, SceneSnapshot> = {};
-          Object.entries(updatedGraph.snapshots).forEach(([sceneId, scene]) => {
-            reorderedSnapshots[sceneId] = {
+          allScenesInNewOrder.forEach((scene, idx) => {
+            const newFileId = getFileIdForScene(scene);
+            const newChapterNumber = newFileId ? fileIdToChapterNumber[newFileId] : scene.chapterNumber;
+            const newOrder = idx + 1;
+            const updatedScene = {
               ...scene,
-              sourceFileId: scene.sourceFileId ? (fileIdMapping[scene.sourceFileId] || scene.sourceFileId) : scene.sourceFileId,
+              order: newOrder,
+              sourceFileId: newFileId || scene.sourceFileId,
+              chapterNumber: newChapterNumber ?? scene.chapterNumber,
             };
+            // time 필드에서 "장면 N" 패턴 업데이트
+            if (updatedScene.time) {
+              updatedScene.time = updateSceneReferences(updatedScene.time) || updatedScene.time;
+            }
+            console.log(`[SourceTextView] 장면 업데이트: ${scene.sceneId} order ${scene.order}→${newOrder}`);
+            reorderedSnapshots[scene.sceneId] = updatedScene;
+          });
+
+          // hyperedges의 statement 필드도 업데이트
+          const newHyperedges = { ...updatedGraph.hyperedges };
+          Object.keys(newHyperedges).forEach(edgeId => {
+            const edge = newHyperedges[edgeId];
+            if (edge.statement) {
+              const updatedStatement = updateSceneReferences(edge.statement);
+              if (updatedStatement && updatedStatement !== edge.statement) {
+                newHyperedges[edgeId] = { ...edge, statement: updatedStatement };
+              }
+            }
           });
 
           // 검증 결과 초기화 (fileIndex 이후)
           const newValidationResults: Record<string, FileValidationResult> = {};
           reorderedWithIds.forEach((f, idx) => {
-            if (idx < fileIndex && updatedGraph.validationResults?.[f.id]) {
+            if (idx < fileIndex) {
               // 이전 파일들의 검증 결과 유지 (ID 매핑 적용)
-              const oldId = updatedFiles.find(uf => uf.fileName === f.fileName)?.id;
-              if (oldId && updatedGraph.validationResults[oldId]) {
+              const oldFile = updatedFiles.find(uf => uf.fileName === f.fileName);
+              if (oldFile && updatedGraph.validationResults?.[oldFile.id]) {
                 newValidationResults[f.id] = {
-                  ...updatedGraph.validationResults[oldId],
+                  ...updatedGraph.validationResults[oldFile.id],
                   fileId: f.id,
                 };
               }
@@ -701,6 +775,7 @@ export function SourceTextView() {
               updatedAt: new Date().toISOString(),
             },
             snapshots: reorderedSnapshots,
+            hyperedges: newHyperedges,
             validationResults: newValidationResults,
           };
 
