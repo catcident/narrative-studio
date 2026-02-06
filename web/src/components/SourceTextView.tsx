@@ -487,8 +487,11 @@ export function SourceTextView() {
 
       updateValidationResult(fileId, result);
 
-      // 검증 실패 시 이후 파일들 invalidate
+      // 검증 실패 시 이슈 목록 자동 펼치기 + 이후 파일들 invalidate
       if (result.status === 'failed') {
+        // 이슈 목록 자동 펼치기
+        setExpandedIssues(prev => new Set([...prev, fileId]));
+
         const sourceFiles = knowledgeGraph.metadata.sourceFiles || [];
         const newResults = invalidateFilesAfter(validationResults, sourceFiles, fileId);
         setValidationResults(newResults);
