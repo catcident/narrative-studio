@@ -252,6 +252,8 @@ function findMentionedEntityIds(
 ): string[] {
   const mentioned: string[] = [];
   const queryLower = query.toLowerCase();
+  // 띄어쓰기 제거한 버전도 준비
+  const queryNoSpace = queryLower.replace(/\s+/g, '');
   const queryWords = queryLower.split(/\s+/).filter(w => w.length >= 2);
 
   // 키워드 확장 (동의어 추가)
@@ -265,6 +267,8 @@ function findMentionedEntityIds(
 
   Object.entries(entities).forEach(([id, entity]) => {
     const nameLower = entity.name.toLowerCase();
+    // 띄어쓰기 제거한 엔티티 이름
+    const nameNoSpace = nameLower.replace(/\s+/g, '');
 
     // 1. 질문에 엔티티 이름이 포함됨 (정확히 일치)
     if (queryLower.includes(nameLower)) {
@@ -272,8 +276,14 @@ function findMentionedEntityIds(
       return;
     }
 
+    // 1-1. 띄어쓰기 무시 매칭 (예: "얼룩고양이" vs "얼룩 고양이")
+    if (queryNoSpace.includes(nameNoSpace) || nameNoSpace.includes(queryNoSpace.slice(0, 10))) {
+      mentioned.push(id);
+      return;
+    }
+
     // 2. 엔티티 이름에 질문 키워드가 포함됨 (부분 일치 - "새 박스"에서 "박스" 검색)
-    if ([...expandedQueryWords].some(word => nameLower.includes(word))) {
+    if ([...expandedQueryWords].some(word => nameLower.includes(word) || nameNoSpace.includes(word))) {
       mentioned.push(id);
       return;
     }
@@ -281,7 +291,9 @@ function findMentionedEntityIds(
     // 3. 별칭으로 검색
     if (entity.aliases?.some(alias => {
       const aliasLower = alias.toLowerCase();
+      const aliasNoSpace = aliasLower.replace(/\s+/g, '');
       return queryLower.includes(aliasLower) ||
+             queryNoSpace.includes(aliasNoSpace) ||
              [...expandedQueryWords].some(word => aliasLower.includes(word));
     })) {
       mentioned.push(id);
@@ -852,18 +864,39 @@ function buildSystemPrompt(
     relationSection = '(질문과 관련된 정보를 찾지 못했습니다)';
   }
 
+  // 장면 정보 생성 (시간대, 등장인물 첫 등장 파악용)
+  const scenes = Object.values(knowledgeGraph.snapshots)
+    .sort((a, b) => a.order - b.order);
+
+  let sceneSection = '';
+  if (scenes.length > 0) {
+    sceneSection = scenes.slice(0, 30).map(scene => {
+      const chars = scene.charactersPresent?.slice(0, 5).join(', ') || '';
+      const timeInfo = scene.timeMarker ? ` [${scene.timeMarker}]` : '';
+      return `- 장면 ${scene.order}: ${scene.location || '?'}, ${scene.time || '?'}${timeInfo} - ${scene.summary?.slice(0, 50) || ''}... (등장: ${chars})`;
+    }).join('\n');
+
+    if (scenes.length > 30) {
+      sceneSection += `\n... 외 ${scenes.length - 30}개 장면`;
+    }
+  }
+
   return `당신은 소설 "${title}"의 전문가입니다.
 
 ## 소설 정보
 - 제목: ${title}
 - 등장 인물: ${characterCount}명
 - 총 엔티티: ${entityCount}개
+- 총 장면: ${scenes.length}개
 
 ## 질문과 관련된 엔티티
 ${entitySection}
 
 ## 관련 관계
 ${relationSection}
+
+## 장면 목록 (시간순)
+${sceneSection || '(장면 정보 없음)'}
 
 ## 답변 규칙 (매우 중요!)
 
