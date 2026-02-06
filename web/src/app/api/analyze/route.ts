@@ -3,7 +3,7 @@ import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { CHARS_PER_TOKEN, getModelCosts, tokenCostUsd, costUsdToCredits } from '@/lib/modelCosts';
+import { getModelCosts, tokenCostUsd, costUsdToCredits, resolveTokenBilling, type DeductResult } from '@/lib/modelCosts';
 import { getCachedModels } from '@/lib/modelCache';
 import { proxyToCatcident } from '@/services/billingProxy';
 
@@ -35,42 +35,6 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   } finally {
     clearTimeout(timeoutId);
   }
-}
-
-interface TokenBilling {
-  prompt_tokens: number;
-  completion_tokens: number;
-}
-
-interface DeductResult {
-  balance_after: number;
-  amount_deducted: number;
-}
-
-/** usage 필드가 있으면 그대로 사용, 없으면 텍스트 길이에서 토큰 추정 */
-function resolveTokenBilling(
-  data: Record<string, unknown>,
-  promptLength: number,
-): TokenBilling | null {
-  if (data.usage) {
-    const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number };
-    return {
-      prompt_tokens: usage.prompt_tokens ?? 0,
-      completion_tokens: usage.completion_tokens ?? 0,
-    };
-  }
-
-  const content = (data.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content;
-  if (!content) return null;
-
-  const estimatedPrompt = Math.ceil(promptLength / CHARS_PER_TOKEN);
-  const estimatedCompletion = Math.ceil(content.length / CHARS_PER_TOKEN);
-  console.warn(`[analyze] usage 데이터 누락, 추정값 사용: prompt~${estimatedPrompt}, completion~${estimatedCompletion}`);
-
-  return {
-    prompt_tokens: estimatedPrompt,
-    completion_tokens: estimatedCompletion,
-  };
 }
 
 export async function POST(request: NextRequest) {
@@ -155,7 +119,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     // 토큰 사용량 결정: usage 필드 우선, 없으면 텍스트 길이에서 추정
-    const billing = resolveTokenBilling(data, prompt.length);
+    const billing = resolveTokenBilling(data, prompt.length, '[analyze]');
 
     // 청크별 실시간 크레딧 차감
     let deductResult: DeductResult | null = null;

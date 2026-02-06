@@ -50,3 +50,42 @@ export function costUsdToCredits(costUsd: number): number {
   return Math.max(1, Math.ceil((costUsd * USD_TO_KRW * MARGIN) / KRW_PER_CREDIT));
 }
 
+// ==================== 서버 공유 타입/함수 ====================
+
+export interface TokenBilling {
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
+export interface DeductResult {
+  balance_after: number;
+  amount_deducted: number;
+}
+
+/** usage 필드가 있으면 그대로 사용, 없으면 텍스트 길이에서 토큰 추정 */
+export function resolveTokenBilling(
+  data: Record<string, unknown>,
+  promptLength: number,
+  logPrefix: string,
+): TokenBilling | null {
+  if (data.usage) {
+    const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number };
+    return {
+      prompt_tokens: usage.prompt_tokens ?? 0,
+      completion_tokens: usage.completion_tokens ?? 0,
+    };
+  }
+
+  const content = (data.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content;
+  if (!content) return null;
+
+  const estimatedPrompt = Math.ceil(promptLength / CHARS_PER_TOKEN);
+  const estimatedCompletion = Math.ceil(content.length / CHARS_PER_TOKEN);
+  console.warn(`${logPrefix} usage 데이터 누락, 추정값 사용: prompt~${estimatedPrompt}, completion~${estimatedCompletion}`);
+
+  return {
+    prompt_tokens: estimatedPrompt,
+    completion_tokens: estimatedCompletion,
+  };
+}
+

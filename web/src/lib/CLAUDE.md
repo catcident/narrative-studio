@@ -204,7 +204,7 @@ if (limited) {
 
 ## modelCosts.ts — 모델 비용 공유 모듈
 
-모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
+모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(/api/analyze, /api/chat) 양쪽에서 사용.
 
 - 단일 진실 공급원: `AVAILABLE_MODELS` (types.ts) — 모델 비용 동기화 불일치 방지
 
@@ -220,7 +220,14 @@ costUsdToCredits(costUsd) → number
 
 // 모델 비용 조회 (AVAILABLE_MODELS에서)
 getModelCosts(model) → { inputCost, outputCost }
+
+// 서버 공유 타입/함수 (analyze, chat 라우트 공용)
+interface TokenBilling { prompt_tokens: number; completion_tokens: number; }
+interface DeductResult { balance_after: number; amount_deducted: number; }
+resolveTokenBilling(data, promptLength, logPrefix) → TokenBilling | null  // logPrefix 필수!
 ```
+
+**⚠️ `resolveTokenBilling` 호출 규칙**: `logPrefix`에 기본값 없음. 호출부에서 반드시 명시적으로 전달 (예: `'[analyze]'`, `'[chat]'`).
 
 **⚠️ 상수 변경 시 주의사항**:
 - `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값. 순수 한국어 소설은 과소추정될 수 있으나 `MARGIN=3.0`이 보상.

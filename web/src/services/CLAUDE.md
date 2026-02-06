@@ -306,6 +306,50 @@ if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
 
 ---
 
+## chat.ts - 소설 채팅 서비스
+
+지식 그래프와 원본 텍스트를 기반으로 소설에 대해 대화하는 채팅 서비스.
+
+### 호출 구조 (1 메시지 = 3 LLM 호출)
+
+```
+①의도분석 (DEFAULT_MODEL, 비스트리밍) → 키워드 + 카테고리 추출
+②데이터선별 (DEFAULT_MODEL, 비스트리밍) → 필요한 엔티티/청크 선택 (조건부)
+③최종답변 (사용자 모델, 스트리밍) → 컨텍스트 기반 답변 생성
+```
+
+### Billing 통합
+
+- `CallBilling`: 개별 호출의 billing 정보 (서버 `_billing` 필드, `model: string` 필수)
+- `ChatMessageBilling`: 3개 호출의 합산 (`totalCreditsDeducted`, `finalBalanceAfter`, `insufficientBalance`)
+- `ChatResult`: `{ content, billing }` — `sendChatMessage` 반환 타입
+- SSE `event: billing` 파싱: `nextEventType` 상태 머신으로 처리
+
+### 대화 이력 제한
+
+`MAX_HISTORY_CHARS = 45000` (~30K tokens). 최신 메시지부터 역순으로 추가, 한도 초과 시 중단.
+
+### SSE 라인 버퍼
+
+TCP 세그먼트 경계에서 잘린 불완전한 행 처리:
+```typescript
+let lineBuffer = '';
+// 매 reader.read() 시:
+const rawText = lineBuffer + decoder.decode(value, { stream: true });
+const splitLines = rawText.split('\n');
+lineBuffer = splitLines.pop() || '';  // 마지막 불완전 행 보관
+```
+
+### 비용 사전 추정
+
+```typescript
+estimateChatCost(messages, contextChars, model, dynamicModels?) → number  // 크레딧 단위
+```
+
+①② Flash 고정 추정 + ③ 사용자 모델 기반 추정. `ChatView.tsx`에서 전송 전 잔액 비교용.
+
+---
+
 ## billingProxy.ts - 서버 사이드 프록시
 
 catcident-backend billing API로의 서버 사이드 프록시 유틸리티

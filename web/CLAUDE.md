@@ -97,6 +97,21 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 - billing API 프록시에 OAuth 토큰 없이 요청 → billing 기능 비활성화됨
 - 공개 데모에서는 billing 없이 무료 사용 가능 (의도된 동작)
 
+**채팅 과금 흐름 (스트리밍 + 3회 호출)**:
+
+채팅 1건 = LLM 호출 3회 (①의도분석, ②데이터선별, ③최종답변). `/api/chat`에서 과금 처리.
+
+```
+①② 비스트리밍 (DEFAULT_MODEL): deductCreditsForResponse() → _billing 응답 필드
+③  스트리밍 (사용자 모델): ReadableStream 인터셉트 → 종료 후 event: billing SSE 이벤트
+```
+
+- 서버: `deductForTokens()` 공용 헬퍼 (스트리밍/비스트리밍 공통 차감 로직)
+- 클라이언트: `CallBilling[]` → `ChatMessageBilling` 합산 (totalCreditsDeducted, finalBalanceAfter)
+- 사전 체크: `ensureSufficientBalance()` + `estimateChatCost()` → 잔액 부족 시 전송 차단
+- 대화 이력 제한: `MAX_HISTORY_CHARS = 45000` (~30K tokens)
+- `fetchWithTimeout(120s)`: analyze와 동일한 타임아웃
+
 **프록시 라우트 패턴** (`billingProxy.ts` 팩토리 사용):
 ```typescript
 // GET 프록시: billingGetHandler(path, logLabel)
@@ -133,6 +148,7 @@ export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST'
 | 라우트 | 설명 |
 |--------|------|
 | `POST /api/analyze` | OpenRouter로 LLM 요청 프록시. 환경 API 키 우선, 없으면 요청의 키 사용 |
+| `POST /api/chat` | 소설 채팅 (스트리밍/비스트리밍). auth + billing + rate limit 통합 |
 | `GET /api/knowledge-graphs` | 사용자별 그래프 목록 (인증 시 userId 필터) |
 | `POST /api/knowledge-graphs` | 새 그래프 저장 또는 기존 업데이트 |
 | `GET /api/knowledge-graphs/[id]` | 개별 그래프 조회 |

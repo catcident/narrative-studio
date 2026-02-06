@@ -3,11 +3,12 @@
  * 지식 그래프와 원본 텍스트를 기반으로 소설에 대해 대화
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useStore, useModels } from '../store';
-import { sendChatMessage, generateMessageId, type ChatMessage } from '../services/chat';
+import { useStore, useModels, useBillingSubscription, useCreditBalance } from '../store';
+import { sendChatMessage, estimateChatCost, generateMessageId, type ChatMessage } from '../services/chat';
+import { ensureSufficientBalance } from '../services/billing';
 import { DEFAULT_MODEL } from '../types';
 
 // 대화 세션 타입
@@ -129,6 +130,9 @@ export function ChatView() {
   const originalText = useStore((s) => s.originalText);
   const setChatMentionedEntities = useStore((s) => s.setChatMentionedEntities);
   const models = useModels();
+  const subscription = useBillingSubscription();
+  const creditBalance = useCreditBalance();
+  const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -138,6 +142,7 @@ export function ChatView() {
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [insufficientCredits, setInsufficientCredits] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -222,9 +227,38 @@ export function ChatView() {
     scrollToBottom();
   }, [messages, streamingContent, scrollToBottom]);
 
+  // 시스템 프롬프트 + 컨텍스트 크기 추정 (비용 추정용)
+  const contextChars = useMemo(() => {
+    if (!knowledgeGraph) return 0;
+    const entityCount = Object.keys(knowledgeGraph.entities).length;
+    const edgeCount = Object.keys(knowledgeGraph.hyperedges).length;
+    // 시스템 프롬프트(~1000) + 엔티티 목록(엔티티당 ~100자) + 관계(관계당 ~80자)
+    return 1000 + entityCount * 100 + edgeCount * 80;
+  }, [knowledgeGraph]);
+
   // 메시지 전송
   const handleSend = async () => {
     if (!input.trim() || isLoading || !knowledgeGraph) return;
+    setInsufficientCredits(null);
+
+    // 잔액 사전 확인 (subscription이 있을 때만 = AUTH_ENABLED=true)
+    if (subscription) {
+      try {
+        await ensureSufficientBalance(subscription);
+      } catch {
+        setInsufficientCredits('크레딧이 부족합니다.');
+        return;
+      }
+
+      // 비용 사전 추정
+      const estimated = estimateChatCost(messages, contextChars, selectedModel);
+      if (creditBalance !== null && estimated > creditBalance) {
+        setInsufficientCredits(
+          `이 메시지를 보내려면 약 ${estimated} 크레딧이 필요합니다 (현재: ${creditBalance})`
+        );
+        return;
+      }
+    }
 
     const userMessage: ChatMessage = {
       id: generateMessageId(),
@@ -242,7 +276,7 @@ export function ChatView() {
       const allMessages = [...messages, userMessage];
       let fullResponse = '';
 
-      await sendChatMessage(
+      const result = await sendChatMessage(
         allMessages,
         { knowledgeGraph, originalText: originalText || undefined },
         selectedModel,
@@ -250,13 +284,18 @@ export function ChatView() {
           fullResponse += chunk;
           setStreamingContent(fullResponse);
         },
-        knowledgeGraph.metadata.id  // graphId 전달 (임베딩 검색용)
+        knowledgeGraph.metadata.id
       );
+
+      // billing 잔액 갱신
+      if (result.billing?.finalBalanceAfter != null) {
+        updateCreditBalance(result.billing.finalBalanceAfter);
+      }
 
       const assistantMessage: ChatMessage = {
         id: generateMessageId(),
         role: 'assistant',
-        content: fullResponse,
+        content: result.content || fullResponse,
         timestamp: new Date(),
       };
 
@@ -264,16 +303,23 @@ export function ChatView() {
       setStreamingContent('');
 
       // 답변에서 언급된 엔티티 추출하여 store에 저장
-      const mentionedIds = extractMentionedEntities(fullResponse, knowledgeGraph.entities);
+      const responseContent = result.content || fullResponse;
+      const mentionedIds = extractMentionedEntities(responseContent, knowledgeGraph.entities);
       setChatMentionedEntities(mentionedIds);
-    } catch (error) {
-      const errorMessage: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: `오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+    } catch (err: unknown) {
+      // 402 잔액 부족 → 인라인 배너만 표시 (채팅 버블 중복 방지)
+      const status = (err as Error & { status?: number }).status;
+      if (status === 402) {
+        setInsufficientCredits('크레딧이 부족합니다. 충전 후 다시 시도해주세요.');
+      } else {
+        const errorMessage: ChatMessage = {
+          id: generateMessageId(),
+          role: 'assistant',
+          content: `오류가 발생했습니다: ${err instanceof Error ? err.message : '알 수 없는 오류'}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -562,6 +608,23 @@ export function ChatView() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* 잔액 부족 경고 */}
+      {insufficientCredits && (
+        <div className="flex-shrink-0 bg-amber-50 border-t border-amber-200 px-4 py-2" role="status">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+            <span>{insufficientCredits}</span>
+            <button
+              onClick={() => setInsufficientCredits(null)}
+              className="ml-auto p-0.5 text-amber-600 hover:text-amber-800"
+              aria-label="닫기"
+            >
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 입력 영역 */}
       <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4">

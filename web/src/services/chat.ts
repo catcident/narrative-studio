@@ -3,9 +3,38 @@
  * 지식 그래프와 원본 텍스트를 기반으로 질문에 답변
  */
 
-import type { NovelKnowledgeGraph, Entity, HyperEdge } from '../types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo } from '../types';
 import { DEFAULT_MODEL } from '../types';
 import { searchSimilarEntities, searchSimilarChunks, type ChunkSearchResult } from './embedding';
+import { getModelCosts, tokenCostUsd, costUsdToCredits, CHARS_PER_TOKEN } from '@/lib/modelCosts';
+
+// ==================== Billing 타입 ====================
+
+/** 개별 LLM 호출의 billing 정보 (서버 _billing 필드, ChunkBilling과 동일 형태) */
+interface CallBilling {
+  prompt_tokens: number;
+  completion_tokens: number;
+  model: string;
+  credits_deducted?: number;
+  balance_after?: number | null;
+  insufficient_balance?: boolean;
+}
+
+/** 채팅 메시지 전체의 합산 billing */
+export interface ChatMessageBilling {
+  totalCreditsDeducted: number;
+  finalBalanceAfter: number | null;
+  insufficientBalance: boolean;
+}
+
+/** sendChatMessage 반환 타입 */
+export interface ChatResult {
+  content: string;
+  billing: ChatMessageBilling | null;
+}
+
+/** 대화 이력 토큰 제한 (약 30K tokens) */
+const MAX_HISTORY_CHARS = 45000;
 
 /**
  * LLM 의도 분석 결과 타입
@@ -22,7 +51,7 @@ interface LLMQueryAnalysis {
 async function analyzeQueryWithLLM(
   query: string,
   apiKey?: string
-): Promise<LLMQueryAnalysis> {
+): Promise<{ analysis: LLMQueryAnalysis; billing: CallBilling | null }> {
   const defaultResult: LLMQueryAnalysis = {
     keywords: fallbackExtractKeywords(query),
     wantsCategoryList: false,
@@ -34,7 +63,7 @@ async function analyzeQueryWithLLM(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,  // 빠르고 저렴한 모델
+        model: DEFAULT_MODEL,
         messages: [
           {
             role: 'system',
@@ -64,13 +93,13 @@ async function analyzeQueryWithLLM(
 
     if (!response.ok) {
       console.warn('[analyzeQuery] API 오류, 폴백 사용');
-      return defaultResult;
+      return { analysis: defaultResult, billing: null };
     }
 
     const data = await response.json();
+    const callBilling: CallBilling | null = data._billing ?? null;
     const content = data.choices?.[0]?.message?.content || '';
 
-    // JSON 파싱 시도
     const match = content.match(/\{[\s\S]*\}/);
     if (match) {
       const parsed = JSON.parse(match[0]);
@@ -80,13 +109,13 @@ async function analyzeQueryWithLLM(
         targetCategory: parsed.targetCategory || null,
       };
       console.log('[analyzeQuery] LLM 분석 결과:', result);
-      return result;
+      return { analysis: result, billing: callBilling };
     }
 
-    return defaultResult;
-  } catch (err) {
+    return { analysis: defaultResult, billing: callBilling };
+  } catch (err: unknown) {
     console.warn('[analyzeQuery] 오류, 폴백 사용:', err);
-    return defaultResult;
+    return { analysis: defaultResult, billing: null };
   }
 }
 
@@ -125,12 +154,15 @@ async function selectRelevantData(
   entities: { id: string; name: string; category: string; description?: string }[],
   chunks: { index: number; preview: string }[],
   apiKey?: string
-): Promise<SelectionResult> {
-  // 선별할 데이터가 적으면 그냥 전부 반환 (선별 불필요)
+): Promise<{ selection: SelectionResult; billing: CallBilling | null }> {
+  // 선별할 데이터가 적으면 그냥 전부 반환 (LLM 호출 스킵 → billing 없음)
   if (entities.length <= 10 && chunks.length <= 3) {
     return {
-      selectedEntityIds: entities.map(e => e.id),
-      selectedChunkIndices: chunks.map(c => c.index),
+      selection: {
+        selectedEntityIds: entities.map(e => e.id),
+        selectedChunkIndices: chunks.map(c => c.index),
+      },
+      billing: null,
     };
   }
 
@@ -187,12 +219,16 @@ ${chunkList || '(없음)'}`
     if (!response.ok) {
       console.warn('[selectData] API 오류, 전체 반환');
       return {
-        selectedEntityIds: entities.slice(0, 15).map(e => e.id),
-        selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+        selection: {
+          selectedEntityIds: entities.slice(0, 15).map(e => e.id),
+          selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+        },
+        billing: null,
       };
     }
 
     const data = await response.json();
+    const callBilling: CallBilling | null = data._billing ?? null;
     const content = data.choices?.[0]?.message?.content || '';
 
     const match = content.match(/\{[\s\S]*\}/);
@@ -203,18 +239,24 @@ ${chunkList || '(없음)'}`
         selectedChunkIndices: Array.isArray(parsed.chunkIndices) ? parsed.chunkIndices.slice(0, 3) : [],
       };
       console.log('[selectData] LLM 선별 결과:', result);
-      return result;
+      return { selection: result, billing: callBilling };
     }
 
     return {
-      selectedEntityIds: entities.slice(0, 15).map(e => e.id),
-      selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+      selection: {
+        selectedEntityIds: entities.slice(0, 15).map(e => e.id),
+        selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+      },
+      billing: callBilling,
     };
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn('[selectData] 오류, 전체 반환:', err);
     return {
-      selectedEntityIds: entities.slice(0, 15).map(e => e.id),
-      selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+      selection: {
+        selectedEntityIds: entities.slice(0, 15).map(e => e.id),
+        selectedChunkIndices: chunks.slice(0, 3).map(c => c.index),
+      },
+      billing: null,
     };
   }
 }
@@ -1039,12 +1081,15 @@ export async function sendChatMessage(
   model: string = DEFAULT_MODEL,
   onChunk?: (chunk: string) => void,
   graphId?: string
-): Promise<string> {
+): Promise<ChatResult> {
   const userApiKey = typeof window !== 'undefined'
     ? localStorage.getItem('OPENROUTER_API_KEY') || ''
     : '';
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+
+  // billing 수집 배열
+  const billings: CallBilling[] = [];
 
   // 이전 대화에서 언급된 엔티티도 추출 (멀티턴 맥락 유지)
   const recentMessages = messages.slice(-6); // 최근 3턴 (user+assistant 쌍)
@@ -1058,9 +1103,10 @@ export async function sendChatMessage(
   const queryForAnalysis = lastUserMessage
     ? `${lastUserMessage.content} (이전 맥락: ${previousContext.slice(0, 500)})`
     : '';
-  const queryAnalysis = lastUserMessage
+  const { analysis: queryAnalysis, billing: analysisBilling } = lastUserMessage
     ? await analyzeQueryWithLLM(queryForAnalysis, userApiKey || undefined)
-    : { keywords: [], wantsCategoryList: false, targetCategory: null };
+    : { analysis: { keywords: [] as string[], wantsCategoryList: false, targetCategory: null }, billing: null };
+  if (analysisBilling) billings.push(analysisBilling);
 
   // [2단계] 데이터 수집
   let foundEntityIds: string[] = [];
@@ -1145,12 +1191,13 @@ export async function sendChatMessage(
       preview: chunk.content.slice(0, 150),
     }));
 
-    const selectionResult = await selectRelevantData(
+    const { selection: selectionResult, billing: selectionBilling } = await selectRelevantData(
       lastUserMessage.content,
       candidateEntities,
       candidateChunks,
       userApiKey || undefined
     );
+    if (selectionBilling) billings.push(selectionBilling);
 
     // 선별된 결과로 필터링
     const selectedEntitySet = new Set(selectionResult.selectedEntityIds);
@@ -1227,14 +1274,26 @@ export async function sendChatMessage(
     });
   }
 
+  // 대화 이력 토큰 제한: 최신 메시지부터 역순으로 추가, MAX_HISTORY_CHARS 초과 시 중단
+  const systemPrompt = buildSystemPrompt(context, foundEntityIds, intentForContext);
+  const historyMessages: { role: string; content: string }[] = [];
+  let historyChars = 0;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    const msgContent = m.role === 'user' && m === lastUserMessage
+      ? `${m.content}\n\n---\n[참고 컨텍스트]\n${relevantContext}`
+      : m.content;
+    const msgLength = msgContent.length;
+
+    if (historyChars + msgLength > MAX_HISTORY_CHARS) break;
+    historyChars += msgLength;
+    historyMessages.unshift({ role: m.role as 'user' | 'assistant', content: msgContent });
+  }
+
   const apiMessages = [
-    { role: 'system', content: buildSystemPrompt(context, foundEntityIds, intentForContext) },
-    ...messages.map(m => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.role === 'user' && m === lastUserMessage
-        ? `${m.content}\n\n---\n[참고 컨텍스트]\n${relevantContext}`
-        : m.content
-    }))
+    { role: 'system', content: systemPrompt },
+    ...historyMessages,
   ];
 
   const response = await fetch('/api/chat', {
@@ -1250,26 +1309,75 @@ export async function sendChatMessage(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `API 오류: ${response.status}`);
+    const errBody = await response.json().catch(() => ({}));
+    const errObj = new Error(errBody.error?.message || errBody.error || `API 오류: ${response.status}`);
+    (errObj as Error & { status?: number }).status = response.status;
+    throw errObj;
   }
+
+  /** billing 합산 헬퍼 */
+  const aggregateBilling = (): ChatMessageBilling | null => {
+    if (billings.length === 0) return null;
+    let totalCredits = 0;
+    let lastBalance: number | null = null;
+    let insufficient = false;
+    for (const b of billings) {
+      totalCredits += b.credits_deducted ?? 0;
+      if (b.balance_after != null) lastBalance = b.balance_after;
+      if (b.insufficient_balance) insufficient = true;
+    }
+    return {
+      totalCreditsDeducted: totalCredits,
+      finalBalanceAfter: lastBalance,
+      insufficientBalance: insufficient,
+    };
+  };
 
   if (onChunk && response.body) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullContent = '';
+    let nextEventType: string | null = null;
+    // SSE 라인 버퍼: TCP 세그먼트 경계에서 잘린 불완전한 행 처리
+    let lineBuffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter(line => line.trim() !== '');
+      const rawText = lineBuffer + decoder.decode(value, { stream: true });
+      const splitLines = rawText.split('\n');
+      // 마지막 요소는 불완전할 수 있으므로 버퍼에 보관
+      lineBuffer = splitLines.pop() || '';
+      const lines = splitLines.filter(line => line.trim() !== '');
 
       for (const line of lines) {
+        // SSE event type 감지
+        if (line.startsWith('event: ')) {
+          nextEventType = line.slice(7).trim();
+          continue;
+        }
+
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          if (data === '[DONE]') continue;
+          if (data === '[DONE]') {
+            nextEventType = null;
+            continue;
+          }
+
+          // billing SSE 이벤트 처리
+          if (nextEventType === 'billing') {
+            try {
+              const billingData: CallBilling = JSON.parse(data);
+              billings.push(billingData);
+            } catch {
+              // billing 파싱 실패 무시
+            }
+            nextEventType = null;
+            continue;
+          }
+
+          nextEventType = null;
 
           try {
             const parsed = JSON.parse(data);
@@ -1285,11 +1393,57 @@ export async function sendChatMessage(
       }
     }
 
-    return fullContent;
+    return { content: fullContent, billing: aggregateBilling() };
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  // 비스트리밍 응답에서 billing 추출
+  if (data._billing) {
+    billings.push(data._billing);
+  }
+  return { content: data.choices?.[0]?.message?.content || '', billing: aggregateBilling() };
+}
+
+/**
+ * 채팅 메시지 전송 비용 사전 추정 (크레딧 단위)
+ *
+ * 호출 구조: ①의도분석(Flash) + ②데이터선별(Flash, 조건부) + ③최종답변(사용자 모델)
+ * ①②는 DEFAULT_MODEL(Flash) 기준 고정 추정, ③만 사용자 모델 기반.
+ */
+export function estimateChatCost(
+  messages: ChatMessage[],
+  contextChars: number,
+  model: string,
+  dynamicModels?: ModelInfo[],
+): number {
+  // ①② Flash 호출 고정 추정 (~2 크레딧)
+  const flashCosts = getModelCosts(DEFAULT_MODEL, dynamicModels);
+  const call1InputTokens = Math.ceil(800 / CHARS_PER_TOKEN);  // 시스템 프롬프트 + 질문
+  const call1OutputTokens = Math.ceil(100 / CHARS_PER_TOKEN);
+  const call1Credits = costUsdToCredits(tokenCostUsd(call1InputTokens, call1OutputTokens, flashCosts.inputCost, flashCosts.outputCost));
+
+  const call2InputTokens = Math.ceil(3000 / CHARS_PER_TOKEN);  // 엔티티/청크 목록
+  const call2OutputTokens = Math.ceil(200 / CHARS_PER_TOKEN);
+  const call2Credits = costUsdToCredits(tokenCostUsd(call2InputTokens, call2OutputTokens, flashCosts.inputCost, flashCosts.outputCost));
+
+  // ③ 최종 답변: 시스템 프롬프트 + 컨텍스트 + 이력(MAX_HISTORY_CHARS 제한) + max_tokens(2000)
+  let historyChars = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    historyChars += messages[i].content.length;
+    if (historyChars > MAX_HISTORY_CHARS) {
+      historyChars = MAX_HISTORY_CHARS;
+      break;
+    }
+  }
+
+  const totalInputChars = contextChars + historyChars;
+  const call3InputTokens = Math.ceil(totalInputChars / CHARS_PER_TOKEN);
+  const call3OutputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);  // max_tokens
+
+  const modelCosts = getModelCosts(model, dynamicModels);
+  const call3Credits = costUsdToCredits(tokenCostUsd(call3InputTokens, call3OutputTokens, modelCosts.inputCost, modelCosts.outputCost));
+
+  return call1Credits + call2Credits + call3Credits;
 }
 
 /**
