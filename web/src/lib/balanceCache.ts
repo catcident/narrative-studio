@@ -50,13 +50,9 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
     return null;
   }
 
-  // Check cache first
+  // Check cache first — only positive balances are cached
   const cached = balanceCache.get(userId);
-  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
-    if (cached.balance <= 0) {
-      console.log(`[analyze] Blocked zero-balance user (cached): ${userId}`);
-      return 'Insufficient credits. Please purchase more credits to continue.';
-    }
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS && cached.balance > 0) {
     return null;
   }
 
@@ -75,13 +71,17 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
 
     const data: { balance: number } = await response.json();
 
-    // Evict stale entries before inserting
-    evictStaleEntries();
-
-    balanceCache.set(userId, {
-      balance: data.balance,
-      cachedAt: Date.now(),
-    });
+    // Only cache positive balances — zero/negative must always be re-checked
+    // so that admin-added credits take effect immediately
+    if (data.balance > 0) {
+      evictStaleEntries();
+      balanceCache.set(userId, {
+        balance: data.balance,
+        cachedAt: Date.now(),
+      });
+    } else {
+      balanceCache.delete(userId);
+    }
 
     if (data.balance <= 0) {
       console.log(`[analyze] Blocked zero-balance user: ${userId}`);
@@ -103,6 +103,10 @@ export function updateBalanceCache(userId: string, balance: number): void {
     console.warn(`[analyze] Invalid balance value for cache update: ${balance}`);
     return;
   }
-  balanceCache.set(userId, { balance, cachedAt: Date.now() });
+  if (balance > 0) {
+    balanceCache.set(userId, { balance, cachedAt: Date.now() });
+  } else {
+    balanceCache.delete(userId);
+  }
 }
 

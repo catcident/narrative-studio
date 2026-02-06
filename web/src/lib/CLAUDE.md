@@ -207,7 +207,6 @@ if (limited) {
 모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
 
 - 단일 진실 공급원: `AVAILABLE_MODELS` (types.ts) — 모델 비용 동기화 불일치 방지
-- 동기화 대상: catcident-backend `StorygraphEstimator`
 
 ```typescript
 // 상수
@@ -225,7 +224,6 @@ getModelCosts(model) → { inputCost, outputCost }
 
 **⚠️ 상수 변경 시 주의사항**:
 - `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값. 순수 한국어 소설은 과소추정될 수 있으나 `MARGIN=3.0`이 보상.
-- 상수를 변경하면 catcident-backend `StorygraphEstimator`도 동기 수정 필수.
 - 새 모델 추가 시 `types.ts`의 `AVAILABLE_MODELS`에 `inputCost`/`outputCost` 추가 — 이것이 단일 진실 공급원.
 
 ---

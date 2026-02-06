@@ -15,6 +15,7 @@ import type {
 } from '../types';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
+  SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
   getModelCosts, tokenCostUsd, costUsdToCredits,
 } from '@/lib/modelCosts';
 
@@ -161,32 +162,62 @@ const ZERO_ESTIMATE: UsageEstimate = {
 
 /**
  * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
- * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
+ *
+ * 실제 과금은 API 호출당 costUsdToCredits(최소 1cr)이 적용되므로,
+ * 청크별·호출별 크레딧을 개별 계산하여 합산해야 예상치가 정확함.
+ * - extractor: 매 청크 1회 호출
+ * - selector: 청크 2부터 1회 호출 (엔티티 선별)
  */
 export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
   if (charCount <= 0) return ZERO_ESTIMATE;
 
   const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
   const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
-  // 백엔드 StorygraphEstimator와 동일: input = char/1.5, output = input * 0.45
-  const inputTokens = Math.ceil(charCount / CHARS_PER_TOKEN);
-  const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
 
-  const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
-  const costUsd = tokenCostUsd(inputTokens, outputTokens, inputCost, outputCost);
+  const extractorCosts = getModelCosts(model, dynamicModels);
+  const selectorCosts = getModelCosts(SELECTOR_MODEL, dynamicModels);
+
+  let totalCredits = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCostUsd = 0;
+
+  for (let i = 0; i < chunks; i++) {
+    // Extractor: 매 청크 호출
+    const chunkChars = Math.min(CHUNK_SIZE, charCount - i * effectiveChunk);
+    const extInputTokens = Math.ceil(chunkChars / CHARS_PER_TOKEN);
+    const extOutputTokens = Math.ceil(extInputTokens * OUTPUT_RATIO);
+    const extCostUsd = tokenCostUsd(extInputTokens, extOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
+
+    totalInputTokens += extInputTokens;
+    totalOutputTokens += extOutputTokens;
+    totalCostUsd += extCostUsd;
+    totalCredits += costUsdToCredits(extCostUsd);
+
+    // Selector: 청크 2부터 호출 (첫 청크는 이전 엔티티가 없어 선별 불필요)
+    if (i >= 1) {
+      const selInputTokens = Math.ceil(SELECTOR_PROMPT_CHARS / CHARS_PER_TOKEN);
+      const selOutputTokens = SELECTOR_OUTPUT_TOKENS;
+      const selCostUsd = tokenCostUsd(selInputTokens, selOutputTokens, selectorCosts.inputCost, selectorCosts.outputCost);
+
+      totalInputTokens += selInputTokens;
+      totalOutputTokens += selOutputTokens;
+      totalCostUsd += selCostUsd;
+      totalCredits += costUsdToCredits(selCostUsd);
+    }
+  }
 
   return {
-    estimated_credits: costUsdToCredits(costUsd),
-    estimated_input_tokens: inputTokens,
-    estimated_output_tokens: outputTokens,
-    estimated_cost_usd: costUsd,
+    estimated_credits: totalCredits,
+    estimated_input_tokens: totalInputTokens,
+    estimated_output_tokens: totalOutputTokens,
+    estimated_cost_usd: totalCostUsd,
     chunks,
   };
 }
 
 /**
  * 실제 토큰 사용량에서 크레딧 역산 (UsageSummary용)
- * 동기화 대상: catcident-backend apps/business/billing/services/estimator.py StorygraphEstimator
  */
 export function calculateCreditsFromTokens(promptTokens: number, completionTokens: number, model: string, dynamicModels?: ModelInfo[]): number {
   if (promptTokens <= 0 && completionTokens <= 0) return 0;
