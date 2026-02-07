@@ -54,8 +54,16 @@ function mergeDescriptions(existing: string, incoming: string): string {
   return (existing + ' ' + newSentences.join(' ')).trim();
 }
 
+// 1인칭 대명사 등 매핑에 사용하면 안 되는 이름 (여러 엔티티에서 공유될 수 있음)
+const AMBIGUOUS_NAMES = new Set(['나', '나는', '내가', '저', '제가', '우리', '화자']);
+
+function isAmbiguousName(name: string): boolean {
+  return AMBIGUOUS_NAMES.has(name.trim());
+}
+
 // 이름 → ID 매핑에 정확/소문자/정규화 3가지 키를 등록
 function registerNameMapping(nameToId: Record<string, string>, name: string, id: string): void {
+  if (isAmbiguousName(name)) return; // "나" 같은 모호한 이름은 매핑하지 않음
   nameToId[name] = id;
   nameToId[name.toLowerCase()] = id;
   nameToId[normalizeName(name)] = id;
@@ -94,6 +102,9 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
 // --- 비슷한 엔티티 찾기 (mergeExtractions 전용) ---
 
 function findSimilarEntity(name: string, nameMap: Record<string, number>): number {
+  // "나" 같은 모호한 이름은 매칭하지 않음 (각 화자를 별개로 유지)
+  if (isAmbiguousName(name)) return -1;
+
   // 정확히 일치
   if (nameMap[name] !== undefined) {
     return nameMap[name];
@@ -225,7 +236,9 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
         });
         nameMap[normalizedName] = idx;
         for (const alias of (entity.aliases || [])) {
-          nameMap[normalizeName(alias)] = idx;
+          if (!isAmbiguousName(alias)) {
+            nameMap[normalizeName(alias)] = idx;
+          }
         }
       }
     }
@@ -352,8 +365,8 @@ export async function reviewEntityMerges(
         mergeEntity.name,
         ...(mergeEntity.aliases || []),
       ])];
-      if (mergeEntity.description && !keepEntity.description?.includes(mergeEntity.description)) {
-        keepEntity.description = (keepEntity.description + ' ' + mergeEntity.description).trim();
+      if (mergeEntity.description) {
+        keepEntity.description = mergeDescriptions(keepEntity.description || '', mergeEntity.description);
       }
       keepEntity.scenes = [...new Set([...(keepEntity.scenes || []), ...(mergeEntity.scenes || [])])];
 
