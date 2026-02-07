@@ -29,6 +29,31 @@ function normalizeName(name: string): string {
     .replace(/(씨|님|군|양|선생|사장|부장|과장|대리|사원)$/g, '');
 }
 
+// description 병합: 문장 단위로 중복 제거하여 합치기
+function mergeDescriptions(existing: string, incoming: string): string {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+
+  // 기존 description에 신규 전체가 포함되어 있으면 추가 불필요
+  if (existing.includes(incoming)) return existing;
+
+  // 문장 단위로 분리 (마침표/느낌표/물음표/공백 구분)
+  const existingSentences = existing.split(/(?<=[.!?。])\s*/).map(s => s.trim()).filter(Boolean);
+  const incomingSentences = incoming.split(/(?<=[.!?。])\s*/).map(s => s.trim()).filter(Boolean);
+
+  // 새 문장 중 기존에 없는 것만 추가
+  const newSentences = incomingSentences.filter(sentence => {
+    // 정확히 같은 문장이 있으면 스킵
+    if (existingSentences.some(es => es === sentence)) return false;
+    // 기존 텍스트에 해당 문장이 부분문자열로 포함되어 있으면 스킵
+    if (existing.includes(sentence)) return false;
+    return true;
+  });
+
+  if (newSentences.length === 0) return existing;
+  return (existing + ' ' + newSentences.join(' ')).trim();
+}
+
 // 이름 → ID 매핑에 정확/소문자/정규화 3가지 키를 등록
 function registerNameMapping(nameToId: Record<string, string>, name: string, id: string): void {
   nameToId[name] = id;
@@ -177,8 +202,8 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
 
       if (existingIdx !== -1) {
         const existing = entities[existingIdx];
-        if (entity.description && !existing.description?.includes(entity.description)) {
-          existing.description = (existing.description || '') + ' ' + entity.description;
+        if (entity.description) {
+          existing.description = mergeDescriptions(existing.description || '', entity.description);
         }
         existing.scenes = [...new Set([...(existing.scenes || []), ...globalScenes])];
         if (entity.attributes) {
@@ -574,11 +599,12 @@ function hasEdgeBetween(hyperedges: Record<string, HyperEdge>, id1: string, id2:
   );
 }
 
-// 카테고리 기반 관계 타입 추정
-function inferRelationType(category: string): string {
-  if (category === 'location') return '위치';
-  if (category === 'item' || category === 'object') return '소유';
-  return '관련';
+// 장면 ID에서 chapter 번호 추출 (S0003 → 해당 장면의 chapter를 snapshots에서 찾기)
+function getChapterFromScenes(scenes: string[], sceneChapterMap: Record<string, number>): number {
+  for (const s of scenes) {
+    if (sceneChapterMap[s]) return sceneChapterMap[s];
+  }
+  return 1;
 }
 
 // 장면 ID 문자열에서 사람이 읽기 쉬운 번호 추출 ("S0003" -> "3")
@@ -639,16 +665,11 @@ function inferDescriptionBasedEdges(
 
       if (commonScenes.length === 0) continue;
 
+      // 양쪽 다 character가 아닌 경우 스킵 (item-location 등 무의미한 관계 방지)
+      if (entity.category !== 'character' && otherEntity.category !== 'character') continue;
+
       edgeCounter.value++;
       const id = formatId('H', edgeCounter.value);
-
-      // 관계 타입 추정
-      let relationType = '관련';
-      if (entity.category === 'location' || otherEntity.category === 'location') {
-        relationType = '위치';
-      } else if (entity.category === 'item' || otherEntity.category === 'item') {
-        relationType = '소유';
-      }
 
       // description이 너무 길면 관련 문장만 추출
       let statementText = entity.description;
@@ -664,16 +685,16 @@ function inferDescriptionBasedEdges(
 
       hyperedges[id] = {
         id,
-        type: relationType,
+        type: '관련',
         subtype: undefined,
         entities: [entity.id, otherEntity.id],
         statement: statementText || `${entity.name}의 설명에 ${otherEntity.name}이(가) 언급됨`,
-        timeline: { start: undefined, chapter: 1 },
+        timeline: { start: undefined },
         sentiment: 'neutral',
         strength: 3,
         bidirectional: true,
         scenes: commonScenes,
-        sourceRef: { chapter: 1 },
+        sourceRef: {},
       };
 
       console.log(`[extraction] 자동 관계 생성: ${entity.name} - ${otherEntity.name} (description 기반, 장면: ${commonScenes.join(', ')})`);
@@ -681,7 +702,8 @@ function inferDescriptionBasedEdges(
   }
 }
 
-// 같은 장면에 등장하는 엔티티 쌍에 대해 자동 관계 생성
+// 같은 장면에 등장하는 캐릭터 쌍에 대해 자동 관계 생성 (캐릭터-캐릭터만)
+// 캐릭터-비캐릭터(아이템/장소)는 LLM이 직접 추출한 관계만 사용
 // newSceneIds: 이번에 새로 추가된 장면 ID들 (기존 그래프와 병합 시 새 장면만 전달)
 function inferCoOccurrenceEdges(
   entities: Record<string, Entity>,
@@ -689,13 +711,11 @@ function inferCoOccurrenceEdges(
   edgeCounter: { value: number },
   newSceneIds?: Set<string>
 ): void {
-  const allEntities = Object.values(entities);
-  const characterEntities = allEntities.filter(e => e.category === 'character');
-  const nonCharacterEntities = allEntities.filter(e => e.category !== 'character');
+  const characterEntities = Object.values(entities).filter(e => e.category === 'character');
 
-  console.log(`[extraction] inferCoOccurrenceEdges: 캐릭터 ${characterEntities.length}개: ${characterEntities.map(c => `${c.name}(${c.id}, scenes=${c.scenes?.join(',')})`).join(', ')}`);
+  console.log(`[extraction] inferCoOccurrenceEdges: 캐릭터 ${characterEntities.length}개`);
 
-  // 캐릭터-캐릭터 동시 등장
+  // 캐릭터-캐릭터 동시 등장만 처리
   for (let i = 0; i < characterEntities.length; i++) {
     const char1 = characterEntities[i];
     if (!char1.scenes?.length) continue;
@@ -712,12 +732,14 @@ function inferCoOccurrenceEdges(
         commonScenes = commonScenes.filter(s => newSceneIds.has(s));
       }
 
-      if (commonScenes.length === 0) {
-        console.log(`[extraction] 캐릭터 관계 스킵 (공통 장면 없음): ${char1.name} ↔ ${char2.name}, char1.scenes=${char1.scenes.join(',')}, char2.scenes=${char2.scenes?.join(',')}, newSceneIds=${newSceneIds ? [...newSceneIds].join(',') : 'null'}`);
-        continue;
-      }
-      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) {
-        console.log(`[extraction] 캐릭터 관계 스킵 (기존 관계 존재): ${char1.name} (${char1.id}) ↔ ${char2.name} (${char2.id})`);
+      if (commonScenes.length === 0) continue;
+      if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
+
+      // 2개 이상의 공통 장면이 있어야 동시등장 관계 생성 (노이즈 방지)
+      // 단, 전체 장면이 적은 경우(3개 이하) 1개도 허용
+      const totalScenes = new Set([...char1.scenes, ...char2.scenes]).size;
+      if (commonScenes.length < 2 && totalScenes > 3) {
+        console.log(`[extraction] 캐릭터 관계 스킵 (공통 장면 1개, 전체 ${totalScenes}개): ${char1.name} ↔ ${char2.name}`);
         continue;
       }
 
@@ -731,56 +753,15 @@ function inferCoOccurrenceEdges(
         subtype: undefined,
         entities: [char1.id, char2.id],
         statement: `${char1.name}과(와) ${char2.name}이(가) 동일 장면에 등장 (장면 ${sceneNums})`,
-        timeline: { start: undefined, chapter: 1 },
+        timeline: { start: undefined },
         sentiment: 'neutral',
         strength: 3,
         bidirectional: true,
         scenes: commonScenes,
-        sourceRef: { chapter: 1 },
+        sourceRef: {},
       };
 
       console.log(`[extraction] 캐릭터 동시 등장 관계 생성: ${char1.name} ↔ ${char2.name} (장면: ${commonScenes.join(', ')})`);
-    }
-  }
-
-  // 캐릭터-비캐릭터 동시 등장
-  for (const entity of nonCharacterEntities) {
-    if (!entity.scenes?.length) continue;
-
-    for (const char of characterEntities) {
-      if (!char.scenes?.length) continue;
-
-      // 공통 장면 계산
-      let commonScenes = entity.scenes.filter((s: string) => char.scenes!.includes(s));
-
-      // 기존 그래프에 추가하는 경우: 새 장면 중 공통인 것만 사용
-      if (newSceneIds && newSceneIds.size > 0) {
-        commonScenes = commonScenes.filter(s => newSceneIds.has(s));
-      }
-
-      if (commonScenes.length === 0) continue;
-      if (hasEdgeBetween(hyperedges, entity.id, char.id)) continue;
-
-      edgeCounter.value++;
-      const id = formatId('H', edgeCounter.value);
-      const relationType = inferRelationType(entity.category);
-      const sceneNums = commonScenes.map(sceneIdToReadable).join(', ');
-
-      hyperedges[id] = {
-        id,
-        type: relationType,
-        subtype: undefined,
-        entities: [char.id, entity.id],
-        statement: `${char.name}이(가) ${entity.name}에서/과 함께 등장 (장면 ${sceneNums})`,
-        timeline: { start: undefined, chapter: 1 },
-        sentiment: 'neutral',
-        strength: 3,
-        bidirectional: false,
-        scenes: commonScenes,
-        sourceRef: { chapter: 1 },
-      };
-
-      console.log(`[extraction] 장면 공동 등장 관계 생성: ${char.name} -> ${entity.name} (${relationType}, 장면: ${commonScenes.join(', ')})`);
     }
   }
 }
@@ -926,6 +907,23 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   }
   console.log('[extraction] 장면 ID 매핑:', sceneIdMapping);
 
+  // 장면 ID → 챕터 번호 매핑 생성 (firstMention/timeline 계산용)
+  const sceneChapterMap: Record<string, number> = {};
+  for (const s of sortedScenes) {
+    const globalSceneId = sceneIdMapping[s.id];
+    if (!globalSceneId) continue;
+    // 장면의 chapter → 실제 챕터 번호
+    let chapterNum = s.chapter || 1;
+    if (s.chapter && extracted.chapters) {
+      const chapterInfo = extracted.chapters.find(c => c.id === s.chapter);
+      if (chapterInfo?.title) {
+        const numMatch = chapterInfo.title.match(/(\d+)/);
+        if (numMatch) chapterNum = parseInt(numMatch[1], 10);
+      }
+    }
+    sceneChapterMap[globalSceneId] = chapterNum;
+  }
+
   // 엔티티 등록
   console.log(`[extraction] LLM 추출 엔티티 수: ${extracted.entities.length}개`);
   for (const e of extracted.entities) {
@@ -937,8 +935,8 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       // 이미 이번 분석에서 생성된 엔티티에 정보 추가
       const existing = entities[existingId];
       existing.aliases = [...new Set([...(existing.aliases || []), ...(e.aliases || [])])];
-      if (e.description && !existing.description?.includes(e.description)) {
-        existing.description = ((existing.description || '') + ' ' + e.description).slice(0, 500);
+      if (e.description) {
+        existing.description = mergeDescriptions(existing.description || '', e.description).slice(0, 500);
       }
       // 기존 scenes에 새 장면 ID 추가 (중복 제거)
       const oldScenes = existing.scenes?.length || 0;
@@ -949,6 +947,11 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
 
     // 기존 그래프에 같은 이름의 엔티티가 있으면 그 ID 재사용, 없으면 새 ID 생성
     const id = existingId || formatId('E', ++entityCounter);
+    // 첫 등장 챕터 계산: 엔티티의 첫 번째 장면에서 챕터 번호 추출
+    const firstChapter = newSceneIds.length > 0
+      ? getChapterFromScenes(newSceneIds, sceneChapterMap)
+      : 1;
+
     entities[id] = {
       id,
       name: e.name,
@@ -957,7 +960,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       description: e.description || '',
       attributes: (e.attributes || {}) as Record<string, unknown>,
       scenes: newSceneIds,
-      firstMention: { chapter: 1 },
+      firstMention: { chapter: firstChapter },
       importance: e.importance || 5,
     };
     console.log(`[extraction] 새 엔티티 생성: ${e.name} (${id}), category: ${e.category}, scenes: ${newSceneIds.join(',')}${existingId ? ' (기존 ID 재사용)' : ''}`);
@@ -994,6 +997,11 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       continue;
     }
 
+    // 관계의 챕터 번호: 관계가 속한 장면에서 추출
+    const edgeChapter = sceneIds.length > 0
+      ? getChapterFromScenes(sceneIds, sceneChapterMap)
+      : 1;
+
     edgeCounter.value++;
     const id = formatId('H', edgeCounter.value);
     hyperedges[id] = {
@@ -1003,14 +1011,14 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
       entities: [fromId, toId],
       statement: r.description || '',
       quote: r.quote,
-      timeline: { start: r.start_time, chapter: 1 },
+      timeline: { start: r.start_time, chapter: edgeChapter },
       sentiment: r.sentiment as HyperEdge['sentiment'],
       strength: r.strength,
       bidirectional: r.bidirectional,
       fromPerspective: r.from_perspective,
       toPerspective: r.to_perspective,
       scenes: sceneIds,
-      sourceRef: { chapter: 1 },
+      sourceRef: { chapter: edgeChapter },
     };
   }
 
@@ -1025,16 +1033,28 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   inferCoOccurrenceEdges(entities, hyperedges, edgeCounter, newSceneIds);
 
   // 타임라인 등록
-  const timeline = (extracted.timeline || []).map((t: MergedTimelinePoint) => ({
-    id: t.time_id || '',
-    name: t.events?.[0] || t.time_expression || '',
-    description: (t.events || []).join(', '),
-    storyTime: t.time_expression || '',
-    order: t.order,
-    chapter: 1,
-    entities: (t.characters || []).map((name: string) => nameToId[name]).filter(Boolean),
-    edges: [],
-  })).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const timeline = (extracted.timeline || []).map((t: MergedTimelinePoint) => {
+    const timeEntities = (t.characters || []).map((name: string) => nameToId[name]).filter(Boolean);
+    // 타임라인 챕터: 관련 엔티티의 장면에서 추출
+    let timeChapter = 1;
+    for (const entityId of timeEntities) {
+      const entity = entities[entityId];
+      if (entity?.scenes?.length) {
+        timeChapter = getChapterFromScenes(entity.scenes, sceneChapterMap);
+        break;
+      }
+    }
+    return {
+      id: t.time_id || '',
+      name: t.events?.[0] || t.time_expression || '',
+      description: (t.events || []).join(', '),
+      storyTime: t.time_expression || '',
+      order: t.order,
+      chapter: timeChapter,
+      entities: timeEntities,
+      edges: [],
+    };
+  }).sort((a, b) => (a.order || 0) - (b.order || 0));
 
   // 장(Chapter) 정보 처리
   const chapters: Record<string, Chapter> = existingGraph ? { ...existingGraph.chapters } : {};
