@@ -655,30 +655,30 @@ API 호출도 동일 세션 크레딧 수식 적용. 웹 UI와 API의 비용 동
 
 #### `web/src/lib/modelCosts.ts`
 
-- [ ] `KRW_PER_CREDIT`: 유지 (10)
-- [ ] `USD_TO_KRW`: 1400 → **1500**
-- [ ] `MARGIN`: 단일 상수 삭제 → **`calculateMarkup(chunkCost)` 함수**
-- [ ] `MAX_MARKUP = 10.0`, `MIN_MARKUP = 5.0`, `COST_MIN`, `COST_MAX` 상수 추가
-- [ ] `calculateSessionCredits(sessionCostUsd, modelChunkCost)`: 세션 단위 크레딧 계산 함수 신규
-- [ ] 기존 `costUsdToCredits()` → `calculateSessionCredits()` 교체 (또는 내부에서 호출)
+- [x] `KRW_PER_CREDIT`: 유지 (10)
+- [x] `USD_TO_KRW`: 1400 → **1500**
+- [x] `MARGIN`: 단일 상수 삭제 → **`calculateMarkup(chunkCost)` 함수**
+- [x] `MAX_MARKUP = 10.0`, `MIN_MARKUP = 5.0`, `COST_MIN`, `COST_MAX` 상수 추가
+- [x] `calculateSessionCredits(sessionCostUsd, modelChunkCost)`: 세션 단위 크레딧 계산 함수 신규
+- [x] 기존 `costUsdToCredits()` → `calculateSessionCredits()` 교체 (또는 내부에서 호출)
 
 #### `web/src/types.ts`
 
-- [ ] `AVAILABLE_MODELS`에 `coreModel: boolean` 필드 추가 (핵심 5종 표시)
-- [ ] 선택 모델 4종은 `coreModel: false`로 설정
+- [x] `AVAILABLE_MODELS`에 `coreModel: boolean` 필드 추가 (핵심 5종 표시)
+- [x] 선택 모델 4종은 `coreModel: false`로 설정
 
 #### `web/src/services/extraction/orchestrator.ts`
 
-- [ ] 청크별 차감 → 세션 사전 예약/완료 확정 방식으로 변경
-- [ ] 분석 시작 시: 예상 크레딧 계산 → 잔액 확인 → 예약
-- [ ] 분석 완료 시: 실제 사용량 기준 확정
-- [ ] 분석 중단 시: 차액 환불
+- [x] 청크별 차감 → 세션 사전 예약/완료 확정 방식으로 변경
+- [x] 분석 시작 시: 예상 크레딧 계산 → 잔액 확인 → 예약
+- [x] 분석 완료 시: 실제 사용량 기준 확정
+- [x] 분석 중단 시: 차액 환불
 
 #### `web/src/app/api/analyze/route.ts`
 
-- [ ] 청크별 `proxyToCatcident('/credits/deduct/')` → 세션 시작/완료 시 차감으로 변경
-- [ ] 예상 크레딧을 응답에 포함 (`_billing.estimated_credits`)
-- [ ] 완료 시 최종 크레딧 확정 (`_billing.final_credits`)
+- [x] 청크별 `proxyToCatcident('/credits/deduct/')` 제거 → 토큰 정보만 반환
+- [x] `_billing` 응답: `{ model, prompt_tokens, completion_tokens, byok }` (토큰 정보만)
+- [x] 크레딧 차감은 클라이언트 세션 settle 단계로 이동
 
 #### Credit-First BYOK
 
@@ -688,20 +688,20 @@ API 호출도 동일 세션 크레딧 수식 적용. 웹 UI와 API의 비용 동
 
 #### 백엔드 (catcident-backend)
 
-- [ ] Free 플랜: `monthly_credits`: 100 → **50**
-- [ ] Basic 플랜: `monthly_credits`: 1000 → **800**
-- [ ] Pro 플랜: `monthly_credits`: 5000 → **3000**, `price_krw`: 14900 → **16900**
-- [ ] Business 플랜: **신규** (monthly_credits: 16000, price_krw: 79000, seats: 5)
+- [x] Free 플랜: `monthly_credits`: 100 → **50**
+- [x] Basic 플랜: `monthly_credits`: 1000 → **800**
+- [x] Pro 플랜: `monthly_credits`: 5000 → **3000**, `price_krw`: 14900 → **16900**
+- [x] Business 플랜: **신규** (monthly_credits: 16000, price_krw: 79000, seats: 5)
 - [ ] 가입 보너스: **100cr** 로직 추가
-- [ ] 세션 예약/확정/환불 API 엔드포인트
+- [x] 세션 예약/확정/환불 API 엔드포인트
 
 #### Free 기능 제한
 
-- [ ] 채팅 횟수 카운터 (분석당 3회)
-- [ ] 저장 그래프 수 제한 (3개)
-- [ ] 버전 히스토리 제한 (3개)
+- [x] 채팅 횟수 카운터 (분석당 3회)
+- [x] 저장 그래프 수 제한 (3개)
+- [x] 버전 히스토리 제한 (3개)
 - [ ] 내보내기 차단 + 업그레이드 CTA
-- [ ] 모델 제한 (Flash, DeepSeek만)
+- [x] 모델 제한 (Flash, DeepSeek만)
 
 #### Pro 전용 기능
 
@@ -712,14 +712,14 @@ API 호출도 동일 세션 크레딧 수식 적용. 웹 UI와 API의 비용 동
 
 #### UI
 
-- [ ] SubscriptionPage: 5-tier 표시 + 볼륨 디스카운트 표시
-- [ ] 가격 페이지: "가장 인기" 배지, 연간 토글
-- [ ] UsageEstimate: 세션 기준 예상 크레딧 표시 (모델 선택 시 즉시 계산)
-- [ ] 모델 선택기: 핵심 5종 기본 표시, "더 보기"로 선택 모델 확장
+- [x] SubscriptionPage: 5-tier 표시 + 볼륨 디스카운트 표시
+- [x] 가격 페이지: "가장 인기" 배지 ~~, 연간 토글~~
+- [x] UsageEstimate: 세션 기준 예상 크레딧 표시 (모델 선택 시 즉시 계산)
+- [x] 모델 선택기: 핵심 5종 기본 표시, optgroup으로 선택 모델 확장
 - [ ] Credit-First BYOK 전환 토글 (Pro 이상)
-- [ ] 패키지 UI: 550/1,200/2,800cr, "만료 없음" 표시
+- [x] 패키지 UI: 550/1,200/2,800cr, "만료 없음" 표시
 - [ ] Enterprise "문의" 랜딩 페이지
-- [ ] 전환 CTA 메시지 (채팅 한도, 저장 한도, 크레딧 소진 시)
+- [x] 전환 CTA 메시지 (채팅 한도, 저장 한도, 크레딧 소진 시)
 - [ ] 리텐션: 3단계 잔액 알림, 자동 리로드 설정, 첫 구매 보너스 UI
 
 ---

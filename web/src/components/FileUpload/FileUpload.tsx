@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, settleCredits, releaseCredits, estimateUsageLocally } from '../../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../../types';
@@ -59,34 +59,6 @@ function buildSourceFiles(fileInfos: FileInfo[]): NovelKnowledgeGraph['metadata'
     text: f.text,
     charCount: f.text.length,
   }));
-}
-
-/**
- * hold된 세션을 정산(settle) 또는 해제(release).
- * 처리된 청크가 있으면 settle, 없으면 release.
- */
-async function finalizeHold(
-  holdToken: string,
-  description: string,
-  updateBalance: (balance: number) => void,
-): Promise<void> {
-  const chunks = useStore.getState().currentUsage.chunks;
-  if (chunks.length > 0) {
-    const settleChunks = chunks.map(c => ({
-      model: c.model,
-      prompt_tokens: c.promptTokens,
-      completion_tokens: c.completionTokens,
-    }));
-    const result = await settleCredits(holdToken, settleChunks, description);
-    if (result.ok && result.data.balance_after !== null) {
-      updateBalance(result.data.balance_after);
-    }
-  } else {
-    const result = await releaseCredits(holdToken);
-    if (result.ok && result.data.balance_after !== null) {
-      updateBalance(result.data.balance_after);
-    }
-  }
 }
 
 export function FileUpload() {
@@ -386,13 +358,13 @@ export function FileUpload() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, `분석 중단: ${combinedTitle}`, updateCreditBalance);
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${combinedTitle}`, updateCreditBalance);
         }
         throw extractionErr;
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, `분석 완료: ${combinedTitle}`, updateCreditBalance);
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${combinedTitle}`, updateCreditBalance);
       }
 
       const sourceFiles = buildSourceFiles(fileInfos);
@@ -504,13 +476,13 @@ export function FileUpload() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, `이어하기 중단: ${savedProgress.title}`, updateCreditBalance);
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 중단: ${savedProgress.title}`, updateCreditBalance);
         }
         throw extractionErr;
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, `이어하기 완료: ${savedProgress.title}`, updateCreditBalance);
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 완료: ${savedProgress.title}`, updateCreditBalance);
       }
 
       setProgress('저장 중...');
@@ -626,13 +598,13 @@ export function FileUpload() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, `분석 중단: ${title}`, updateCreditBalance);
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${title}`, updateCreditBalance);
         }
         throw extractionErr;
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, `분석 완료: ${title}`, updateCreditBalance);
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${title}`, updateCreditBalance);
       }
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();

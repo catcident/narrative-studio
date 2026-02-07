@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, settleCredits, releaseCredits, estimateUsageLocally } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
 import { CHUNK_SIZE, CHUNK_OVERLAP } from '@/lib/modelCosts';
 
@@ -86,29 +86,13 @@ export function useResumeAnalysis() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          const chunks = useStore.getState().currentUsage.chunks;
-          if (chunks.length > 0) {
-            const settleChunks = chunks.map(c => ({ model: c.model, prompt_tokens: c.promptTokens, completion_tokens: c.completionTokens }));
-            const result = await settleCredits(holdToken, settleChunks, `이어하기 중단: ${savedProgress.title}`);
-            if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-          } else {
-            const result = await releaseCredits(holdToken);
-            if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-          }
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 중단: ${savedProgress.title}`, updateCreditBalance);
         }
         throw extractionErr;
       }
 
       if (holdToken) {
-        const chunks = useStore.getState().currentUsage.chunks;
-        if (chunks.length > 0) {
-          const settleChunks = chunks.map(c => ({ model: c.model, prompt_tokens: c.promptTokens, completion_tokens: c.completionTokens }));
-          const result = await settleCredits(holdToken, settleChunks, `이어하기 완료: ${savedProgress.title}`);
-          if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-        } else {
-          const result = await releaseCredits(holdToken);
-          if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-        }
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 완료: ${savedProgress.title}`, updateCreditBalance);
       }
 
       setProgress('저장 중...');

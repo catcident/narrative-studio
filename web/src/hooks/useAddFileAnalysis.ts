@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, settleCredits, releaseCredits, estimateUsageLocally } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
 import { readFileAsText } from '../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
 
@@ -74,29 +74,13 @@ export function useAddFileAnalysis() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          const chunks = useStore.getState().currentUsage.chunks;
-          if (chunks.length > 0) {
-            const settleChunks = chunks.map(c => ({ model: c.model, prompt_tokens: c.promptTokens, completion_tokens: c.completionTokens }));
-            const result = await settleCredits(holdToken, settleChunks, `추가 분석 중단: ${fileName}`);
-            if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-          } else {
-            const result = await releaseCredits(holdToken);
-            if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-          }
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 중단: ${fileName}`, updateCreditBalance);
         }
         throw extractionErr;
       }
 
       if (holdToken) {
-        const chunks = useStore.getState().currentUsage.chunks;
-        if (chunks.length > 0) {
-          const settleChunks = chunks.map(c => ({ model: c.model, prompt_tokens: c.promptTokens, completion_tokens: c.completionTokens }));
-          const result = await settleCredits(holdToken, settleChunks, `추가 분석 완료: ${fileName}`);
-          if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-        } else {
-          const result = await releaseCredits(holdToken);
-          if (result.ok && result.data.balance_after !== null) updateCreditBalance(result.data.balance_after);
-        }
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 완료: ${fileName}`, updateCreditBalance);
       }
 
       setProgress('저장 중...');

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink } from 'lucide-react';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Building2, Mail } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
@@ -260,6 +260,54 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   </div>
                 );
               })}
+
+              {/* Enterprise 카드 */}
+              <div className="border-2 border-gray-600 rounded-xl p-5 flex flex-col bg-gray-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <Building2 aria-hidden="true" className="w-5 h-5 text-gray-700" />
+                  <h3 className="font-bold text-gray-800">Enterprise</h3>
+                </div>
+
+                <div className="mb-4">
+                  <span className="text-2xl font-bold text-gray-800">맞춤 견적</span>
+                </div>
+
+                <div className="text-sm text-gray-600 mb-4">
+                  대규모 팀을 위한 맞춤형 솔루션
+                </div>
+
+                <div className="space-y-2 text-sm flex-1">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>SSO / SAML 인증</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>감사 로그</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>전담 지원</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>맞춤 SLA</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>무제한 크레딧 + 모델</span>
+                  </div>
+                </div>
+
+                <a
+                  href="mailto:contact@catcident.com"
+                  aria-label="Enterprise 플랜 문의하기"
+                  className="mt-4 w-full py-2 px-4 bg-gray-800 text-white rounded-lg text-sm font-medium text-center hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Mail aria-hidden="true" className="w-4 h-4" />
+                  문의하기
+                </a>
+              </div>
             </div>
           ) : activeTab === 'packages' ? (
             /* 크레딧 구매 */

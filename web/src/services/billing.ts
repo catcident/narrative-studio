@@ -2,8 +2,8 @@
  * Billing API 클라이언트 서비스
  * 서버 사이드 프록시 (/api/billing/)를 통해 catcident billing API에 접근
  *
- * 과금 흐름: /api/analyze가 OpenRouter 호출 후 즉시 청크별 크레딧 차감.
- * 클라이언트는 잔액 사전 확인 + UI 표시용 콜백만 담당.
+ * 과금 흐름 (세션 hold/settle/release):
+ *   holdCredits(예상) → /api/analyze (토큰 정보만) → settleCredits(실제) / releaseCredits(취소)
  */
 
 import type {
@@ -350,6 +350,40 @@ export function createBillingCallback(
       model: billing.model,
     });
   };
+}
+
+// ==================== 세션 정산 헬퍼 ====================
+
+/** ChunkUsage[] → settle API에 전달할 형태로 변환 */
+export function chunkUsageToSettleChunks(chunks: ChunkUsage[]) {
+  return chunks.map(c => ({
+    model: c.model,
+    prompt_tokens: c.promptTokens,
+    completion_tokens: c.completionTokens,
+  }));
+}
+
+/**
+ * hold된 세션을 정산(settle) 또는 해제(release).
+ * 처리된 청크가 있으면 settle, 없으면 release.
+ */
+export async function finalizeHold(
+  holdToken: string,
+  chunks: ChunkUsage[],
+  description: string,
+  updateBalance: (balance: number) => void,
+): Promise<void> {
+  if (chunks.length > 0) {
+    const result = await settleCredits(holdToken, chunkUsageToSettleChunks(chunks), description);
+    if (result.ok && result.data.balance_after !== null) {
+      updateBalance(result.data.balance_after);
+    }
+  } else {
+    const result = await releaseCredits(holdToken);
+    if (result.ok && result.data.balance_after !== null) {
+      updateBalance(result.data.balance_after);
+    }
+  }
 }
 
 /** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 */
