@@ -331,17 +331,13 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   </div>
 
                   <div className="text-sm text-gray-600 mb-4">
-                    대규모 팀을 위한 맞춤형 솔루션
+                    대규모 사용을 위한 맞춤형 솔루션
                   </div>
 
                   <div className="space-y-2 text-sm flex-1">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>SSO / SAML 인증</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>감사 로그</span>
+                      <span>맞춤 크레딧 + 전체 모델</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -349,11 +345,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>맞춤 SLA</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>무제한 크레딧 + 모델</span>
+                      <span>맞춤 Rate Limit</span>
                     </div>
                   </div>
 
