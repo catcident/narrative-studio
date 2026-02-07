@@ -604,6 +604,43 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
     }
   }
 
+  // --- scene 기반 location-character 위치 관계 자동 생성 ---
+  // LLM이 위치 관계를 추출하지 않은 경우, 같은 scene에 등장하는 location과 character를 연결
+  const locationEntities = entities.filter(e => e.category === 'location');
+  const characterEntities = entities.filter(e => e.category === 'character');
+  const allRels = [...relationships, ...newRelationships];
+
+  for (const loc of locationEntities) {
+    const locScenes = new Set(loc.scenes || []);
+    if (locScenes.size === 0) continue;
+
+    // 이 location이 이미 어떤 캐릭터와 위치 관계가 있는지 확인
+    const hasAnyLocationRel = allRels.some(r =>
+      r.type === '위치' && (r.to === loc.name || r.from === loc.name)
+    );
+    if (hasAnyLocationRel) continue;
+
+    // 같은 scene에 등장하는 캐릭터들과 위치 관계 생성
+    for (const char of characterEntities) {
+      const charScenes = new Set(char.scenes || []);
+      const commonScenes = [...locScenes].filter(s => charScenes.has(s));
+      if (commonScenes.length === 0) continue;
+
+      if (!hasRelationship(allRels, char.name, loc.name) &&
+          !hasRelationship(newRelationships, char.name, loc.name)) {
+        newRelationships.push({
+          from: char.name,
+          to: loc.name,
+          type: '위치',
+          description: `${loc.name}에서 활동`,
+          sentiment: 'neutral',
+          strength: 4,
+          scenes: commonScenes
+        });
+      }
+    }
+  }
+
   console.log(`[extraction] 후처리: ${newRelationships.length}개의 누락된 관계 추가됨`);
 
   return {
