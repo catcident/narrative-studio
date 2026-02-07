@@ -106,6 +106,9 @@ function extractFileGraphData(
         return {
           ...e,
           description: scopedDescription || `${e.name} (${e.category})`,
+          // attributes는 전체 그래프에서 병합된 값이라 범위 외 파일의 정보를 포함할 수 있음
+          // 범위 내 장면 요약(description)만으로 검증하도록 attributes 제거
+          attributes: undefined,
         };
       });
   } else {
