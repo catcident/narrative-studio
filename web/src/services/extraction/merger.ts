@@ -111,8 +111,15 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
 // --- 비슷한 엔티티 찾기 (mergeExtractions 전용) ---
 
 function findSimilarEntity(name: string, nameMap: Record<string, number>): number {
-  // "나" 같은 모호한 이름은 매칭하지 않음 (각 화자를 별개로 유지)
-  if (isAmbiguousName(name)) return -1;
+  // "나" 같은 모호한 이름은 정확 매칭만 수행 (퍼지/부분 매칭 스킵)
+  // 단일 화자 소설에서 모든 "나"를 하나로 병합하면서,
+  // 다른 이름의 엔티티와 잘못 매칭되는 것을 방지
+  if (isAmbiguousName(name)) {
+    if (nameMap[name] !== undefined) {
+      return nameMap[name];
+    }
+    return -1;
+  }
 
   // 정확히 일치
   if (nameMap[name] !== undefined) {
@@ -350,7 +357,12 @@ export async function reviewEntityMerges(
 
     for (const suggestion of suggestions) {
       const keepIdx = newEntities.findIndex(e => e.name === suggestion.keep);
-      const mergeIdx = newEntities.findIndex(e => e.name === suggestion.merge);
+      let mergeIdx = newEntities.findIndex(e => e.name === suggestion.merge);
+
+      // 동일 이름 엔티티 병합 시 findIndex가 같은 인덱스를 반환하는 버그 방지
+      if (mergeIdx === keepIdx) {
+        mergeIdx = newEntities.findIndex((e, idx) => idx !== keepIdx && e.name === suggestion.merge);
+      }
 
       if (keepIdx === -1 || mergeIdx === -1) {
         console.log(`[extraction] 병합 스킵 (이름 없음): "${suggestion.keep}" ← "${suggestion.merge}"`);
