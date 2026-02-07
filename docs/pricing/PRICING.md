@@ -692,7 +692,7 @@ API 호출도 동일 세션 크레딧 수식 적용. 웹 UI와 API의 비용 동
 - [x] Basic 플랜: `monthly_credits`: 1000 → **800**
 - [x] Pro 플랜: `monthly_credits`: 5000 → **3000**, `price_krw`: 14900 → **16900**
 - [x] Business 플랜: **신규** (monthly_credits: 16000, price_krw: 79000, seats: 5)
-- [ ] 가입 보너스: **100cr** 로직 추가
+- [x] 가입 보너스: **100cr** 로직 추가
 - [x] 세션 예약/확정/환불 API 엔드포인트
 
 #### Free 기능 제한
@@ -718,7 +718,7 @@ API 호출도 동일 세션 크레딧 수식 적용. 웹 UI와 API의 비용 동
 - [x] 모델 선택기: 핵심 5종 기본 표시, optgroup으로 선택 모델 확장
 - [ ] Credit-First BYOK 전환 토글 (Pro 이상)
 - [x] 패키지 UI: 550/1,200/2,800cr, "만료 없음" 표시
-- [ ] Enterprise "문의" 랜딩 페이지
+- [x] Enterprise "문의" 카드 (SubscriptionPage 내 mailto 링크)
 - [x] 전환 CTA 메시지 (채팅 한도, 저장 한도, 크레딧 소진 시)
 - [ ] 리텐션: 3단계 잔액 알림, 자동 리로드 설정, 첫 구매 보너스 UI
 
