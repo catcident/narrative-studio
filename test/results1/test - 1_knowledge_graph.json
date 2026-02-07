@@ -1,0 +1,886 @@
+{
+  "metadata": {
+    "title": "test - 1",
+    "createdAt": "2026-02-07T02:13:58.175Z",
+    "updatedAt": "2026-02-07T02:13:58.175Z",
+    "version": "1.0.0",
+    "model": "google/gemini-2.0-flash-001",
+    "sourceFiles": [
+      {
+        "id": "F0001",
+        "fileName": "01_기본추출.txt",
+        "uploadedAt": "2026-02-07T02:13:58.175Z",
+        "text": "# 1화: 골목의 고양이\r\n\r\n어두운 골목에 한 마리의 검은 고양이가 앉아 있었다. 이름도 없는 그 고양이는 매일 같은 시간에 그곳에 나타났다.\r\n\r\n\"야, 거기 고양이.\"\r\n\r\n소년이 말을 걸었다. 소년의 이름은 민수였다. 민수는 매일 학교에서 돌아오는 길에 이 골목을 지나갔다.\r\n\r\n민수는 주머니에서 참치캔을 꺼내 고양이 앞에 놓았다. 고양이는 경계하면서도 조심스럽게 다가왔다.\r\n\r\n\"너, 이름이 뭐야? 없어? 그럼 내가 지어줄게. 까망이.\"\r\n\r\n그때 골목 반대편에서 한 소녀가 나타났다. 민수의 같은 반 친구 수진이였다.\r\n\r\n\"민수야, 너 또 고양이한테 밥 주고 있어?\"\r\n\r\n수진이 웃으며 다가왔다. 수진이도 고양이를 좋아했다. 둘은 나란히 앉아 까망이가 밥을 먹는 것을 지켜보았다.\r\n\r\n# 2화: 비 오는 날\r\n\r\n다음 날, 비가 내렸다. 민수는 우산을 쓰고 골목으로 갔지만 까망이는 보이지 않았다.\r\n\r\n\"까망아! 까망아!\"\r\n\r\n민수는 골목 구석구석을 찾아다녔다. 그때 골목 끝 쓰레기통 옆에서 희미한 울음소리가 들렸다.\r\n\r\n쓰레기통 뒤에 까망이가 웅크리고 있었다. 그런데 까망이 옆에 작은 회색 고양이 한 마리가 더 있었다.\r\n\r\n\"어? 새끼야?\"\r\n\r\n민수는 조심스럽게 다가갔다. 까망이는 경계하며 으르렁거렸지만, 민수를 알아보고는 조금 누그러졌다.\r\n\r\n수진에게 전화를 걸었다.\r\n\r\n\"수진아, 빨리 와봐. 까망이가 새끼를 데리고 있어!\"\r\n\r\n30분 후 수진이가 담요와 우유를 가지고 나타났다. 둘은 비를 맞으며 고양이 가족을 돌봐주었다.\r\n\r\n\"회색이니까... 이름은 잿빛이로 하자.\" 수진이 말했다.\r\n\r\n민수가 고개를 끄덕였다. \"좋아. 까망이와 잿빛이.\"\r\n",
+        "charCount": 837
+      }
+    ],
+    "author": "1"
+  },
+  "entities": {
+    "E0001": {
+      "id": "E0001",
+      "name": "검은 고양이",
+      "category": "character",
+      "aliases": [
+        "까망이"
+      ],
+      "description": "이름 없는 검은 고양이. 매일 같은 시간에 골목에 나타난다.",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0002": {
+      "id": "E0002",
+      "name": "민수",
+      "category": "character",
+      "aliases": [],
+      "description": "소년. 학교에서 돌아오는 길에 골목을 지나간다. 까망이에게 밥을 준다.",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0003": {
+      "id": "E0003",
+      "name": "어두운 골목",
+      "category": "location",
+      "aliases": [
+        "골목"
+      ],
+      "description": "검은 고양이가 매일 나타나는 장소.",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0004": {
+      "id": "E0004",
+      "name": "참치캔",
+      "category": "item",
+      "aliases": [],
+      "description": "민수가 까망이에게 주는 음식.",
+      "attributes": {},
+      "scenes": [
+        "S0001"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0005": {
+      "id": "E0005",
+      "name": "수진",
+      "category": "character",
+      "aliases": [],
+      "description": "민수의 같은 반 친구. 고양이를 좋아한다.",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0006": {
+      "id": "E0006",
+      "name": "비",
+      "category": "concept",
+      "aliases": [],
+      "description": "내리는 날씨",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0007": {
+      "id": "E0007",
+      "name": "회색 고양이",
+      "category": "character",
+      "aliases": [
+        "잿빛이"
+      ],
+      "description": "까망이 옆에 있는 작은 회색 고양이.",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0008": {
+      "id": "E0008",
+      "name": "쓰레기통",
+      "category": "item",
+      "aliases": [],
+      "description": "까망이와 잿빛이가 웅크리고 있던 장소.",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0009": {
+      "id": "E0009",
+      "name": "담요",
+      "category": "item",
+      "aliases": [],
+      "description": "수진이가 가져온 고양이들을 위한 담요.",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0010": {
+      "id": "E0010",
+      "name": "우유",
+      "category": "item",
+      "aliases": [],
+      "description": "수진이가 가져온 고양이들을 위한 우유.",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    }
+  },
+  "hyperedges": {
+    "H0001": {
+      "id": "H0001",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0002"
+      ],
+      "statement": "민수가 밥을 주는 대상",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0002": {
+      "id": "H0002",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0004"
+      ],
+      "statement": "민수가 소유하고 있음",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0003": {
+      "id": "H0003",
+      "type": "친구",
+      "entities": [
+        "E0002",
+        "E0005"
+      ],
+      "statement": "같은 반 친구",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0004": {
+      "id": "H0004",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0001"
+      ],
+      "statement": "수진이도 고양이를 좋아함",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0005": {
+      "id": "H0005",
+      "type": "가족",
+      "entities": [
+        "E0001",
+        "E0007"
+      ],
+      "statement": "어미와 새끼",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0006": {
+      "id": "H0006",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0009"
+      ],
+      "statement": "수진이 소유",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0007": {
+      "id": "H0007",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0010"
+      ],
+      "statement": "수진이 소유",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0008": {
+      "id": "H0008",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0007"
+      ],
+      "statement": "돌봐주는 관계",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0009": {
+      "id": "H0009",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0007"
+      ],
+      "statement": "돌봐주는 관계",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0010": {
+      "id": "H0010",
+      "type": "위치",
+      "entities": [
+        "E0001",
+        "E0003"
+      ],
+      "statement": "검은 고양이가 매일 나타나는 장소.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0011": {
+      "id": "H0011",
+      "type": "위치",
+      "entities": [
+        "E0002",
+        "E0003"
+      ],
+      "statement": "소년. 학교에서 돌아오는 길에 골목을 지나간다. 까망이에게 밥을 준다.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0012": {
+      "id": "H0012",
+      "type": "소유",
+      "entities": [
+        "E0004",
+        "E0001"
+      ],
+      "statement": "민수가 까망이에게 주는 음식.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0013": {
+      "id": "H0013",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0001"
+      ],
+      "statement": "까망이와 잿빛이가 웅크리고 있던 장소.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0014": {
+      "id": "H0014",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0007"
+      ],
+      "statement": "까망이와 잿빛이가 웅크리고 있던 장소.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0015": {
+      "id": "H0015",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0003"
+      ],
+      "statement": "수진이(가) 어두운 골목에서/과 함께 등장 (장면 1, 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0016": {
+      "id": "H0016",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0003"
+      ],
+      "statement": "회색 고양이이(가) 어두운 골목에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0017": {
+      "id": "H0017",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0004"
+      ],
+      "statement": "수진이(가) 참치캔에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0018": {
+      "id": "H0018",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0006"
+      ],
+      "statement": "검은 고양이이(가) 비에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0019": {
+      "id": "H0019",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0006"
+      ],
+      "statement": "민수이(가) 비에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0020": {
+      "id": "H0020",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0006"
+      ],
+      "statement": "수진이(가) 비에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0021": {
+      "id": "H0021",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0006"
+      ],
+      "statement": "회색 고양이이(가) 비에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0022": {
+      "id": "H0022",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0008"
+      ],
+      "statement": "민수이(가) 쓰레기통에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0023": {
+      "id": "H0023",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0008"
+      ],
+      "statement": "수진이(가) 쓰레기통에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0024": {
+      "id": "H0024",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0009"
+      ],
+      "statement": "검은 고양이이(가) 담요에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0025": {
+      "id": "H0025",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0009"
+      ],
+      "statement": "민수이(가) 담요에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0026": {
+      "id": "H0026",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0009"
+      ],
+      "statement": "회색 고양이이(가) 담요에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0027": {
+      "id": "H0027",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0010"
+      ],
+      "statement": "검은 고양이이(가) 우유에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0028": {
+      "id": "H0028",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0010"
+      ],
+      "statement": "민수이(가) 우유에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0029": {
+      "id": "H0029",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0010"
+      ],
+      "statement": "회색 고양이이(가) 우유에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    }
+  },
+  "chapters": {
+    "C0001": {
+      "id": "C0001",
+      "number": 1,
+      "title": "1화: 골목의 고양이",
+      "summary": ""
+    },
+    "C0002": {
+      "id": "C0002",
+      "number": 2,
+      "title": "2화: 비 오는 날",
+      "summary": ""
+    }
+  },
+  "timeline": [],
+  "snapshots": {
+    "S0001": {
+      "sceneId": "S0001",
+      "order": 1,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "매일 같은 시간",
+      "timeMarker": "매일 같은 시간",
+      "location": "어두운 골목",
+      "summary": "민수가 골목에서 검은 고양이에게 참치캔을 주고, 수진이 나타나 함께 고양이를 지켜본다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0003",
+        "E0004",
+        "E0005"
+      ],
+      "activeEdges": [
+        "H0001",
+        "H0002",
+        "H0003",
+        "H0004",
+        "H0010",
+        "H0011",
+        "H0012",
+        "H0015",
+        "H0017"
+      ],
+      "sourceFile": "01_기본추출.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0002": {
+      "sceneId": "S0002",
+      "order": 2,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "다음 날",
+      "timeMarker": "다음 날",
+      "location": "골목",
+      "summary": "비 오는 날, 민수가 골목에서 까망이와 잿빛이를 발견하고 수진과 함께 돌본다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0003",
+        "E0005",
+        "E0006",
+        "E0007",
+        "E0008",
+        "E0009",
+        "E0010"
+      ],
+      "activeEdges": [
+        "H0003",
+        "H0004",
+        "H0005",
+        "H0006",
+        "H0007",
+        "H0008",
+        "H0009",
+        "H0010",
+        "H0011",
+        "H0013",
+        "H0014",
+        "H0015",
+        "H0016",
+        "H0018",
+        "H0019",
+        "H0020",
+        "H0021",
+        "H0022",
+        "H0023",
+        "H0024",
+        "H0025",
+        "H0026",
+        "H0027",
+        "H0028",
+        "H0029"
+      ],
+      "sourceFile": "01_기본추출.txt",
+      "sourceFileId": "F0001"
+    }
+  },
+  "stats": {
+    "totalEntities": 10,
+    "totalEdges": 29,
+    "totalChapters": 2,
+    "entitiesByCategory": {
+      "character": 4,
+      "location": 1,
+      "item": 4,
+      "concept": 1
+    },
+    "edgesByType": {
+      "관련": 8,
+      "소유": 15,
+      "친구": 1,
+      "가족": 1,
+      "위치": 4
+    }
+  }
+}

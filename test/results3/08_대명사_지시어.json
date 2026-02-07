@@ -1,0 +1,183 @@
+{
+  "_test": {
+    "file": "08_대명사_지시어",
+    "timestamp": "2026-02-07T03:12:51.495Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 만남"
+    },
+    {
+      "id": 2,
+      "title": "2화: 비밀"
+    },
+    {
+      "id": 3,
+      "title": "3화: 고백"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "카페",
+      "time": null,
+      "summary": "재원이 카페에 처음이 아닌 듯한 모습으로 방문하여 아메리카노를 주문하고, 하윤은 그를 단골이 될 것 같다고 생각한다. 하윤의 동생 서연이 카페에 도착한다.",
+      "time_marker": null
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "카페",
+      "time": null,
+      "summary": "재원은 하윤에게 호감을 느끼지만 말을 걸지 못한다. 어느 날, 재원은 카페에서 고등학교 동창 민혁을 만난다.",
+      "time_marker": null
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "카페",
+      "time": "다음 날",
+      "summary": "서연은 하윤에게 재원을 좋아하는지 묻고, 하윤은 부정한다. 그날 저녁, 재원은 하윤에게 데이트 신청을 하고 하윤은 승낙한다.",
+      "time_marker": "다음 날"
+    }
+  ],
+  "entities": [
+    {
+      "name": "재원",
+      "category": "character",
+      "description": "카페 단골 손님. 하윤에게 호감을 가지고 있다.",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "하윤",
+      "category": "character",
+      "description": "카페 주인.",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "카페",
+      "category": "location",
+      "description": "하윤이 운영하는 카페. 재원이 자주 방문한다.",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "서연",
+      "category": "character",
+      "description": "하윤의 동생. 카페에서 하윤을 돕는다.",
+      "scenes": [
+        1,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "민혁",
+      "category": "character",
+      "description": "재원의 고등학교 동창.",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "아메리카노",
+      "category": "item",
+      "description": "재원이 카페에서 자주 시키는 메뉴.",
+      "scenes": [
+        1,
+        2
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "하윤",
+      "to": "재원",
+      "type": "연인",
+      "description": "하윤과 재원은 서로에게 호감을 가지고 있다.",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "하윤",
+      "to": "서연",
+      "type": "가족",
+      "description": "자매",
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "from": "재원",
+      "to": "민혁",
+      "type": "친구",
+      "description": "고등학교 동창",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "하윤",
+      "to": "카페",
+      "type": "소속",
+      "description": "카페 주인",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "서연",
+      "to": "카페",
+      "type": "소속",
+      "description": "카페 직원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "재원",
+      "to": "카페",
+      "type": "위치",
+      "description": "재원이 카페에 방문",
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [],
+  "summary": {
+    "entityCount": 6,
+    "characterCount": 4,
+    "locationCount": 1,
+    "itemCount": 1,
+    "conceptCount": 0,
+    "relationshipCount": 6,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

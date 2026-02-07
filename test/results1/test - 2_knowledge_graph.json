@@ -1,0 +1,1398 @@
+{
+  "metadata": {
+    "title": "test - 2",
+    "createdAt": "2026-02-07T02:14:31.933Z",
+    "updatedAt": "2026-02-07T02:14:31.933Z",
+    "version": "1.0.0",
+    "model": "google/gemini-2.0-flash-001",
+    "sourceFiles": [
+      {
+        "id": "F0001",
+        "fileName": "02_시점변경_1인칭.txt",
+        "uploadedAt": "2026-02-07T02:14:31.933Z",
+        "text": "# 1화: 나의 아침\r\n\r\n나는 눈을 떴다. 침대 옆 알람 시계가 7시를 가리키고 있었다. 오늘도 어김없이 회사에 가야 하는 아침이었다.\r\n\r\n나의 이름은 한서준. 서른두 살, 평범한 회사원이다.\r\n\r\n출근길에 항상 들르는 카페가 있다. '블루문 카페'라는 작은 가게인데, 주인 아주머니 김 사장이 내리는 아메리카노가 일품이다.\r\n\r\n\"서준 씨, 오늘도 아메리카노?\"\r\n\r\n\"네, 감사합니다.\"\r\n\r\n나는 커피를 받아들고 회사로 향했다. 지하철에서 동료 박재민을 만났다.\r\n\r\n\"서준아, 오늘 회의 준비했어?\"\r\n\r\n\"응, 어제 밤새 했지.\"\r\n\r\n# 2화: 그녀의 오후\r\n\r\n나는 창밖을 바라보았다. 오후의 햇살이 화실을 비추고 있었다.\r\n\r\n나의 이름은 이수아. 스물여덟 살, 화가를 꿈꾸는 미대 졸업생이다.\r\n\r\n캔버스 위에 물감을 올렸다. 오늘 그리는 것은 어젯밤 꿈에서 본 풍경 - 푸른 달이 뜬 카페였다.\r\n\r\n\"수아야, 밥 먹었어?\"\r\n\r\n룸메이트 진아가 방문을 열고 물었다. 진아는 나와 같은 미대 출신이지만 지금은 디자인 회사에 다니고 있다.\r\n\r\n\"아, 깜빡했다.\"\r\n\r\n\"또! 나가서 먹자. 앞에 새로 생긴 카페 가볼래? '블루문 카페'라고.\"\r\n\r\n나는 붓을 내려놓고 일어섰다. 블루문 카페라니, 내가 꿈에서 본 그 카페와 이름이 같다.\r\n\r\n카페에 들어서자 아메리카노 향이 풍겼다. 카운터 뒤에 서 있는 김 사장이 환한 미소로 맞아주었다.\r\n\r\n\"어서 오세요! 처음 오셨네요?\"\r\n\r\n# 3화: 교차하는 저녁\r\n\r\n그날 저녁, 블루문 카페에서 우연이 일어났다.\r\n\r\n서준은 퇴근 후 습관대로 카페에 들렀다. 늦은 시간이라 손님은 별로 없었다.\r\n\r\n그때 문이 열리며 한 여자가 들어왔다. 캔버스 가방을 메고 있었고, 물감이 묻은 앞치마를 입고 있었다.\r\n\r\n수아였다. 진아가 추천한 카페가 마음에 들어 저녁에 다시 온 것이었다.\r\n\r\n두 사람의 시선이 마주쳤다. 서준은 왠지 모를 익숙함을 느꼈고, 수아는 자신이 그린 그림 속 인물을 떠올렸다.\r\n\r\n김 사장은 두 사람을 번갈아 보며 의미심장하게 미소 지었다.\r\n",
+        "charCount": 1028
+      }
+    ],
+    "author": "2"
+  },
+  "entities": {
+    "E0001": {
+      "id": "E0001",
+      "name": "나",
+      "category": "character",
+      "aliases": [],
+      "description": "1인칭 화자",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0003",
+        "S0004",
+        "S0005",
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0002": {
+      "id": "E0002",
+      "name": "한서준",
+      "category": "character",
+      "aliases": [
+        "서준 씨",
+        "서준아"
+      ],
+      "description": "서른두 살, 평범한 회사원",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0003",
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0003": {
+      "id": "E0003",
+      "name": "알람 시계",
+      "category": "item",
+      "aliases": [],
+      "description": "7시를 가리키는 알람 시계",
+      "attributes": {},
+      "scenes": [
+        "S0001"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0004": {
+      "id": "E0004",
+      "name": "블루문 카페",
+      "category": "location",
+      "aliases": [
+        "푸른 달이 뜬 카페"
+      ],
+      "description": "김 사장이 운영하는 작은 카페 이수아가 꿈에서 본 풍경",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0005",
+        "S0006",
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0005": {
+      "id": "E0005",
+      "name": "김 사장",
+      "category": "character",
+      "aliases": [],
+      "description": "블루문 카페 주인 아주머니",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0005",
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0006": {
+      "id": "E0006",
+      "name": "아메리카노",
+      "category": "item",
+      "aliases": [],
+      "description": "김 사장이 내리는 커피",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0007": {
+      "id": "E0007",
+      "name": "박재민",
+      "category": "character",
+      "aliases": [],
+      "description": "한서준의 회사 동료",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0008": {
+      "id": "E0008",
+      "name": "이수아",
+      "category": "character",
+      "aliases": [
+        "수아야"
+      ],
+      "description": "스물여덟 살, 화가를 꿈꾸는 미대 졸업생",
+      "attributes": {},
+      "scenes": [
+        "S0004",
+        "S0005",
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0009": {
+      "id": "E0009",
+      "name": "캔버스",
+      "category": "item",
+      "aliases": [],
+      "description": "이수아가 그림을 그리는 캔버스 수아가 메고 있는 가방",
+      "attributes": {},
+      "scenes": [
+        "S0004",
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0010": {
+      "id": "E0010",
+      "name": "물감",
+      "category": "item",
+      "aliases": [],
+      "description": "이수아가 사용하는 물감",
+      "attributes": {},
+      "scenes": [
+        "S0004",
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0011": {
+      "id": "E0011",
+      "name": "진아",
+      "category": "character",
+      "aliases": [],
+      "description": "이수아의 룸메이트, 디자인 회사에 다닌다.",
+      "attributes": {},
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0012": {
+      "id": "E0012",
+      "name": "붓",
+      "category": "item",
+      "aliases": [],
+      "description": "이수아가 사용하는 붓",
+      "attributes": {},
+      "scenes": [
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0013": {
+      "id": "E0013",
+      "name": "앞치마",
+      "category": "item",
+      "aliases": [],
+      "description": "물감이 묻은 수아의 앞치마",
+      "attributes": {},
+      "scenes": [
+        "S0006"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    }
+  },
+  "hyperedges": {
+    "H0001": {
+      "id": "H0001",
+      "type": "소속",
+      "entities": [
+        "E0002",
+        "E0005"
+      ],
+      "statement": "손님-주인 관계",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0002": {
+      "id": "H0002",
+      "type": "동료",
+      "entities": [
+        "E0002",
+        "E0007"
+      ],
+      "statement": "회사 동료",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0003": {
+      "id": "H0003",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0011"
+      ],
+      "statement": "룸메이트",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0004": {
+      "id": "H0004",
+      "type": "소속",
+      "entities": [
+        "E0008",
+        "E0005"
+      ],
+      "statement": "손님-주인 관계",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0005": {
+      "id": "H0005",
+      "type": "위치",
+      "entities": [
+        "E0002",
+        "E0004"
+      ],
+      "statement": "자주 방문",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0006": {
+      "id": "H0006",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0004"
+      ],
+      "statement": "방문",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0007": {
+      "id": "H0007",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0008"
+      ],
+      "statement": "서로에게 익숙함",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0008": {
+      "id": "H0008",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0002"
+      ],
+      "statement": "의미심장한 미소",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0009": {
+      "id": "H0009",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0008"
+      ],
+      "statement": "의미심장한 미소",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0010": {
+      "id": "H0010",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0004"
+      ],
+      "statement": "김 사장이 운영하는 작은 카페 이수아가 꿈에서 본 풍경",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0002",
+        "S0005",
+        "S0006",
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0011": {
+      "id": "H0011",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0006"
+      ],
+      "statement": "김 사장이 내리는 커피",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0012": {
+      "id": "H0012",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0009"
+      ],
+      "statement": "이수아가 그림을 그리는 캔버스 수아가 메고 있는 가방",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0004",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0013": {
+      "id": "H0013",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0010"
+      ],
+      "statement": "이수아가 사용하는 물감",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 5,
+      "scenes": [
+        "S0004",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0014": {
+      "id": "H0014",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0012"
+      ],
+      "statement": "이수아가 사용하는 붓",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 5,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0015": {
+      "id": "H0015",
+      "type": "소유",
+      "entities": [
+        "E0013",
+        "E0010"
+      ],
+      "statement": "물감이 묻은 수아의 앞치마",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0016": {
+      "id": "H0016",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0002"
+      ],
+      "statement": "나과(와) 한서준이(가) 동일 장면에 등장 (장면 1, 2, 3, 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0003",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0017": {
+      "id": "H0017",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0005"
+      ],
+      "statement": "나과(와) 김 사장이(가) 동일 장면에 등장 (장면 2, 5, 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002",
+        "S0005",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0018": {
+      "id": "H0018",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0007"
+      ],
+      "statement": "나과(와) 박재민이(가) 동일 장면에 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0019": {
+      "id": "H0019",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0008"
+      ],
+      "statement": "나과(와) 이수아이(가) 동일 장면에 등장 (장면 4, 5, 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0020": {
+      "id": "H0020",
+      "type": "관련",
+      "entities": [
+        "E0001",
+        "E0011"
+      ],
+      "statement": "나과(와) 진아이(가) 동일 장면에 등장 (장면 4, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0021": {
+      "id": "H0021",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0011"
+      ],
+      "statement": "김 사장과(와) 진아이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0022": {
+      "id": "H0022",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0003"
+      ],
+      "statement": "나이(가) 알람 시계에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0023": {
+      "id": "H0023",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0003"
+      ],
+      "statement": "한서준이(가) 알람 시계에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0024": {
+      "id": "H0024",
+      "type": "위치",
+      "entities": [
+        "E0001",
+        "E0004"
+      ],
+      "statement": "나이(가) 블루문 카페에서/과 함께 등장 (장면 2, 5, 6, 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002",
+        "S0005",
+        "S0006",
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0025": {
+      "id": "H0025",
+      "type": "위치",
+      "entities": [
+        "E0011",
+        "E0004"
+      ],
+      "statement": "진아이(가) 블루문 카페에서/과 함께 등장 (장면 5, 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005",
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0026": {
+      "id": "H0026",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0006"
+      ],
+      "statement": "나이(가) 아메리카노에서/과 함께 등장 (장면 2, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0027": {
+      "id": "H0027",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0006"
+      ],
+      "statement": "한서준이(가) 아메리카노에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0028": {
+      "id": "H0028",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0006"
+      ],
+      "statement": "이수아이(가) 아메리카노에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0029": {
+      "id": "H0029",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0006"
+      ],
+      "statement": "진아이(가) 아메리카노에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0030": {
+      "id": "H0030",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0009"
+      ],
+      "statement": "나이(가) 캔버스에서/과 함께 등장 (장면 4, 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0031": {
+      "id": "H0031",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0009"
+      ],
+      "statement": "한서준이(가) 캔버스에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0032": {
+      "id": "H0032",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0009"
+      ],
+      "statement": "김 사장이(가) 캔버스에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0033": {
+      "id": "H0033",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0009"
+      ],
+      "statement": "진아이(가) 캔버스에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0034": {
+      "id": "H0034",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0010"
+      ],
+      "statement": "나이(가) 물감에서/과 함께 등장 (장면 4, 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004",
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0035": {
+      "id": "H0035",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0010"
+      ],
+      "statement": "한서준이(가) 물감에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0036": {
+      "id": "H0036",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0010"
+      ],
+      "statement": "김 사장이(가) 물감에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0037": {
+      "id": "H0037",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0010"
+      ],
+      "statement": "진아이(가) 물감에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0038": {
+      "id": "H0038",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0012"
+      ],
+      "statement": "나이(가) 붓에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0039": {
+      "id": "H0039",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0012"
+      ],
+      "statement": "김 사장이(가) 붓에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0040": {
+      "id": "H0040",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0012"
+      ],
+      "statement": "진아이(가) 붓에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0041": {
+      "id": "H0041",
+      "type": "소유",
+      "entities": [
+        "E0001",
+        "E0013"
+      ],
+      "statement": "나이(가) 앞치마에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0042": {
+      "id": "H0042",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0013"
+      ],
+      "statement": "한서준이(가) 앞치마에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0043": {
+      "id": "H0043",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0013"
+      ],
+      "statement": "김 사장이(가) 앞치마에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0044": {
+      "id": "H0044",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0013"
+      ],
+      "statement": "이수아이(가) 앞치마에서/과 함께 등장 (장면 6)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0006"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    }
+  },
+  "chapters": {
+    "C0001": {
+      "id": "C0001",
+      "number": 1,
+      "title": "1화: 나의 아침",
+      "summary": ""
+    },
+    "C0002": {
+      "id": "C0002",
+      "number": 2,
+      "title": "2화: 그녀의 오후",
+      "summary": ""
+    },
+    "C0003": {
+      "id": "C0003",
+      "number": 3,
+      "title": "3화: 교차하는 저녁",
+      "summary": ""
+    }
+  },
+  "timeline": [],
+  "snapshots": {
+    "S0001": {
+      "sceneId": "S0001",
+      "order": 1,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "장면 1",
+      "timeMarker": null,
+      "location": "침대 옆",
+      "summary": "한서준이 7시에 일어나 회사에 갈 준비를 한다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0003"
+      ],
+      "activeEdges": [
+        "H0016",
+        "H0022",
+        "H0023"
+      ],
+      "sourceFile": "02_시점변경_1인칭.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0002": {
+      "sceneId": "S0002",
+      "order": 2,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "장면 2",
+      "timeMarker": null,
+      "location": "블루문 카페",
+      "summary": "한서준이 블루문 카페에서 김 사장에게 아메리카노를 사서 회사로 향한다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0004",
+        "E0005",
+        "E0006"
+      ],
+      "activeEdges": [
+        "H0001",
+        "H0010",
+        "H0011",
+        "H0016",
+        "H0017",
+        "H0024",
+        "H0026",
+        "H0027"
+      ],
+      "sourceFile": "02_시점변경_1인칭.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0003": {
+      "sceneId": "S0003",
+      "order": 3,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "장면 3",
+      "timeMarker": null,
+      "location": "지하철",
+      "summary": "한서준이 지하철에서 동료 박재민을 만나 회의 준비에 대한 이야기를 나눈다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0007"
+      ],
+      "activeEdges": [
+        "H0002",
+        "H0016",
+        "H0018"
+      ],
+      "sourceFile": "02_시점변경_1인칭.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0004": {
+      "sceneId": "S0004",
+      "order": 4,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "오후",
+      "timeMarker": null,
+      "location": "화실",
+      "summary": "이수아가 화실에서 꿈에서 본 푸른 달이 뜬 카페 풍경을 그리고 있다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0004",
+        "E0008",
+        "E0009",
+        "E0010",
+        "E0011"
+      ],
+      "activeEdges": [
+        "H0003",
+        "H0010",
+        "H0012",
+        "H0013",
+        "H0019",
+        "H0020",
+        "H0024",
+        "H0025",
+        "H0030",
+        "H0033",
+        "H0034",
+        "H0037"
+      ],
+      "sourceFile": "02_시점변경_1인칭.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0005": {
+      "sceneId": "S0005",
+      "order": 5,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "장면 5",
+      "timeMarker": null,
+      "location": "블루문 카페",
+      "summary": "이수아가 룸메이트 진아의 추천으로 블루문 카페에 처음 방문한다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0004",
+        "E0005",
+        "E0006",
+        "E0008",
+        "E0011",
+        "E0012"
+      ],
+      "activeEdges": [
+        "H0003",
+        "H0004",
+        "H0010",
+        "H0011",
+        "H0014",
+        "H0017",
+        "H0019",
+        "H0020",
+        "H0021",
+        "H0024",
+        "H0025",
+        "H0026",
+        "H0028",
+        "H0029",
+        "H0038",
+        "H0039",
+        "H0040"
+      ],
+      "sourceFile": "02_시점변경_1인칭.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0006": {
+      "sceneId": "S0006",
+      "order": 6,
+      "chapter": "C0003",
+      "chapterNumber": 3,
+      "time": "저녁",
+      "timeMarker": null,
+      "location": "블루문 카페",
+      "summary": "퇴근 후 서준이 블루문 카페에 들르고, 수아가 다시 카페에 방문하여 두 사람이 만난다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0004",
+        "E0005",
+        "E0008",
+        "E0009",
+        "E0010",
+        "E0013"
+      ],
+      "activeEdges": [
+        "H0005",
+        "H0006",
+        "H0007",
+        "H0008",
+        "H0009",
+        "H0010",
+        "H0012",
+        "H0013",
+        "H0015",
+        "H0016",
+        "H0017",
+        "H0019",
+        "H0024",
+        "H0030",
+        "H0031",
+        "H0032",
+        "H0034",
+        "H0035",
+        "H0036",
+        "H0041",
+        "H0042",
+        "H0043",
+        "H0044"
+      ],
+      "sourceFile": "02_시점변경_1인칭.txt",
+      "sourceFileId": "F0001"
+    }
+  },
+  "stats": {
+    "totalEntities": 13,
+    "totalEdges": 44,
+    "totalChapters": 3,
+    "entitiesByCategory": {
+      "character": 6,
+      "item": 6,
+      "location": 1
+    },
+    "edgesByType": {
+      "소속": 2,
+      "동료": 1,
+      "관련": 12,
+      "위치": 5,
+      "소유": 24
+    }
+  }
+}

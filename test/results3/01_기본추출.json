@@ -1,0 +1,227 @@
+{
+  "_test": {
+    "file": "01_기본추출",
+    "timestamp": "2026-02-07T03:11:29.801Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 골목의 고양이"
+    },
+    {
+      "id": 2,
+      "title": "2화: 비 오는 날"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "어두운 골목",
+      "time": "매일 같은 시간",
+      "summary": "민수가 골목에서 검은 고양이에게 밥을 주고, 수진과 함께 고양이를 지켜본다.",
+      "time_marker": "매일 같은 시간"
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "골목",
+      "time": null,
+      "summary": "비 오는 날, 민수가 까망이를 찾아 헤매다 새끼 고양이 잿빛이를 발견하고 수진과 함께 돌본다.",
+      "time_marker": "다음 날"
+    }
+  ],
+  "entities": [
+    {
+      "name": "검은 고양이",
+      "category": "character",
+      "description": "이름 없는 검은 고양이",
+      "scenes": [
+        1,
+        2
+      ],
+      "aliases": [
+        "까망이"
+      ]
+    },
+    {
+      "name": "민수",
+      "category": "character",
+      "description": "학교에서 돌아오는 길에 골목을 지나가는 소년",
+      "scenes": [
+        1,
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "참치캔",
+      "category": "item",
+      "description": "민수가 고양이에게 주는 음식",
+      "scenes": [
+        1
+      ],
+      "aliases": []
+    },
+    {
+      "name": "수진",
+      "category": "character",
+      "description": "민수의 같은 반 친구",
+      "scenes": [
+        1,
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "골목",
+      "category": "location",
+      "description": "검은 고양이가 자주 나타나는 장소",
+      "scenes": [
+        1,
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "잿빛이",
+      "category": "character",
+      "description": "까망이의 새끼 고양이",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "쓰레기통",
+      "category": "item",
+      "description": "까망이와 잿빛이가 웅크리고 있던 장소",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "담요",
+      "category": "item",
+      "description": "수진이 고양이 가족을 위해 가져온 물건",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "우유",
+      "category": "item",
+      "description": "수진이 고양이 가족을 위해 가져온 음식",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "우산",
+      "category": "item",
+      "description": "비 오는 날 민수가 사용한 물건",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "민수",
+      "to": "검은 고양이",
+      "type": "관련",
+      "description": "민수가 검은 고양이에게 밥을 줌",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "수진",
+      "to": "검은 고양이",
+      "type": "관련",
+      "description": "수진이 검은 고양이를 좋아함",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "민수",
+      "to": "수진",
+      "type": "친구",
+      "description": "같은 반 친구",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "검은 고양이",
+      "to": "잿빛이",
+      "type": "가족",
+      "description": "어미-새끼",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "민수",
+      "to": "잿빛이",
+      "type": "관련",
+      "description": "민수가 잿빛이를 돌봄",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "수진",
+      "to": "잿빛이",
+      "type": "관련",
+      "description": "수진이 잿빛이를 돌봄",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "검은 고양이",
+      "to": "골목",
+      "type": "위치",
+      "description": "검은 고양이가 골목에 있음",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "잿빛이",
+      "to": "골목",
+      "type": "위치",
+      "description": "잿빛이가 골목에 있음",
+      "scenes": [
+        2
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "검은 고양이",
+      "merge": "까망이",
+      "reason": "검은 고양이의 별칭이 까망이임"
+    }
+  ],
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 4,
+    "locationCount": 1,
+    "itemCount": 5,
+    "conceptCount": 0,
+    "relationshipCount": 8,
+    "sceneCount": 2,
+    "chapterCount": 2
+  }
+}

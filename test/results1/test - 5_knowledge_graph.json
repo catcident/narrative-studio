@@ -1,0 +1,1854 @@
+{
+  "metadata": {
+    "title": "test - 5",
+    "createdAt": "2026-02-07T02:16:30.537Z",
+    "updatedAt": "2026-02-07T02:16:30.537Z",
+    "version": "1.0.0",
+    "model": "google/gemini-2.0-flash-001",
+    "sourceFiles": [
+      {
+        "id": "F0001",
+        "fileName": "05_세계관_컨셉.txt",
+        "uploadedAt": "2026-02-07T02:16:30.537Z",
+        "text": "# 프롤로그: 균열\r\n\r\n이 세계에는 '균열'이라 불리는 현상이 존재한다. 하늘에 금이 가듯 공간이 찢어지고, 그 틈으로 마물이 쏟아져 나온다.\r\n\r\n균열은 약 50년 전부터 나타나기 시작했다. 처음에는 작은 틈이었지만, 시간이 지날수록 커지고 있었다.\r\n\r\n이에 대응하기 위해 인류는 '특수국'을 설립했다. 특수국은 균열을 감시하고, 마물을 처치하는 공식 기관이다.\r\n\r\n# 1화: 신입\r\n\r\n특수국 서울 지부.\r\n\r\n강유진이 건물 앞에 섰다. 오늘이 첫 출근일이었다.\r\n\r\n유진은 '감지사'였다. 균열이 열리기 직전 그 기운을 감지할 수 있는 희귀한 능력자. 전국에 감지사는 열 명도 되지 않았다.\r\n\r\n\"강유진 씨? 이쪽으로 오세요.\"\r\n\r\n안내해 준 것은 선배 요원 한태우였다. 태우는 '강화사' - 신체 능력을 극한까지 끌어올릴 수 있는 전투형 능력자였다.\r\n\r\n\"앞으로 같은 팀이니까 편하게 해. 나는 태우라고 불러.\"\r\n\r\n태우가 이끈 곳은 3층 작전실이었다. 거기에는 이미 두 사람이 있었다.\r\n\r\n\"팀장 이소라입니다. 앞으로 잘 부탁해요.\"\r\n\r\n소라는 '해석사'였다. 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가지고 있었다.\r\n\r\n그 옆에 앉아 있는 남자는 자기소개도 하지 않고 모니터만 바라보고 있었다.\r\n\r\n\"저 사람은 정시우. 우리 팀 '봉인사'야. 균열을 일시적으로 닫을 수 있어. 성격이 좀... 그래.\"\r\n\r\n태우가 소곤거렸다.\r\n\r\n# 2화: 첫 균열\r\n\r\n다음 날 새벽 3시.\r\n\r\n유진의 머릿속에 날카로운 감각이 꽂혔다. 균열이 열리려 한다.\r\n\r\n\"관악산 방향, 규모 중형 이상!\"\r\n\r\n긴급 출동. 소라가 분석한 결과 이번 균열에서 나올 마물은 '그림자개' - C등급 마물이지만 무리로 움직이는 위험한 종이었다.\r\n\r\n태우가 앞장서서 관악산 입구에 도착했다. 하늘에 보라빛 금이 서서히 벌어지고 있었다.\r\n\r\n\"시우, 봉인 준비.\"\r\n\r\n소라의 지시에 시우가 처음으로 입을 열었다.\r\n\r\n\"...30초만 버텨.\"\r\n\r\n시우가 양손을 들어올리자 보라빛 빛이 손에서 퍼져나갔다. 봉인술이었다. 하지만 균열의 규모가 예상보다 컸다.\r\n\r\n균열 사이로 그림자개 수십 마리가 쏟아져 나왔다.\r\n\r\n태우가 강화 능력을 발동했다. 근육이 팽창하고 눈이 금빛으로 빛났다.\r\n\r\n\"유진, 뒤에 있어!\"\r\n\r\n태우가 그림자개 무리 속으로 뛰어들었다. 유진은 뒤에서 균열의 기운을 감지하며 소라에게 실시간 정보를 전달했다.\r\n\r\n\"균열 안쪽에 더 큰 마물이 있어요! B등급... 아니, A등급 반응!\"\r\n\r\n소라의 얼굴이 창백해졌다.\r\n\r\n\"전원 후퇴! 시우, 봉인 최대출력!\"\r\n\r\n시우의 코에서 피가 흘렀다. 하지만 그는 이를 악물고 봉인술의 출력을 끌어올렸다.\r\n\r\n균열이 서서히 닫히기 시작했다. 그 안에서 거대한 눈 하나가 유진을 바라보았다.\r\n\r\n그 순간 유진의 몸에서 처음 느끼는 힘이 폭발했다. 감지사가 아닌, 다른 무언가.\r\n\r\n균열이 완전히 닫혔다.\r\n\r\n# 에필로그\r\n\r\n특수국 본부.\r\n\r\n국장 윤재호가 보고서를 읽고 있었다.\r\n\r\n\"감지사가 각성했다고? 그것도 현장에서?\"\r\n\r\n옆에 서 있던 비서 민서가 고개를 끄덕였다.\r\n\r\n\"네. 강유진 요원입니다. 감지 능력 외에 추가 능력이 발현된 것으로 보입니다.\"\r\n\r\n윤재호 국장은 창밖을 바라보았다. 서울 하늘 어딘가에 또 다른 균열이 서서히 벌어지고 있었다.\r\n\r\n\"50년이야. 균열이 처음 나타난 지 50년. 그리고 이제 변화가 시작됐어.\"\r\n",
+        "charCount": 1712
+      }
+    ],
+    "author": "5"
+  },
+  "entities": {
+    "E0001": {
+      "id": "E0001",
+      "name": "균열",
+      "category": "concept",
+      "aliases": [],
+      "description": "하늘에 금이 가듯 공간이 찢어지는 현상. 틈으로 마물이 쏟아져 나옴. 약 50년 전부터 나타나기 시작. 하늘에 금이 가듯 공간이 찢어지는 현상. 틈으로 마물이 쏟아져 나옴. 약 50년 전부터 나타남",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0002": {
+      "id": "E0002",
+      "name": "마물",
+      "category": "character",
+      "aliases": [],
+      "description": "균열을 통해 나오는 존재",
+      "attributes": {},
+      "scenes": [
+        "S0001"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0003": {
+      "id": "E0003",
+      "name": "인류",
+      "category": "character",
+      "aliases": [],
+      "description": "균열에 대응하기 위해 특수국을 설립함",
+      "attributes": {},
+      "scenes": [
+        "S0001"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0004": {
+      "id": "E0004",
+      "name": "특수국",
+      "category": "location",
+      "aliases": [],
+      "description": "균열을 감시하고, 마물을 처치하는 공식 기관 특수국의 본부",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0005": {
+      "id": "E0005",
+      "name": "강유진",
+      "category": "character",
+      "aliases": [],
+      "description": "특수국 신입 요원. '감지사'로, 균열이 열리기 직전 기운을 감지하는 능력이 있다. 전국에 열 명도 되지 않는 희귀한 능력자. 특수국 신입 요원. '감지사'로, 균열이 열리기 직전 기운을 감지하는 능력이 있다. 전국에 몇 안 되는 감지사 중 하나. 균열 봉인 중 새로운 힘 각성",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0003",
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0006": {
+      "id": "E0006",
+      "name": "특수국 서울 지부",
+      "category": "location",
+      "aliases": [],
+      "description": "특수국 기관의 서울 지부",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0007": {
+      "id": "E0007",
+      "name": "한태우",
+      "category": "character",
+      "aliases": [
+        "태우"
+      ],
+      "description": "특수국 선배 요원. '강화사'로, 신체 능력을 극한까지 끌어올릴 수 있는 전투형 능력자.",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0008": {
+      "id": "E0008",
+      "name": "이소라",
+      "category": "character",
+      "aliases": [
+        "소라"
+      ],
+      "description": "특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가지고 있다. 특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가졌다.",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0009": {
+      "id": "E0009",
+      "name": "정시우",
+      "category": "character",
+      "aliases": [
+        "시우"
+      ],
+      "description": "특수국 팀원. '봉인사'로, 균열을 일시적으로 닫을 수 있다. 성격이 다소 특이하다.",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0010": {
+      "id": "E0010",
+      "name": "작전실",
+      "category": "location",
+      "aliases": [],
+      "description": "특수국 서울 지부 3층에 위치한 방",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0011": {
+      "id": "E0011",
+      "name": "관악산",
+      "category": "location",
+      "aliases": [],
+      "description": "균열이 발생한 장소",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0012": {
+      "id": "E0012",
+      "name": "그림자개",
+      "category": "character",
+      "aliases": [],
+      "description": "C등급 마물. 무리로 움직이는 위험한 종.",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0013": {
+      "id": "E0013",
+      "name": "윤재호",
+      "category": "character",
+      "aliases": [],
+      "description": "특수국 국장",
+      "attributes": {},
+      "scenes": [
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0014": {
+      "id": "E0014",
+      "name": "민서",
+      "category": "character",
+      "aliases": [],
+      "description": "특수국 국장 윤재호의 비서",
+      "attributes": {},
+      "scenes": [
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0015": {
+      "id": "E0015",
+      "name": "봉인술",
+      "category": "concept",
+      "aliases": [],
+      "description": "균열을 일시적으로 닫는 기술",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0016": {
+      "id": "E0016",
+      "name": "강화 능력",
+      "category": "concept",
+      "aliases": [],
+      "description": "신체 능력을 극한까지 끌어올리는 능력",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0017": {
+      "id": "E0017",
+      "name": "보고서",
+      "category": "item",
+      "aliases": [],
+      "description": "강유진 요원의 각성 관련 보고서",
+      "attributes": {},
+      "scenes": [
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    }
+  },
+  "hyperedges": {
+    "H0001": {
+      "id": "H0001",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0001"
+      ],
+      "statement": "균열을 통해 나옴",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0002": {
+      "id": "H0002",
+      "type": "소속",
+      "entities": [
+        "E0003",
+        "E0004"
+      ],
+      "statement": "인류가 설립한 기관",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0003": {
+      "id": "H0003",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0001"
+      ],
+      "statement": "균열을 감시",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0004": {
+      "id": "H0004",
+      "type": "적대",
+      "entities": [
+        "E0004",
+        "E0002"
+      ],
+      "statement": "마물을 처치",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0005": {
+      "id": "H0005",
+      "type": "동료",
+      "entities": [
+        "E0005",
+        "E0007"
+      ],
+      "statement": "특수국 요원 선후배 관계, 같은 팀 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0006": {
+      "id": "H0006",
+      "type": "동료",
+      "entities": [
+        "E0007",
+        "E0008"
+      ],
+      "statement": "특수국 요원, 같은 팀 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0007": {
+      "id": "H0007",
+      "type": "동료",
+      "entities": [
+        "E0008",
+        "E0009"
+      ],
+      "statement": "특수국 요원, 같은 팀 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0008": {
+      "id": "H0008",
+      "type": "동료",
+      "entities": [
+        "E0009",
+        "E0007"
+      ],
+      "statement": "특수국 요원, 같은 팀 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0009": {
+      "id": "H0009",
+      "type": "동료",
+      "entities": [
+        "E0005",
+        "E0008"
+      ],
+      "statement": "특수국 요원, 같은 팀 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0010": {
+      "id": "H0010",
+      "type": "동료",
+      "entities": [
+        "E0005",
+        "E0009"
+      ],
+      "statement": "특수국 요원, 같은 팀 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0011": {
+      "id": "H0011",
+      "type": "소속",
+      "entities": [
+        "E0013",
+        "E0014"
+      ],
+      "statement": "국장-비서 관계",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0012": {
+      "id": "H0012",
+      "type": "소속",
+      "entities": [
+        "E0013",
+        "E0004"
+      ],
+      "statement": "특수국 국장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0013": {
+      "id": "H0013",
+      "type": "소속",
+      "entities": [
+        "E0005",
+        "E0004"
+      ],
+      "statement": "특수국 요원",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0014": {
+      "id": "H0014",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0017"
+      ],
+      "statement": "강유진 요원의 각성 관련 보고서",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 5,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0015": {
+      "id": "H0015",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0017"
+      ],
+      "statement": "강유진 요원의 각성 관련 보고서",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0016": {
+      "id": "H0016",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0001"
+      ],
+      "statement": "균열에 대응하기 위해 특수국을 설립함",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0017": {
+      "id": "H0017",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0001"
+      ],
+      "statement": "특수국 신입 요원. '감지사'로, 균열이 열리기 직전 기운을 감지하는 능력이 있다. 전국에 열 명도 되지 않는 희귀한 능력자. 특수국 신입 요원. '감지사'로, 균열이 열리기 직전 기운을 감지하는 능력이 있다. 전국에 몇 안 되는 감지사 중 하나. 균열 봉인 중 새로운 힘 각성",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003",
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0018": {
+      "id": "H0018",
+      "type": "위치",
+      "entities": [
+        "E0006",
+        "E0004"
+      ],
+      "statement": "특수국 기관의 서울 지부",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0019": {
+      "id": "H0019",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0004"
+      ],
+      "statement": "특수국 선배 요원. '강화사'로, 신체 능력을 극한까지 끌어올릴 수 있는 전투형 능력자.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0020": {
+      "id": "H0020",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0001"
+      ],
+      "statement": "특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가지고 있다. 특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가졌다.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0021": {
+      "id": "H0021",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0002"
+      ],
+      "statement": "특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가지고 있다. 특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가졌다.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0022": {
+      "id": "H0022",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0004"
+      ],
+      "statement": "특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가지고 있다. 특수국 팀장. '해석사'로, 균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 능력을 가졌다.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0023": {
+      "id": "H0023",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0001"
+      ],
+      "statement": "특수국 팀원. '봉인사'로, 균열을 일시적으로 닫을 수 있다. 성격이 다소 특이하다.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0024": {
+      "id": "H0024",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0004"
+      ],
+      "statement": "특수국 팀원. '봉인사'로, 균열을 일시적으로 닫을 수 있다. 성격이 다소 특이하다.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002",
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0025": {
+      "id": "H0025",
+      "type": "위치",
+      "entities": [
+        "E0010",
+        "E0004"
+      ],
+      "statement": "특수국 서울 지부 3층에 위치한 방",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0026": {
+      "id": "H0026",
+      "type": "위치",
+      "entities": [
+        "E0010",
+        "E0006"
+      ],
+      "statement": "특수국 서울 지부 3층에 위치한 방",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0027": {
+      "id": "H0027",
+      "type": "위치",
+      "entities": [
+        "E0011",
+        "E0001"
+      ],
+      "statement": "균열이 발생한 장소",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0028": {
+      "id": "H0028",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0002"
+      ],
+      "statement": "C등급 마물. 무리로 움직이는 위험한 종.",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0029": {
+      "id": "H0029",
+      "type": "위치",
+      "entities": [
+        "E0014",
+        "E0004"
+      ],
+      "statement": "특수국 국장 윤재호의 비서",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0030": {
+      "id": "H0030",
+      "type": "관련",
+      "entities": [
+        "E0015",
+        "E0001"
+      ],
+      "statement": "균열을 일시적으로 닫는 기술",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0031": {
+      "id": "H0031",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0003"
+      ],
+      "statement": "마물과(와) 인류이(가) 동일 장면에 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0032": {
+      "id": "H0032",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0012"
+      ],
+      "statement": "강유진과(와) 그림자개이(가) 동일 장면에 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0033": {
+      "id": "H0033",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0013"
+      ],
+      "statement": "강유진과(와) 윤재호이(가) 동일 장면에 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0034": {
+      "id": "H0034",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0014"
+      ],
+      "statement": "강유진과(와) 민서이(가) 동일 장면에 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0035": {
+      "id": "H0035",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0012"
+      ],
+      "statement": "한태우과(와) 그림자개이(가) 동일 장면에 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0036": {
+      "id": "H0036",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0012"
+      ],
+      "statement": "이소라과(와) 그림자개이(가) 동일 장면에 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0037": {
+      "id": "H0037",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0012"
+      ],
+      "statement": "정시우과(와) 그림자개이(가) 동일 장면에 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0038": {
+      "id": "H0038",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0001"
+      ],
+      "statement": "한태우이(가) 균열에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0039": {
+      "id": "H0039",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0001"
+      ],
+      "statement": "그림자개이(가) 균열에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0040": {
+      "id": "H0040",
+      "type": "관련",
+      "entities": [
+        "E0013",
+        "E0001"
+      ],
+      "statement": "윤재호이(가) 균열에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0041": {
+      "id": "H0041",
+      "type": "관련",
+      "entities": [
+        "E0014",
+        "E0001"
+      ],
+      "statement": "민서이(가) 균열에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0042": {
+      "id": "H0042",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0006"
+      ],
+      "statement": "강유진이(가) 특수국 서울 지부에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0043": {
+      "id": "H0043",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0006"
+      ],
+      "statement": "한태우이(가) 특수국 서울 지부에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0044": {
+      "id": "H0044",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0006"
+      ],
+      "statement": "이소라이(가) 특수국 서울 지부에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0045": {
+      "id": "H0045",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0006"
+      ],
+      "statement": "정시우이(가) 특수국 서울 지부에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0046": {
+      "id": "H0046",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0010"
+      ],
+      "statement": "강유진이(가) 작전실에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0047": {
+      "id": "H0047",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0010"
+      ],
+      "statement": "한태우이(가) 작전실에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0048": {
+      "id": "H0048",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0010"
+      ],
+      "statement": "이소라이(가) 작전실에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0049": {
+      "id": "H0049",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0010"
+      ],
+      "statement": "정시우이(가) 작전실에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0050": {
+      "id": "H0050",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0011"
+      ],
+      "statement": "강유진이(가) 관악산에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0051": {
+      "id": "H0051",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0011"
+      ],
+      "statement": "한태우이(가) 관악산에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0052": {
+      "id": "H0052",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0011"
+      ],
+      "statement": "이소라이(가) 관악산에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0053": {
+      "id": "H0053",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0011"
+      ],
+      "statement": "정시우이(가) 관악산에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0054": {
+      "id": "H0054",
+      "type": "위치",
+      "entities": [
+        "E0012",
+        "E0011"
+      ],
+      "statement": "그림자개이(가) 관악산에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0055": {
+      "id": "H0055",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0015"
+      ],
+      "statement": "강유진이(가) 봉인술에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0056": {
+      "id": "H0056",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0015"
+      ],
+      "statement": "한태우이(가) 봉인술에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0057": {
+      "id": "H0057",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0015"
+      ],
+      "statement": "이소라이(가) 봉인술에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0058": {
+      "id": "H0058",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0015"
+      ],
+      "statement": "정시우이(가) 봉인술에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0059": {
+      "id": "H0059",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0015"
+      ],
+      "statement": "그림자개이(가) 봉인술에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0060": {
+      "id": "H0060",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0016"
+      ],
+      "statement": "강유진이(가) 강화 능력에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0061": {
+      "id": "H0061",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0016"
+      ],
+      "statement": "한태우이(가) 강화 능력에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0062": {
+      "id": "H0062",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0016"
+      ],
+      "statement": "이소라이(가) 강화 능력에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0063": {
+      "id": "H0063",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0016"
+      ],
+      "statement": "정시우이(가) 강화 능력에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0064": {
+      "id": "H0064",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0016"
+      ],
+      "statement": "그림자개이(가) 강화 능력에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0065": {
+      "id": "H0065",
+      "type": "소유",
+      "entities": [
+        "E0013",
+        "E0017"
+      ],
+      "statement": "윤재호이(가) 보고서에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0066": {
+      "id": "H0066",
+      "type": "소유",
+      "entities": [
+        "E0014",
+        "E0017"
+      ],
+      "statement": "민서이(가) 보고서에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    }
+  },
+  "chapters": {
+    "C0001": {
+      "id": "C0001",
+      "number": 1,
+      "title": "프롤로그: 균열",
+      "summary": ""
+    },
+    "C0002": {
+      "id": "C0002",
+      "number": 2,
+      "title": "2화: 첫 균열",
+      "summary": ""
+    }
+  },
+  "timeline": [],
+  "snapshots": {
+    "S0001": {
+      "sceneId": "S0001",
+      "order": 1,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "장면 1",
+      "timeMarker": null,
+      "location": "",
+      "summary": "세계에 '균열'이라는 현상이 나타나고, 그 틈으로 마물이 쏟아져 나온다. 균열에 대응하기 위해 인류는 '특수국'을 설립했다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0003",
+        "E0004"
+      ],
+      "activeEdges": [
+        "H0001",
+        "H0002",
+        "H0003",
+        "H0004",
+        "H0016",
+        "H0031"
+      ],
+      "sourceFile": "05_세계관_컨셉.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0002": {
+      "sceneId": "S0002",
+      "order": 2,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "장면 2",
+      "timeMarker": null,
+      "location": "특수국 서울 지부",
+      "summary": "강유진이 특수국 서울 지부에 첫 출근하고, 선배 요원 한태우의 안내를 받아 작전실로 향한다. 작전실에서 팀장 이소라와 정시우를 만난다.",
+      "events": [],
+      "charactersPresent": [
+        "E0005",
+        "E0006",
+        "E0007",
+        "E0008",
+        "E0009",
+        "E0010"
+      ],
+      "activeEdges": [
+        "H0005",
+        "H0006",
+        "H0007",
+        "H0008",
+        "H0009",
+        "H0010",
+        "H0018",
+        "H0019",
+        "H0021",
+        "H0022",
+        "H0024",
+        "H0025",
+        "H0026",
+        "H0042",
+        "H0043",
+        "H0044",
+        "H0045",
+        "H0046",
+        "H0047",
+        "H0048",
+        "H0049"
+      ],
+      "sourceFile": "05_세계관_컨셉.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0003": {
+      "sceneId": "S0003",
+      "order": 3,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "새벽 3시",
+      "timeMarker": "다음 날",
+      "location": "관악산 입구",
+      "summary": "유진이 균열을 감지하고 특수국 팀원들이 관악산 입구로 출동한다. 시우가 봉인술을 시도하지만 균열에서 그림자개들이 쏟아져 나온다. 태우가 그림자개 무리와 싸우고, 유진은 균열 안쪽의 더 큰 마물을 감지한다. 시우가 봉인술 출력을 최대로 끌어올려 균열을 닫지만, 유진은 처음 느끼는 힘을 폭발시킨다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0005",
+        "E0007",
+        "E0008",
+        "E0009",
+        "E0011",
+        "E0012",
+        "E0015",
+        "E0016"
+      ],
+      "activeEdges": [
+        "H0005",
+        "H0006",
+        "H0007",
+        "H0008",
+        "H0009",
+        "H0010",
+        "H0017",
+        "H0019",
+        "H0020",
+        "H0021",
+        "H0022",
+        "H0023",
+        "H0024",
+        "H0027",
+        "H0028",
+        "H0030",
+        "H0032",
+        "H0035",
+        "H0036",
+        "H0037",
+        "H0038",
+        "H0039",
+        "H0050",
+        "H0051",
+        "H0052",
+        "H0053",
+        "H0054",
+        "H0055",
+        "H0056",
+        "H0057",
+        "H0058",
+        "H0059",
+        "H0060",
+        "H0061",
+        "H0062",
+        "H0063",
+        "H0064"
+      ],
+      "sourceFile": "05_세계관_컨셉.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0004": {
+      "sceneId": "S0004",
+      "order": 4,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "장면 4",
+      "timeMarker": null,
+      "location": "특수국 본부",
+      "summary": "윤재호 국장이 강유진 요원의 각성 보고서를 읽고, 비서 민서가 추가 능력이 발현되었음을 보고한다. 윤재호 국장은 균열의 변화를 감지한다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0004",
+        "E0005",
+        "E0013",
+        "E0014",
+        "E0017"
+      ],
+      "activeEdges": [
+        "H0011",
+        "H0012",
+        "H0013",
+        "H0014",
+        "H0015",
+        "H0017",
+        "H0029",
+        "H0033",
+        "H0034",
+        "H0040",
+        "H0041",
+        "H0065",
+        "H0066"
+      ],
+      "sourceFile": "05_세계관_컨셉.txt",
+      "sourceFileId": "F0001"
+    }
+  },
+  "stats": {
+    "totalEntities": 17,
+    "totalEdges": 66,
+    "totalChapters": 2,
+    "entitiesByCategory": {
+      "concept": 3,
+      "character": 9,
+      "location": 4,
+      "item": 1
+    },
+    "edgesByType": {
+      "관련": 31,
+      "소속": 4,
+      "적대": 1,
+      "동료": 6,
+      "소유": 3,
+      "위치": 21
+    }
+  }
+}

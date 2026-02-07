@@ -1,0 +1,220 @@
+{
+  "_test": {
+    "file": "04_복잡한관계망",
+    "timestamp": "2026-02-07T03:12:02.672Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 가문의 비밀"
+    },
+    {
+      "id": 2,
+      "title": "2화: 할머니의 과거"
+    },
+    {
+      "id": 3,
+      "title": "3화: 현재"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "할머니 댁 다락방",
+      "time": null,
+      "summary": "어린 은서가 할머니 강순옥의 일기장을 발견하고, 할머니에게 쌍둥이 자매 강순희가 있었다는 사실을 알게 된다.",
+      "time_marker": "10년 전"
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "할머니 댁",
+      "time": null,
+      "summary": "은서의 아버지 강민호가 할머니 댁을 방문하여 은서에게 할머니의 과거에 대해 이야기한다. 강민호에게는 형 강민석이 있었지만 10년 전 사라졌다.",
+      "time_marker": "그로부터 일주일 후"
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "카페",
+      "time": null,
+      "summary": "은서는 친구 하늘이에게 큰아버지 강민석을 찾아달라고 부탁한다. 하늘이의 조수 정우가 강민석과 강순희가 함께 찍힌 사진을 보여준다.",
+      "time_marker": "다음 날"
+    }
+  ],
+  "entities": [
+    {
+      "name": "은서",
+      "category": "character",
+      "description": "강순옥의 손녀, 강민호의 딸",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "강순옥",
+      "category": "character",
+      "description": "은서의 할머니, 강순희의 쌍둥이 자매 강순옥의 쌍둥이 자매",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": [
+        "강순희"
+      ]
+    },
+    {
+      "name": "일기장",
+      "category": "item",
+      "description": "강순옥의 일기가 적힌 낡은 일기장",
+      "scenes": [
+        1
+      ],
+      "aliases": []
+    },
+    {
+      "name": "강민호",
+      "category": "character",
+      "description": "은서의 아버지, 강민석의 동생",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "박지영",
+      "category": "character",
+      "description": "은서의 어머니, 강민호의 아내",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "강민석",
+      "category": "character",
+      "description": "강민호의 형, 10년 전 실종",
+      "scenes": [
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "하늘",
+      "category": "character",
+      "description": "은서의 소꿉친구, 사립탐정",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "정우",
+      "category": "character",
+      "description": "하늘이의 조수",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "카페",
+      "category": "location",
+      "description": "은서와 하늘이가 만난 장소",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "은서",
+      "to": "강순옥",
+      "type": "가족",
+      "description": "할머니-손녀",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "은서",
+      "to": "강민호",
+      "type": "가족",
+      "description": "아버지-딸",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "강민호",
+      "to": "강순옥",
+      "type": "가족",
+      "description": "아들-어머니",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "강민호",
+      "to": "강민석",
+      "type": "가족",
+      "description": "형제",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "박지영",
+      "to": "강순옥",
+      "type": "가족",
+      "description": "며느리-시어머니",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "은서",
+      "to": "하늘",
+      "type": "친구",
+      "description": "소꿉친구",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "하늘",
+      "to": "정우",
+      "type": "동료",
+      "description": "탐정과 조수",
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "강순옥",
+      "merge": "강순희",
+      "reason": "강순옥과 강순희는 쌍둥이 자매 관계이므로 동일 인물일 가능성이 낮음. 자매 관계임"
+    }
+  ],
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 7,
+    "locationCount": 1,
+    "itemCount": 1,
+    "conceptCount": 0,
+    "relationshipCount": 7,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

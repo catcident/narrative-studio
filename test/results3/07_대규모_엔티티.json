@@ -1,0 +1,565 @@
+{
+  "_test": {
+    "file": "07_대규모_엔티티",
+    "timestamp": "2026-02-07T03:12:44.511Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 학원"
+    },
+    {
+      "id": 2,
+      "title": "2화: 축제 준비"
+    },
+    {
+      "id": 3,
+      "title": "3화: 축제"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "서림 학원",
+      "time": null,
+      "summary": "서림 학원의 반들과 선생님, 학생들이 소개된다.",
+      "time_marker": null
+    },
+    {
+      "id": 2,
+      "chapter": 1,
+      "location": "학원",
+      "time": null,
+      "summary": "윤 원장이 선생님들과 회의를 하며 학원 축제를 열 것을 알린다.",
+      "time_marker": null
+    },
+    {
+      "id": 3,
+      "chapter": 2,
+      "location": "A반",
+      "time": null,
+      "summary": "A반은 연극 '구운몽'을 현대판으로 각색하여 공연하기로 결정한다.",
+      "time_marker": null
+    },
+    {
+      "id": 4,
+      "chapter": 2,
+      "location": "B반",
+      "time": null,
+      "summary": "B반은 스포츠 아트 전시회를 하기로 결정한다.",
+      "time_marker": null
+    },
+    {
+      "id": 5,
+      "chapter": 2,
+      "location": "C반",
+      "time": null,
+      "summary": "C반은 쿠킹 콘서트를 하기로 결정한다.",
+      "time_marker": null
+    },
+    {
+      "id": 6,
+      "chapter": 3,
+      "location": "학원 로비",
+      "time": null,
+      "summary": "학원 축제가 시작되고 학부모들이 참석한다.",
+      "time_marker": null
+    },
+    {
+      "id": 7,
+      "chapter": 3,
+      "location": "학원",
+      "time": null,
+      "summary": "A반의 연극 공연이 시작된다.",
+      "time_marker": null
+    },
+    {
+      "id": 8,
+      "chapter": 3,
+      "location": "학원",
+      "time": null,
+      "summary": "B반의 스포츠 아트 전시회가 열린다.",
+      "time_marker": null
+    },
+    {
+      "id": 9,
+      "chapter": 3,
+      "location": "학원",
+      "time": null,
+      "summary": "C반의 쿠킹 콘서트가 진행된다.",
+      "time_marker": null
+    },
+    {
+      "id": 10,
+      "chapter": 3,
+      "location": "학원",
+      "time": null,
+      "summary": "윤 원장이 최우수반으로 C반을 발표한다.",
+      "time_marker": null
+    },
+    {
+      "id": 11,
+      "chapter": 3,
+      "location": "학원 운동장",
+      "time": null,
+      "summary": "세 반 학생들이 함께 모여 간식을 먹는다.",
+      "time_marker": null
+    }
+  ],
+  "entities": [
+    {
+      "name": "서림 학원",
+      "category": "location",
+      "description": "다양한 반이 있는 학원",
+      "scenes": [
+        1
+      ],
+      "aliases": []
+    },
+    {
+      "name": "고은미",
+      "category": "character",
+      "description": "A반 담임 선생님",
+      "scenes": [
+        1,
+        3,
+        7
+      ],
+      "aliases": []
+    },
+    {
+      "name": "김도윤",
+      "category": "character",
+      "description": "A반 반장, 성실함",
+      "scenes": [
+        1,
+        3,
+        7,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "이하은",
+      "category": "character",
+      "description": "A반 부반장, 조용하지만 성적이 좋음",
+      "scenes": [
+        1,
+        3,
+        7,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "박서진",
+      "category": "character",
+      "description": "A반 학생, 장난꾸러기",
+      "scenes": [
+        1,
+        3,
+        7,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "이준형",
+      "category": "character",
+      "description": "B반 담임 선생님",
+      "scenes": [
+        1,
+        4,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "최강준",
+      "category": "character",
+      "description": "B반 학생, 축구를 좋아함",
+      "scenes": [
+        1,
+        4,
+        8,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "정다은",
+      "category": "character",
+      "description": "B반 학생, 그림을 잘 그림",
+      "scenes": [
+        1,
+        4,
+        8,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "오민재",
+      "category": "character",
+      "description": "B반 학생, 수학 천재",
+      "scenes": [
+        1,
+        4,
+        8
+      ],
+      "aliases": []
+    },
+    {
+      "name": "박미라",
+      "category": "character",
+      "description": "C반 담임 선생님",
+      "scenes": [
+        1,
+        5,
+        9
+      ],
+      "aliases": []
+    },
+    {
+      "name": "송예린",
+      "category": "character",
+      "description": "C반 학생, 음악을 함",
+      "scenes": [
+        1,
+        5,
+        9,
+        10,
+        11
+      ],
+      "aliases": []
+    },
+    {
+      "name": "한지호",
+      "category": "character",
+      "description": "C반 학생, 독서왕",
+      "scenes": [
+        1,
+        5,
+        9,
+        10
+      ],
+      "aliases": []
+    },
+    {
+      "name": "문수빈",
+      "category": "character",
+      "description": "C반 학생, 요리를 좋아함",
+      "scenes": [
+        1,
+        5,
+        9,
+        10
+      ],
+      "aliases": []
+    },
+    {
+      "name": "윤태식",
+      "category": "character",
+      "description": "학원장",
+      "scenes": [
+        1,
+        2,
+        10
+      ],
+      "aliases": []
+    },
+    {
+      "name": "학원 축제",
+      "category": "concept",
+      "description": "다음 주에 열리는 학원 행사",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "김선영",
+      "category": "character",
+      "description": "도윤이의 어머니",
+      "scenes": [
+        6
+      ],
+      "aliases": []
+    },
+    {
+      "name": "최병호",
+      "category": "character",
+      "description": "강준이의 아버지",
+      "scenes": [
+        6
+      ],
+      "aliases": []
+    },
+    {
+      "name": "송영자",
+      "category": "character",
+      "description": "예린이의 할머니",
+      "scenes": [
+        6
+      ],
+      "aliases": []
+    },
+    {
+      "name": "구운몽",
+      "category": "concept",
+      "description": "A반에서 연극으로 공연할 작품",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "스포츠 아트",
+      "category": "concept",
+      "description": "B반에서 준비한 운동하는 모습을 그린 그림 전시",
+      "scenes": [
+        4,
+        8
+      ],
+      "aliases": []
+    },
+    {
+      "name": "쿠킹 콘서트",
+      "category": "concept",
+      "description": "C반에서 준비한 노래와 요리가 합쳐진 공연",
+      "scenes": [
+        5,
+        9
+      ],
+      "aliases": []
+    },
+    {
+      "name": "A반",
+      "category": "concept",
+      "description": "고은미 선생님이 담임인 반",
+      "scenes": [
+        1,
+        3,
+        7
+      ],
+      "aliases": []
+    },
+    {
+      "name": "B반",
+      "category": "concept",
+      "description": "이준형 선생님이 담임인 반",
+      "scenes": [
+        1,
+        4,
+        8
+      ],
+      "aliases": []
+    },
+    {
+      "name": "C반",
+      "category": "concept",
+      "description": "박미라 선생님이 담임인 반",
+      "scenes": [
+        1,
+        5,
+        9,
+        10
+      ],
+      "aliases": []
+    },
+    {
+      "name": "축구부",
+      "category": "concept",
+      "description": "강준이와 민재가 소속된 부",
+      "scenes": [
+        1
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "김도윤",
+      "to": "고은미",
+      "type": "소속",
+      "description": "A반 반장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이하은",
+      "to": "고은미",
+      "type": "소속",
+      "description": "A반 부반장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박서진",
+      "to": "고은미",
+      "type": "소속",
+      "description": "A반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "고은미",
+      "to": "A반",
+      "type": "소속",
+      "description": "A반 담임 선생님",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "최강준",
+      "to": "이준형",
+      "type": "소속",
+      "description": "B반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "정다은",
+      "to": "이준형",
+      "type": "소속",
+      "description": "B반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "오민재",
+      "to": "이준형",
+      "type": "소속",
+      "description": "B반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이준형",
+      "to": "B반",
+      "type": "소속",
+      "description": "B반 담임 선생님",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "최강준",
+      "to": "축구부",
+      "type": "소속",
+      "description": "축구부 소속",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "오민재",
+      "to": "축구부",
+      "type": "소속",
+      "description": "축구부 소속",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "송예린",
+      "to": "박미라",
+      "type": "소속",
+      "description": "C반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "한지호",
+      "to": "박미라",
+      "type": "소속",
+      "description": "C반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "문수빈",
+      "to": "박미라",
+      "type": "소속",
+      "description": "C반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박미라",
+      "to": "C반",
+      "type": "소속",
+      "description": "C반 담임 선생님",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "김도윤",
+      "to": "김선영",
+      "type": "가족",
+      "description": "아들-어머니",
+      "scenes": [
+        6
+      ]
+    },
+    {
+      "from": "최강준",
+      "to": "최병호",
+      "type": "가족",
+      "description": "아들-아버지",
+      "scenes": [
+        6
+      ]
+    },
+    {
+      "from": "송예린",
+      "to": "송영자",
+      "type": "가족",
+      "description": "손녀-할머니",
+      "scenes": [
+        6
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "A반",
+      "merge": "고은미",
+      "reason": "A반은 고은미 선생님이 담임인 반이므로, A반을 지칭할 때 고은미 선생님을 언급하는 경우가 있을 수 있음"
+    },
+    {
+      "keep": "B반",
+      "merge": "이준형",
+      "reason": "B반은 이준형 선생님이 담임인 반이므로, B반을 지칭할 때 이준형 선생님을 언급하는 경우가 있을 수 있음"
+    },
+    {
+      "keep": "C반",
+      "merge": "박미라",
+      "reason": "C반은 박미라 선생님이 담임인 반이므로, C반을 지칭할 때 박미라 선생님을 언급하는 경우가 있을 수 있음"
+    }
+  ],
+  "summary": {
+    "entityCount": 25,
+    "characterCount": 16,
+    "locationCount": 1,
+    "itemCount": 0,
+    "conceptCount": 8,
+    "relationshipCount": 17,
+    "sceneCount": 11,
+    "chapterCount": 3
+  }
+}

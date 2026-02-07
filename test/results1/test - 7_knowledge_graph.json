@@ -1,0 +1,7405 @@
+{
+  "metadata": {
+    "title": "test - 7",
+    "createdAt": "2026-02-07T02:17:53.231Z",
+    "updatedAt": "2026-02-07T02:17:53.231Z",
+    "version": "1.0.0",
+    "model": "google/gemini-2.0-flash-001",
+    "sourceFiles": [
+      {
+        "id": "F0001",
+        "fileName": "07_대규모_엔티티.txt",
+        "uploadedAt": "2026-02-07T02:17:53.231Z",
+        "text": "# 1화: 학원\r\n\r\n서림 학원에는 다양한 반이 있었다.\r\n\r\nA반 담임 선생님은 고은미 선생님이었다. A반 학생으로는 반장 김도윤, 부반장 이하은, 그리고 장난꾸러기 박서진이 있었다. 도윤이는 항상 성실했고, 하은이는 조용하지만 성적이 좋았다. 서진이는 매일 떠들어서 은미 선생님의 골칫거리였다.\r\n\r\nB반 담임은 이준형 선생님이었다. B반에는 축구를 좋아하는 최강준, 그림을 잘 그리는 정다은, 수학 천재 오민재가 있었다. 강준이와 민재는 같은 축구부 소속이었다.\r\n\r\nC반 담임은 박미라 선생님이었다. C반의 학생으로는 음악을 하는 송예린, 독서왕 한지호, 요리를 좋아하는 문수빈이 있었다.\r\n\r\n학원장은 윤태식 원장이었다. 윤 원장은 세 명의 선생님을 모아 회의를 했다.\r\n\r\n\"다음 주에 학원 축제를 열 겁니다. 각 반에서 공연 하나씩 준비해주세요.\"\r\n\r\n# 2화: 축제 준비\r\n\r\nA반에서는 도윤이가 연극을 제안했다.\r\n\r\n\"우리 반은 연극하자! '구운몽'을 현대판으로 각색하는 거야.\"\r\n\r\n하은이가 대본을 쓰기로 했고, 서진이는 소품 담당이 되었다. 은미 선생님이 감독을 맡았다.\r\n\r\nB반에서는 강준이가 축구 시범 경기를 주장했지만, 다은이가 반대했다.\r\n\r\n\"실내에서 축구를 어떻게 해? 미술 전시회 하자.\"\r\n\r\n결국 민재의 중재로 '스포츠 아트' - 운동하는 모습을 그린 그림 전시 - 를 하기로 했다. 준형 선생님이 준비물을 지원했다.\r\n\r\nC반에서는 예린이가 노래를, 수빈이가 요리를 합쳐서 '쿠킹 콘서트'를 하기로 했다. 지호는 사회를 맡았다. 미라 선생님은 무대 설치를 도왔다.\r\n\r\n# 3화: 축제\r\n\r\n드디어 축제 당일.\r\n\r\n학원 로비에는 학부모들도 왔다. 도윤이의 어머니 김선영, 강준이의 아버지 최병호, 예린이의 할머니 송영자 할머니도 오셨다.\r\n\r\nA반의 연극이 시작되었다. 도윤이가 주연, 하은이가 나레이션, 서진이가 만든 소품이 의외로 훌륭했다. 은미 선생님이 뿌듯하게 지켜보았다.\r\n\r\nB반의 스포츠 아트 전시장에서는 다은이의 그림이 큰 호응을 얻었다. 특히 강준이가 골을 넣는 순간을 포착한 그림이 인기였다. 민재는 각 그림에 수학적 분석을 곁들인 설명을 붙여 눈길을 끌었다.\r\n\r\nC반의 쿠킹 콘서트는 예린이의 노래와 수빈이의 요리가 동시에 진행되었다. 지호가 유머 있는 사회로 분위기를 띄웠다. 미라 선생님이 무대 뒤에서 진행을 도왔다.\r\n\r\n윤 원장이 마이크를 잡았다.\r\n\r\n\"모든 반이 훌륭했습니다. 올해 최우수반은...\"\r\n\r\n모두가 숨을 죽였다.\r\n\r\n\"C반입니다!\"\r\n\r\n예린이가 환호하며 수빈이와 끌어안았다. 지호도 뛰어나와 합류했다.\r\n\r\n은미 선생님이 웃으며 도윤이에게 말했다. \"우리도 잘했어. 다음엔 이기자.\"\r\n\r\n준형 선생님은 강준이의 어깨를 두드렸다. \"너희 그림 정말 좋았다.\"\r\n\r\n축제가 끝나고, 세 반의 학생들은 학원 운동장에 모여 함께 간식을 먹었다. 서진이가 강준이와 축구 이야기를 하고, 하은이가 다은이와 그림 이야기를 나누었다. 예린이는 도윤이에게 연극 칭찬을 했다.\r\n\r\n학원의 하루가 저물었다.\r\n",
+        "charCount": 1506
+      }
+    ],
+    "author": "7"
+  },
+  "entities": {
+    "E0001": {
+      "id": "E0001",
+      "name": "서림 학원",
+      "category": "location",
+      "aliases": [],
+      "description": "다양한 반이 있는 학원",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0002": {
+      "id": "E0002",
+      "name": "고은미 선생님",
+      "category": "character",
+      "aliases": [
+        "은미 선생님"
+      ],
+      "description": "A반 담임 선생님",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0003": {
+      "id": "E0003",
+      "name": "김도윤",
+      "category": "character",
+      "aliases": [
+        "도윤이"
+      ],
+      "description": "A반 반장, 성실함 A반 반장, 성실함, 연극 주연",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0004": {
+      "id": "E0004",
+      "name": "이하은",
+      "category": "character",
+      "aliases": [
+        "하은이"
+      ],
+      "description": "A반 부반장, 조용하고 성적이 좋음 A반 부반장, 조용하고 성적이 좋음, 연극 나레이션",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0005": {
+      "id": "E0005",
+      "name": "박서진",
+      "category": "character",
+      "aliases": [
+        "서진이"
+      ],
+      "description": "A반 학생, 장난꾸러기 A반 학생, 장난꾸러기, 연극 소품 제작",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0006": {
+      "id": "E0006",
+      "name": "이준형 선생님",
+      "category": "character",
+      "aliases": [
+        "준형 선생님"
+      ],
+      "description": "B반 담임",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0007": {
+      "id": "E0007",
+      "name": "최강준",
+      "category": "character",
+      "aliases": [
+        "강준이"
+      ],
+      "description": "B반 학생, 축구를 좋아함 B반 학생, 축구를 좋아함, 그림 모델",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0008": {
+      "id": "E0008",
+      "name": "정다은",
+      "category": "character",
+      "aliases": [
+        "다은이"
+      ],
+      "description": "B반 학생, 그림을 잘 그림 B반 학생, 그림을 잘 그림, 스포츠 아트 그림",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0009": {
+      "id": "E0009",
+      "name": "오민재",
+      "category": "character",
+      "aliases": [
+        "민재"
+      ],
+      "description": "B반 학생, 수학 천재 B반 학생, 수학 천재, 그림에 수학적 분석 설명",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0010": {
+      "id": "E0010",
+      "name": "박미라 선생님",
+      "category": "character",
+      "aliases": [
+        "미라 선생님"
+      ],
+      "description": "C반 담임 C반 담임, 쿠킹 콘서트 진행 도움",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0011": {
+      "id": "E0011",
+      "name": "송예린",
+      "category": "character",
+      "aliases": [
+        "예린이"
+      ],
+      "description": "C반 학생, 음악을 함 C반 학생, 음악을 함, 쿠킹 콘서트 노래",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0012": {
+      "id": "E0012",
+      "name": "한지호",
+      "category": "character",
+      "aliases": [
+        "지호"
+      ],
+      "description": "C반 학생, 독서왕 C반 학생, 독서왕, 쿠킹 콘서트 사회",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0013": {
+      "id": "E0013",
+      "name": "문수빈",
+      "category": "character",
+      "aliases": [
+        "수빈이"
+      ],
+      "description": "C반 학생, 요리를 좋아함 C반 학생, 요리를 좋아함, 쿠킹 콘서트 요리",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0014": {
+      "id": "E0014",
+      "name": "윤태식 원장",
+      "category": "character",
+      "aliases": [
+        "윤 원장"
+      ],
+      "description": "학원장 학원장, 축제 결과 발표",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0015": {
+      "id": "E0015",
+      "name": "학원 축제",
+      "category": "concept",
+      "aliases": [],
+      "description": "다음 주에 열리는 학원 행사",
+      "attributes": {},
+      "scenes": [
+        "S0001"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0016": {
+      "id": "E0016",
+      "name": "A반",
+      "category": "location",
+      "aliases": [],
+      "description": "고은미 선생님이 담임인 반",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0017": {
+      "id": "E0017",
+      "name": "B반",
+      "category": "location",
+      "aliases": [],
+      "description": "이준형 선생님이 담임인 반",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0018": {
+      "id": "E0018",
+      "name": "C반",
+      "category": "location",
+      "aliases": [],
+      "description": "박미라 선생님이 담임인 반",
+      "attributes": {},
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0019": {
+      "id": "E0019",
+      "name": "구운몽",
+      "category": "item",
+      "aliases": [],
+      "description": "A반에서 연극으로 각색할 작품",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0020": {
+      "id": "E0020",
+      "name": "스포츠 아트",
+      "category": "item",
+      "aliases": [],
+      "description": "B반에서 준비하는 운동하는 모습을 그린 그림 전시",
+      "attributes": {},
+      "scenes": [
+        "S0003",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0021": {
+      "id": "E0021",
+      "name": "쿠킹 콘서트",
+      "category": "item",
+      "aliases": [],
+      "description": "C반에서 준비하는 공연",
+      "attributes": {},
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0022": {
+      "id": "E0022",
+      "name": "대본",
+      "category": "item",
+      "aliases": [],
+      "description": "이하은이 쓰기로 한 연극 대본",
+      "attributes": {},
+      "scenes": [
+        "S0002"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0023": {
+      "id": "E0023",
+      "name": "소품",
+      "category": "item",
+      "aliases": [],
+      "description": "박서진이 담당하기로 한 연극 소품",
+      "attributes": {},
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0024": {
+      "id": "E0024",
+      "name": "축구 시범 경기",
+      "category": "item",
+      "aliases": [],
+      "description": "최강준이 주장한 B반 축제 아이디어",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0025": {
+      "id": "E0025",
+      "name": "미술 전시회",
+      "category": "item",
+      "aliases": [],
+      "description": "정다은이 주장한 B반 축제 아이디어",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0026": {
+      "id": "E0026",
+      "name": "준비물",
+      "category": "item",
+      "aliases": [],
+      "description": "이준형 선생님이 지원하기로 한 스포츠 아트 준비물",
+      "attributes": {},
+      "scenes": [
+        "S0003"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0027": {
+      "id": "E0027",
+      "name": "무대 설치",
+      "category": "item",
+      "aliases": [],
+      "description": "박미라 선생님이 돕기로 한 쿠킹 콘서트 무대 설치",
+      "attributes": {},
+      "scenes": [
+        "S0004"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0028": {
+      "id": "E0028",
+      "name": "김선영",
+      "category": "character",
+      "aliases": [],
+      "description": "도윤이의 어머니",
+      "attributes": {},
+      "scenes": [
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0029": {
+      "id": "E0029",
+      "name": "최병호",
+      "category": "character",
+      "aliases": [],
+      "description": "강준이의 아버지",
+      "attributes": {},
+      "scenes": [
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0030": {
+      "id": "E0030",
+      "name": "송영자 할머니",
+      "category": "character",
+      "aliases": [],
+      "description": "예린이의 할머니",
+      "attributes": {},
+      "scenes": [
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    },
+    "E0031": {
+      "id": "E0031",
+      "name": "학원 운동장",
+      "category": "location",
+      "aliases": [],
+      "description": "세 반의 학생들이 모여 간식을 먹는 장소",
+      "attributes": {},
+      "scenes": [
+        "S0005"
+      ],
+      "firstMention": {
+        "chapter": 1
+      },
+      "importance": 5
+    }
+  },
+  "hyperedges": {
+    "H0001": {
+      "id": "H0001",
+      "type": "소속",
+      "entities": [
+        "E0003",
+        "E0002"
+      ],
+      "statement": "A반 담임과 반장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0002": {
+      "id": "H0002",
+      "type": "소속",
+      "entities": [
+        "E0004",
+        "E0002"
+      ],
+      "statement": "A반 담임과 부반장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0003": {
+      "id": "H0003",
+      "type": "소속",
+      "entities": [
+        "E0005",
+        "E0002"
+      ],
+      "statement": "A반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0004": {
+      "id": "H0004",
+      "type": "소속",
+      "entities": [
+        "E0007",
+        "E0006"
+      ],
+      "statement": "B반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0005": {
+      "id": "H0005",
+      "type": "소속",
+      "entities": [
+        "E0008",
+        "E0006"
+      ],
+      "statement": "B반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0006": {
+      "id": "H0006",
+      "type": "소속",
+      "entities": [
+        "E0009",
+        "E0006"
+      ],
+      "statement": "B반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0007": {
+      "id": "H0007",
+      "type": "소속",
+      "entities": [
+        "E0011",
+        "E0010"
+      ],
+      "statement": "C반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0008": {
+      "id": "H0008",
+      "type": "소속",
+      "entities": [
+        "E0012",
+        "E0010"
+      ],
+      "statement": "C반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0009": {
+      "id": "H0009",
+      "type": "소속",
+      "entities": [
+        "E0013",
+        "E0010"
+      ],
+      "statement": "C반 담임과 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0010": {
+      "id": "H0010",
+      "type": "소속",
+      "entities": [
+        "E0002",
+        "E0014"
+      ],
+      "statement": "학원 선생님과 원장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0011": {
+      "id": "H0011",
+      "type": "소속",
+      "entities": [
+        "E0006",
+        "E0014"
+      ],
+      "statement": "학원 선생님과 원장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0012": {
+      "id": "H0012",
+      "type": "소속",
+      "entities": [
+        "E0010",
+        "E0014"
+      ],
+      "statement": "학원 선생님과 원장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0013": {
+      "id": "H0013",
+      "type": "동료",
+      "entities": [
+        "E0003",
+        "E0004"
+      ],
+      "statement": "A반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0014": {
+      "id": "H0014",
+      "type": "동료",
+      "entities": [
+        "E0003",
+        "E0005"
+      ],
+      "statement": "A반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0015": {
+      "id": "H0015",
+      "type": "동료",
+      "entities": [
+        "E0004",
+        "E0005"
+      ],
+      "statement": "A반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0016": {
+      "id": "H0016",
+      "type": "동료",
+      "entities": [
+        "E0007",
+        "E0008"
+      ],
+      "statement": "B반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0017": {
+      "id": "H0017",
+      "type": "동료",
+      "entities": [
+        "E0007",
+        "E0009"
+      ],
+      "statement": "B반 학생, 축구부 소속",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0018": {
+      "id": "H0018",
+      "type": "동료",
+      "entities": [
+        "E0008",
+        "E0009"
+      ],
+      "statement": "B반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0019": {
+      "id": "H0019",
+      "type": "동료",
+      "entities": [
+        "E0011",
+        "E0012"
+      ],
+      "statement": "C반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0020": {
+      "id": "H0020",
+      "type": "동료",
+      "entities": [
+        "E0011",
+        "E0013"
+      ],
+      "statement": "C반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0021": {
+      "id": "H0021",
+      "type": "동료",
+      "entities": [
+        "E0012",
+        "E0013"
+      ],
+      "statement": "C반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0001",
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0022": {
+      "id": "H0022",
+      "type": "소속",
+      "entities": [
+        "E0003",
+        "E0016"
+      ],
+      "statement": "A반 반장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0023": {
+      "id": "H0023",
+      "type": "소속",
+      "entities": [
+        "E0004",
+        "E0016"
+      ],
+      "statement": "A반 부반장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0024": {
+      "id": "H0024",
+      "type": "소속",
+      "entities": [
+        "E0005",
+        "E0016"
+      ],
+      "statement": "A반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0025": {
+      "id": "H0025",
+      "type": "소속",
+      "entities": [
+        "E0007",
+        "E0017"
+      ],
+      "statement": "B반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0026": {
+      "id": "H0026",
+      "type": "소속",
+      "entities": [
+        "E0008",
+        "E0017"
+      ],
+      "statement": "B반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0027": {
+      "id": "H0027",
+      "type": "소속",
+      "entities": [
+        "E0009",
+        "E0017"
+      ],
+      "statement": "B반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0028": {
+      "id": "H0028",
+      "type": "소속",
+      "entities": [
+        "E0011",
+        "E0018"
+      ],
+      "statement": "C반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0029": {
+      "id": "H0029",
+      "type": "소속",
+      "entities": [
+        "E0012",
+        "E0018"
+      ],
+      "statement": "C반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0030": {
+      "id": "H0030",
+      "type": "소속",
+      "entities": [
+        "E0013",
+        "E0018"
+      ],
+      "statement": "C반 학생",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0031": {
+      "id": "H0031",
+      "type": "가족",
+      "entities": [
+        "E0028",
+        "E0003"
+      ],
+      "statement": "어머니",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0032": {
+      "id": "H0032",
+      "type": "가족",
+      "entities": [
+        "E0029",
+        "E0007"
+      ],
+      "statement": "아버지",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0033": {
+      "id": "H0033",
+      "type": "가족",
+      "entities": [
+        "E0030",
+        "E0011"
+      ],
+      "statement": "할머니",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0034": {
+      "id": "H0034",
+      "type": "포함",
+      "entities": [
+        "E0016",
+        "E0001"
+      ],
+      "statement": "학원 내 반",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0035": {
+      "id": "H0035",
+      "type": "포함",
+      "entities": [
+        "E0017",
+        "E0001"
+      ],
+      "statement": "학원 내 반",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0036": {
+      "id": "H0036",
+      "type": "포함",
+      "entities": [
+        "E0018",
+        "E0001"
+      ],
+      "statement": "학원 내 반",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0037": {
+      "id": "H0037",
+      "type": "소속",
+      "entities": [
+        "E0002",
+        "E0016"
+      ],
+      "statement": "A반 담임",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0038": {
+      "id": "H0038",
+      "type": "소속",
+      "entities": [
+        "E0006",
+        "E0017"
+      ],
+      "statement": "B반 담임",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0039": {
+      "id": "H0039",
+      "type": "소속",
+      "entities": [
+        "E0010",
+        "E0018"
+      ],
+      "statement": "C반 담임",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0040": {
+      "id": "H0040",
+      "type": "위치",
+      "entities": [
+        "E0031",
+        "E0001"
+      ],
+      "statement": "학원 내 운동장",
+      "timeline": {
+        "chapter": 1
+      },
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0041": {
+      "id": "H0041",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0022"
+      ],
+      "statement": "이하은이 쓰기로 한 연극 대본",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0042": {
+      "id": "H0042",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0023"
+      ],
+      "statement": "박서진이 담당하기로 한 연극 소품",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0043": {
+      "id": "H0043",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0024"
+      ],
+      "statement": "최강준이 주장한 B반 축제 아이디어",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0044": {
+      "id": "H0044",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0025"
+      ],
+      "statement": "정다은이 주장한 B반 축제 아이디어",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0045": {
+      "id": "H0045",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0026"
+      ],
+      "statement": "이준형 선생님이 지원하기로 한 스포츠 아트 준비물",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0046": {
+      "id": "H0046",
+      "type": "관련",
+      "entities": [
+        "E0010",
+        "E0027"
+      ],
+      "statement": "박미라 선생님이 돕기로 한 쿠킹 콘서트 무대 설치",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 4,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0047": {
+      "id": "H0047",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0020"
+      ],
+      "statement": "B반 학생, 그림을 잘 그림 B반 학생, 그림을 잘 그림, 스포츠 아트 그림",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0048": {
+      "id": "H0048",
+      "type": "소유",
+      "entities": [
+        "E0010",
+        "E0021"
+      ],
+      "statement": "C반 담임 C반 담임, 쿠킹 콘서트 진행 도움",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0049": {
+      "id": "H0049",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0021"
+      ],
+      "statement": "C반 학생, 음악을 함 C반 학생, 음악을 함, 쿠킹 콘서트 노래",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0050": {
+      "id": "H0050",
+      "type": "소유",
+      "entities": [
+        "E0012",
+        "E0021"
+      ],
+      "statement": "C반 학생, 독서왕 C반 학생, 독서왕, 쿠킹 콘서트 사회",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0051": {
+      "id": "H0051",
+      "type": "소유",
+      "entities": [
+        "E0013",
+        "E0021"
+      ],
+      "statement": "C반 학생, 요리를 좋아함 C반 학생, 요리를 좋아함, 쿠킹 콘서트 요리",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0052": {
+      "id": "H0052",
+      "type": "위치",
+      "entities": [
+        "E0019",
+        "E0016"
+      ],
+      "statement": "A반에서 연극으로 각색할 작품",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0053": {
+      "id": "H0053",
+      "type": "위치",
+      "entities": [
+        "E0020",
+        "E0017"
+      ],
+      "statement": "B반에서 준비하는 운동하는 모습을 그린 그림 전시",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0054": {
+      "id": "H0054",
+      "type": "위치",
+      "entities": [
+        "E0021",
+        "E0018"
+      ],
+      "statement": "C반에서 준비하는 공연",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0055": {
+      "id": "H0055",
+      "type": "위치",
+      "entities": [
+        "E0024",
+        "E0017"
+      ],
+      "statement": "최강준이 주장한 B반 축제 아이디어",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0056": {
+      "id": "H0056",
+      "type": "위치",
+      "entities": [
+        "E0025",
+        "E0017"
+      ],
+      "statement": "정다은이 주장한 B반 축제 아이디어",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0057": {
+      "id": "H0057",
+      "type": "소유",
+      "entities": [
+        "E0026",
+        "E0020"
+      ],
+      "statement": "이준형 선생님이 지원하기로 한 스포츠 아트 준비물",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0058": {
+      "id": "H0058",
+      "type": "소유",
+      "entities": [
+        "E0027",
+        "E0021"
+      ],
+      "statement": "박미라 선생님이 돕기로 한 쿠킹 콘서트 무대 설치",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0059": {
+      "id": "H0059",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0006"
+      ],
+      "statement": "고은미 선생님과(와) 이준형 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0060": {
+      "id": "H0060",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0007"
+      ],
+      "statement": "고은미 선생님과(와) 최강준이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0061": {
+      "id": "H0061",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0008"
+      ],
+      "statement": "고은미 선생님과(와) 정다은이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0062": {
+      "id": "H0062",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0009"
+      ],
+      "statement": "고은미 선생님과(와) 오민재이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0063": {
+      "id": "H0063",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0010"
+      ],
+      "statement": "고은미 선생님과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0064": {
+      "id": "H0064",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0011"
+      ],
+      "statement": "고은미 선생님과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0065": {
+      "id": "H0065",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0012"
+      ],
+      "statement": "고은미 선생님과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0066": {
+      "id": "H0066",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0013"
+      ],
+      "statement": "고은미 선생님과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0067": {
+      "id": "H0067",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0028"
+      ],
+      "statement": "고은미 선생님과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0068": {
+      "id": "H0068",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0029"
+      ],
+      "statement": "고은미 선생님과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0069": {
+      "id": "H0069",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0030"
+      ],
+      "statement": "고은미 선생님과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0070": {
+      "id": "H0070",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0006"
+      ],
+      "statement": "김도윤과(와) 이준형 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0071": {
+      "id": "H0071",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0007"
+      ],
+      "statement": "김도윤과(와) 최강준이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0072": {
+      "id": "H0072",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0008"
+      ],
+      "statement": "김도윤과(와) 정다은이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0073": {
+      "id": "H0073",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0009"
+      ],
+      "statement": "김도윤과(와) 오민재이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0074": {
+      "id": "H0074",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0010"
+      ],
+      "statement": "김도윤과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0075": {
+      "id": "H0075",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0011"
+      ],
+      "statement": "김도윤과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0076": {
+      "id": "H0076",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0012"
+      ],
+      "statement": "김도윤과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0077": {
+      "id": "H0077",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0013"
+      ],
+      "statement": "김도윤과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0078": {
+      "id": "H0078",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0014"
+      ],
+      "statement": "김도윤과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0079": {
+      "id": "H0079",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0029"
+      ],
+      "statement": "김도윤과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0080": {
+      "id": "H0080",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0030"
+      ],
+      "statement": "김도윤과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0081": {
+      "id": "H0081",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0006"
+      ],
+      "statement": "이하은과(와) 이준형 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0082": {
+      "id": "H0082",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0007"
+      ],
+      "statement": "이하은과(와) 최강준이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0083": {
+      "id": "H0083",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0008"
+      ],
+      "statement": "이하은과(와) 정다은이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0084": {
+      "id": "H0084",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0009"
+      ],
+      "statement": "이하은과(와) 오민재이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0085": {
+      "id": "H0085",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0010"
+      ],
+      "statement": "이하은과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0086": {
+      "id": "H0086",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0011"
+      ],
+      "statement": "이하은과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0087": {
+      "id": "H0087",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0012"
+      ],
+      "statement": "이하은과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0088": {
+      "id": "H0088",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0013"
+      ],
+      "statement": "이하은과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0089": {
+      "id": "H0089",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0014"
+      ],
+      "statement": "이하은과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0090": {
+      "id": "H0090",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0028"
+      ],
+      "statement": "이하은과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0091": {
+      "id": "H0091",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0029"
+      ],
+      "statement": "이하은과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0092": {
+      "id": "H0092",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0030"
+      ],
+      "statement": "이하은과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0093": {
+      "id": "H0093",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0006"
+      ],
+      "statement": "박서진과(와) 이준형 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0094": {
+      "id": "H0094",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0007"
+      ],
+      "statement": "박서진과(와) 최강준이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0095": {
+      "id": "H0095",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0008"
+      ],
+      "statement": "박서진과(와) 정다은이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0096": {
+      "id": "H0096",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0009"
+      ],
+      "statement": "박서진과(와) 오민재이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0097": {
+      "id": "H0097",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0010"
+      ],
+      "statement": "박서진과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0098": {
+      "id": "H0098",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0011"
+      ],
+      "statement": "박서진과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0099": {
+      "id": "H0099",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0012"
+      ],
+      "statement": "박서진과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0100": {
+      "id": "H0100",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0013"
+      ],
+      "statement": "박서진과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0101": {
+      "id": "H0101",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0014"
+      ],
+      "statement": "박서진과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0102": {
+      "id": "H0102",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0028"
+      ],
+      "statement": "박서진과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0103": {
+      "id": "H0103",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0029"
+      ],
+      "statement": "박서진과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0104": {
+      "id": "H0104",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0030"
+      ],
+      "statement": "박서진과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0105": {
+      "id": "H0105",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0010"
+      ],
+      "statement": "이준형 선생님과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0106": {
+      "id": "H0106",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0011"
+      ],
+      "statement": "이준형 선생님과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0107": {
+      "id": "H0107",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0012"
+      ],
+      "statement": "이준형 선생님과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0108": {
+      "id": "H0108",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0013"
+      ],
+      "statement": "이준형 선생님과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0109": {
+      "id": "H0109",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0028"
+      ],
+      "statement": "이준형 선생님과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0110": {
+      "id": "H0110",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0029"
+      ],
+      "statement": "이준형 선생님과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0111": {
+      "id": "H0111",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0030"
+      ],
+      "statement": "이준형 선생님과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0112": {
+      "id": "H0112",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0010"
+      ],
+      "statement": "최강준과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0113": {
+      "id": "H0113",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0011"
+      ],
+      "statement": "최강준과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0114": {
+      "id": "H0114",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0012"
+      ],
+      "statement": "최강준과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0115": {
+      "id": "H0115",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0013"
+      ],
+      "statement": "최강준과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0116": {
+      "id": "H0116",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0014"
+      ],
+      "statement": "최강준과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0117": {
+      "id": "H0117",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0028"
+      ],
+      "statement": "최강준과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0118": {
+      "id": "H0118",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0030"
+      ],
+      "statement": "최강준과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0119": {
+      "id": "H0119",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0010"
+      ],
+      "statement": "정다은과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0120": {
+      "id": "H0120",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0011"
+      ],
+      "statement": "정다은과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0121": {
+      "id": "H0121",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0012"
+      ],
+      "statement": "정다은과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0122": {
+      "id": "H0122",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0013"
+      ],
+      "statement": "정다은과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0123": {
+      "id": "H0123",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0014"
+      ],
+      "statement": "정다은과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0124": {
+      "id": "H0124",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0028"
+      ],
+      "statement": "정다은과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0125": {
+      "id": "H0125",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0029"
+      ],
+      "statement": "정다은과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0126": {
+      "id": "H0126",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0030"
+      ],
+      "statement": "정다은과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0127": {
+      "id": "H0127",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0010"
+      ],
+      "statement": "오민재과(와) 박미라 선생님이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0128": {
+      "id": "H0128",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0011"
+      ],
+      "statement": "오민재과(와) 송예린이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0129": {
+      "id": "H0129",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0012"
+      ],
+      "statement": "오민재과(와) 한지호이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0130": {
+      "id": "H0130",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0013"
+      ],
+      "statement": "오민재과(와) 문수빈이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0131": {
+      "id": "H0131",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0014"
+      ],
+      "statement": "오민재과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0132": {
+      "id": "H0132",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0028"
+      ],
+      "statement": "오민재과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0133": {
+      "id": "H0133",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0029"
+      ],
+      "statement": "오민재과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0134": {
+      "id": "H0134",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0030"
+      ],
+      "statement": "오민재과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0135": {
+      "id": "H0135",
+      "type": "관련",
+      "entities": [
+        "E0010",
+        "E0028"
+      ],
+      "statement": "박미라 선생님과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0136": {
+      "id": "H0136",
+      "type": "관련",
+      "entities": [
+        "E0010",
+        "E0029"
+      ],
+      "statement": "박미라 선생님과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0137": {
+      "id": "H0137",
+      "type": "관련",
+      "entities": [
+        "E0010",
+        "E0030"
+      ],
+      "statement": "박미라 선생님과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0138": {
+      "id": "H0138",
+      "type": "관련",
+      "entities": [
+        "E0011",
+        "E0014"
+      ],
+      "statement": "송예린과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0139": {
+      "id": "H0139",
+      "type": "관련",
+      "entities": [
+        "E0011",
+        "E0028"
+      ],
+      "statement": "송예린과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0140": {
+      "id": "H0140",
+      "type": "관련",
+      "entities": [
+        "E0011",
+        "E0029"
+      ],
+      "statement": "송예린과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0141": {
+      "id": "H0141",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0014"
+      ],
+      "statement": "한지호과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0142": {
+      "id": "H0142",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0028"
+      ],
+      "statement": "한지호과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0143": {
+      "id": "H0143",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0029"
+      ],
+      "statement": "한지호과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0144": {
+      "id": "H0144",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0030"
+      ],
+      "statement": "한지호과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0145": {
+      "id": "H0145",
+      "type": "관련",
+      "entities": [
+        "E0013",
+        "E0014"
+      ],
+      "statement": "문수빈과(와) 윤태식 원장이(가) 동일 장면에 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0146": {
+      "id": "H0146",
+      "type": "관련",
+      "entities": [
+        "E0013",
+        "E0028"
+      ],
+      "statement": "문수빈과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0147": {
+      "id": "H0147",
+      "type": "관련",
+      "entities": [
+        "E0013",
+        "E0029"
+      ],
+      "statement": "문수빈과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0148": {
+      "id": "H0148",
+      "type": "관련",
+      "entities": [
+        "E0013",
+        "E0030"
+      ],
+      "statement": "문수빈과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0149": {
+      "id": "H0149",
+      "type": "관련",
+      "entities": [
+        "E0014",
+        "E0028"
+      ],
+      "statement": "윤태식 원장과(와) 김선영이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0150": {
+      "id": "H0150",
+      "type": "관련",
+      "entities": [
+        "E0014",
+        "E0029"
+      ],
+      "statement": "윤태식 원장과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0151": {
+      "id": "H0151",
+      "type": "관련",
+      "entities": [
+        "E0014",
+        "E0030"
+      ],
+      "statement": "윤태식 원장과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0152": {
+      "id": "H0152",
+      "type": "관련",
+      "entities": [
+        "E0028",
+        "E0029"
+      ],
+      "statement": "김선영과(와) 최병호이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0153": {
+      "id": "H0153",
+      "type": "관련",
+      "entities": [
+        "E0028",
+        "E0030"
+      ],
+      "statement": "김선영과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0154": {
+      "id": "H0154",
+      "type": "관련",
+      "entities": [
+        "E0029",
+        "E0030"
+      ],
+      "statement": "최병호과(와) 송영자 할머니이(가) 동일 장면에 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": true,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0155": {
+      "id": "H0155",
+      "type": "위치",
+      "entities": [
+        "E0002",
+        "E0001"
+      ],
+      "statement": "고은미 선생님이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0156": {
+      "id": "H0156",
+      "type": "위치",
+      "entities": [
+        "E0003",
+        "E0001"
+      ],
+      "statement": "김도윤이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0157": {
+      "id": "H0157",
+      "type": "위치",
+      "entities": [
+        "E0004",
+        "E0001"
+      ],
+      "statement": "이하은이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0158": {
+      "id": "H0158",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0001"
+      ],
+      "statement": "박서진이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0159": {
+      "id": "H0159",
+      "type": "위치",
+      "entities": [
+        "E0006",
+        "E0001"
+      ],
+      "statement": "이준형 선생님이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0160": {
+      "id": "H0160",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0001"
+      ],
+      "statement": "최강준이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0161": {
+      "id": "H0161",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0001"
+      ],
+      "statement": "정다은이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0162": {
+      "id": "H0162",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0001"
+      ],
+      "statement": "오민재이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0163": {
+      "id": "H0163",
+      "type": "위치",
+      "entities": [
+        "E0010",
+        "E0001"
+      ],
+      "statement": "박미라 선생님이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0164": {
+      "id": "H0164",
+      "type": "위치",
+      "entities": [
+        "E0011",
+        "E0001"
+      ],
+      "statement": "송예린이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0165": {
+      "id": "H0165",
+      "type": "위치",
+      "entities": [
+        "E0012",
+        "E0001"
+      ],
+      "statement": "한지호이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0166": {
+      "id": "H0166",
+      "type": "위치",
+      "entities": [
+        "E0013",
+        "E0001"
+      ],
+      "statement": "문수빈이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0167": {
+      "id": "H0167",
+      "type": "위치",
+      "entities": [
+        "E0014",
+        "E0001"
+      ],
+      "statement": "윤태식 원장이(가) 서림 학원에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0168": {
+      "id": "H0168",
+      "type": "위치",
+      "entities": [
+        "E0028",
+        "E0001"
+      ],
+      "statement": "김선영이(가) 서림 학원에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0169": {
+      "id": "H0169",
+      "type": "위치",
+      "entities": [
+        "E0029",
+        "E0001"
+      ],
+      "statement": "최병호이(가) 서림 학원에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0170": {
+      "id": "H0170",
+      "type": "위치",
+      "entities": [
+        "E0030",
+        "E0001"
+      ],
+      "statement": "송영자 할머니이(가) 서림 학원에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0171": {
+      "id": "H0171",
+      "type": "관련",
+      "entities": [
+        "E0002",
+        "E0015"
+      ],
+      "statement": "고은미 선생님이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0172": {
+      "id": "H0172",
+      "type": "관련",
+      "entities": [
+        "E0003",
+        "E0015"
+      ],
+      "statement": "김도윤이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0173": {
+      "id": "H0173",
+      "type": "관련",
+      "entities": [
+        "E0004",
+        "E0015"
+      ],
+      "statement": "이하은이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0174": {
+      "id": "H0174",
+      "type": "관련",
+      "entities": [
+        "E0005",
+        "E0015"
+      ],
+      "statement": "박서진이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0175": {
+      "id": "H0175",
+      "type": "관련",
+      "entities": [
+        "E0006",
+        "E0015"
+      ],
+      "statement": "이준형 선생님이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0176": {
+      "id": "H0176",
+      "type": "관련",
+      "entities": [
+        "E0007",
+        "E0015"
+      ],
+      "statement": "최강준이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0177": {
+      "id": "H0177",
+      "type": "관련",
+      "entities": [
+        "E0008",
+        "E0015"
+      ],
+      "statement": "정다은이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0178": {
+      "id": "H0178",
+      "type": "관련",
+      "entities": [
+        "E0009",
+        "E0015"
+      ],
+      "statement": "오민재이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0179": {
+      "id": "H0179",
+      "type": "관련",
+      "entities": [
+        "E0010",
+        "E0015"
+      ],
+      "statement": "박미라 선생님이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0180": {
+      "id": "H0180",
+      "type": "관련",
+      "entities": [
+        "E0011",
+        "E0015"
+      ],
+      "statement": "송예린이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0181": {
+      "id": "H0181",
+      "type": "관련",
+      "entities": [
+        "E0012",
+        "E0015"
+      ],
+      "statement": "한지호이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0182": {
+      "id": "H0182",
+      "type": "관련",
+      "entities": [
+        "E0013",
+        "E0015"
+      ],
+      "statement": "문수빈이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0183": {
+      "id": "H0183",
+      "type": "관련",
+      "entities": [
+        "E0014",
+        "E0015"
+      ],
+      "statement": "윤태식 원장이(가) 학원 축제에서/과 함께 등장 (장면 1)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0184": {
+      "id": "H0184",
+      "type": "위치",
+      "entities": [
+        "E0006",
+        "E0016"
+      ],
+      "statement": "이준형 선생님이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0185": {
+      "id": "H0185",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0016"
+      ],
+      "statement": "최강준이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0186": {
+      "id": "H0186",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0016"
+      ],
+      "statement": "정다은이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0187": {
+      "id": "H0187",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0016"
+      ],
+      "statement": "오민재이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0188": {
+      "id": "H0188",
+      "type": "위치",
+      "entities": [
+        "E0010",
+        "E0016"
+      ],
+      "statement": "박미라 선생님이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0189": {
+      "id": "H0189",
+      "type": "위치",
+      "entities": [
+        "E0011",
+        "E0016"
+      ],
+      "statement": "송예린이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0190": {
+      "id": "H0190",
+      "type": "위치",
+      "entities": [
+        "E0012",
+        "E0016"
+      ],
+      "statement": "한지호이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0191": {
+      "id": "H0191",
+      "type": "위치",
+      "entities": [
+        "E0013",
+        "E0016"
+      ],
+      "statement": "문수빈이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0192": {
+      "id": "H0192",
+      "type": "위치",
+      "entities": [
+        "E0014",
+        "E0016"
+      ],
+      "statement": "윤태식 원장이(가) A반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0193": {
+      "id": "H0193",
+      "type": "위치",
+      "entities": [
+        "E0028",
+        "E0016"
+      ],
+      "statement": "김선영이(가) A반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0194": {
+      "id": "H0194",
+      "type": "위치",
+      "entities": [
+        "E0029",
+        "E0016"
+      ],
+      "statement": "최병호이(가) A반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0195": {
+      "id": "H0195",
+      "type": "위치",
+      "entities": [
+        "E0030",
+        "E0016"
+      ],
+      "statement": "송영자 할머니이(가) A반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0196": {
+      "id": "H0196",
+      "type": "위치",
+      "entities": [
+        "E0002",
+        "E0017"
+      ],
+      "statement": "고은미 선생님이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0197": {
+      "id": "H0197",
+      "type": "위치",
+      "entities": [
+        "E0003",
+        "E0017"
+      ],
+      "statement": "김도윤이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0198": {
+      "id": "H0198",
+      "type": "위치",
+      "entities": [
+        "E0004",
+        "E0017"
+      ],
+      "statement": "이하은이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0199": {
+      "id": "H0199",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0017"
+      ],
+      "statement": "박서진이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0200": {
+      "id": "H0200",
+      "type": "위치",
+      "entities": [
+        "E0010",
+        "E0017"
+      ],
+      "statement": "박미라 선생님이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0201": {
+      "id": "H0201",
+      "type": "위치",
+      "entities": [
+        "E0011",
+        "E0017"
+      ],
+      "statement": "송예린이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0202": {
+      "id": "H0202",
+      "type": "위치",
+      "entities": [
+        "E0012",
+        "E0017"
+      ],
+      "statement": "한지호이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0203": {
+      "id": "H0203",
+      "type": "위치",
+      "entities": [
+        "E0013",
+        "E0017"
+      ],
+      "statement": "문수빈이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0204": {
+      "id": "H0204",
+      "type": "위치",
+      "entities": [
+        "E0014",
+        "E0017"
+      ],
+      "statement": "윤태식 원장이(가) B반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0205": {
+      "id": "H0205",
+      "type": "위치",
+      "entities": [
+        "E0028",
+        "E0017"
+      ],
+      "statement": "김선영이(가) B반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0206": {
+      "id": "H0206",
+      "type": "위치",
+      "entities": [
+        "E0029",
+        "E0017"
+      ],
+      "statement": "최병호이(가) B반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0207": {
+      "id": "H0207",
+      "type": "위치",
+      "entities": [
+        "E0030",
+        "E0017"
+      ],
+      "statement": "송영자 할머니이(가) B반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0208": {
+      "id": "H0208",
+      "type": "위치",
+      "entities": [
+        "E0002",
+        "E0018"
+      ],
+      "statement": "고은미 선생님이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0209": {
+      "id": "H0209",
+      "type": "위치",
+      "entities": [
+        "E0003",
+        "E0018"
+      ],
+      "statement": "김도윤이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0210": {
+      "id": "H0210",
+      "type": "위치",
+      "entities": [
+        "E0004",
+        "E0018"
+      ],
+      "statement": "이하은이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0211": {
+      "id": "H0211",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0018"
+      ],
+      "statement": "박서진이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0212": {
+      "id": "H0212",
+      "type": "위치",
+      "entities": [
+        "E0006",
+        "E0018"
+      ],
+      "statement": "이준형 선생님이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0213": {
+      "id": "H0213",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0018"
+      ],
+      "statement": "최강준이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0214": {
+      "id": "H0214",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0018"
+      ],
+      "statement": "정다은이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0215": {
+      "id": "H0215",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0018"
+      ],
+      "statement": "오민재이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0216": {
+      "id": "H0216",
+      "type": "위치",
+      "entities": [
+        "E0014",
+        "E0018"
+      ],
+      "statement": "윤태식 원장이(가) C반에서/과 함께 등장 (장면 1, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0001",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0217": {
+      "id": "H0217",
+      "type": "위치",
+      "entities": [
+        "E0028",
+        "E0018"
+      ],
+      "statement": "김선영이(가) C반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0218": {
+      "id": "H0218",
+      "type": "위치",
+      "entities": [
+        "E0029",
+        "E0018"
+      ],
+      "statement": "최병호이(가) C반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0219": {
+      "id": "H0219",
+      "type": "위치",
+      "entities": [
+        "E0030",
+        "E0018"
+      ],
+      "statement": "송영자 할머니이(가) C반에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0220": {
+      "id": "H0220",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0019"
+      ],
+      "statement": "고은미 선생님이(가) 구운몽에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0221": {
+      "id": "H0221",
+      "type": "소유",
+      "entities": [
+        "E0003",
+        "E0019"
+      ],
+      "statement": "김도윤이(가) 구운몽에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0222": {
+      "id": "H0222",
+      "type": "소유",
+      "entities": [
+        "E0004",
+        "E0019"
+      ],
+      "statement": "이하은이(가) 구운몽에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0223": {
+      "id": "H0223",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0019"
+      ],
+      "statement": "박서진이(가) 구운몽에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0224": {
+      "id": "H0224",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0020"
+      ],
+      "statement": "고은미 선생님이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0225": {
+      "id": "H0225",
+      "type": "소유",
+      "entities": [
+        "E0003",
+        "E0020"
+      ],
+      "statement": "김도윤이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0226": {
+      "id": "H0226",
+      "type": "소유",
+      "entities": [
+        "E0004",
+        "E0020"
+      ],
+      "statement": "이하은이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0227": {
+      "id": "H0227",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0020"
+      ],
+      "statement": "박서진이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0228": {
+      "id": "H0228",
+      "type": "소유",
+      "entities": [
+        "E0006",
+        "E0020"
+      ],
+      "statement": "이준형 선생님이(가) 스포츠 아트에서/과 함께 등장 (장면 3, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0229": {
+      "id": "H0229",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0020"
+      ],
+      "statement": "최강준이(가) 스포츠 아트에서/과 함께 등장 (장면 3, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0230": {
+      "id": "H0230",
+      "type": "소유",
+      "entities": [
+        "E0009",
+        "E0020"
+      ],
+      "statement": "오민재이(가) 스포츠 아트에서/과 함께 등장 (장면 3, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0231": {
+      "id": "H0231",
+      "type": "소유",
+      "entities": [
+        "E0010",
+        "E0020"
+      ],
+      "statement": "박미라 선생님이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0232": {
+      "id": "H0232",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0020"
+      ],
+      "statement": "송예린이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0233": {
+      "id": "H0233",
+      "type": "소유",
+      "entities": [
+        "E0012",
+        "E0020"
+      ],
+      "statement": "한지호이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0234": {
+      "id": "H0234",
+      "type": "소유",
+      "entities": [
+        "E0013",
+        "E0020"
+      ],
+      "statement": "문수빈이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0235": {
+      "id": "H0235",
+      "type": "소유",
+      "entities": [
+        "E0014",
+        "E0020"
+      ],
+      "statement": "윤태식 원장이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0236": {
+      "id": "H0236",
+      "type": "소유",
+      "entities": [
+        "E0028",
+        "E0020"
+      ],
+      "statement": "김선영이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0237": {
+      "id": "H0237",
+      "type": "소유",
+      "entities": [
+        "E0029",
+        "E0020"
+      ],
+      "statement": "최병호이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0238": {
+      "id": "H0238",
+      "type": "소유",
+      "entities": [
+        "E0030",
+        "E0020"
+      ],
+      "statement": "송영자 할머니이(가) 스포츠 아트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0239": {
+      "id": "H0239",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0021"
+      ],
+      "statement": "고은미 선생님이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0240": {
+      "id": "H0240",
+      "type": "소유",
+      "entities": [
+        "E0003",
+        "E0021"
+      ],
+      "statement": "김도윤이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0241": {
+      "id": "H0241",
+      "type": "소유",
+      "entities": [
+        "E0004",
+        "E0021"
+      ],
+      "statement": "이하은이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0242": {
+      "id": "H0242",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0021"
+      ],
+      "statement": "박서진이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0243": {
+      "id": "H0243",
+      "type": "소유",
+      "entities": [
+        "E0006",
+        "E0021"
+      ],
+      "statement": "이준형 선생님이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0244": {
+      "id": "H0244",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0021"
+      ],
+      "statement": "최강준이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0245": {
+      "id": "H0245",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0021"
+      ],
+      "statement": "정다은이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0246": {
+      "id": "H0246",
+      "type": "소유",
+      "entities": [
+        "E0009",
+        "E0021"
+      ],
+      "statement": "오민재이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0247": {
+      "id": "H0247",
+      "type": "소유",
+      "entities": [
+        "E0014",
+        "E0021"
+      ],
+      "statement": "윤태식 원장이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0248": {
+      "id": "H0248",
+      "type": "소유",
+      "entities": [
+        "E0028",
+        "E0021"
+      ],
+      "statement": "김선영이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0249": {
+      "id": "H0249",
+      "type": "소유",
+      "entities": [
+        "E0029",
+        "E0021"
+      ],
+      "statement": "최병호이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0250": {
+      "id": "H0250",
+      "type": "소유",
+      "entities": [
+        "E0030",
+        "E0021"
+      ],
+      "statement": "송영자 할머니이(가) 쿠킹 콘서트에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0251": {
+      "id": "H0251",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0022"
+      ],
+      "statement": "고은미 선생님이(가) 대본에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0252": {
+      "id": "H0252",
+      "type": "소유",
+      "entities": [
+        "E0003",
+        "E0022"
+      ],
+      "statement": "김도윤이(가) 대본에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0253": {
+      "id": "H0253",
+      "type": "소유",
+      "entities": [
+        "E0005",
+        "E0022"
+      ],
+      "statement": "박서진이(가) 대본에서/과 함께 등장 (장면 2)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0254": {
+      "id": "H0254",
+      "type": "소유",
+      "entities": [
+        "E0002",
+        "E0023"
+      ],
+      "statement": "고은미 선생님이(가) 소품에서/과 함께 등장 (장면 2, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0255": {
+      "id": "H0255",
+      "type": "소유",
+      "entities": [
+        "E0003",
+        "E0023"
+      ],
+      "statement": "김도윤이(가) 소품에서/과 함께 등장 (장면 2, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0256": {
+      "id": "H0256",
+      "type": "소유",
+      "entities": [
+        "E0004",
+        "E0023"
+      ],
+      "statement": "이하은이(가) 소품에서/과 함께 등장 (장면 2, 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0002",
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0257": {
+      "id": "H0257",
+      "type": "소유",
+      "entities": [
+        "E0006",
+        "E0023"
+      ],
+      "statement": "이준형 선생님이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0258": {
+      "id": "H0258",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0023"
+      ],
+      "statement": "최강준이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0259": {
+      "id": "H0259",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0023"
+      ],
+      "statement": "정다은이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0260": {
+      "id": "H0260",
+      "type": "소유",
+      "entities": [
+        "E0009",
+        "E0023"
+      ],
+      "statement": "오민재이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0261": {
+      "id": "H0261",
+      "type": "소유",
+      "entities": [
+        "E0010",
+        "E0023"
+      ],
+      "statement": "박미라 선생님이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0262": {
+      "id": "H0262",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0023"
+      ],
+      "statement": "송예린이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0263": {
+      "id": "H0263",
+      "type": "소유",
+      "entities": [
+        "E0012",
+        "E0023"
+      ],
+      "statement": "한지호이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0264": {
+      "id": "H0264",
+      "type": "소유",
+      "entities": [
+        "E0013",
+        "E0023"
+      ],
+      "statement": "문수빈이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0265": {
+      "id": "H0265",
+      "type": "소유",
+      "entities": [
+        "E0014",
+        "E0023"
+      ],
+      "statement": "윤태식 원장이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0266": {
+      "id": "H0266",
+      "type": "소유",
+      "entities": [
+        "E0028",
+        "E0023"
+      ],
+      "statement": "김선영이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0267": {
+      "id": "H0267",
+      "type": "소유",
+      "entities": [
+        "E0029",
+        "E0023"
+      ],
+      "statement": "최병호이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0268": {
+      "id": "H0268",
+      "type": "소유",
+      "entities": [
+        "E0030",
+        "E0023"
+      ],
+      "statement": "송영자 할머니이(가) 소품에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0269": {
+      "id": "H0269",
+      "type": "소유",
+      "entities": [
+        "E0006",
+        "E0024"
+      ],
+      "statement": "이준형 선생님이(가) 축구 시범 경기에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0270": {
+      "id": "H0270",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0024"
+      ],
+      "statement": "정다은이(가) 축구 시범 경기에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0271": {
+      "id": "H0271",
+      "type": "소유",
+      "entities": [
+        "E0009",
+        "E0024"
+      ],
+      "statement": "오민재이(가) 축구 시범 경기에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0272": {
+      "id": "H0272",
+      "type": "소유",
+      "entities": [
+        "E0006",
+        "E0025"
+      ],
+      "statement": "이준형 선생님이(가) 미술 전시회에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0273": {
+      "id": "H0273",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0025"
+      ],
+      "statement": "최강준이(가) 미술 전시회에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0274": {
+      "id": "H0274",
+      "type": "소유",
+      "entities": [
+        "E0009",
+        "E0025"
+      ],
+      "statement": "오민재이(가) 미술 전시회에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0275": {
+      "id": "H0275",
+      "type": "소유",
+      "entities": [
+        "E0007",
+        "E0026"
+      ],
+      "statement": "최강준이(가) 준비물에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0276": {
+      "id": "H0276",
+      "type": "소유",
+      "entities": [
+        "E0008",
+        "E0026"
+      ],
+      "statement": "정다은이(가) 준비물에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0277": {
+      "id": "H0277",
+      "type": "소유",
+      "entities": [
+        "E0009",
+        "E0026"
+      ],
+      "statement": "오민재이(가) 준비물에서/과 함께 등장 (장면 3)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0003"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0278": {
+      "id": "H0278",
+      "type": "소유",
+      "entities": [
+        "E0011",
+        "E0027"
+      ],
+      "statement": "송예린이(가) 무대 설치에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0279": {
+      "id": "H0279",
+      "type": "소유",
+      "entities": [
+        "E0012",
+        "E0027"
+      ],
+      "statement": "한지호이(가) 무대 설치에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0280": {
+      "id": "H0280",
+      "type": "소유",
+      "entities": [
+        "E0013",
+        "E0027"
+      ],
+      "statement": "문수빈이(가) 무대 설치에서/과 함께 등장 (장면 4)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0004"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0281": {
+      "id": "H0281",
+      "type": "위치",
+      "entities": [
+        "E0002",
+        "E0031"
+      ],
+      "statement": "고은미 선생님이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0282": {
+      "id": "H0282",
+      "type": "위치",
+      "entities": [
+        "E0003",
+        "E0031"
+      ],
+      "statement": "김도윤이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0283": {
+      "id": "H0283",
+      "type": "위치",
+      "entities": [
+        "E0004",
+        "E0031"
+      ],
+      "statement": "이하은이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0284": {
+      "id": "H0284",
+      "type": "위치",
+      "entities": [
+        "E0005",
+        "E0031"
+      ],
+      "statement": "박서진이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0285": {
+      "id": "H0285",
+      "type": "위치",
+      "entities": [
+        "E0006",
+        "E0031"
+      ],
+      "statement": "이준형 선생님이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0286": {
+      "id": "H0286",
+      "type": "위치",
+      "entities": [
+        "E0007",
+        "E0031"
+      ],
+      "statement": "최강준이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0287": {
+      "id": "H0287",
+      "type": "위치",
+      "entities": [
+        "E0008",
+        "E0031"
+      ],
+      "statement": "정다은이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0288": {
+      "id": "H0288",
+      "type": "위치",
+      "entities": [
+        "E0009",
+        "E0031"
+      ],
+      "statement": "오민재이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0289": {
+      "id": "H0289",
+      "type": "위치",
+      "entities": [
+        "E0010",
+        "E0031"
+      ],
+      "statement": "박미라 선생님이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0290": {
+      "id": "H0290",
+      "type": "위치",
+      "entities": [
+        "E0011",
+        "E0031"
+      ],
+      "statement": "송예린이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0291": {
+      "id": "H0291",
+      "type": "위치",
+      "entities": [
+        "E0012",
+        "E0031"
+      ],
+      "statement": "한지호이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0292": {
+      "id": "H0292",
+      "type": "위치",
+      "entities": [
+        "E0013",
+        "E0031"
+      ],
+      "statement": "문수빈이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0293": {
+      "id": "H0293",
+      "type": "위치",
+      "entities": [
+        "E0014",
+        "E0031"
+      ],
+      "statement": "윤태식 원장이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0294": {
+      "id": "H0294",
+      "type": "위치",
+      "entities": [
+        "E0028",
+        "E0031"
+      ],
+      "statement": "김선영이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0295": {
+      "id": "H0295",
+      "type": "위치",
+      "entities": [
+        "E0029",
+        "E0031"
+      ],
+      "statement": "최병호이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    },
+    "H0296": {
+      "id": "H0296",
+      "type": "위치",
+      "entities": [
+        "E0030",
+        "E0031"
+      ],
+      "statement": "송영자 할머니이(가) 학원 운동장에서/과 함께 등장 (장면 5)",
+      "timeline": {
+        "chapter": 1
+      },
+      "sentiment": "neutral",
+      "strength": 3,
+      "bidirectional": false,
+      "scenes": [
+        "S0005"
+      ],
+      "sourceRef": {
+        "chapter": 1
+      }
+    }
+  },
+  "chapters": {
+    "C0001": {
+      "id": "C0001",
+      "number": 1,
+      "title": "1화: 학원",
+      "summary": ""
+    },
+    "C0002": {
+      "id": "C0002",
+      "number": 2,
+      "title": "2화: 축제 준비",
+      "summary": ""
+    },
+    "C0003": {
+      "id": "C0003",
+      "number": 3,
+      "title": "3화: 축제",
+      "summary": ""
+    }
+  },
+  "timeline": [],
+  "snapshots": {
+    "S0001": {
+      "sceneId": "S0001",
+      "order": 1,
+      "chapter": "C0001",
+      "chapterNumber": 1,
+      "time": "장면 1",
+      "timeMarker": null,
+      "location": "서림 학원",
+      "summary": "서림 학원의 반 구성과 담임 선생님 소개, 학원장이 축제 개최를 알림.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0003",
+        "E0004",
+        "E0005",
+        "E0006",
+        "E0007",
+        "E0008",
+        "E0009",
+        "E0010",
+        "E0011",
+        "E0012",
+        "E0013",
+        "E0014",
+        "E0015",
+        "E0016",
+        "E0017",
+        "E0018"
+      ],
+      "activeEdges": [
+        "H0001",
+        "H0002",
+        "H0003",
+        "H0004",
+        "H0005",
+        "H0006",
+        "H0007",
+        "H0008",
+        "H0009",
+        "H0010",
+        "H0011",
+        "H0012",
+        "H0013",
+        "H0014",
+        "H0015",
+        "H0016",
+        "H0017",
+        "H0018",
+        "H0019",
+        "H0020",
+        "H0021",
+        "H0059",
+        "H0060",
+        "H0061",
+        "H0062",
+        "H0063",
+        "H0064",
+        "H0065",
+        "H0066",
+        "H0070",
+        "H0071",
+        "H0072",
+        "H0073",
+        "H0074",
+        "H0075",
+        "H0076",
+        "H0077",
+        "H0078",
+        "H0081",
+        "H0082",
+        "H0083",
+        "H0084",
+        "H0085",
+        "H0086",
+        "H0087",
+        "H0088",
+        "H0089",
+        "H0093",
+        "H0094",
+        "H0095",
+        "H0096",
+        "H0097",
+        "H0098",
+        "H0099",
+        "H0100",
+        "H0101",
+        "H0105",
+        "H0106",
+        "H0107",
+        "H0108",
+        "H0112",
+        "H0113",
+        "H0114",
+        "H0115",
+        "H0116",
+        "H0119",
+        "H0120",
+        "H0121",
+        "H0122",
+        "H0123",
+        "H0127",
+        "H0128",
+        "H0129",
+        "H0130",
+        "H0131",
+        "H0138",
+        "H0141",
+        "H0145",
+        "H0155",
+        "H0156",
+        "H0157",
+        "H0158",
+        "H0159",
+        "H0160",
+        "H0161",
+        "H0162",
+        "H0163",
+        "H0164",
+        "H0165",
+        "H0166",
+        "H0167",
+        "H0171",
+        "H0172",
+        "H0173",
+        "H0174",
+        "H0175",
+        "H0176",
+        "H0177",
+        "H0178",
+        "H0179",
+        "H0180",
+        "H0181",
+        "H0182",
+        "H0183",
+        "H0184",
+        "H0185",
+        "H0186",
+        "H0187",
+        "H0188",
+        "H0189",
+        "H0190",
+        "H0191",
+        "H0192",
+        "H0196",
+        "H0197",
+        "H0198",
+        "H0199",
+        "H0200",
+        "H0201",
+        "H0202",
+        "H0203",
+        "H0204",
+        "H0208",
+        "H0209",
+        "H0210",
+        "H0211",
+        "H0212",
+        "H0213",
+        "H0214",
+        "H0215",
+        "H0216"
+      ],
+      "sourceFile": "07_대규모_엔티티.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0002": {
+      "sceneId": "S0002",
+      "order": 2,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "장면 2",
+      "timeMarker": null,
+      "location": "A반",
+      "summary": "A반은 연극 '구운몽'을 준비하기로 결정.",
+      "events": [],
+      "charactersPresent": [
+        "E0002",
+        "E0003",
+        "E0004",
+        "E0005",
+        "E0016",
+        "E0019",
+        "E0022",
+        "E0023"
+      ],
+      "activeEdges": [
+        "H0013",
+        "H0014",
+        "H0015",
+        "H0022",
+        "H0023",
+        "H0024",
+        "H0041",
+        "H0042",
+        "H0052",
+        "H0220",
+        "H0221",
+        "H0222",
+        "H0223",
+        "H0251",
+        "H0252",
+        "H0253",
+        "H0254",
+        "H0255",
+        "H0256"
+      ],
+      "sourceFile": "07_대규모_엔티티.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0003": {
+      "sceneId": "S0003",
+      "order": 3,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "장면 3",
+      "timeMarker": null,
+      "location": "B반",
+      "summary": "B반은 스포츠 아트 전시회를 준비하기로 결정.",
+      "events": [],
+      "charactersPresent": [
+        "E0006",
+        "E0007",
+        "E0008",
+        "E0009",
+        "E0017",
+        "E0020",
+        "E0024",
+        "E0025",
+        "E0026"
+      ],
+      "activeEdges": [
+        "H0016",
+        "H0017",
+        "H0018",
+        "H0025",
+        "H0026",
+        "H0027",
+        "H0043",
+        "H0044",
+        "H0045",
+        "H0047",
+        "H0053",
+        "H0055",
+        "H0056",
+        "H0057",
+        "H0228",
+        "H0229",
+        "H0230",
+        "H0269",
+        "H0270",
+        "H0271",
+        "H0272",
+        "H0273",
+        "H0274",
+        "H0275",
+        "H0276",
+        "H0277"
+      ],
+      "sourceFile": "07_대규모_엔티티.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0004": {
+      "sceneId": "S0004",
+      "order": 4,
+      "chapter": "C0002",
+      "chapterNumber": 2,
+      "time": "장면 4",
+      "timeMarker": null,
+      "location": "C반",
+      "summary": "C반은 쿠킹 콘서트를 준비하기로 결정.",
+      "events": [],
+      "charactersPresent": [
+        "E0010",
+        "E0011",
+        "E0012",
+        "E0013",
+        "E0018",
+        "E0021",
+        "E0027"
+      ],
+      "activeEdges": [
+        "H0019",
+        "H0020",
+        "H0021",
+        "H0028",
+        "H0029",
+        "H0030",
+        "H0046",
+        "H0048",
+        "H0049",
+        "H0050",
+        "H0051",
+        "H0054",
+        "H0058",
+        "H0278",
+        "H0279",
+        "H0280"
+      ],
+      "sourceFile": "07_대규모_엔티티.txt",
+      "sourceFileId": "F0001"
+    },
+    "S0005": {
+      "sceneId": "S0005",
+      "order": 5,
+      "chapter": "C0003",
+      "chapterNumber": 3,
+      "time": "장면 5",
+      "timeMarker": null,
+      "location": "서림 학원",
+      "summary": "학원 축제가 열리고, 각 반의 공연이 진행된다. C반이 최우수반으로 선정되고, 학생들은 함께 간식을 먹으며 축제를 마무리한다.",
+      "events": [],
+      "charactersPresent": [
+        "E0001",
+        "E0002",
+        "E0003",
+        "E0004",
+        "E0005",
+        "E0006",
+        "E0007",
+        "E0008",
+        "E0009",
+        "E0010",
+        "E0011",
+        "E0012",
+        "E0013",
+        "E0014",
+        "E0016",
+        "E0017",
+        "E0018",
+        "E0020",
+        "E0021",
+        "E0023",
+        "E0028",
+        "E0029",
+        "E0030",
+        "E0031"
+      ],
+      "activeEdges": [
+        "H0001",
+        "H0002",
+        "H0003",
+        "H0004",
+        "H0005",
+        "H0006",
+        "H0007",
+        "H0008",
+        "H0009",
+        "H0013",
+        "H0014",
+        "H0015",
+        "H0016",
+        "H0017",
+        "H0018",
+        "H0019",
+        "H0020",
+        "H0021",
+        "H0031",
+        "H0032",
+        "H0033",
+        "H0034",
+        "H0035",
+        "H0036",
+        "H0037",
+        "H0038",
+        "H0039",
+        "H0040",
+        "H0042",
+        "H0047",
+        "H0048",
+        "H0049",
+        "H0050",
+        "H0051",
+        "H0053",
+        "H0054",
+        "H0059",
+        "H0060",
+        "H0061",
+        "H0062",
+        "H0063",
+        "H0064",
+        "H0065",
+        "H0066",
+        "H0067",
+        "H0068",
+        "H0069",
+        "H0070",
+        "H0071",
+        "H0072",
+        "H0073",
+        "H0074",
+        "H0075",
+        "H0076",
+        "H0077",
+        "H0078",
+        "H0079",
+        "H0080",
+        "H0081",
+        "H0082",
+        "H0083",
+        "H0084",
+        "H0085",
+        "H0086",
+        "H0087",
+        "H0088",
+        "H0089",
+        "H0090",
+        "H0091",
+        "H0092",
+        "H0093",
+        "H0094",
+        "H0095",
+        "H0096",
+        "H0097",
+        "H0098",
+        "H0099",
+        "H0100",
+        "H0101",
+        "H0102",
+        "H0103",
+        "H0104",
+        "H0105",
+        "H0106",
+        "H0107",
+        "H0108",
+        "H0109",
+        "H0110",
+        "H0111",
+        "H0112",
+        "H0113",
+        "H0114",
+        "H0115",
+        "H0116",
+        "H0117",
+        "H0118",
+        "H0119",
+        "H0120",
+        "H0121",
+        "H0122",
+        "H0123",
+        "H0124",
+        "H0125",
+        "H0126",
+        "H0127",
+        "H0128",
+        "H0129",
+        "H0130",
+        "H0131",
+        "H0132",
+        "H0133",
+        "H0134",
+        "H0135",
+        "H0136",
+        "H0137",
+        "H0138",
+        "H0139",
+        "H0140",
+        "H0141",
+        "H0142",
+        "H0143",
+        "H0144",
+        "H0145",
+        "H0146",
+        "H0147",
+        "H0148",
+        "H0149",
+        "H0150",
+        "H0151",
+        "H0152",
+        "H0153",
+        "H0154",
+        "H0155",
+        "H0156",
+        "H0157",
+        "H0158",
+        "H0159",
+        "H0160",
+        "H0161",
+        "H0162",
+        "H0163",
+        "H0164",
+        "H0165",
+        "H0166",
+        "H0167",
+        "H0168",
+        "H0169",
+        "H0170",
+        "H0184",
+        "H0185",
+        "H0186",
+        "H0187",
+        "H0188",
+        "H0189",
+        "H0190",
+        "H0191",
+        "H0192",
+        "H0193",
+        "H0194",
+        "H0195",
+        "H0196",
+        "H0197",
+        "H0198",
+        "H0199",
+        "H0200",
+        "H0201",
+        "H0202",
+        "H0203",
+        "H0204",
+        "H0205",
+        "H0206",
+        "H0207",
+        "H0208",
+        "H0209",
+        "H0210",
+        "H0211",
+        "H0212",
+        "H0213",
+        "H0214",
+        "H0215",
+        "H0216",
+        "H0217",
+        "H0218",
+        "H0219",
+        "H0224",
+        "H0225",
+        "H0226",
+        "H0227",
+        "H0228",
+        "H0229",
+        "H0230",
+        "H0231",
+        "H0232",
+        "H0233",
+        "H0234",
+        "H0235",
+        "H0236",
+        "H0237",
+        "H0238",
+        "H0239",
+        "H0240",
+        "H0241",
+        "H0242",
+        "H0243",
+        "H0244",
+        "H0245",
+        "H0246",
+        "H0247",
+        "H0248",
+        "H0249",
+        "H0250",
+        "H0254",
+        "H0255",
+        "H0256",
+        "H0257",
+        "H0258",
+        "H0259",
+        "H0260",
+        "H0261",
+        "H0262",
+        "H0263",
+        "H0264",
+        "H0265",
+        "H0266",
+        "H0267",
+        "H0268",
+        "H0281",
+        "H0282",
+        "H0283",
+        "H0284",
+        "H0285",
+        "H0286",
+        "H0287",
+        "H0288",
+        "H0289",
+        "H0290",
+        "H0291",
+        "H0292",
+        "H0293",
+        "H0294",
+        "H0295",
+        "H0296"
+      ],
+      "sourceFile": "07_대규모_엔티티.txt",
+      "sourceFileId": "F0001"
+    }
+  },
+  "stats": {
+    "totalEntities": 31,
+    "totalEdges": 296,
+    "totalChapters": 3,
+    "entitiesByCategory": {
+      "location": 5,
+      "character": 16,
+      "concept": 1,
+      "item": 9
+    },
+    "edgesByType": {
+      "소속": 24,
+      "동료": 9,
+      "가족": 3,
+      "포함": 3,
+      "위치": 74,
+      "관련": 115,
+      "소유": 68
+    }
+  }
+}
