@@ -338,3 +338,21 @@ export interface FileValidationResult {
   comparedWith: string[];     // 비교한 파일 ID 목록
   summary?: string;           // 검토 내용 요약
 }
+
+// ==================== Batch Analysis ====================
+
+export type BatchItemStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+export interface QueueItem {
+  id: string;
+  fileName: string;
+  text: string;
+  charCount: number;
+  model: string;
+  status: BatchItemStatus;
+  progress?: string;
+  progressCurrent?: number;
+  progressTotal?: number;
+  error?: string;
+  creditCost?: number;
+}

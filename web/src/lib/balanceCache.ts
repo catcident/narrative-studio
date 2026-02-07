@@ -12,6 +12,7 @@ import { proxyToCatcident } from '@/services/billingProxy';
 interface CacheEntry {
   balance: number;
   byok: boolean;
+  planCode: string;
   cachedAt: number;
 }
 
@@ -70,15 +71,16 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
       return null;
     }
 
-    const data: { credit_balance: number; features?: { byok?: boolean } } = await response.json();
+    const data: { credit_balance: number; plan?: { code?: string }; features?: { byok?: boolean } } = await response.json();
     const balance = data.credit_balance;
     const byok = data.features?.byok ?? false;
+    const planCode = data.plan?.code ?? 'free';
 
     // Cache positive balances; also cache zero balances if BYOK (they don't need credits).
     // Non-BYOK zero balances are not cached so admin-added credits take effect immediately.
     if (balance > 0 || byok) {
       evictStaleEntries();
-      balanceCache.set(userId, { balance, byok, cachedAt: Date.now() });
+      balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
     } else {
       balanceCache.delete(userId);
     }
@@ -105,9 +107,10 @@ export function updateBalanceCache(userId: string, balance: number): void {
   }
   const existing = balanceCache.get(userId);
   const byok = existing?.byok ?? false;
+  const planCode = existing?.planCode ?? 'free';
   // BYOK 사용자는 zero balance여도 캐시 유지 (크레딧 불필요)
   if (balance > 0 || byok) {
-    balanceCache.set(userId, { balance, byok, cachedAt: Date.now() });
+    balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
   } else {
     balanceCache.delete(userId);
   }
@@ -125,5 +128,12 @@ export function isCachedByokEnabled(userId: string): boolean {
   const cached = balanceCache.get(userId);
   if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return true; // fail-open
   return cached.byok;
+}
+
+/** 캐시에서 planCode 조회. 캐시 미스 시 undefined 반환. */
+export function getCachedPlanCode(userId: string): string | undefined {
+  const cached = balanceCache.get(userId);
+  if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return undefined;
+  return cached.planCode;
 }
 

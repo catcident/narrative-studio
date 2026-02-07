@@ -16,9 +16,10 @@ import {
 } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useStore } from '../../store';
+import { useStore, useExportFormats } from '../../store';
 import type { Entity, HyperEdge, EntityCategory } from '../../types';
-import { Eye, EyeOff, Focus, Filter, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { Eye, EyeOff, Focus, Filter, PanelLeftOpen, PanelLeftClose, Image, FileText, Crown, FileDown } from 'lucide-react';
+import { exportGraphAsPng, exportGraphAsSvg, captureGraphAsPngDataUrl } from '../../services/graphExport';
 import { EntitySelector } from '../EntitySelector';
 import { CATEGORY_COLORS, RELATION_COLORS, RELATION_LABELS, SENTIMENT_STROKE_STYLES, CHARACTER_COLORS } from '../../constants';
 import {
@@ -33,10 +34,129 @@ import type {
   Props,
 } from './GraphNodes';
 
+// 이미지 내보내기 패널 (ReactFlow 트리 내부에서 사용)
+function GraphExportPanel({
+  nodes,
+  onShowSubscription,
+}: {
+  nodes: Node[];
+  onShowSubscription?: () => void;
+}) {
+  const exportFormats = useExportFormats();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const title = knowledgeGraph?.metadata?.title;
+  const [isExporting, setIsExporting] = useState(false);
+  const canPng = exportFormats.includes('png');
+  const canSvg = exportFormats.includes('svg');
+  const canPdf = exportFormats.includes('pdf');
+  const canExportAny = canPng || canSvg || canPdf;
+
+  const filename = title?.replace(/[^a-zA-Z0-9가-힣]/g, '_') || 'knowledge-graph';
+
+  const handleExportPng = async () => {
+    if (!canPng) {
+      onShowSubscription?.();
+      return;
+    }
+    setIsExporting(true);
+    try {
+      await exportGraphAsPng(nodes, `${filename}.png`);
+    } catch (err: unknown) {
+      console.error('[export] PNG export failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportSvg = async () => {
+    if (!canSvg) {
+      onShowSubscription?.();
+      return;
+    }
+    setIsExporting(true);
+    try {
+      await exportGraphAsSvg(nodes, `${filename}.svg`);
+    } catch (err: unknown) {
+      console.error('[export] SVG export failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!canPdf) {
+      onShowSubscription?.();
+      return;
+    }
+    if (!knowledgeGraph) return;
+    setIsExporting(true);
+    try {
+      const graphImage = await captureGraphAsPngDataUrl(nodes);
+      const { exportPdfReport } = await import('../../services/pdfReport');
+      await exportPdfReport(knowledgeGraph, graphImage);
+    } catch (err: unknown) {
+      console.error('[export] PDF export failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  if (!canExportAny) {
+    return (
+      <button
+        onClick={() => onShowSubscription?.()}
+        className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+        aria-label="업그레이드하여 내보내기"
+      >
+        <Crown className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>내보내기</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      {canPng && (
+        <button
+          onClick={handleExportPng}
+          disabled={isExporting}
+          className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+          aria-label="PNG로 내보내기"
+        >
+          <Image className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>PNG</span>
+        </button>
+      )}
+      {canSvg && (
+        <button
+          onClick={handleExportSvg}
+          disabled={isExporting}
+          className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+          aria-label="SVG로 내보내기"
+        >
+          <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>SVG</span>
+        </button>
+      )}
+      {canPdf && (
+        <button
+          onClick={handleExportPdf}
+          disabled={isExporting}
+          className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+          aria-label="PDF 보고서 내보내기"
+        >
+          <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>PDF</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // 노드 수 임계값
 const NODE_THRESHOLD = 100;
 
-export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene, sceneIndex }: Props) {
+export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene, sceneIndex, onShowSubscription }: Props) {
   const selectedEntityId = useStore((s) => s.selectedEntityId);
   const selectEntity = useStore((s) => s.selectEntity);
   const [selectedEdge, setSelectedEdge] = useState<HyperEdge | null>(null);
@@ -617,8 +737,14 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
           </div>
         )}
 
-        {/* 뷰 모드 컨트롤 */}
+        {/* 뷰 모드 + 내보내기 컨트롤 */}
         <div className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-lg p-2">
+          <div className="flex items-center justify-between gap-2 mb-2 border-b border-gray-100 pb-2">
+            <GraphExportPanel
+              nodes={nodes}
+              onShowSubscription={onShowSubscription}
+            />
+          </div>
           <div className="flex items-center gap-1 mb-2">
           <button
             onClick={() => { setViewMode('full'); setFocusedCharIds([]); }}

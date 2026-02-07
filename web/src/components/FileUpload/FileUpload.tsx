@@ -16,6 +16,7 @@ import { useAddFileAnalysis } from '../../hooks/useAddFileAnalysis';
 import { UploadArea } from './UploadArea';
 import { AnalysisPanel } from './AnalysisPanel';
 import { ResumePanel } from './ResumePanel';
+import { BatchAnalysisPanel } from '../BatchAnalysisPanel';
 
 interface FileInfo {
   fileName: string;
@@ -105,6 +106,11 @@ export function FileUpload() {
   const [keyValidationLoading, setKeyValidationLoading] = useState(false);
   const [keyValidationError, setKeyValidationError] = useState<string | null>(null);
   const { addFile: addFileFromHook, execute: executeAddFromHook } = useAddFileAnalysis();
+  const addToQueue = useStore((s) => s.addToQueue);
+
+  // Pro+ 사용자만 개별 분석 가능 (PDF 내보내기 권한을 Pro+ 프록시로 사용)
+  // 향후 백엔드에 별도 allow_batch_analysis 플래그 추가 시 교체 필요
+  const canBatchAnalysis = (subscription?.features?.export_formats?.includes('pdf')) ?? false;
 
   // 기존 지식그래프가 있으면 해당 모델로 고정
   const lockedModel = knowledgeGraph?.metadata?.model;
@@ -539,6 +545,29 @@ export function FileUpload() {
     handleAddFile(files[0]);
   }, [handleAddFile]);
 
+  // 개별 분석: 각 파일을 큐에 등록
+  const handleBatchAnalysis = useCallback(async () => {
+    if (!canRegister || selectedFiles.length < 2) return;
+
+    const items: import('../../types').QueueItem[] = [];
+    for (const file of selectedFiles) {
+      const text = await readFileAsText(file, () => {});
+      items.push({
+        id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        fileName: file.name,
+        text,
+        charCount: text.length,
+        model: currentModel,
+        status: 'pending',
+      });
+    }
+
+    addToQueue(items);
+    setSelectedFiles([]);
+    setDirectText('');
+    setShowTextInput(false);
+  }, [canRegister, selectedFiles, currentModel, addToQueue]);
+
   // 등록 버튼 클릭 - 실제 분석 시작
   const handleRegister = useCallback(async () => {
     if (!canRegister) return;
@@ -734,6 +763,8 @@ export function FileUpload() {
         fullTitle={fullTitle}
         canRegister={canRegister}
         handleRegister={handleRegister}
+        canBatchAnalysis={canBatchAnalysis}
+        onBatchAnalysis={handleBatchAnalysis}
         uploadAreaSlot={uploadArea}
       />
 
@@ -754,6 +785,8 @@ export function FileUpload() {
         savedModelName={savedModelId ? (allModels.find((m) => m.id === savedModelId)?.name ?? savedModelId) : undefined}
         currentModelName={allModels.find((m) => m.id === currentModel)?.name ?? currentModel}
       />
+
+      <BatchAnalysisPanel />
     </div>
   );
 }

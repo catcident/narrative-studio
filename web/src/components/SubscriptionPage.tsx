@@ -1,10 +1,10 @@
 /**
  * 구독 관리 모달
- * 탭: 플랜 비교 | 크레딧 구매 | 사용 내역
+ * 탭: 플랜 비교 | 크레딧 구매 | 사용 내역 | API 키
  */
 
 import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Building2, Mail, RefreshCw, Gift } from 'lucide-react';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Building2, Mail, RefreshCw, Gift, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
@@ -13,6 +13,11 @@ import { UsageHistory } from './UsageHistory';
 import { ModalOverlay } from './ModalOverlay';
 
 type Tab = 'plans' | 'packages' | 'history' | 'apikey';
+type BillingPeriod = 'monthly' | 'annual';
+
+const ANNUAL_DISCOUNT = 0.17; // 17% 할인
+
+const AUTO_RELOAD_THRESHOLDS = [50, 100, 200] as const;
 
 interface SubscriptionPageProps {
   onClose: () => void;
@@ -28,6 +33,11 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+
+  // 자동 리로드 상태 (UI만 — 백엔드 미구현)
+  const [autoReloadThreshold, setAutoReloadThreshold] = useState<number>(100);
+  const [autoReloadPackageIdx, setAutoReloadPackageIdx] = useState<number>(0);
 
   // API 키 탭 상태
   const [hasLocalKey, setHasLocalKey] = useState(false);
@@ -122,6 +132,14 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
     }
   };
 
+  const getDisplayPrice = (monthlyPrice: number): { price: number; original?: number } => {
+    if (billingPeriod === 'annual' && monthlyPrice > 0) {
+      const annual = Math.round(monthlyPrice * (1 - ANNUAL_DISCOUNT));
+      return { price: annual, original: monthlyPrice };
+    }
+    return { price: monthlyPrice };
+  };
+
   return (
     <ModalOverlay onClose={onClose} maxWidth="3xl">
       <div className="max-h-[85vh] flex flex-col">
@@ -165,151 +183,189 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
             </div>
           ) : activeTab === 'plans' ? (
             /* 플랜 비교 */
-            <div className={`grid grid-cols-1 gap-4 ${plans.length <= 3 ? 'md:grid-cols-3' : plans.length <= 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
-              {plans.map(plan => {
-                const isCurrent = subscription?.plan === plan.code;
-                const isPopular = plan.code === 'pro';
-                return (
-                  <div
-                    key={plan.id}
-                    className={`border-2 rounded-xl p-5 flex flex-col relative ${
-                      isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-300' : 'border-gray-200'
-                    }`}
-                  >
-                    {isPopular && !isCurrent && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs px-3 py-0.5 bg-purple-600 text-white rounded-full whitespace-nowrap">
-                        가장 인기
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-2 mb-3">
-                      {planIcon(plan.code)}
-                      <h3 className="font-bold text-gray-800">{plan.name}</h3>
-                      {isCurrent && (
-                        <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full ml-auto">
-                          현재
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mb-4">
-                      <span className="text-2xl font-bold text-gray-800">
-                        {plan.price_krw === 0 ? '무료' : `${plan.price_krw.toLocaleString()}원`}
-                      </span>
-                      {plan.price_krw > 0 && (
-                        <span className="text-sm text-gray-500"> /월</span>
-                      )}
-                    </div>
-
-                    <div className="text-sm text-gray-600 mb-4">
-                      월 {plan.monthly_credits.toLocaleString()} 크레딧
-                      {plan.monthly_credits > 0 && plan.price_krw > 0 && (
-                        <span className="text-xs text-gray-400 ml-1">
-                          ({Math.round(plan.price_krw / plan.monthly_credits * 10) / 10}원/cr)
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-2 text-sm flex-1">
-                      {plan.features.models === 'all' ? (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>모든 AI 모델 사용 가능</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>{(plan.features.models as string[]).length}개 모델 사용 가능</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        <span>최대 {plan.features.max_file_size_mb}MB 파일</span>
-                      </div>
-                      {plan.features.max_saved_graphs !== undefined && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs}개`}</span>
-                        </div>
-                      )}
-                      {plan.features.max_chats_per_analysis !== undefined && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>채팅 {plan.features.max_chats_per_analysis === -1 ? '무제한' : `${plan.features.max_chats_per_analysis}회/분석`}</span>
-                        </div>
-                      )}
-                      {plan.features.byok && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>BYOK (개인 API 키 사용)</span>
-                        </div>
-                      )}
-                      {plan.features.can_purchase_credits && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>추가 크레딧 구매 가능</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {!isCurrent && (
-                      <button
-                        disabled
-                        className="mt-4 w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
-                      >
-                        준비 중
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Enterprise 카드 */}
-              <div className="border-2 border-gray-600 rounded-xl p-5 flex flex-col bg-gray-50">
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 aria-hidden="true" className="w-5 h-5 text-gray-700" />
-                  <h3 className="font-bold text-gray-800">Enterprise</h3>
-                </div>
-
-                <div className="mb-4">
-                  <span className="text-2xl font-bold text-gray-800">맞춤 견적</span>
-                </div>
-
-                <div className="text-sm text-gray-600 mb-4">
-                  대규모 팀을 위한 맞춤형 솔루션
-                </div>
-
-                <div className="space-y-2 text-sm flex-1">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span>SSO / SAML 인증</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span>감사 로그</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span>전담 지원</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span>맞춤 SLA</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span>무제한 크레딧 + 모델</span>
-                  </div>
-                </div>
-
-                <a
-                  href="mailto:contact@catcident.com"
-                  aria-label="Enterprise 플랜 문의하기"
-                  className="mt-4 w-full py-2 px-4 bg-gray-800 text-white rounded-lg text-sm font-medium text-center hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+            <div>
+              {/* C1: 결제 주기 토글 */}
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <span className={`text-sm ${billingPeriod === 'monthly' ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                  월간
+                </span>
+                <button
+                  onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
+                  className="relative"
+                  aria-label={billingPeriod === 'monthly' ? '연간 결제로 전환' : '월간 결제로 전환'}
                 >
-                  <Mail aria-hidden="true" className="w-4 h-4" />
-                  문의하기
-                </a>
+                  {billingPeriod === 'monthly' ? (
+                    <ToggleLeft className="w-10 h-6 text-gray-400" aria-hidden="true" />
+                  ) : (
+                    <ToggleRight className="w-10 h-6 text-blue-600" aria-hidden="true" />
+                  )}
+                </button>
+                <span className={`text-sm ${billingPeriod === 'annual' ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                  연간
+                </span>
+                {billingPeriod === 'annual' && (
+                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                    17% 할인
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid grid-cols-1 gap-4 ${plans.length <= 3 ? 'md:grid-cols-3' : plans.length <= 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
+                {plans.map(plan => {
+                  const isCurrent = subscription?.plan === plan.code;
+                  const isPopular = plan.code === 'pro';
+                  const { price, original } = getDisplayPrice(plan.price_krw);
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`border-2 rounded-xl p-5 flex flex-col relative ${
+                        isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-300' : 'border-gray-200'
+                      }`}
+                    >
+                      {isPopular && !isCurrent && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs px-3 py-0.5 bg-purple-600 text-white rounded-full whitespace-nowrap">
+                          가장 인기
+                        </span>
+                      )}
+
+                      <div className="flex items-center gap-2 mb-3">
+                        {planIcon(plan.code)}
+                        <h3 className="font-bold text-gray-800">{plan.name}</h3>
+                        {isCurrent && (
+                          <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full ml-auto">
+                            현재
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mb-4">
+                        {price === 0 ? (
+                          <span className="text-2xl font-bold text-gray-800">무료</span>
+                        ) : (
+                          <div>
+                            {original && (
+                              <span className="text-sm text-gray-400 line-through mr-2">
+                                {original.toLocaleString()}원
+                              </span>
+                            )}
+                            <span className="text-2xl font-bold text-gray-800">
+                              {price.toLocaleString()}원
+                            </span>
+                            <span className="text-sm text-gray-500"> /월</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-sm text-gray-600 mb-4">
+                        월 {plan.monthly_credits.toLocaleString()} 크레딧
+                        {plan.monthly_credits > 0 && price > 0 && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({Math.round(price / plan.monthly_credits * 10) / 10}원/cr)
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 text-sm flex-1">
+                        {plan.features.models === 'all' ? (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>모든 AI 모델 사용 가능</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>{(plan.features.models as string[]).length}개 모델 사용 가능</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span>최대 {plan.features.max_file_size_mb}MB 파일</span>
+                        </div>
+                        {plan.features.max_saved_graphs !== undefined && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs}개`}</span>
+                          </div>
+                        )}
+                        {plan.features.max_chats_per_analysis !== undefined && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>채팅 {plan.features.max_chats_per_analysis === -1 ? '무제한' : `${plan.features.max_chats_per_analysis}회/분석`}</span>
+                          </div>
+                        )}
+                        {plan.features.byok && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>BYOK (개인 API 키 사용)</span>
+                          </div>
+                        )}
+                        {plan.features.can_purchase_credits && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>추가 크레딧 구매 가능</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {!isCurrent && (
+                        <button
+                          disabled
+                          className="mt-4 w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
+                        >
+                          준비 중
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Enterprise 카드 */}
+                <div className="border-2 border-gray-600 rounded-xl p-5 flex flex-col bg-gray-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building2 aria-hidden="true" className="w-5 h-5 text-gray-700" />
+                    <h3 className="font-bold text-gray-800">Enterprise</h3>
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="text-2xl font-bold text-gray-800">맞춤 견적</span>
+                  </div>
+
+                  <div className="text-sm text-gray-600 mb-4">
+                    대규모 팀을 위한 맞춤형 솔루션
+                  </div>
+
+                  <div className="space-y-2 text-sm flex-1">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span>SSO / SAML 인증</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span>감사 로그</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span>전담 지원</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span>맞춤 SLA</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span>무제한 크레딧 + 모델</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href="mailto:contact@catcident.com"
+                    aria-label="Enterprise 플랜 문의하기"
+                    className="mt-4 w-full py-2 px-4 bg-gray-800 text-white rounded-lg text-sm font-medium text-center hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Mail aria-hidden="true" className="w-4 h-4" />
+                    문의하기
+                  </a>
+                </div>
               </div>
             </div>
           ) : activeTab === 'packages' ? (
@@ -324,57 +380,121 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                 <div className="text-center text-gray-400 py-12">준비된 상품이 없습니다.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {packages.map(pkg => (
-                    <div key={pkg.id} className="border border-gray-200 rounded-xl p-5">
-                      <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
-                      <div className="text-2xl font-bold text-blue-600 mb-1">
-                        {pkg.credits.toLocaleString()} 크레딧
-                      </div>
-                      {pkg.bonus_pct > 0 && (
-                        <div className="text-xs text-green-600 font-medium mb-1">
-                          +{pkg.bonus_pct}% 보너스
+                  {packages.map(pkg => {
+                    const firstPurchaseBonus = Math.round(pkg.credits * 0.5);
+                    return (
+                      <div key={pkg.id} className="border border-gray-200 rounded-xl p-5">
+                        <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
+                        <div className="text-2xl font-bold text-blue-600 mb-1">
+                          {pkg.credits.toLocaleString()} 크레딧
                         </div>
-                      )}
-                      <div className="text-sm text-gray-500 mb-1">
-                        {pkg.price_krw.toLocaleString()}원
-                        <span className="text-xs text-gray-400 ml-1">
-                          ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
-                        </span>
+                        {pkg.bonus_pct > 0 && (
+                          <div className="text-xs text-green-600 font-medium mb-1">
+                            +{pkg.bonus_pct}% 보너스
+                          </div>
+                        )}
+                        {/* C3: 첫 구매 보너스 크레딧 표시 */}
+                        <div className="text-xs text-amber-600 font-medium mb-1">
+                          첫 구매 시 +{firstPurchaseBonus.toLocaleString()} 보너스
+                        </div>
+                        <div className="text-sm text-gray-500 mb-1">
+                          {pkg.price_krw.toLocaleString()}원
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-400 mb-4">만료 없음</div>
+                        <button
+                          disabled
+                          className="w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
+                        >
+                          준비 중
+                        </button>
                       </div>
-                      <div className="text-xs text-gray-400 mb-4">만료 없음</div>
-                      <button
-                        disabled
-                        className="w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
-                      >
-                        준비 중
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
-              {/* 첫 구매 보너스 안내 */}
+              {/* C3: 첫 구매 보너스 안내 */}
               {subscription?.features.can_purchase_credits && (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-                  <Gift aria-hidden="true" className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+                  <Gift aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-green-800">첫 패키지 구매 시 +50% 보너스</p>
-                    <p className="text-xs text-green-600 mt-0.5">첫 구매 보너스는 준비 중입니다.</p>
+                    <p className="text-sm font-medium text-amber-800">첫 패키지 구매 시 +50% 보너스!</p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      첫 번째 크레딧 패키지 구매 시 기본 크레딧의 50%가 추가 지급됩니다.
+                      결제 시스템 준비 중입니다.
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* 자동 리로드 (준비 중) */}
+              {/* C2: 자동 리로드 설정 (확장) */}
               {subscription?.features.can_purchase_credits && (
                 <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <RefreshCw aria-hidden="true" className="w-4 h-4 text-gray-400" />
-                    <h4 className="text-sm font-medium text-gray-500">자동 리로드</h4>
+                  <div className="flex items-center gap-2 mb-3">
+                    <RefreshCw aria-hidden="true" className="w-4 h-4 text-gray-500" />
+                    <h4 className="text-sm font-medium text-gray-700">자동 리로드</h4>
                     <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-500 rounded-full">준비 중</span>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    잔액이 설정한 임계값 이하로 떨어지면 자동으로 크레딧을 충전합니다. 자동 리로드 시 +10% 보너스가 적용됩니다.
+                  <p className="text-xs text-gray-500 mb-4">
+                    잔액이 임계값 이하로 떨어지면 자동으로 크레딧을 충전합니다. 자동 리로드 시 +10% 보너스가 적용됩니다.
                   </p>
+
+                  {/* 임계값 선택 */}
+                  <div className="mb-3">
+                    <label className="text-xs text-gray-500 block mb-1.5">충전 임계값</label>
+                    <div className="flex gap-2">
+                      {AUTO_RELOAD_THRESHOLDS.map(threshold => (
+                        <button
+                          key={threshold}
+                          onClick={() => setAutoReloadThreshold(threshold)}
+                          disabled
+                          className={`px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-not-allowed ${
+                            autoReloadThreshold === threshold
+                              ? 'border-blue-300 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 bg-white text-gray-400'
+                          }`}
+                        >
+                          {threshold}cr 이하
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 패키지 선택 */}
+                  {packages.length > 0 && (
+                    <div className="mb-3">
+                      <label className="text-xs text-gray-500 block mb-1.5">충전 패키지</label>
+                      <div className="flex gap-2">
+                        {packages.map((pkg, idx) => {
+                          const bonusCredits = Math.round(pkg.credits * 0.1);
+                          return (
+                            <button
+                              key={pkg.id}
+                              onClick={() => setAutoReloadPackageIdx(idx)}
+                              disabled
+                              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-not-allowed ${
+                                autoReloadPackageIdx === idx
+                                  ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                  : 'border-gray-200 bg-white text-gray-400'
+                              }`}
+                            >
+                              {pkg.name} (+{bonusCredits}cr)
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    disabled
+                    className="w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
+                  >
+                    자동 리로드 설정 (준비 중)
+                  </button>
                 </div>
               )}
             </div>

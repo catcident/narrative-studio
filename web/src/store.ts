@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult, PartialAnalysisInfo } from './types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult, PartialAnalysisInfo, QueueItem } from './types';
 import { AVAILABLE_MODELS } from './types';
 import { getSubscription } from './services/billing';
 import type { ByokMode } from './services/extraction';
@@ -35,6 +35,10 @@ interface AppState {
 
   // Partial Analysis
   partialAnalysis: PartialAnalysisInfo | null;
+
+  // Batch Analysis
+  analysisQueue: QueueItem[];
+  isQueueProcessing: boolean;
 
   // Billing
   subscription: BillingSubscription | null;
@@ -75,6 +79,13 @@ interface AppState {
   setValidatingFileId: (fileId: string | null) => void;
   clearValidationResults: () => void;
 
+  // Batch Analysis 액션
+  addToQueue: (items: QueueItem[]) => void;
+  removeFromQueue: (id: string) => void;
+  updateQueueItem: (id: string, updates: Partial<QueueItem>) => void;
+  clearQueue: () => void;
+  setQueueProcessing: (processing: boolean) => void;
+
   // Billing 액션
   loadSubscription: () => Promise<void>;
   updateCreditBalance: (n: number) => void;
@@ -106,6 +117,8 @@ export const useStore = create<AppState>((set, get) => ({
   isValidating: false,
   validatingFileId: null,
   partialAnalysis: null,
+  analysisQueue: [],
+  isQueueProcessing: false,
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
@@ -178,6 +191,22 @@ export const useStore = create<AppState>((set, get) => ({
   clearValidationResults: () => set({ validationResults: new Map(), isValidating: false, validatingFileId: null }),
 
   setPartialAnalysis: (partialAnalysis) => set({ partialAnalysis }),
+
+  // Batch Analysis 액션
+  addToQueue: (items) => set((state) => ({
+    analysisQueue: [...state.analysisQueue, ...items],
+  })),
+  removeFromQueue: (id) => set((state) => ({
+    analysisQueue: state.analysisQueue.filter((item) => item.id !== id),
+  })),
+  updateQueueItem: (id, updates) => set((state) => ({
+    analysisQueue: state.analysisQueue.map((item) =>
+      item.id === id ? { ...item, ...updates } : item,
+    ),
+  })),
+  clearQueue: () => set({ analysisQueue: [], isQueueProcessing: false }),
+  setQueueProcessing: (isQueueProcessing) => set({ isQueueProcessing }),
+
   reset: () => {
     sessionStorage.removeItem('currentDataId');
     sessionStorage.removeItem('viewMode');
@@ -196,6 +225,8 @@ export const useStore = create<AppState>((set, get) => ({
       isValidating: false,
       validatingFileId: null,
       partialAnalysis: null,
+      analysisQueue: [],
+      isQueueProcessing: false,
       error: null,
       currentUsage: initialUsage,
       showUsageSummary: false,
@@ -264,6 +295,8 @@ export const usePartialAnalysis = () => useStore((s) => s.partialAnalysis);
 export const useByokEnabled = () => useStore((s) => s.subscription?.features?.byok ?? false);
 export const useExportFormats = () => useStore((s) => s.subscription?.features?.export_formats ?? []);
 export const useByokMode = () => useStore((s) => s.byokMode);
+export const useAnalysisQueue = () => useStore((s) => s.analysisQueue);
+export const useIsQueueProcessing = () => useStore((s) => s.isQueueProcessing);
 
 export const useCharacters = (): Entity[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);

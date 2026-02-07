@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
-import { checkAnalyzeEligibility, isCachedByokEnabled } from '@/lib/balanceCache';
-import { checkRateLimit } from '@/lib/rateLimit';
+import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
+import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { resolveTokenBilling } from '@/lib/modelCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: balanceError }, { status: 402 });
       }
 
-      const limited = checkRateLimit(userId);
+      const planCode = getCachedPlanCode(userId);
+      const limited = checkRateLimit(userId, getRateLimitForPlan(planCode));
       if (limited) {
         return NextResponse.json(
           { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },

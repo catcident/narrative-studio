@@ -14,6 +14,21 @@ const DEFAULT_MAX_REQUESTS = 60;
 const DEFAULT_WINDOW_MS = 60_000; // 1분
 const MAX_ENTRIES = 10_000;
 
+/** 플랜별 분당 요청 제한 */
+const PLAN_RATE_LIMITS: Record<string, number> = {
+  free: 30,
+  basic: 60,
+  pro: 120,
+  business: 240,
+  enterprise: 240,
+};
+
+/** planCode에 해당하는 분당 요청 제한 반환 */
+export function getRateLimitForPlan(planCode?: string): number {
+  if (!planCode) return DEFAULT_MAX_REQUESTS;
+  return PLAN_RATE_LIMITS[planCode] ?? DEFAULT_MAX_REQUESTS;
+}
+
 function evict(windowMs: number): void {
   if (windows.size <= MAX_ENTRIES) return;
   const cutoff = Date.now() - windowMs * 2;

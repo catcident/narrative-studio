@@ -466,6 +466,7 @@ function App() {
                   edges={edgesWithOpacity}
                   selectedScene={currentScene ? { ...currentScene, sceneId: selectedSceneId! } : null}
                   sceneIndex={selectedSceneIndex + 1}
+                  onShowSubscription={() => setShowSubscriptionPage(true)}
                 />
               </div>
             </>

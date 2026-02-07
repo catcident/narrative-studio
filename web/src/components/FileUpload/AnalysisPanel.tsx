@@ -53,6 +53,9 @@ interface AnalysisPanelProps {
   canRegister: boolean;
   // Register
   handleRegister: () => void;
+  // Batch analysis (Pro+ multi-file)
+  canBatchAnalysis: boolean;
+  onBatchAnalysis?: () => void;
   // Slot for upload area (rendered between title/author and file list)
   uploadAreaSlot?: React.ReactNode;
 }
@@ -95,6 +98,8 @@ export function AnalysisPanel({
   fullTitle,
   canRegister,
   handleRegister,
+  canBatchAnalysis,
+  onBatchAnalysis,
   uploadAreaSlot,
 }: AnalysisPanelProps) {
   const [showAllModels, setShowAllModels] = useState(false);
@@ -437,24 +442,39 @@ export function AnalysisPanel({
 
           {/* 등록 버튼 */}
           <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={handleRegister}
-              disabled={!canRegister || localLoading}
-              className={`w-full max-w-md py-3 px-6 rounded-xl font-medium text-lg transition-all ${
-                canRegister
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {localLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
-                  분석 중...
-                </span>
-              ) : (
-                '등록하기'
+            <div className="flex gap-2 w-full max-w-md">
+              <button
+                onClick={handleRegister}
+                disabled={!canRegister || localLoading}
+                className={`flex-1 py-3 px-6 rounded-xl font-medium text-lg transition-all ${
+                  canRegister
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {localLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
+                    분석 중...
+                  </span>
+                ) : (
+                  canBatchAnalysis && selectedFiles.length > 1 ? '통합 분석' : '등록하기'
+                )}
+              </button>
+              {canBatchAnalysis && selectedFiles.length > 1 && onBatchAnalysis && (
+                <button
+                  onClick={onBatchAnalysis}
+                  disabled={!canRegister || localLoading}
+                  className={`py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+                    canRegister
+                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  개별 분석
+                </button>
               )}
-            </button>
+            </div>
             {!canRegister && !isDuplicateTitle && (
               <p className="text-xs text-gray-500">
                 {!bookTitle.trim() && '제목'}
