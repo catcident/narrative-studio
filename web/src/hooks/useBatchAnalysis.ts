@@ -10,6 +10,7 @@ import { saveKnowledgeGraph } from '../services/storage';
 import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
 import { getAvailableModelIds } from '../types';
 import type { ChunkUsage } from '../types';
+import type { ChunkBillingCallback } from '../services/extraction';
 
 export function useBatchAnalysis() {
   const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
@@ -64,7 +65,7 @@ export function useBatchAnalysis() {
 
         // 큐 아이템별 사용량 추적
         const itemChunks: ChunkUsage[] = [];
-        const onChunkBilling = (chunkIndex: number, billing: { prompt_tokens: number; completion_tokens: number; model: string }) => {
+        const onChunkBilling: ChunkBillingCallback = (chunkIndex, billing) => {
           itemChunks.push({
             chunkIndex,
             promptTokens: billing.prompt_tokens,

@@ -178,7 +178,6 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setChatMentionedEntities: (chatMentionedEntities) => set({ chatMentionedEntities }),
 
-
   // 검증 액션
   setValidationResults: (validationResults) => set({ validationResults }),
   updateValidationResult: (fileId, result) => set((state) => {

@@ -41,5 +41,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
     normA += a[i] * a[i];
     normB += b[i] * b[i];
   }
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  if (denominator === 0) return 0;
+  return dotProduct / denominator;
 }

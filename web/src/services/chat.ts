@@ -287,7 +287,10 @@ async function decideConnectedNodes(
           if (!connectedCandidates.has(entityId)) {
             connectedCandidates.set(entityId, { name: entity.name, relations: [] });
           }
-          connectedCandidates.get(entityId)!.relations.push(edge.statement.slice(0, 50));
+          const candidate = connectedCandidates.get(entityId);
+          if (candidate) {
+            candidate.relations.push(edge.statement.slice(0, 50));
+          }
         }
       }
     });
@@ -362,7 +365,7 @@ ${connectedList}
     }
 
     return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn('[decideConnected] 오류, 기본값 사용:', err);
     return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
   }

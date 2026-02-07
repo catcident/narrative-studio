@@ -25,7 +25,9 @@ interface TreeNode {
 }
 
 export function WorldView() {
-  const { knowledgeGraph, selectEntity, selectedEntityId } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectEntity = useStore((s) => s.selectEntity);
+  const selectedEntityId = useStore((s) => s.selectedEntityId);
   const [activeTab, setActiveTab] = useState<WorldTab>('locations');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [minImportance, setMinImportance] = useState<number>(1);

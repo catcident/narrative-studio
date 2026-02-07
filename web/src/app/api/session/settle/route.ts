@@ -62,8 +62,9 @@ export async function POST(request: NextRequest) {
     // 서버가 금액 재계산 — 클라이언트 값 무시
     const dynamicModels = await getCachedModels();
     let totalSessionCostUsd = 0;
+    const validatedChunks = chunks as ChunkUsage[];
 
-    for (const chunk of chunks as ChunkUsage[]) {
+    for (const chunk of validatedChunks) {
       if (typeof chunk.model !== 'string' || typeof chunk.prompt_tokens !== 'number' || typeof chunk.completion_tokens !== 'number') {
         return NextResponse.json({ error: 'Invalid chunk format: each chunk needs model, prompt_tokens, completion_tokens' }, { status: 400 });
       }
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 마크업은 첫 번째 chunk의 모델 기준 (추출 모델)
-    const firstChunk = (chunks as ChunkUsage[])[0];
+    const firstChunk = validatedChunks[0];
     const chunkCostUsd = calculateChunkCostUsd(firstChunk.model, dynamicModels);
     const actualCredits = calculateSessionCredits(totalSessionCostUsd, chunkCostUsd);
 

@@ -32,10 +32,18 @@ export function BatchAnalysisPanel() {
   const { startProcessing, cancelProcessing } = useBatchAnalysis();
 
   const stats = useMemo(() => {
-    const completed = queue.filter((i) => i.status === 'completed').length;
-    const failed = queue.filter((i) => i.status === 'failed').length;
-    const pending = queue.filter((i) => i.status === 'pending').length;
-    const processing = queue.filter((i) => i.status === 'processing').length;
+    let completed = 0;
+    let failed = 0;
+    let pending = 0;
+    let processing = 0;
+    for (const item of queue) {
+      switch (item.status) {
+        case 'completed': completed++; break;
+        case 'failed': failed++; break;
+        case 'pending': pending++; break;
+        case 'processing': processing++; break;
+      }
+    }
     return { completed, failed, pending, processing, total: queue.length };
   }, [queue]);
 

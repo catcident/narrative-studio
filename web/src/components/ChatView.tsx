@@ -705,7 +705,11 @@ export function ChatView() {
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading || isChatLimitReached}
-            aria-label={isChatLimitReached ? '채팅 한도 도달' : isLoading ? '전송 중' : '전송'}
+            aria-label={(() => {
+              if (isChatLimitReached) return '채팅 한도 도달';
+              if (isLoading) return '전송 중';
+              return '전송';
+            })()}
             className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {isLoading ? (

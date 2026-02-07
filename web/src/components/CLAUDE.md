@@ -312,8 +312,8 @@ React Flow `dagre` 레이아웃 사용:
 try {
   const data = await apiCall();
   // ...
-} catch (error) {
-  console.error('[billing] operation error:', error);
+} catch (err: unknown) {
+  console.error('[billing] operation error:', err);
   // UI에 에러 상태 표시 또는 null 반환
 }
 

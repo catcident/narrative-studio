@@ -22,17 +22,17 @@ export function CreditBadge({ onClick, className = '' }: CreditBadgeProps) {
   const isLow = balance < 10;
   const isUsingByok = hasApiKey() && shouldUsePersonalKey(byokMode, balance);
 
+  function getColorClass(): string {
+    if (isUsingByok) return 'bg-purple-50 text-purple-700 hover:bg-purple-100';
+    if (isLow) return 'bg-red-50 text-red-600 hover:bg-red-100';
+    return 'bg-amber-50 text-amber-700 hover:bg-amber-100';
+  }
+
   return (
     <button
       onClick={onClick}
       aria-label={isUsingByok ? '개인 키 사용 중 — 구독 관리' : '크레딧 잔액 및 구독 관리'}
-      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-        isUsingByok
-          ? 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-          : isLow
-            ? 'bg-red-50 text-red-600 hover:bg-red-100'
-            : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-      } ${className}`}
+      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${getColorClass()} ${className}`}
     >
       {isUsingByok ? (
         <Key aria-hidden="true" className="w-4 h-4" />

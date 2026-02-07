@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       novelId: item.novelId || null,
       model: item.data?.metadata?.model || null,
     })));
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       const existingFileCount = existing.data?.metadata?.sourceFiles?.length || 0;
       const newSourceFiles = data.metadata?.sourceFiles || [];
       const addedFiles = newSourceFiles.slice(existingFileCount);
-      const addedFileNames = addedFiles.map((f: any) => f.fileName).join(', ');
+      const addedFileNames = addedFiles.map((f: { fileName?: string }) => f.fileName).join(', ');
 
       // 이전 버전을 히스토리에 저장
       const versionsCollection = db.collection('knowledgeGraphVersions');
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         model: data.metadata?.model || null,
       });
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs POST error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

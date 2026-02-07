@@ -70,8 +70,8 @@ async function doRefreshAccessToken(token: import('next-auth/jwt').JWT): Promise
       accessTokenExpires: Date.now() + (data.expires_in ?? 3600) * 1000,
       error: undefined,
     };
-  } catch (error) {
-    console.error('[auth] Token refresh error:', error);
+  } catch (err: unknown) {
+    console.error('[auth] Token refresh error:', err);
     return { ...token, error: REFRESH_TOKEN_ERROR };
   }
 }
