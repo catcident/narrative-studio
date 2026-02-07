@@ -1,0 +1,283 @@
+{
+  "_test": {
+    "file": "02_시점변경_1인칭",
+    "timestamp": "2026-02-07T03:47:21.220Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 나의 아침"
+    },
+    {
+      "id": 2,
+      "title": "2화: 그녀의 오후"
+    },
+    {
+      "id": 3,
+      "title": "3화: 교차하는 저녁"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "침대",
+      "time": "7시",
+      "summary": "서준이 7시에 일어나 회사에 갈 준비를 한다.",
+      "time_marker": null
+    },
+    {
+      "id": 2,
+      "chapter": 1,
+      "location": "블루문 카페",
+      "time": null,
+      "summary": "서준이 블루문 카페에서 아메리카노를 사서 회사로 향한다.",
+      "time_marker": null
+    },
+    {
+      "id": 3,
+      "chapter": 1,
+      "location": "지하철",
+      "time": null,
+      "summary": "서준이 지하철에서 동료 박재민을 만나 회의 준비에 대한 이야기를 나눈다.",
+      "time_marker": null
+    },
+    {
+      "id": 4,
+      "chapter": 2,
+      "location": "화실",
+      "time": "오후",
+      "summary": "수아가 화실에서 푸른 달이 뜬 카페 풍경을 그린다.",
+      "time_marker": null
+    },
+    {
+      "id": 5,
+      "chapter": 2,
+      "location": "블루문 카페 앞",
+      "time": null,
+      "summary": "수아가 룸메이트 진아의 추천으로 블루문 카페에 간다.",
+      "time_marker": null
+    },
+    {
+      "id": 6,
+      "chapter": 2,
+      "location": "블루문 카페",
+      "time": null,
+      "summary": "수아가 블루문 카페에 처음 방문한다.",
+      "time_marker": null
+    },
+    {
+      "id": 7,
+      "chapter": 3,
+      "location": "블루문 카페",
+      "time": "저녁",
+      "summary": "서준이 퇴근 후 블루문 카페에 들르고, 수아가 저녁에 다시 카페를 방문하여 두 사람이 마주친다.",
+      "time_marker": null
+    }
+  ],
+  "entities": [
+    {
+      "name": "한서준",
+      "category": "character",
+      "description": "서른두 살의 평범한 회사원",
+      "scenes": [
+        1,
+        2,
+        3,
+        7
+      ],
+      "aliases": [
+        "서준"
+      ]
+    },
+    {
+      "name": "블루문 카페",
+      "category": "location",
+      "description": "김 사장이 운영하는 작은 카페",
+      "scenes": [
+        2,
+        5,
+        6,
+        7
+      ],
+      "aliases": []
+    },
+    {
+      "name": "김 사장",
+      "category": "character",
+      "description": "블루문 카페 주인",
+      "scenes": [
+        2,
+        6,
+        7
+      ],
+      "aliases": []
+    },
+    {
+      "name": "박재민",
+      "category": "character",
+      "description": "서준의 회사 동료",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "이수아",
+      "category": "character",
+      "description": "스물여덟 살, 화가를 꿈꾸는 미대 졸업생",
+      "scenes": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "aliases": [
+        "수아"
+      ]
+    },
+    {
+      "name": "진아",
+      "category": "character",
+      "description": "수아의 룸메이트, 디자인 회사에 다닌다.",
+      "scenes": [
+        5
+      ],
+      "aliases": []
+    },
+    {
+      "name": "아메리카노",
+      "category": "item",
+      "description": "블루문 카페의 인기 메뉴",
+      "scenes": [
+        2,
+        6
+      ],
+      "aliases": []
+    },
+    {
+      "name": "화실",
+      "category": "location",
+      "description": "수아가 그림을 그리는 공간",
+      "scenes": [
+        4
+      ],
+      "aliases": []
+    },
+    {
+      "name": "캔버스",
+      "category": "item",
+      "description": "수아가 그림을 그리는 도구",
+      "scenes": [
+        4,
+        7
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "한서준",
+      "to": "블루문 카페",
+      "type": "위치",
+      "description": "서준이 블루문 카페에 들름",
+      "scenes": [
+        2,
+        7
+      ]
+    },
+    {
+      "from": "한서준",
+      "to": "박재민",
+      "type": "동료",
+      "description": "회사 동료",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "이수아",
+      "to": "화실",
+      "type": "위치",
+      "description": "수아가 화실에 있음",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "이수아",
+      "to": "진아",
+      "type": "친구",
+      "description": "룸메이트",
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "이수아",
+      "to": "블루문 카페",
+      "type": "위치",
+      "description": "수아가 블루문 카페에 방문",
+      "scenes": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "from": "김 사장",
+      "to": "블루문 카페",
+      "type": "소속",
+      "description": "블루문 카페 주인",
+      "scenes": [
+        2,
+        6,
+        7
+      ]
+    },
+    {
+      "from": "한서준",
+      "to": "김 사장",
+      "type": "관련",
+      "description": "단골 손님과 카페 주인",
+      "scenes": [
+        2,
+        7
+      ]
+    },
+    {
+      "from": "이수아",
+      "to": "김 사장",
+      "type": "관련",
+      "description": "손님과 카페 주인",
+      "scenes": [
+        6,
+        7
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "한서준",
+      "merge": "서준",
+      "reason": "한서준의 별칭이 서준임"
+    },
+    {
+      "keep": "이수아",
+      "merge": "수아",
+      "reason": "이수아의 별칭이 수아임"
+    }
+  ],
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 5,
+    "locationCount": 2,
+    "itemCount": 2,
+    "conceptCount": 0,
+    "relationshipCount": 8,
+    "sceneCount": 7,
+    "chapterCount": 3
+  }
+}

@@ -1,0 +1,409 @@
+{
+  "_test": {
+    "file": "17_역사_실존인물",
+    "timestamp": "2026-02-07T03:50:57.086Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 한양"
+    },
+    {
+      "id": 2,
+      "title": "2화: 대립"
+    },
+    {
+      "id": 3,
+      "title": "3화: 유산"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "한양",
+      "time": null,
+      "summary": "정조가 개혁을 꿈꾸며 정약용에게 화성 설계를 맡기고, 혜경궁 홍씨는 정조의 개혁을 걱정한다.",
+      "time_marker": null
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "불명",
+      "time": null,
+      "summary": "심환지가 정조의 개혁을 견제하고, 서유방은 심환지의 밀사 파견을 보고한다. 정조는 정약용에게 심환지 배후 조사를 지시한다.",
+      "time_marker": null
+    },
+    {
+      "id": 3,
+      "chapter": 2,
+      "location": "다산 초당",
+      "time": null,
+      "summary": "정약용이 황상과 함께 심환지 배후 조사를 시작한다.",
+      "time_marker": null
+    },
+    {
+      "id": 4,
+      "chapter": 3,
+      "location": "불명",
+      "time": null,
+      "summary": "정조가 승하하고, 순조가 왕위에 오른다. 정약용은 유배되고 목민심서를 집필한다.",
+      "time_marker": null
+    },
+    {
+      "id": 5,
+      "chapter": 3,
+      "location": "유배지",
+      "time": null,
+      "summary": "황상이 유배지까지 찾아와 서울의 상황을 전한다.",
+      "time_marker": null
+    }
+  ],
+  "entities": [
+    {
+      "name": "정조",
+      "category": "character",
+      "description": "조선 제22대 왕, 개혁을 꿈꾼다.",
+      "scenes": [
+        1,
+        2,
+        4
+      ],
+      "aliases": []
+    },
+    {
+      "name": "정약용",
+      "category": "character",
+      "description": "정조의 신하, 수원 화성 설계 담당.",
+      "scenes": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "aliases": [
+        "약용"
+      ]
+    },
+    {
+      "name": "수원 화성",
+      "category": "location",
+      "description": "정약용이 설계하는 성.",
+      "scenes": [
+        1
+      ],
+      "aliases": [
+        "화성"
+      ]
+    },
+    {
+      "name": "혜경궁 홍씨",
+      "category": "character",
+      "description": "정조의 어머니, 아들의 개혁을 걱정한다.",
+      "scenes": [
+        1,
+        4
+      ],
+      "aliases": []
+    },
+    {
+      "name": "노론",
+      "category": "concept",
+      "description": "정조의 개혁에 반대하는 세력.",
+      "scenes": [
+        1,
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "심환지",
+      "category": "character",
+      "description": "노론의 영수, 정조를 견제한다.",
+      "scenes": [
+        2,
+        3,
+        5
+      ],
+      "aliases": []
+    },
+    {
+      "name": "장용영",
+      "category": "concept",
+      "description": "정조의 호위부대.",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "서유방",
+      "category": "character",
+      "description": "장용영 대장.",
+      "scenes": [
+        2
+      ],
+      "aliases": []
+    },
+    {
+      "name": "다산 초당",
+      "category": "location",
+      "description": "정약용이 머무는 곳.",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "황상",
+      "category": "character",
+      "description": "정약용의 제자.",
+      "scenes": [
+        3,
+        5
+      ],
+      "aliases": []
+    },
+    {
+      "name": "순조",
+      "category": "character",
+      "description": "정조의 뒤를 이어 왕위에 오른 인물.",
+      "scenes": [
+        4
+      ],
+      "aliases": []
+    },
+    {
+      "name": "목민심서",
+      "category": "item",
+      "description": "정약용이 유배지에서 집필하는 책.",
+      "scenes": [
+        4
+      ],
+      "aliases": []
+    },
+    {
+      "name": "서울",
+      "category": "location",
+      "description": "심환지의 세력이 조정을 장악한 곳.",
+      "scenes": [
+        5
+      ],
+      "aliases": []
+    },
+    {
+      "name": "거중기",
+      "category": "item",
+      "description": "백성의 노역을 줄일 수 있는 기계.",
+      "scenes": [
+        1
+      ],
+      "aliases": []
+    },
+    {
+      "name": "유배지",
+      "category": "location",
+      "description": "정약용이 유배된 장소",
+      "scenes": [
+        5,
+        4
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "정조",
+      "to": "정약용",
+      "type": "동료",
+      "description": "왕과 신하",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "정조",
+      "to": "수원 화성",
+      "type": "관련",
+      "description": "정조가 건설을 지시",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "정조",
+      "to": "혜경궁 홍씨",
+      "type": "가족",
+      "description": "어머니-아들",
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "from": "정조",
+      "to": "노론",
+      "type": "적대",
+      "description": "개혁에 대한 반대 세력",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "심환지",
+      "to": "노론",
+      "type": "소속",
+      "description": "영수",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "정조",
+      "to": "심환지",
+      "type": "적대",
+      "description": "개혁에 대한 견제",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "서유방",
+      "to": "장용영",
+      "type": "소속",
+      "description": "대장",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "정조",
+      "to": "장용영",
+      "type": "소속",
+      "description": "호위 부대",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "정약용",
+      "to": "심환지",
+      "type": "적대",
+      "description": "배후 조사",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "정약용",
+      "to": "다산 초당",
+      "type": "위치",
+      "description": "머무는 곳",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "황상",
+      "to": "정약용",
+      "type": "소속",
+      "description": "제자",
+      "scenes": [
+        3,
+        5
+      ]
+    },
+    {
+      "from": "순조",
+      "to": "혜경궁 홍씨",
+      "type": "가족",
+      "description": "손자-할머니",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "정약용",
+      "to": "목민심서",
+      "type": "소유",
+      "description": "집필",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "정약용",
+      "to": "유배지",
+      "type": "위치",
+      "description": "유배",
+      "scenes": [
+        4,
+        5
+      ]
+    },
+    {
+      "from": "황상",
+      "to": "유배지",
+      "type": "위치",
+      "description": "방문",
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "심환지",
+      "to": "서울",
+      "type": "위치",
+      "description": "세력 장악",
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "정약용",
+      "to": "거중기",
+      "type": "관련",
+      "description": "활용 제안",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "정조",
+      "to": "순조",
+      "type": "가족",
+      "description": "할아버지-손자",
+      "scenes": [
+        4
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "수원 화성",
+      "merge": "화성",
+      "reason": "수원 화성의 별칭이 화성임"
+    },
+    {
+      "keep": "정약용",
+      "merge": "약용",
+      "reason": "정약용의 별칭이 약용임"
+    }
+  ],
+  "summary": {
+    "entityCount": 15,
+    "characterCount": 7,
+    "locationCount": 4,
+    "itemCount": 2,
+    "conceptCount": 2,
+    "relationshipCount": 18,
+    "sceneCount": 5,
+    "chapterCount": 3
+  }
+}

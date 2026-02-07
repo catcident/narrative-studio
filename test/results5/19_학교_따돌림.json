@@ -1,0 +1,307 @@
+{
+  "_test": {
+    "file": "19_학교_따돌림",
+    "timestamp": "2026-02-07T03:51:23.855Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 전학생"
+    },
+    {
+      "id": 2,
+      "title": "2화: 진실"
+    },
+    {
+      "id": 3,
+      "title": "3화: 선택"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "중학교 2학년 3반",
+      "time": "3월",
+      "summary": "서윤이 새 학교인 중학교 2학년 3반으로 전학을 와서 한미영 선생님의 소개를 받고, 반장 이채린의 도움으로 학교에 적응하려 하지만, 윤지가 채린과 너무 붙어 다니지 말라고 경고한다.",
+      "time_marker": null
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "중학교 2학년 3반",
+      "time": null,
+      "summary": "채린의 인기가 많지만 서윤은 이상함을 느끼고, 소현이 채린에게 왕따를 당하고 있다는 사실을 알게 된다. 현우 또한 소현의 말이 맞다고 확인해준다.",
+      "time_marker": null
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "중학교 2학년 3반",
+      "time": null,
+      "summary": "서윤은 채린에게 소현을 괴롭히는 이유를 묻지만 협박을 받는다. 서윤은 한미영 선생님에게 따돌림 사실을 알리고, 상담교사 박지훈 선생님과 함께 조사가 시작된다. 현우의 증언으로 채린은 학교폭력위원회에 회부되고, 소현은 서윤에게 고마움을 표한다.",
+      "time_marker": null
+    }
+  ],
+  "entities": [
+    {
+      "name": "서윤",
+      "category": "character",
+      "description": "전학생",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "한미영",
+      "category": "character",
+      "description": "담임 선생님",
+      "scenes": [
+        1,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "이채린",
+      "category": "character",
+      "description": "반장",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "윤지",
+      "category": "character",
+      "description": "같은 반 학생",
+      "scenes": [
+        1
+      ],
+      "aliases": []
+    },
+    {
+      "name": "소현",
+      "category": "character",
+      "description": "같은 반 학생, 왕따 피해자",
+      "scenes": [
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "현우",
+      "category": "character",
+      "description": "같은 반 학생, 증인",
+      "scenes": [
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "박지훈",
+      "category": "character",
+      "description": "상담교사",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "중학교 2학년 3반",
+      "category": "location",
+      "description": "서윤의 반",
+      "scenes": [
+        1,
+        2,
+        3
+      ],
+      "aliases": []
+    },
+    {
+      "name": "학교폭력위원회",
+      "category": "concept",
+      "description": "채린이 회부된 곳",
+      "scenes": [
+        3
+      ],
+      "aliases": []
+    }
+  ],
+  "relationships": [
+    {
+      "from": "서윤",
+      "to": "한미영",
+      "type": "관련",
+      "description": "전학생과 담임 선생님",
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "서윤",
+      "type": "친구",
+      "description": "반장과 전학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤지",
+      "to": "이채린",
+      "type": "관련",
+      "description": "윤지가 이채린을 경계함",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "소현",
+      "type": "적대",
+      "description": "채린이 소현을 왕따시킴",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "현우",
+      "to": "소현",
+      "type": "관련",
+      "description": "현우가 소현의 말을 확인해줌",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "이채린",
+      "type": "적대",
+      "description": "서윤이 채린에게 따돌림에 대해 묻자 채린이 협박함",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "박지훈",
+      "to": "한미영",
+      "type": "동료",
+      "description": "상담교사와 담임 선생님",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "현우",
+      "to": "이채린",
+      "type": "적대",
+      "description": "현우가 채린의 학교 폭력을 증언함",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "소현",
+      "type": "친구",
+      "description": "서윤이 소현을 도와줌",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "서윤이 중학교 2학년 3반에 있음",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "한미영",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "한미영이 중학교 2학년 3반에 있음",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "이채린이 중학교 2학년 3반에 있음",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤지",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "윤지가 중학교 2학년 3반에 있음",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "소현",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "소현이 중학교 2학년 3반에 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "현우",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "현우가 중학교 2학년 3반에 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "박지훈",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "박지훈이 중학교 2학년 3반에 있음",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "학교폭력위원회",
+      "type": "소속",
+      "description": "채린이 학교폭력위원회에 회부됨",
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [],
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 7,
+    "locationCount": 1,
+    "itemCount": 0,
+    "conceptCount": 1,
+    "relationshipCount": 17,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}
