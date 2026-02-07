@@ -87,8 +87,13 @@ export async function selectRelevantEntities(
   const summaries = buildEntitySummaries(graph);
   const summaryText = formatEntitySummariesForSelection(summaries);
 
-  // 텍스트 미리보기 (앞부분 1000자)
-  const textPreview = chunkText.slice(0, 1000);
+  // 텍스트 미리보기: 앞 800자 + 뒤 200자 (중간 생략)
+  let textPreview: string;
+  if (chunkText.length <= 1200) {
+    textPreview = chunkText;
+  } else {
+    textPreview = chunkText.slice(0, 800) + '\n...(중략)...\n' + chunkText.slice(-200);
+  }
 
   const prompt = ENTITY_SELECTION_PROMPT
     .replace('{{textPreview}}', textPreview)
@@ -143,6 +148,17 @@ export async function selectRelevantEntities(
     } catch {
       console.warn('[extraction] 선별 JSON 파싱 실패, 전체 엔티티 사용');
       return { names: allEntityNames(graph), billing };
+    }
+
+    // 텍스트에 직접 이름이 언급된 엔티티는 LLM이 누락해도 강제 포함
+    const chunkLower = chunkText.toLowerCase();
+    const allNames = allEntityNames(graph);
+    for (const name of allNames) {
+      if (name.length >= 2 && chunkLower.includes(name.toLowerCase())) {
+        if (!selectedNames.some(n => n.toLowerCase() === name.toLowerCase())) {
+          selectedNames.push(name);
+        }
+      }
     }
 
     console.log(`[extraction] 선별 ${entityCount}개 중 ${selectedNames.length}개 선택: ${selectedNames.slice(0, 10).join(', ')}${selectedNames.length > 10 ? '...' : ''}`);

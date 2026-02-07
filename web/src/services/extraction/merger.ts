@@ -10,6 +10,8 @@ import type {
   ChunkExtractedData, MergedExtraction, MergedEntity, MergedRelationship,
   MergedScene, MergedChapter, MergedTimelinePoint,
 } from './types';
+import { getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
+import { ENTITY_MERGE_REVIEW_PROMPT } from './prompts';
 
 // --- ID 포맷 헬퍼 ---
 
@@ -25,23 +27,6 @@ function normalizeName(name: string): string {
     .toLowerCase()
     .replace(/\s+/g, '')
     .replace(/(씨|님|군|양|선생|사장|부장|과장|대리|사원)$/g, '');
-}
-
-// 두 문자열의 최대 공통 부분 문자열 찾기
-function findOverlap(a: string, b: string): string {
-  const aLower = a.toLowerCase();
-  const bLower = b.toLowerCase();
-  let maxOverlap = '';
-
-  for (let i = 0; i < aLower.length; i++) {
-    for (let j = i + 1; j <= aLower.length; j++) {
-      const sub = aLower.slice(i, j);
-      if (bLower.includes(sub) && sub.length > maxOverlap.length) {
-        maxOverlap = sub;
-      }
-    }
-  }
-  return maxOverlap;
 }
 
 // 이름 → ID 매핑에 정확/소문자/정규화 3가지 키를 등록
@@ -63,19 +48,16 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
   const normalized = normalizeName(name);
   if (nameToId[normalized]) return nameToId[normalized];
 
-  // 3. 부분 매칭 (이름이 포함되거나 포함하는 경우)
-  const nameLower = name.toLowerCase();
-  for (const [entityName, id] of Object.entries(nameToId)) {
-    const entityNameLower = entityName.toLowerCase();
-    if (entityNameLower.includes(nameLower) || nameLower.includes(entityNameLower)) {
-      return id;
-    }
-  }
-
-  // 4. 2글자 이상 공통 부분 매칭
-  if (name.length >= 2) {
+  // 3. 부분 매칭: 짧은 쪽 3글자 이상 AND 비율 50% 이상
+  if (name.length >= 3) {
+    const nameLower = name.toLowerCase().replace(/\s+/g, '');
     for (const [entityName, id] of Object.entries(nameToId)) {
-      if (findOverlap(name, entityName).length >= 2) {
+      if (entityName.length < 3) continue;
+      const entityLower = entityName.toLowerCase().replace(/\s+/g, '');
+      const shorter = Math.min(nameLower.length, entityLower.length);
+      const longer = Math.max(nameLower.length, entityLower.length);
+      if (shorter / longer < 0.5) continue;
+      if (entityLower.includes(nameLower) || nameLower.includes(entityLower)) {
         return id;
       }
     }
@@ -92,20 +74,33 @@ function findSimilarEntity(name: string, nameMap: Record<string, number>): numbe
     return nameMap[name];
   }
 
-  // "나", "나는", "주인공" 같은 1인칭 표현 통합
-  const firstPersonNames = ['나', '나는', '주인공', '화자'];
-  if (firstPersonNames.includes(name)) {
-    for (const fpName of firstPersonNames) {
-      if (nameMap[fpName] !== undefined) {
-        return nameMap[fpName];
-      }
+  // 소문자 매칭
+  const nameLower = name.toLowerCase();
+  for (const [existingName, idx] of Object.entries(nameMap)) {
+    if (existingName.toLowerCase() === nameLower) {
+      return idx;
     }
   }
 
-  // 부분 일치 (2글자 이상)
-  if (name.length >= 2) {
+  // 정규화 매칭 (공백/경칭 제거)
+  const nameNorm = normalizeName(name);
+  for (const [existingName, idx] of Object.entries(nameMap)) {
+    if (normalizeName(existingName) === nameNorm) {
+      return idx;
+    }
+  }
+
+  // 부분 매칭: 짧은 쪽 3글자 이상 AND 비율 50% 이상일 때만
+  if (name.length >= 3) {
     for (const [existingName, idx] of Object.entries(nameMap)) {
-      if (existingName.includes(name) || name.includes(existingName)) {
+      if (existingName.length < 3) continue;
+      const shorter = Math.min(name.length, existingName.length);
+      const longer = Math.max(name.length, existingName.length);
+      if (shorter / longer < 0.5) continue;
+
+      const nameLow = name.toLowerCase().replace(/\s+/g, '');
+      const existLow = existingName.toLowerCase().replace(/\s+/g, '');
+      if (existLow.includes(nameLow) || nameLow.includes(existLow)) {
         return idx;
       }
     }
@@ -231,6 +226,138 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
   return { entities, relationships, scenes, chapters };
 }
 
+// --- LLM 병합 검토 ---
+
+interface MergeSuggestion {
+  keep: string;
+  merge: string;
+  reason: string;
+}
+
+/**
+ * LLM을 사용하여 엔티티 병합 후보를 검토
+ * 같은 대상인데 다른 이름으로 추출된 것을 찾아 병합 제안
+ */
+export async function reviewEntityMerges(
+  merged: MergedExtraction,
+  model?: string,
+): Promise<MergedExtraction> {
+  const { entities } = merged;
+
+  // 엔티티가 3개 이하면 검토 불필요
+  if (entities.length <= 3) {
+    console.log('[extraction] 엔티티 3개 이하, 병합 검토 스킵');
+    return merged;
+  }
+
+  // 엔티티 목록을 텍스트로 변환
+  const entityList = entities.map((e, i) => {
+    const aliasText = e.aliases?.length ? ` (별칭: ${e.aliases.join(', ')})` : '';
+    return `${i + 1}. ${e.name} [${e.category}]${aliasText}: ${(e.description || '').slice(0, 80)}`;
+  }).join('\n');
+
+  const prompt = ENTITY_MERGE_REVIEW_PROMPT.replace('{{entityList}}', entityList);
+
+  try {
+    const reviewModel = 'google/gemini-2.0-flash-001';
+    const userApiKey = getApiKey();
+
+    const response = await fetchWithClientTimeout('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        apiKey: userApiKey || undefined,
+        model: reviewModel,
+      }),
+    }, 30000);
+
+    if (!response.ok) {
+      console.warn('[extraction] 병합 검토 API 오류, 스킵');
+      return merged;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    let suggestions: MergeSuggestion[] = [];
+    try {
+      const jsonContent = stripMarkdownCodeBlock(content);
+      suggestions = JSON.parse(jsonContent);
+      if (!Array.isArray(suggestions)) {
+        throw new Error('배열이 아님');
+      }
+    } catch {
+      console.warn('[extraction] 병합 검토 JSON 파싱 실패, 스킵');
+      return merged;
+    }
+
+    if (suggestions.length === 0) {
+      console.log('[extraction] LLM 병합 검토: 병합할 것 없음');
+      return merged;
+    }
+
+    // 병합 적용
+    const newEntities = [...entities];
+    const newRelationships = [...merged.relationships];
+
+    for (const suggestion of suggestions) {
+      const keepIdx = newEntities.findIndex(e => e.name === suggestion.keep);
+      const mergeIdx = newEntities.findIndex(e => e.name === suggestion.merge);
+
+      if (keepIdx === -1 || mergeIdx === -1) {
+        console.log(`[extraction] 병합 스킵 (이름 없음): "${suggestion.keep}" ← "${suggestion.merge}"`);
+        continue;
+      }
+
+      const keepEntity = newEntities[keepIdx];
+      const mergeEntity = newEntities[mergeIdx];
+
+      // 카테고리가 다르면 병합하지 않음
+      if (keepEntity.category !== mergeEntity.category) {
+        console.log(`[extraction] 병합 스킵 (카테고리 다름): "${suggestion.keep}" (${keepEntity.category}) ← "${suggestion.merge}" (${mergeEntity.category})`);
+        continue;
+      }
+
+      console.log(`[extraction] LLM 병합: "${suggestion.keep}" ← "${suggestion.merge}" (${suggestion.reason})`);
+
+      // 엔티티 병합: keep에 merge 정보 흡수
+      keepEntity.aliases = [...new Set([
+        ...(keepEntity.aliases || []),
+        mergeEntity.name,
+        ...(mergeEntity.aliases || []),
+      ])];
+      if (mergeEntity.description && !keepEntity.description?.includes(mergeEntity.description)) {
+        keepEntity.description = (keepEntity.description + ' ' + mergeEntity.description).trim();
+      }
+      keepEntity.scenes = [...new Set([...(keepEntity.scenes || []), ...(mergeEntity.scenes || [])])];
+
+      // 관계에서 merge 이름을 keep 이름으로 변경
+      for (const rel of newRelationships) {
+        if (rel.from === suggestion.merge) rel.from = suggestion.keep;
+        if (rel.to === suggestion.merge) rel.to = suggestion.keep;
+      }
+
+      // 병합된 엔티티 제거
+      newEntities.splice(mergeIdx, 1);
+    }
+
+    // 자기참조 관계 제거 (병합 후 발생 가능)
+    const filteredRelationships = newRelationships.filter(r => r.from !== r.to);
+
+    console.log(`[extraction] LLM 병합 검토 완료: ${entities.length} → ${newEntities.length}개 엔티티`);
+
+    return {
+      ...merged,
+      entities: newEntities,
+      relationships: filteredRelationships,
+    };
+  } catch (err) {
+    console.warn('[extraction] 병합 검토 오류, 스킵:', err);
+    return merged;
+  }
+}
+
 // --- 관계 타입 정규화 ---
 
 const VALID_RELATION_TYPES = ['가족', '연인', '친구', '적대', '동료', '소속', '위치', '소유', '포함', '관련'];
@@ -294,11 +421,7 @@ function normalizeAllRelationTypes(extracted: MergedExtraction): MergedExtractio
 // --- 후처리: 누락된 관계 추론 ---
 
 function normalizeOwnerName(name: string): string {
-  const firstPersonAliases = ['화자', '주인공', '나는', '내'];
-  if (firstPersonAliases.includes(name.toLowerCase())) {
-    return '나';
-  }
-  return name;
+  return name.trim();
 }
 
 function hasRelationship(relationships: MergedRelationship[], from: string, to: string): boolean {
@@ -341,10 +464,12 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
     const attrOwner = (entity.attributes as Record<string, string> | undefined)?.owner;
     const isLocation = entity.category === 'location';
 
-    // attributes.owner가 있으면 관계 생성
+    // attributes.owner가 있으면 관계 생성 (owner가 실제 캐릭터인 경우만)
     if (attrOwner) {
       const ownerName = normalizeOwnerName(attrOwner);
-      if (!hasRelationship(relationships, ownerName, entity.name) &&
+      const ownerIsKnown = characterNames.some(cn => cn === ownerName || cn.includes(ownerName) || ownerName.includes(cn));
+      if (ownerIsKnown &&
+          !hasRelationship(relationships, ownerName, entity.name) &&
           !hasRelationship(newRelationships, ownerName, entity.name)) {
         newRelationships.push({
           from: ownerName,
@@ -358,14 +483,16 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
       }
     }
 
-    // location 엔티티면 위치 패턴 먼저 시도
+    // location 엔티티면 위치 패턴 먼저 시도 (추출된 이름이 알려진 캐릭터인 경우만)
     if (isLocation) {
       let foundMatch = false;
       for (const pattern of locationPatterns) {
         const match = desc.match(pattern);
         if (match) {
           const personName = normalizeOwnerName(match[1].trim());
-          if (!hasRelationship(relationships, personName, entity.name) &&
+          const personIsKnown = characterNames.some(cn => cn === personName || cn.includes(personName) || personName.includes(cn));
+          if (personIsKnown &&
+              !hasRelationship(relationships, personName, entity.name) &&
               !hasRelationship(newRelationships, personName, entity.name)) {
             newRelationships.push({
               from: personName,
@@ -385,12 +512,14 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
       if (foundMatch) continue;
     }
 
-    // 설명에서 소유자 패턴 찾기
+    // 설명에서 소유자 패턴 찾기 (추출된 이름이 알려진 캐릭터인 경우만)
     for (const pattern of ownerPatterns) {
       const match = desc.match(pattern);
       if (match) {
         const ownerName = normalizeOwnerName(match[1].trim());
-        if (!hasRelationship(relationships, ownerName, entity.name) &&
+        const ownerIsKnown = characterNames.some(cn => cn === ownerName || cn.includes(ownerName) || ownerName.includes(cn));
+        if (ownerIsKnown &&
+            !hasRelationship(relationships, ownerName, entity.name) &&
             !hasRelationship(newRelationships, ownerName, entity.name)) {
           newRelationships.push({
             from: ownerName,
@@ -407,7 +536,9 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
     }
 
     // 설명에서 인물 이름이 직접 언급되어 있으면 관계 생성
+    // 단, 2글자 이상의 이름만 매칭 (1글자 이름은 오매칭 위험)
     for (const charName of characterNames) {
+      if (charName.length < 2) continue;
       if (desc.includes(charName)) {
         if (!hasRelationship(relationships, charName, entity.name) &&
             !hasRelationship(newRelationships, charName, entity.name)) {

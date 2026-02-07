@@ -9,7 +9,7 @@ import { EMPTY_CHUNK_DATA } from './types';
 import { splitIntoSmartChunksWithSource } from './chunker';
 import { selectRelevantEntities, filterEntitiesByNames, buildAccumulatedGraph } from './selector';
 import { extractFromChunk } from './extractor';
-import { mergeExtractions, inferMissingRelationships, buildKnowledgeGraph } from './merger';
+import { mergeExtractions, reviewEntityMerges, inferMissingRelationships, buildKnowledgeGraph } from './merger';
 
 // localStorage 키
 const PROGRESS_KEY = 'novel-extraction-progress';
@@ -361,9 +361,13 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   // 결과 병합 (청크별 파일 인덱스 전달)
   const merged = mergeExtractions(allExtracted, chunkSourceFileIndices);
 
+  // LLM 병합 검토: 같은 대상인데 다른 이름으로 추출된 것을 병합
+  onProgress?.('엔티티 병합 검토 중...');
+  const reviewed = await reviewEntityMerges(merged, useModel);
+
   // 후처리: 누락된 관계 자동 생성
   onProgress?.('관계 검증 및 보완 중...');
-  const validated = inferMissingRelationships(merged);
+  const validated = inferMissingRelationships(reviewed);
 
   // 이어하기인 경우 저장된 원본 텍스트/파일명 사용
   const finalText = resumeFrom?.originalText || text;

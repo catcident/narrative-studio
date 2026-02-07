@@ -126,6 +126,12 @@ export function tryFixJson(content: string): unknown {
     fixed = fixed.slice(jsonStart);
   }
 
+  // JSON 앞에 설명 텍스트가 있는 경우 제거
+  if (jsonStart === -1) {
+    console.log('[extraction] JSON 시작 문자({) 없음, 복구 불가');
+    return null;
+  }
+
   // 반복 패턴 감지 및 제거 (LLM이 무한 반복하는 경우)
   // 예: "춘운, 경홍, 섬월, 요연, 능파, " 가 반복되는 경우
   const repeatPatterns = [
@@ -146,9 +152,16 @@ export function tryFixJson(content: string): unknown {
     }
   }
 
+  // trailing comma 제거 (LLM이 자주 하는 실수)
+  fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+
   // 불완전한 문자열 닫기 (", 뒤에 값이 없는 경우)
   fixed = fixed.replace(/,\s*"[^"]*$/g, '');  // 끝에 불완전한 문자열 제거
   fixed = fixed.replace(/,\s*$/g, '');  // 끝에 쉼표 제거
+
+  // 불완전한 객체/배열 제거 (잘린 JSON의 끝부분)
+  fixed = fixed.replace(/,\s*\{[^}]*$/g, '');  // 끝에 불완전한 객체 제거
+  fixed = fixed.replace(/,\s*\[[^\]]*$/g, '');  // 끝에 불완전한 배열 제거
 
   // 열린 괄호 수 세기
   let braceCount = 0;
@@ -182,7 +195,16 @@ export function tryFixJson(content: string): unknown {
   try {
     return JSON.parse(fixed);
   } catch {
-    // 복구 불가능한 경우 null 반환
-    return null;
+    // 2차 시도: 제어 문자 제거 후 재시도
+    try {
+      const sanitized = fixed.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+        if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
+        return '';
+      });
+      return JSON.parse(sanitized);
+    } catch {
+      // 복구 불가능한 경우 null 반환
+      return null;
+    }
   }
 }
