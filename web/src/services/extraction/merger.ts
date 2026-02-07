@@ -54,8 +54,17 @@ function mergeDescriptions(existing: string, incoming: string): string {
   return (existing + ' ' + newSentences.join(' ')).trim();
 }
 
-// 1인칭 대명사 등 매핑에 사용하면 안 되는 이름 (여러 엔티티에서 공유될 수 있음)
-const AMBIGUOUS_NAMES = new Set(['나', '나는', '내가', '저', '제가', '우리', '화자']);
+// 대명사/지시어 등 매핑에 사용하면 안 되는 이름 (여러 엔티티에서 공유될 수 있음)
+const AMBIGUOUS_NAMES = new Set([
+  // 1인칭
+  '나', '나는', '내가', '저', '제가', '우리',
+  // 3인칭
+  '그', '그녀', '그들', '그 남자', '그 여자', '그 사람', '그 아이',
+  '이 남자', '이 여자', '이 사람', '이 아이',
+  '저 남자', '저 여자', '저 사람', '저 아이',
+  // 기타
+  '화자', '주인공',
+]);
 
 function isAmbiguousName(name: string): boolean {
   return AMBIGUOUS_NAMES.has(name.trim());
