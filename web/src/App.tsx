@@ -319,17 +319,17 @@ function App() {
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
               <Network aria-hidden="true" className="w-6 h-6 text-blue-600" />
-              <h1 className="font-bold text-gray-800">인물 관계도</h1>
+              <h1 className="font-bold text-gray-800 whitespace-nowrap sr-only md:not-sr-only">인물 관계도</h1>
             </div>
             <span className="hidden lg:inline text-sm text-gray-500 truncate max-w-[200px]">
               {knowledgeGraph.metadata.title}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 xl:gap-4">
+          <div className="flex items-center gap-2 xl:gap-4 shrink-0">
             {/* 통계 */}
             <div className="hidden lg:flex items-center gap-4 text-sm text-gray-500">
               <span>엔티티 {knowledgeGraph.stats.totalEntities}</span>
@@ -344,7 +344,7 @@ function App() {
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   aria-label={label}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all
                     ${viewMode === mode
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-800'

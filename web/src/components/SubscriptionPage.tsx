@@ -141,7 +141,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   };
 
   return (
-    <ModalOverlay onClose={onClose} maxWidth="3xl">
+    <ModalOverlay onClose={onClose} maxWidth="5xl">
       <div className="max-h-[85vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -216,7 +216,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                 </div>
               )}
 
-              <div className={`grid grid-cols-1 gap-4 ${plans.length <= 3 ? 'md:grid-cols-3' : plans.length <= 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
+              <div className={`grid grid-cols-1 gap-4 ${plans.length <= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
                 {plans.map(plan => {
                   const isCurrent = subscription?.plan === plan.code;
                   const isPopular = plan.code === 'pro';
@@ -224,7 +224,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   return (
                     <div
                       key={plan.id}
-                      className={`border-2 rounded-xl p-5 flex flex-col relative ${
+                      className={`border-2 rounded-xl p-4 flex flex-col relative ${
                         isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-400 shadow-lg shadow-purple-100 bg-purple-50/30' : 'border-gray-200'
                       }`}
                     >
@@ -238,7 +238,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         {planIcon(plan.code)}
                         <h3 className="font-bold text-gray-800">{plan.name}</h3>
                         {isCurrent && (
-                          <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full ml-auto">
+                          <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full ml-auto whitespace-nowrap">
                             현재
                           </span>
                         )}

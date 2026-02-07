@@ -219,7 +219,25 @@ NextAuth.js SessionProvider 래퍼
 - [ ] 모달 닫기 버튼: `aria-label="닫기"` 추가
 - [ ] 아이콘 전용 버튼: `aria-label` 필수 (`title`만으로는 부족)
 - [ ] 정보/상태 배너: `role="status"` 추가 (`bg-*-50 border rounded-lg` 스타일 배너)
+- [ ] 반응형 숨김: `hidden md:block` 금지 → `sr-only md:not-sr-only` 사용 (스크린 리더 접근성 보존)
 - [ ] 플랜 코드별 분기: switch/helper 함수 사용 (중첩 삼항 금지, `getPlanBadgeColor()` 패턴)
+
+### 반응형 숨김과 접근성
+
+**규칙**: 의미 있는 텍스트를 반응형으로 숨길 때 `hidden`/`display:none` 사용 금지. `sr-only` + 반응형 `not-sr-only`로 시각적으로만 숨기기.
+
+```tsx
+// ❌ hidden md:block — 접근성 트리에서 완전 제거, 스크린 리더가 읽을 수 없음
+<h1 className="hidden md:block">인물 관계도</h1>
+
+// ✅ sr-only md:not-sr-only — 768px 미만에서 시각적으로만 숨김, 스크린 리더는 항상 접근 가능
+<h1 className="sr-only md:not-sr-only">인물 관계도</h1>
+
+// ✅ 순수 장식 요소는 hidden 사용 가능 (접근성 영향 없음)
+<span className="hidden lg:inline text-sm text-gray-500">{metadata}</span>
+```
+
+**적용 기준**: `<h1>`~`<h6>`, `<label>`, `role="status"`, 내비게이션 링크 등 의미적 요소에 적용. 순수 보충 텍스트(부가 통계, 장식 라벨)는 `hidden` 사용 가능.
 
 ### 플랜 코드 분기 패턴
 

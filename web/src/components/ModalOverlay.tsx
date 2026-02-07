@@ -1,4 +1,4 @@
-type MaxWidth = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+type MaxWidth = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
 
 interface ModalOverlayProps {
   onClose: () => void;
@@ -13,6 +13,9 @@ const MAX_WIDTH_CLASSES: Record<MaxWidth, string> = {
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
   '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
+  '5xl': 'max-w-5xl',
+  '6xl': 'max-w-6xl',
 };
 
 export function ModalOverlay({ onClose, maxWidth = '2xl', children }: ModalOverlayProps) {

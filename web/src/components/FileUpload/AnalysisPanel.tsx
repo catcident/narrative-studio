@@ -160,20 +160,15 @@ export function AnalysisPanel({
         </div>
       )}
 
-      {/* byok 미지원 플랜: 안내 + 로컬키 있으면 삭제 버튼 표시 */}
-      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && !byokEnabled && (
-        <div className="text-center space-y-1">
-          {hasEnvKey && !hasLocalKey && (
-            <p className="text-xs text-gray-400">Pro 플랜에서 개인 API 키를 사용할 수 있습니다</p>
-          )}
-          {hasLocalKey && (
-            <button
-              onClick={onRemoveApiKey}
-              className="text-xs text-red-400 hover:text-red-600"
-            >
-              개인 키 삭제 (서버 키로 복귀)
-            </button>
-          )}
+      {/* byok 미지원 플랜: 로컬키 있으면 삭제 버튼 표시 */}
+      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && !byokEnabled && hasLocalKey && (
+        <div className="text-center">
+          <button
+            onClick={onRemoveApiKey}
+            className="text-xs text-red-400 hover:text-red-600"
+          >
+            개인 키 삭제 (서버 키로 복귀)
+          </button>
         </div>
       )}
 
