@@ -218,6 +218,40 @@ NextAuth.js SessionProvider 래퍼
 - [ ] 모달: `tabIndex={-1}` + Escape 키 닫기 + `role="dialog"` + `aria-modal="true"`
 - [ ] 모달 닫기 버튼: `aria-label="닫기"` 추가
 - [ ] 아이콘 전용 버튼: `aria-label` 필수 (`title`만으로는 부족)
+- [ ] 정보/상태 배너: `role="status"` 추가 (`bg-*-50 border rounded-lg` 스타일 배너)
+- [ ] 플랜 코드별 분기: switch/helper 함수 사용 (중첩 삼항 금지, `getPlanBadgeColor()` 패턴)
+
+### 플랜 코드 분기 패턴
+
+**규칙**: 플랜 코드(plan code)에 따른 분기는 switch문 또는 별도 helper 함수 사용. 중첩 삼항 연산자 금지.
+
+```tsx
+// ❌ 중첩 삼항 — 가독성 낮고 분기 추가 시 누락 위험
+const color = planCode === 'business' ? 'amber'
+  : planCode === 'pro' ? 'purple'
+  : planCode === 'basic' ? 'blue'
+  : 'gray';
+
+// ✅ switch helper — 확장 용이, SubscriptionPage planColor() 패턴
+function getPlanBadgeColor(planCode: string): string {
+  switch (planCode) {
+    case 'business': return 'bg-amber-100 text-amber-700';
+    case 'pro': return 'bg-purple-100 text-purple-700';
+    case 'basic': return 'bg-blue-100 text-blue-700';
+    default: return 'bg-gray-100 text-gray-700';
+  }
+}
+```
+
+**UI 텍스트 규칙**: 특정 플랜명 하드코딩 금지 → 일반화 표현 사용
+
+```tsx
+// ❌ 특정 플랜명 하드코딩 — 비공개 플랜 사용자에게 부적절
+return '크레딧 소진 — Pro 업그레이드 또는 패키지 구매';
+
+// ✅ 일반화 표현
+return '크레딧 소진 — 플랜 업그레이드 또는 패키지 구매';
+```
 
 ### 타입 안전성
 

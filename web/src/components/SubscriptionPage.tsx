@@ -210,6 +210,12 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                 )}
               </div>
 
+              {!plans.some(p => p.code === subscription?.plan) && subscription?.planName && (
+                <div role="status" className="mb-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  현재 플랜: <span className="font-medium">{subscription.planName}</span>
+                </div>
+              )}
+
               <div className={`grid grid-cols-1 gap-4 ${plans.length <= 3 ? 'md:grid-cols-3' : plans.length <= 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
                 {plans.map(plan => {
                   const isCurrent = subscription?.plan === plan.code;

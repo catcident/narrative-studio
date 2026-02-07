@@ -57,7 +57,7 @@ function getMessage(
     case 'warning':
       return `잔여 ${balance.toLocaleString()}cr — 패키지로 크레딧을 추가하세요`;
     case 'critical':
-      return '크레딧 소진 — Pro 업그레이드 또는 패키지 구매';
+      return '크레딧 소진 — 플랜 업그레이드 또는 패키지 구매';
   }
 }
 
