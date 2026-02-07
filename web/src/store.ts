@@ -270,6 +270,11 @@ export const useStore = create<AppState>((set, get) => ({
 }));
 
 // 셀렉터 헬퍼
+// WARNING: 셀렉터 콜백 내 `?? []`/`?? {}` 사용 금지 — 매번 새 참조 생성으로 React #185 무한 루프 유발.
+// 반드시 모듈 수준 상수 사용 (예: EMPTY_EXPORT_FORMATS). 원시값(null, false, 0)은 안전.
+const EMPTY_EDGES: HyperEdge[] = [];
+const EMPTY_ENTITIES: Entity[] = [];
+
 export const useSelectedEntity = (): Entity | null => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const selectedEntityId = useStore((s) => s.selectedEntityId);
@@ -279,7 +284,7 @@ export const useSelectedEntity = (): Entity | null => {
 
 export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
-  if (!knowledgeGraph || !entityId) return [];
+  if (!knowledgeGraph || !entityId) return EMPTY_EDGES;
   return Object.values(knowledgeGraph.hyperedges).filter(
     (edge) => edge.entities.includes(entityId)
   );
@@ -292,14 +297,15 @@ export const useModels = () => useStore((s) => s.models);
 export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);
 export const usePartialAnalysis = () => useStore((s) => s.partialAnalysis);
 export const useByokEnabled = () => useStore((s) => s.subscription?.features?.byok ?? false);
-export const useExportFormats = () => useStore((s) => s.subscription?.features?.export_formats ?? []);
+const EMPTY_EXPORT_FORMATS: string[] = [];
+export const useExportFormats = () => useStore((s) => s.subscription?.features?.export_formats ?? EMPTY_EXPORT_FORMATS);
 export const useByokMode = () => useStore((s) => s.byokMode);
 export const useAnalysisQueue = () => useStore((s) => s.analysisQueue);
 export const useIsQueueProcessing = () => useStore((s) => s.isQueueProcessing);
 
 export const useCharacters = (): Entity[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
-  if (!knowledgeGraph) return [];
+  if (!knowledgeGraph) return EMPTY_ENTITIES;
   return Object.values(knowledgeGraph.entities).filter(
     (e) => e.category === 'character'
   );

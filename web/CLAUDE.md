@@ -183,6 +183,23 @@ CATCIDENT_API_URL=http://catcident-backend-api-1:8000
 # AUTH_ENABLED=false  ← Railway 퍼블릭 데모에서만 명시적 비활성화
 ```
 
+## Docker 배포 주의사항
+
+### Compose 환경 변수
+- `${VAR}` 치환은 `.env`만 읽음 (`.env.local` 미참조)
+- 시크릿은 `env_file: .env.local`로 컨테이너에 직접 주입
+- MongoDB는 `MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD` 변수명 필수 (mongo:7 이미지 규격)
+
+### Healthcheck
+- Alpine 컨테이너에서 `localhost` → IPv6(`[::1]`) 해석 가능 → 반드시 `127.0.0.1` 사용
+- 인증 미들웨어가 리다이렉트하는 경로 사용 금지 → 공개 API(`/api/config`) 사용
+- `wget --spider`(HEAD) 대신 `-O /dev/null`(GET) 사용 (API 라우트는 GET만 지원)
+
+### Zustand 셀렉터 참조 안정성
+- 셀렉터 콜백 내 `?? []`/`?? {}` 사용 금지 → React #185 무한 루프
+- 모듈 수준 상수 사용 (예: `const EMPTY: T[] = []`)
+- 원시값(`null`, `false`, `0`)은 안전 (`Object.is` 비교 통과)
+
 ## 하위 문서
 
 - [services/CLAUDE.md](src/services/CLAUDE.md) - AI 분석 + 스토리지 서비스
