@@ -33,7 +33,7 @@ export async function GET(
       userId: item.userId || null,
       knowledgeGraphId: item.knowledgeGraphId || null,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] novels/[id] GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -57,7 +57,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: result.deletedCount > 0 });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] novels/[id] DELETE error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

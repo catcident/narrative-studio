@@ -58,8 +58,7 @@ NovelKnowledgeGraph
 ### 5. 저장 흐름
 
 ```
-저장 요청 → 서버 API 시도 → 성공 시 MongoDB 저장
-                        └→ 실패 시 로컬 IndexedDB 폴백
+저장 요청 → 서버 API → MongoDB 저장
 ```
 
 **관련 문서**: [storage.md](storage.md)
@@ -96,8 +95,6 @@ NovelKnowledgeGraph
 | 장면 | S0001 | S0001, S0015 |
 | 파일 | F0001 | F0001, F0002 |
 | 챕터 | C0001 | C0001, C0005 |
-| 로컬 저장 | kg_ | kg_1234567890_abc |
-
 ## 기술 스택
 
 | 기술 | 용도 |
@@ -108,5 +105,4 @@ NovelKnowledgeGraph
 | Zustand | 상태 관리 |
 | @xyflow/react | 그래프 시각화 |
 | MongoDB | 서버 저장소 |
-| IndexedDB | 로컬 저장소 |
 | OpenRouter API | LLM 분석 |

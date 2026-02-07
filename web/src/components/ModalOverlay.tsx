@@ -1,4 +1,4 @@
-type MaxWidth = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+type MaxWidth = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
 
 interface ModalOverlayProps {
   onClose: () => void;
@@ -13,6 +13,9 @@ const MAX_WIDTH_CLASSES: Record<MaxWidth, string> = {
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
   '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
+  '5xl': 'max-w-5xl',
+  '6xl': 'max-w-6xl',
 };
 
 export function ModalOverlay({ onClose, maxWidth = '2xl', children }: ModalOverlayProps) {
@@ -23,6 +26,7 @@ export function ModalOverlay({ onClose, maxWidth = '2xl', children }: ModalOverl
       aria-modal="true"
       tabIndex={-1}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className={`bg-white rounded-xl shadow-2xl w-full ${MAX_WIDTH_CLASSES[maxWidth]}`}>
         {children}

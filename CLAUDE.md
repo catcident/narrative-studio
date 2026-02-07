@@ -90,11 +90,8 @@ Character-Relationship-Chart/
 
 ## 주요 패턴
 
-### 스토리지 (Dual Layer)
-1. **서버 API (MongoDB)** - 우선 시도
-2. **IndexedDB** - API 실패 시 폴백
-
-로컬 ID는 `kg_` 접두사로 구분됨.
+### 스토리지 (서버 전용)
+서버 API를 통해 MongoDB에 저장. 서버 실패 시 에러 반환 또는 빈 결과.
 
 ### AI 분석 흐름
 1. 텍스트를 5,000자 청크로 분할

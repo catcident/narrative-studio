@@ -9,9 +9,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'https://catcident.com';
 const CATCIDENT_SERVICE_KEY = process.env.CATCIDENT_SERVICE_KEY || '';
+const PROXY_TIMEOUT_MS = 15000;
 
 interface ProxyOptions {
   method?: string;
@@ -40,14 +42,11 @@ export async function proxyToCatcident(
   const url = `${CATCIDENT_API_URL}/api/v1/billing${path}`;
 
   try {
-    const response = await fetch(url, {
+    return await fetchWithTimeout(url, {
       method,
       headers,
       body: method !== 'GET' ? body : undefined,
-      signal: AbortSignal.timeout(15000),
-    });
-
-    return response;
+    }, PROXY_TIMEOUT_MS);
   } catch (err: unknown) {
     console.error(`[billing] Proxy error: ${path}`, err instanceof Error ? err.message : err);
     throw err;
@@ -93,6 +92,9 @@ export function billingGetHandler(billingPath: string, logLabel: string) {
 /** POST body 허용 필드 화이트리스트 */
 const ALLOWED_POST_FIELDS: Record<string, string[]> = {
   '/credits/deduct/': ['amount', 'description', 'metadata', 'idempotency_key'],
+  '/credits/hold/': ['amount', 'metadata'],
+  '/credits/settle/': ['hold_token', 'actual_amount', 'description', 'metadata', 'idempotency_key'],
+  '/credits/release/': ['hold_token'],
 };
 
 /**

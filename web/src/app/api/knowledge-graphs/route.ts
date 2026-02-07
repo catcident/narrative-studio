@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
+import { proxyToCatcident } from '@/services/billingProxy';
 
 // 목록 조회 (세션 userId로 필터링)
 export async function GET(request: NextRequest) {
@@ -27,10 +28,26 @@ export async function GET(request: NextRequest) {
       novelId: item.novelId || null,
       model: item.data?.metadata?.model || null,
     })));
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// 플랜 features 조회 헬퍼 (fail-open: 실패 시 null)
+async function fetchPlanFeatures(
+  accessToken: string | undefined
+): Promise<{ max_saved_graphs?: number; max_versions?: number } | null> {
+  try {
+    const response = await proxyToCatcident('/subscription/?service=storygraph', accessToken);
+    if (response.ok) {
+      const data = await response.json();
+      return data.features ?? null;
+    }
+  } catch (err: unknown) {
+    console.warn('[storage] subscription 조회 실패, 제한 미적용:', err instanceof Error ? err.message : err);
+  }
+  return null;
 }
 
 // 지식 그래프 저장 (novelId로 소설 텍스트 연결, 세션 인증)
@@ -38,7 +55,7 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth();
     if ('error' in authResult) return authResult.error;
-    const { userId } = authResult;
+    const { userId, accessToken } = authResult;
 
     const db = await connectMongo();
     const collection = db.collection('knowledgeGraphs');
@@ -58,6 +75,9 @@ export async function POST(request: NextRequest) {
     const entityCount = Object.keys(data.entities || {}).length;
     const edgeCount = Object.keys(data.hyperedges || {}).length;
     const sceneCount = Object.keys(data.snapshots || {}).length;
+
+    // 플랜 features 조회 (anonymous가 아닌 경우만)
+    const features = userId !== 'anonymous' ? await fetchPlanFeatures(accessToken) : null;
 
     // 1. existingId로 먼저 찾기 (파일 추가 시)
     let existing = null;
@@ -81,7 +101,7 @@ export async function POST(request: NextRequest) {
       const existingFileCount = existing.data?.metadata?.sourceFiles?.length || 0;
       const newSourceFiles = data.metadata?.sourceFiles || [];
       const addedFiles = newSourceFiles.slice(existingFileCount);
-      const addedFileNames = addedFiles.map((f: any) => f.fileName).join(', ');
+      const addedFileNames = addedFiles.map((f: { fileName?: string }) => f.fileName).join(', ');
 
       // 이전 버전을 히스토리에 저장
       const versionsCollection = db.collection('knowledgeGraphVersions');
@@ -93,6 +113,26 @@ export async function POST(request: NextRequest) {
         data: existing.data,
         addedFiles: addedFileNames || null,
       });
+
+      // 버전 히스토리 제한 (FIFO: 오래된 것부터 삭제)
+      const maxVersions = features?.max_versions ?? -1;
+      if (maxVersions !== -1) {
+        const graphDocId = existing._id.toString();
+        const versionCount = await versionsCollection.countDocuments({ dataId: graphDocId });
+        if (versionCount > maxVersions) {
+          const excess = versionCount - maxVersions;
+          const oldestVersions = await versionsCollection
+            .find({ dataId: graphDocId })
+            .sort({ savedAt: 1 })
+            .limit(excess)
+            .toArray();
+          if (oldestVersions.length > 0) {
+            await versionsCollection.deleteMany({
+              _id: { $in: oldestVersions.map(v => v._id) }
+            });
+          }
+        }
+      }
 
       await collection.updateOne({ _id: existing._id }, {
         $set: {
@@ -120,6 +160,18 @@ export async function POST(request: NextRequest) {
         model: data.metadata?.model || null,
       });
     } else {
+      // 저장 그래프 수 제한 (새 그래프 insert 시에만)
+      const maxSavedGraphs = features?.max_saved_graphs ?? -1;
+      if (maxSavedGraphs !== -1) {
+        const existingCount = await collection.countDocuments({ userId });
+        if (existingCount >= maxSavedGraphs) {
+          return NextResponse.json(
+            { error: `저장 가능한 그래프 수를 초과했습니다 (최대 ${maxSavedGraphs}개). 기존 그래프를 삭제하거나 상위 플랜으로 업그레이드해주세요.` },
+            { status: 403 }
+          );
+        }
+      }
+
       const result = await collection.insertOne({
         title,
         data,
@@ -146,7 +198,7 @@ export async function POST(request: NextRequest) {
         model: data.metadata?.model || null,
       });
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs POST error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

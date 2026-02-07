@@ -64,7 +64,7 @@ async function readPdfFile(file: File, onProgress?: (msg: string) => void): Prom
     onProgress?.(`PDF 페이지 ${i}/${pdf.numPages} 처리 중...`);
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    textParts.push(content.items.map((item: any) => item.str).join(' '));
+    textParts.push(content.items.filter((item) => 'str' in item).map((item) => (item as { str: string }).str).join(' '));
   }
   return textParts.join('\n\n');
 }

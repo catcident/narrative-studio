@@ -11,6 +11,8 @@ import { proxyToCatcident } from '@/services/billingProxy';
 
 interface CacheEntry {
   balance: number;
+  byok: boolean;
+  planCode: string;
   cachedAt: number;
 }
 
@@ -50,16 +52,16 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
     return null;
   }
 
-  // Check cache first — only positive balances are cached
+  // Check cache first — positive balances or BYOK users pass immediately
   const cached = balanceCache.get(userId);
-  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS && cached.balance > 0) {
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS && (cached.balance > 0 || cached.byok)) {
     return null;
   }
 
-  // Fetch fresh balance from billing service
+  // Fetch fresh subscription info (balance + byok) from billing service
   try {
     const response = await proxyToCatcident(
-      '/credits/balance/?service=storygraph',
+      '/subscription/?service=storygraph',
       accessToken
     );
 
@@ -69,21 +71,21 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
       return null;
     }
 
-    const data: { balance: number } = await response.json();
+    const data: { credit_balance: number; plan?: { code?: string }; features?: { byok?: boolean } } = await response.json();
+    const balance = data.credit_balance;
+    const byok = data.features?.byok ?? false;
+    const planCode = data.plan?.code ?? 'free';
 
-    // Only cache positive balances — zero/negative must always be re-checked
-    // so that admin-added credits take effect immediately
-    if (data.balance > 0) {
+    // Cache positive balances; also cache zero balances if BYOK (they don't need credits).
+    // Non-BYOK zero balances are not cached so admin-added credits take effect immediately.
+    if (balance > 0 || byok) {
       evictStaleEntries();
-      balanceCache.set(userId, {
-        balance: data.balance,
-        cachedAt: Date.now(),
-      });
+      balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
     } else {
       balanceCache.delete(userId);
     }
 
-    if (data.balance <= 0) {
+    if (balance <= 0 && !byok) {
       console.log(`[analyze] Blocked zero-balance user: ${userId}`);
       return 'Insufficient credits. Please purchase more credits to continue.';
     }
@@ -97,16 +99,41 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
   }
 }
 
-/** deduct 응답 후 캐시 즉시 갱신 */
+/** deduct 응답 후 캐시 즉시 갱신 (byok 플래그는 기존 캐시에서 유지) */
 export function updateBalanceCache(userId: string, balance: number): void {
   if (typeof balance !== 'number' || !Number.isFinite(balance)) {
     console.warn(`[analyze] Invalid balance value for cache update: ${balance}`);
     return;
   }
-  if (balance > 0) {
-    balanceCache.set(userId, { balance, cachedAt: Date.now() });
+  const existing = balanceCache.get(userId);
+  const byok = existing?.byok ?? false;
+  const planCode = existing?.planCode ?? 'free';
+  // BYOK 사용자는 zero balance여도 캐시 유지 (크레딧 불필요)
+  if (balance > 0 || byok) {
+    balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
   } else {
     balanceCache.delete(userId);
   }
+}
+
+/**
+ * 캐시에서 BYOK 플래그 조회.
+ * Fail-open: 캐시 미스 시 true 반환 (개인 키 사용 → 서버 비용 없음).
+ * checkAnalyzeEligibility()가 먼저 실행되어 캐시를 갱신하므로,
+ * 캐시 미스는 billing 서비스 장애를 의미 → fail-open 정책 적용.
+ * AUTH_ENABLED=false 시 항상 false.
+ */
+export function isCachedByokEnabled(userId: string): boolean {
+  if (!AUTH_ENABLED) return false;
+  const cached = balanceCache.get(userId);
+  if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return true; // fail-open
+  return cached.byok;
+}
+
+/** 캐시에서 planCode 조회. 캐시 미스 시 undefined 반환. */
+export function getCachedPlanCode(userId: string): string | undefined {
+  const cached = balanceCache.get(userId);
+  if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return undefined;
+  return cached.planCode;
 }
 

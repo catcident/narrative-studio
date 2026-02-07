@@ -159,26 +159,65 @@ const body = JSON.stringify({ amount, description, metadata, idempotency_key, se
 
 ---
 
-## balanceCache.ts — 서버 측 잔액 캐시
+## fetchWithTimeout.ts — 서버 측 타임아웃 유틸리티
 
-`/api/analyze`에서 사용하는 사용자별 잔액 캐시.
+외부 API 호출 시 AbortController 기반 타임아웃. **기본값 없음** — 호출부에서 반드시 명시적으로 전달.
+
+```typescript
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+
+// 사용법 — 타임아웃 명시 필수
+const response = await fetchWithTimeout(url, options, 120000);
+```
+
+**사용처**: analyze, chat, validate-key, embeddings, chunk-embeddings 라우트.
+
+**⚠️ 클라이언트용은 별도**: `extraction/types.ts`의 `fetchWithClientTimeout` (기본 150초). 혼동 주의.
+
+---
+
+## embeddingUtils.ts — 임베딩 공유 유틸리티
+
+`embeddings/route.ts`와 `chunk-embeddings/route.ts`가 공유하는 함수.
+
+- `getEmbeddings(texts, apiKey)` — OpenRouter embedding API 호출 (모델: `openai/text-embedding-3-small`)
+- `cosineSimilarity(a, b)` — 벡터 간 코사인 유사도
+
+---
+
+## balanceCache.ts — 서버 측 잔액 + BYOK 캐시
+
+`/api/analyze`, `/api/chat`에서 사용하는 사용자별 잔액/BYOK 캐시.
 
 - 잔액 0 사용자의 OpenRouter 호출을 서버 측에서 차단
 - 5분 TTL, 최대 100 엔트리
 - Fail-open: billing 서비스 장애 시 분석 허용
 - `AUTH_ENABLED=false`이면 항상 통과
+- **BYOK 캐시**: `CacheEntry.byok` 플래그로 개인 키 사용 권한 캐싱
+- **BYOK 사용자 zero balance 보존**: `updateBalanceCache()`에서 byok=true면 zero balance여도 캐시 유지
 
 ```typescript
 // /api/analyze에서 사용 (사전 해결된 auth 정보 전달 — requireAuth() 중복 호출 방지)
 const balanceError = await checkAnalyzeEligibility(userId, accessToken);
 if (balanceError) return NextResponse.json({ error: balanceError }, { status: 402 });
 
-// 차감 후 캐시 갱신
+// BYOK 권한 확인 (fail-open: 캐시 미스 → 허용)
+const isUsingPersonalKey = !!userApiKey && userApiKey !== ENV_API_KEY;
+if (AUTH_ENABLED && isUsingPersonalKey && userId) {
+  const byokAllowed = isCachedByokEnabled(userId);
+  if (!byokAllowed) return 403;
+}
+
+// settle 정산 후 캐시 갱신
 updateBalanceCache(userId, balance_after);
 ```
 
 **⚠️ 주의**: `checkAnalyzeEligibility()`는 내부적으로 `requireAuth()`를 호출하지 않음.
 동일 request 내 `requireAuth()` 중복 호출을 방지하기 위해, 호출자가 사전 해결한 `userId`와 `accessToken`을 전달해야 함.
+
+**⚠️ BYOK fail-open**: `isCachedByokEnabled()`는 캐시 미스 시 `true` 반환.
+`checkAnalyzeEligibility()`가 먼저 실행되어 캐시를 갱신하므로, 캐시 미스는 billing 서비스 장애를 의미.
+개인 키 사용 시 서버 비용 없으므로 fail-open이 안전.
 
 ---
 
@@ -204,26 +243,40 @@ if (limited) {
 
 ## modelCosts.ts — 모델 비용 공유 모듈
 
-모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
+모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(/api/analyze, /api/chat) 양쪽에서 사용.
 
 - 단일 진실 공급원: `AVAILABLE_MODELS` (types.ts) — 모델 비용 동기화 불일치 방지
 
 ```typescript
 // 상수
-MARGIN, USD_TO_KRW, KRW_PER_CREDIT, CHARS_PER_TOKEN,
+USD_TO_KRW, KRW_PER_CREDIT, CHARS_PER_TOKEN,
 CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
 DEFAULT_INPUT_COST, DEFAULT_OUTPUT_COST
 
+// 연속 마크업 함수 (단일 MARGIN 상수 대체)
+continuousMarkup(costUsd) → number  // 10x→5x 로그 보간 (소액일수록 마크업 높음)
+
 // 공유 헬퍼 (수식 중복 제거)
 tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost) → number
-costUsdToCredits(costUsd) → number
+costUsdToCredits(costUsd) → number  // 내부적으로 continuousMarkup() 사용
 
 // 모델 비용 조회 (AVAILABLE_MODELS에서)
 getModelCosts(model) → { inputCost, outputCost }
+
+// 서버 공유 타입/함수 (analyze, chat 라우트 공용)
+interface TokenBilling { prompt_tokens: number; completion_tokens: number; }
+resolveTokenBilling(data, promptLength, logPrefix) → TokenBilling | null  // logPrefix 필수!
 ```
 
+**⚠️ `resolveTokenBilling` 호출 규칙**: `logPrefix`에 기본값 없음. 호출부에서 반드시 명시적으로 전달 (예: `'[analyze]'`, `'[chat]'`).
+
+**⚠️ 마크업 함수 설명**:
+- 기존 단일 `MARGIN=3.0` → 연속 마크업 함수로 교체 (10x→5x 로그 보간)
+- 소액 요청(저렴한 모델)일수록 마크업이 높고, 고액 요청일수록 마크업 감소
+- `costUsdToCredits(costUsd)` 내부에서 자동 적용됨
+
 **⚠️ 상수 변경 시 주의사항**:
-- `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값. 순수 한국어 소설은 과소추정될 수 있으나 `MARGIN=3.0`이 보상.
+- `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값.
 - 새 모델 추가 시 `types.ts`의 `AVAILABLE_MODELS`에 `inputCost`/`outputCost` 추가 — 이것이 단일 진실 공급원.
 
 ---

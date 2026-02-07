@@ -328,8 +328,8 @@ export function useSourceTextView() {
       const deletedEntities = Object.keys(knowledgeGraph.entities).length - Object.keys(finalEntities).length;
       const deletedEdges = Object.keys(knowledgeGraph.hyperedges).length - Object.keys(newHyperedges).length;
       console.log(`[SourceTextView] 파일 삭제 완료: ${fileName}, 삭제된 장면: ${scenesToDelete.size}개, 삭제된 엔티티: ${deletedEntities}개, 삭제된 관계: ${deletedEdges}개`);
-    } catch (error) {
-      console.error('[SourceTextView] 파일 삭제 실패:', error);
+    } catch (err: unknown) {
+      console.error('[SourceTextView] 파일 삭제 실패:', err);
       alert('파일 삭제에 실패했습니다.');
     } finally {
       setDeletingFileId(null);
@@ -561,8 +561,8 @@ export function useSourceTextView() {
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
       console.log(`[SourceTextView] 파일 순서 변경 완료`);
-    } catch (error) {
-      console.error('[SourceTextView] 파일 순서 변경 실패:', error);
+    } catch (err: unknown) {
+      console.error('[SourceTextView] 파일 순서 변경 실패:', err);
       alert('파일 순서 변경에 실패했습니다.');
     } finally {
       setMovingFileId(null);
@@ -590,8 +590,8 @@ export function useSourceTextView() {
       }
 
       return result;
-    } catch (error) {
-      console.error('[validation] 검증 실패:', error);
+    } catch (err: unknown) {
+      console.error('[validation] 검증 실패:', err);
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
@@ -642,8 +642,8 @@ export function useSourceTextView() {
           break;
         }
       }
-    } catch (error) {
-      console.error('[validation] 전체 검증 중 오류:', error);
+    } catch (err: unknown) {
+      console.error('[validation] 전체 검증 중 오류:', err);
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
@@ -850,8 +850,8 @@ export function useSourceTextView() {
           console.log(`[SourceTextView] 텍스트 수정 + 재분석 완료: ${file.fileName}`);
         }
       }
-    } catch (error) {
-      console.error('[SourceTextView] 텍스트 수정 실패:', error);
+    } catch (err: unknown) {
+      console.error('[SourceTextView] 텍스트 수정 실패:', err);
       alert('텍스트 수정에 실패했습니다.');
     } finally {
       setIsSavingEdit(false);

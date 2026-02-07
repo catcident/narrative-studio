@@ -53,7 +53,9 @@ const ATTR_LABELS: Record<string, string> = {
 
 
 export function DetailPanel() {
-  const { knowledgeGraph, selectEntity, selectedSceneId } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const selectEntity = useStore((s) => s.selectEntity);
+  const selectedSceneId = useStore((s) => s.selectedSceneId);
   const entity = useSelectedEntity();
   const allEdges = useEntityEdges(entity?.id || null);
   const [expandedEdgeId, setExpandedEdgeId] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export function DetailPanel() {
     return (
       <div className="h-full flex items-center justify-center bg-white text-gray-400 p-6">
         <div className="text-center">
-          <Info className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          <Info aria-hidden="true" className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">그래프에서 노드를 선택하세요</p>
         </div>
       </div>
@@ -111,7 +113,7 @@ export function DetailPanel() {
   const sceneEntityInfo = getSceneEntityInfo(entity);
 
   // 속성 렌더링 (배열은 콤마로 연결)
-  const renderAttrValue = (value: any): string => {
+  const renderAttrValue = (value: unknown): string => {
     if (Array.isArray(value)) return value.join(', ');
     return String(value);
   };
@@ -155,7 +157,7 @@ export function DetailPanel() {
               }`}>
                 {RELATION_LABELS[edge.type] || edge.type}
               </span>
-              <ArrowRight className="w-3 h-3 text-gray-400" />
+              <ArrowRight aria-hidden="true" className="w-3 h-3 text-gray-400" />
               {otherEntities.map((e) => (
                 <span key={e!.id} className="text-sm font-medium text-gray-700">
                   {e!.name}
@@ -252,7 +254,7 @@ export function DetailPanel() {
                             {scene.time && <span>{scene.time}</span>}
                             {scene.location && (
                               <span className="flex items-center gap-0.5">
-                                <MapPin className="w-2.5 h-2.5" />
+                                <MapPin aria-hidden="true" className="w-2.5 h-2.5" />
                                 {scene.location}
                               </span>
                             )}
@@ -271,7 +273,7 @@ export function DetailPanel() {
             {/* 시간 정보 */}
             {edge.timeline?.start && (
               <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
-                <Clock className="w-3 h-3" />
+                <Clock aria-hidden="true" className="w-3 h-3" />
                 {edge.timeline.start}
               </div>
             )}
@@ -298,7 +300,7 @@ export function DetailPanel() {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-xl ${CATEGORY_BG_CLASSES[entity.category]} text-white`}>
-              <Icon className="w-6 h-6" />
+              <Icon aria-hidden="true" className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-800">{entity.name}</h2>
@@ -315,8 +317,9 @@ export function DetailPanel() {
           <button
             onClick={() => selectEntity(null)}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="닫기"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X aria-hidden="true" className="w-5 h-5 text-gray-400" />
           </button>
         </div>
       </div>
@@ -378,7 +381,7 @@ export function DetailPanel() {
                     <div className="mt-2 text-sm text-gray-700">
                       {firstScene.time && (
                         <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                          <Clock className="w-3 h-3" />
+                          <Clock aria-hidden="true" className="w-3 h-3" />
                           {firstScene.time}
                           {firstScene.location && <span> · {firstScene.location}</span>}
                         </div>
@@ -416,7 +419,7 @@ export function DetailPanel() {
                         {scene.time && <span>{scene.time}</span>}
                         {scene.location && (
                           <span className="flex items-center gap-0.5">
-                            <MapPin className="w-3 h-3" />
+                            <MapPin aria-hidden="true" className="w-3 h-3" />
                             {scene.location}
                           </span>
                         )}
@@ -437,7 +440,7 @@ export function DetailPanel() {
         {selectedSceneId && currentScene && (
           <div className="p-4 border-b-4 border-blue-200 bg-gradient-to-b from-blue-50 to-white">
             <div className="flex items-center gap-2 mb-3">
-              <Film className="w-4 h-4 text-blue-500" />
+              <Film aria-hidden="true" className="w-4 h-4 text-blue-500" />
               <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
                 장면 {sceneIndex}에서의 {entity.name}
               </h3>
@@ -451,7 +454,7 @@ export function DetailPanel() {
                   <>
                     <span>·</span>
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
+                      <MapPin aria-hidden="true" className="w-3 h-3" />
                       {currentScene.location}
                     </span>
                   </>
@@ -503,7 +506,7 @@ export function DetailPanel() {
               {positiveEdges.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Heart className="w-3.5 h-3.5 text-green-500" />
+                    <Heart aria-hidden="true" className="w-3.5 h-3.5 text-green-500" />
                     <span className="text-xs font-medium text-green-700">긍정적 관계</span>
                   </div>
                   <div className="space-y-2">
@@ -516,7 +519,7 @@ export function DetailPanel() {
               {negativeEdges.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Swords className="w-3.5 h-3.5 text-red-500" />
+                    <Swords aria-hidden="true" className="w-3.5 h-3.5 text-red-500" />
                     <span className="text-xs font-medium text-red-700">부정적 관계</span>
                   </div>
                   <div className="space-y-2">
@@ -529,7 +532,7 @@ export function DetailPanel() {
               {otherEdges.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Users className="w-3.5 h-3.5 text-gray-500" />
+                    <Users aria-hidden="true" className="w-3.5 h-3.5 text-gray-500" />
                     <span className="text-xs font-medium text-gray-700">기타 관계</span>
                   </div>
                   <div className="space-y-2">

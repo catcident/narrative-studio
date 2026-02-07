@@ -3,18 +3,20 @@
  */
 
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { useStore, useBillingSubscription, useModels } from '../../store';
-import { extractKnowledgeGraph, loadProgress, clearProgress, hasApiKey, setApiKey, getApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
+import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../../store';
+import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, ensureSufficientBalance } from '../../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../../types';
 import type { NovelKnowledgeGraph } from '../../types';
+import { CHUNK_SIZE, CHUNK_OVERLAP } from '../../lib/modelCosts';
 import { useAddFileAnalysis } from '../../hooks/useAddFileAnalysis';
 import { UploadArea } from './UploadArea';
 import { AnalysisPanel } from './AnalysisPanel';
 import { ResumePanel } from './ResumePanel';
+import { BatchAnalysisPanel } from '../BatchAnalysisPanel';
 
 interface FileInfo {
   fileName: string;
@@ -73,8 +75,10 @@ export function FileUpload() {
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const loadSubscription = useStore((s) => s.loadSubscription);
   const loadModels = useStore((s) => s.loadModels);
+  const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
   const subscription = useBillingSubscription();
   const allModels = useModels();
+  const byokEnabled = useByokEnabled();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -99,7 +103,14 @@ export function FileUpload() {
   const [directText, setDirectText] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [existingTitles, setExistingTitles] = useState<string[]>([]);
+  const [keyValidationLoading, setKeyValidationLoading] = useState(false);
+  const [keyValidationError, setKeyValidationError] = useState<string | null>(null);
   const { addFile: addFileFromHook, execute: executeAddFromHook } = useAddFileAnalysis();
+  const addToQueue = useStore((s) => s.addToQueue);
+
+  // Pro+ 사용자만 개별 분석 가능 (PDF 내보내기 권한을 Pro+ 프록시로 사용)
+  // 향후 백엔드에 별도 allow_batch_analysis 플래그 추가 시 교체 필요
+  const canBatchAnalysis = (subscription?.features?.export_formats?.includes('pdf')) ?? false;
 
   // 기존 지식그래프가 있으면 해당 모델로 고정
   const lockedModel = knowledgeGraph?.metadata?.model;
@@ -239,19 +250,38 @@ export function FileUpload() {
 
   // ==================== 단순 핸들러 ====================
 
-  const handleSaveApiKey = () => {
-    if (apiKeyInput.trim()) {
-      setApiKey(apiKeyInput.trim());
-      setHasLocalKey(true);
-      setApiKeyInput('');
-      setShowApiKeyInput(false);
+  const handleSaveApiKey = async () => {
+    const key = apiKeyInput.trim();
+    if (!key) return;
+    setKeyValidationLoading(true);
+    setKeyValidationError(null);
+    try {
+      const result = await validateApiKey(key);
+      if (result.valid) {
+        setApiKey(key);
+        setHasLocalKey(true);
+        setApiKeyInput('');
+        setShowApiKeyInput(false);
+        setKeyValidationError(null);
+      } else {
+        setKeyValidationError(result.error || '유효하지 않은 API 키입니다.');
+      }
+    } finally {
+      setKeyValidationLoading(false);
     }
+  };
+
+  const handleRemoveApiKey = () => {
+    removeApiKey();
+    setHasLocalKey(false);
+    setApiKeyInput('');
   };
 
   const handleClearProgress = useCallback(() => {
     clearProgress();
     setSavedProgress(null);
-  }, []);
+    setPartialAnalysis(null);
+  }, [setPartialAnalysis]);
 
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
@@ -303,17 +333,45 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      await ensureSufficientBalance(subscription);
+      // 세션 hold: BYOK가 아닌 경우 예상 크레딧 선차감
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      let holdToken: string | null = null;
 
-      const newKnowledgeGraph = await extractKnowledgeGraph({
-        text: combinedText,
-        title: combinedTitle,
-        onProgress: makeProgressCallback(),
-        model: currentModel,
-        fileNames: sortedFiles.map(f => f.name),
-        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: getAvailableModelIds(allModels),
-      });
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription);
+
+        const estimate = estimateUsageLocally(combinedText.length, currentModel, allModels);
+        const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
+        if (!holdResult.ok) {
+          throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+        }
+        holdToken = holdResult.data.hold_token;
+        if (holdResult.data.balance_after !== null) {
+          updateCreditBalance(holdResult.data.balance_after);
+        }
+      }
+
+      let newKnowledgeGraph: NovelKnowledgeGraph;
+      try {
+        newKnowledgeGraph = await extractKnowledgeGraph({
+          text: combinedText,
+          title: combinedTitle,
+          onProgress: makeProgressCallback(),
+          model: currentModel,
+          fileNames: sortedFiles.map(f => f.name),
+          onChunkBilling: createBillingCallback(addChunkUsage),
+          availableModelIds: getAvailableModelIds(allModels),
+        });
+      } catch (extractionErr: unknown) {
+        if (holdToken) {
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${combinedTitle}`, updateCreditBalance);
+        }
+        throw extractionErr;
+      }
+
+      if (holdToken) {
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${combinedTitle}`, updateCreditBalance);
+      }
 
       const sourceFiles = buildSourceFiles(fileInfos);
       if (sourceFiles) {
@@ -329,10 +387,11 @@ export function FileUpload() {
       setBookTitle('');
       setBookAuthor('');
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       resetProgressState();
       return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -342,6 +401,17 @@ export function FileUpload() {
   const processFileInput = useCallback((files: FileList) => {
     if (files.length === 0) return;
 
+    // 파일 크기 제한 (플랜 features 기반)
+    const maxFileSizeMb = subscription?.features?.max_file_size_mb ?? Infinity;
+    if (maxFileSizeMb < Infinity) {
+      const maxFileSizeBytes = maxFileSizeMb * 1024 * 1024;
+      const oversizedFiles = Array.from(files).filter(f => f.size > maxFileSizeBytes);
+      if (oversizedFiles.length > 0) {
+        setError(`파일 크기가 ${maxFileSizeMb}MB를 초과합니다. 상위 플랜에서 더 큰 파일을 분석할 수 있습니다.`);
+        return;
+      }
+    }
+
     if (knowledgeGraph) {
       handleFiles(files);
       return;
@@ -350,7 +420,7 @@ export function FileUpload() {
     setSelectedFiles(Array.from(files).sort((a, b) => a.name.localeCompare(b.name)));
     setDirectText('');
     setShowTextInput(false);
-  }, [knowledgeGraph, handleFiles]);
+  }, [knowledgeGraph, handleFiles, subscription?.features?.max_file_size_mb, setError]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -371,30 +441,65 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     await runExtraction(async () => {
-      await ensureSufficientBalance(subscription);
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
 
       // 만료 모델이면 현재 선택된 모델로 override
+      const resumeModel = invalidSavedModel ? currentModel : (savedProgress.model || currentModel);
+
+      // 남은 청크에 대해서만 hold
+      let holdToken: string | null = null;
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription);
+
+        const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
+        if (remainingChunks > 0) {
+          const chunkCharCount = remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP);
+          const estimate = estimateUsageLocally(chunkCharCount, resumeModel, allModels);
+          const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
+          }
+        }
+      }
+
       const resumeData = invalidSavedModel
         ? { ...savedProgress, model: currentModel }
         : savedProgress;
 
-      const newKnowledgeGraph = await extractKnowledgeGraph({
-        text: '',
-        title: savedProgress.title,
-        onProgress: makeProgressCallback(),
-        resumeFrom: resumeData,
-        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: getAvailableModelIds(allModels),
-      });
+      let newKnowledgeGraph: NovelKnowledgeGraph;
+      try {
+        newKnowledgeGraph = await extractKnowledgeGraph({
+          text: '',
+          title: savedProgress.title,
+          onProgress: makeProgressCallback(),
+          resumeFrom: resumeData,
+          onChunkBilling: createBillingCallback(addChunkUsage),
+          availableModelIds: getAvailableModelIds(allModels),
+        });
+      } catch (extractionErr: unknown) {
+        if (holdToken) {
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 중단: ${savedProgress.title}`, updateCreditBalance);
+        }
+        throw extractionErr;
+      }
+
+      if (holdToken) {
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 완료: ${savedProgress.title}`, updateCreditBalance);
+      }
 
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       resetProgressState();
       return true;
     });
-  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels]);
+  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels, setPartialAnalysis, byokEnabled]);
 
   // 추가 분석 (기존 결과에 새 파일 병합) — useAddFileAnalysis 훅 위임
   const handleAddFile = useCallback(async (file: File) => {
@@ -440,6 +545,29 @@ export function FileUpload() {
     handleAddFile(files[0]);
   }, [handleAddFile]);
 
+  // 개별 분석: 각 파일을 큐에 등록
+  const handleBatchAnalysis = useCallback(async () => {
+    if (!canRegister || selectedFiles.length < 2) return;
+
+    const items: import('../../types').QueueItem[] = [];
+    for (const file of selectedFiles) {
+      const text = await readFileAsText(file, () => {});
+      items.push({
+        id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        fileName: file.name,
+        text,
+        charCount: text.length,
+        model: currentModel,
+        status: 'pending',
+      });
+    }
+
+    addToQueue(items);
+    setSelectedFiles([]);
+    setDirectText('');
+    setShowTextInput(false);
+  }, [canRegister, selectedFiles, currentModel, addToQueue]);
+
   // 등록 버튼 클릭 - 실제 분석 시작
   const handleRegister = useCallback(async () => {
     if (!canRegister) return;
@@ -465,20 +593,48 @@ export function FileUpload() {
         throw new Error('내용이 비어있습니다.');
       }
 
-      await ensureSufficientBalance(subscription);
+      // 세션 hold: BYOK가 아닌 경우 예상 크레딧 선차감
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      let holdToken: string | null = null;
+
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription);
+
+        const estimate = estimateUsageLocally(text.length, currentModel, allModels);
+        const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
+        if (!holdResult.ok) {
+          throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+        }
+        holdToken = holdResult.data.hold_token;
+        if (holdResult.data.balance_after !== null) {
+          updateCreditBalance(holdResult.data.balance_after);
+        }
+      }
 
       setProgress('분석 중...');
-      const newKnowledgeGraph = await extractKnowledgeGraph({
-        text,
-        title,
-        onProgress: makeProgressCallback(),
-        model: currentModel,
-        fileNames: fileInfos.length > 0
-          ? fileInfos.map(f => f.fileName)
-          : (sourceFileName ? [sourceFileName] : undefined),
-        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: getAvailableModelIds(allModels),
-      });
+      let newKnowledgeGraph: NovelKnowledgeGraph;
+      try {
+        newKnowledgeGraph = await extractKnowledgeGraph({
+          text,
+          title,
+          onProgress: makeProgressCallback(),
+          model: currentModel,
+          fileNames: fileInfos.length > 0
+            ? fileInfos.map(f => f.fileName)
+            : (sourceFileName ? [sourceFileName] : undefined),
+          onChunkBilling: createBillingCallback(addChunkUsage),
+          availableModelIds: getAvailableModelIds(allModels),
+        });
+      } catch (extractionErr: unknown) {
+        if (holdToken) {
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${title}`, updateCreditBalance);
+        }
+        throw extractionErr;
+      }
+
+      if (holdToken) {
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${title}`, updateCreditBalance);
+      }
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();
 
@@ -503,19 +659,19 @@ export function FileUpload() {
               console.warn('[embedding] 임베딩 생성 실패:', result.error);
             }
           })
-          .catch(err => console.warn('[embedding] 임베딩 오류:', err));
+          .catch((err: unknown) => console.warn('[embedding] 임베딩 오류:', err));
       }
 
       if (text.length > 0) {
         const fileParts = text.split(FILE_SEPARATOR);
-        const chunks: ChunkData[] = [];
+        const embeddingChunks: ChunkData[] = [];
         let chunkIndex = 0;
 
         fileParts.forEach((filePart, fileIdx) => {
           const fileName = fileInfos.length > fileIdx ? fileInfos[fileIdx].fileName : undefined;
           const chunkSize = 5000;
           for (let ci = 0; ci < filePart.length; ci += chunkSize) {
-            chunks.push({
+            embeddingChunks.push({
               index: chunkIndex++,
               content: filePart.slice(ci, ci + chunkSize),
               sourceFile: fileName,
@@ -523,8 +679,8 @@ export function FileUpload() {
           }
         });
 
-        if (chunks.length > 0) {
-          createChunkEmbeddings(saved.id, chunks, getApiKey() || undefined)
+        if (embeddingChunks.length > 0) {
+          createChunkEmbeddings(saved.id, embeddingChunks, getApiKey() || undefined)
             .then(result => {
               if (result.success) {
                 console.log(`[chunk-embedding] ${result.count}개 청크 임베딩 완료`);
@@ -532,7 +688,7 @@ export function FileUpload() {
                 console.warn('[chunk-embedding] 청크 임베딩 실패:', result.error);
               }
             })
-            .catch(err => console.warn('[chunk-embedding] 청크 임베딩 오류:', err));
+            .catch((err: unknown) => console.warn('[chunk-embedding] 청크 임베딩 오류:', err));
         }
       }
 
@@ -544,10 +700,11 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       resetProgressState();
       return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled]);
 
   // ==================== 렌더링 ====================
 
@@ -576,6 +733,11 @@ export function FileUpload() {
         apiKeyInput={apiKeyInput}
         setApiKeyInput={setApiKeyInput}
         handleSaveApiKey={handleSaveApiKey}
+        byokEnabled={byokEnabled}
+        onRemoveApiKey={handleRemoveApiKey}
+        onClearKeyValidationError={() => setKeyValidationError(null)}
+        keyValidationLoading={keyValidationLoading}
+        keyValidationError={keyValidationError}
         currentModel={currentModel}
         lockedModel={lockedModel}
         localLoading={localLoading}
@@ -601,6 +763,8 @@ export function FileUpload() {
         fullTitle={fullTitle}
         canRegister={canRegister}
         handleRegister={handleRegister}
+        canBatchAnalysis={canBatchAnalysis}
+        onBatchAnalysis={handleBatchAnalysis}
         uploadAreaSlot={uploadArea}
       />
 
@@ -621,6 +785,8 @@ export function FileUpload() {
         savedModelName={savedModelId ? (allModels.find((m) => m.id === savedModelId)?.name ?? savedModelId) : undefined}
         currentModelName={allModels.find((m) => m.id === currentModel)?.name ?? currentModel}
       />
+
+      <BatchAnalysisPanel />
     </div>
   );
 }

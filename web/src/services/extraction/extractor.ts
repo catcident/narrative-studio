@@ -11,6 +11,7 @@ export async function extractFromChunk(
   chunkNum: number,
   knownEntities: KnownEntity[] = [],
   model?: string,
+  apiKeyOverride?: string,
 ): Promise<ChunkExtractionResult> {
   // 이전에 발견된 엔티티 정보를 프롬프트에 추가 (카테고리별로 구분)
   let previousEntitiesText = '';
@@ -53,7 +54,7 @@ ${limitedCategoryEntities.map(e => {
   console.log(`[extraction] 청크 ${chunkNum} 프롬프트 크기: ${prompt.length}자`);
 
   // 서버 API route 사용 (환경변수 우선, 없으면 사용자 키 사용)
-  const userApiKey = getApiKey();
+  const userApiKey = apiKeyOverride !== undefined ? apiKeyOverride : getApiKey();
   const response = await fetchWithClientTimeout('/api/analyze', {
     method: 'POST',
     headers: {

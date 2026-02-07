@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Clock, Users, ChevronDown, ChevronRight, Sparkles, BookOpen, Heart, Swords, MessageCircle } from 'lucide-react';
 import { useStore } from '../store';
-import type { HyperEdge, Entity } from '../types';
+import type { HyperEdge, Entity, SceneSnapshot } from '../types';
 
 // 관계 유형별 설정
 const RELATION_CONFIG: Record<string, { label: string; icon: typeof Heart; color: string }> = {
@@ -67,16 +67,16 @@ export function TimelineView() {
     // 장면 정렬: order 필드 기준 (파일 순서 반영)
     // chapterNumber는 표시용으로만 사용하고 정렬에는 order를 사용
     const sortedScenes = Object.values(snapshots)
-      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    return sortedScenes.map((scene: any) => {
+    return sortedScenes.map((scene) => {
       const sceneId = scene.sceneId;
       // order 필드 사용 (파일 순서 변경 시 업데이트됨), 없으면 sceneId에서 추출
       const sceneNum = scene.order || parseInt(sceneId.replace('S', '').replace(/^0+/, '') || '0');
 
       // 이 장면의 관계들
       const edges = Object.values(knowledgeGraph.hyperedges)
-        .filter((edge: any) => edge.scenes?.includes(sceneId)) as HyperEdge[];
+        .filter((edge) => edge.scenes?.includes(sceneId));
 
       // 관련 엔티티들
       const entityIds = new Set<string>();
@@ -112,7 +112,7 @@ export function TimelineView() {
         sceneNum,
         time: scene.time || `장면 ${sceneNum}`,
         // 새 필드(timeMarker) 우선, 기존 데이터 호환(timeElapsed)
-        timeMarker: scene.timeMarker || scene.timeElapsed,
+        timeMarker: scene.timeMarker || (scene as SceneSnapshot & { timeElapsed?: string }).timeElapsed,
         location: scene.location,
         summary: scene.summary,
         chapter: scene.chapterNumber || (chapterInfo?.number),

@@ -53,6 +53,18 @@ React Flow 기반 인터랙티브 관계도 그래프
 - 관련 관계 목록
 - 등장 장면 목록
 
+### PartialAnalysisBanner.tsx
+
+메인 뷰어 header 아래 표시되는 부분 분석 인디케이터 배너.
+
+**기능**:
+- 중단된 분석 상태 표시 (타이틀, 청크 진행률, 상대 시간)
+- "이어하기" / "삭제" 버튼
+- `isResuming` 시 스피너 + 진행 텍스트
+- `role="status"`, progress bar `role="progressbar"` + aria 속성
+
+**Props**: `partialAnalysis`, `onResume`, `onClear`, `isResuming`, `resumeProgress`
+
 ### TimelineView.tsx / SceneTimeline.tsx
 
 장면별 타임라인 시각화
@@ -118,12 +130,14 @@ NextAuth.js SessionProvider 래퍼
 ### UsageSummary.tsx
 
 분석 완료 후 사용량 요약 모달. `store.showUsageSummary`로 표시 제어.
-- `calculateCreditsFromTokens()`로 실제 토큰 → 크레딧 역산 표시
+- settle 정산 결과 기반 크레딧 표시
 - 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
 
 ### SubscriptionPage.tsx
 
-구독 관리 모달 (탭: 플랜 비교 | 크레딧 구매 | 사용 내역).
+구독 관리 모달 (탭: 플랜 비교 | 크레딧 구매 | 사용 내역 | API 키).
+- "API 키" 탭은 `byokEnabled` 시에만 표시
+- 키 마스킹: `key.length <= 10`이면 완전 마스킹 (`'••••••••••'`), 그 외 `sk-or-...xxxx`
 
 ### UsageHistory.tsx
 
@@ -204,6 +218,58 @@ NextAuth.js SessionProvider 래퍼
 - [ ] 모달: `tabIndex={-1}` + Escape 키 닫기 + `role="dialog"` + `aria-modal="true"`
 - [ ] 모달 닫기 버튼: `aria-label="닫기"` 추가
 - [ ] 아이콘 전용 버튼: `aria-label` 필수 (`title`만으로는 부족)
+- [ ] 정보/상태 배너: `role="status"` 추가 (`bg-*-50 border rounded-lg` 스타일 배너)
+- [ ] 반응형 숨김: `hidden md:block` 금지 → `sr-only md:not-sr-only` 사용 (스크린 리더 접근성 보존)
+- [ ] 플랜 코드별 분기: switch/helper 함수 사용 (중첩 삼항 금지, `getPlanBadgeColor()` 패턴)
+
+### 반응형 숨김과 접근성
+
+**규칙**: 의미 있는 텍스트를 반응형으로 숨길 때 `hidden`/`display:none` 사용 금지. `sr-only` + 반응형 `not-sr-only`로 시각적으로만 숨기기.
+
+```tsx
+// ❌ hidden md:block — 접근성 트리에서 완전 제거, 스크린 리더가 읽을 수 없음
+<h1 className="hidden md:block">인물 관계도</h1>
+
+// ✅ sr-only md:not-sr-only — 768px 미만에서 시각적으로만 숨김, 스크린 리더는 항상 접근 가능
+<h1 className="sr-only md:not-sr-only">인물 관계도</h1>
+
+// ✅ 순수 장식 요소는 hidden 사용 가능 (접근성 영향 없음)
+<span className="hidden lg:inline text-sm text-gray-500">{metadata}</span>
+```
+
+**적용 기준**: `<h1>`~`<h6>`, `<label>`, `role="status"`, 내비게이션 링크 등 의미적 요소에 적용. 순수 보충 텍스트(부가 통계, 장식 라벨)는 `hidden` 사용 가능.
+
+### 플랜 코드 분기 패턴
+
+**규칙**: 플랜 코드(plan code)에 따른 분기는 switch문 또는 별도 helper 함수 사용. 중첩 삼항 연산자 금지.
+
+```tsx
+// ❌ 중첩 삼항 — 가독성 낮고 분기 추가 시 누락 위험
+const color = planCode === 'business' ? 'amber'
+  : planCode === 'pro' ? 'purple'
+  : planCode === 'basic' ? 'blue'
+  : 'gray';
+
+// ✅ switch helper — 확장 용이, SubscriptionPage planColor() 패턴
+function getPlanBadgeColor(planCode: string): string {
+  switch (planCode) {
+    case 'business': return 'bg-amber-100 text-amber-700';
+    case 'pro': return 'bg-purple-100 text-purple-700';
+    case 'basic': return 'bg-blue-100 text-blue-700';
+    default: return 'bg-gray-100 text-gray-700';
+  }
+}
+```
+
+**UI 텍스트 규칙**: 특정 플랜명 하드코딩 금지 → 일반화 표현 사용
+
+```tsx
+// ❌ 특정 플랜명 하드코딩 — 비공개 플랜 사용자에게 부적절
+return '크레딧 소진 — Pro 업그레이드 또는 패키지 구매';
+
+// ✅ 일반화 표현
+return '크레딧 소진 — 플랜 업그레이드 또는 패키지 구매';
+```
 
 ### 타입 안전성
 
@@ -298,8 +364,8 @@ React Flow `dagre` 레이아웃 사용:
 try {
   const data = await apiCall();
   // ...
-} catch (error) {
-  console.error('[billing] operation error:', error);
+} catch (err: unknown) {
+  console.error('[billing] operation error:', err);
   // UI에 에러 상태 표시 또는 null 반환
 }
 

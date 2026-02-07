@@ -4,9 +4,10 @@
  */
 
 import { useMemo } from 'react';
-import { Calculator, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calculator, AlertTriangle, CheckCircle, Key } from 'lucide-react';
 import { estimateUsageLocally } from '../services/billing';
-import { useCreditBalance, useModels } from '../store';
+import { useCreditBalance, useModels, useByokEnabled } from '../store';
+import { hasApiKey } from '../services/extraction';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 
 interface UsageEstimateProps {
@@ -18,6 +19,8 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
   const allModels = useModels();
+  const byokEnabled = useByokEnabled();
+  const isUsingPersonalKey = byokEnabled && hasApiKey();
 
   const estimate = useMemo(
     () => estimateUsageLocally(charCount, model, allModels),
@@ -38,12 +41,19 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
       </div>
 
       <div className="space-y-1">
+        {isUsingPersonalKey ? (
+          <div className="flex items-center gap-1.5 text-sm text-purple-700">
+            <Key aria-hidden="true" className="w-3.5 h-3.5" />
+            <span>크레딧 미차감 — 개인 API 키로 직접 과금</span>
+          </div>
+        ) : (
         <div className="flex justify-between items-center">
           <span className="text-gray-700 font-medium">예상 비용</span>
           <span className={`font-bold ${canAfford ? 'text-blue-600' : 'text-red-600'}`}>
             ~{estimate.estimated_credits.toLocaleString()} 크레딧
           </span>
         </div>
+        )}
         <div className="flex justify-between text-xs text-gray-500">
           <span>청크 수</span>
           <span>{estimate.chunks}개</span>
@@ -56,8 +66,8 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
             </span>
           </div>
         )}
-        {creditBalance !== null && (
-          <div className="flex items-center gap-1 text-xs pt-1 border-t border-gray-200">
+        {creditBalance !== null && !isUsingPersonalKey && (
+          <div className="flex items-center gap-2 text-xs pt-2 mt-1 border-t border-gray-200">
             {canAfford ? (
               <>
                 <CheckCircle aria-hidden="true" className="w-3.5 h-3.5 text-green-500" />

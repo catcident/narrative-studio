@@ -5,8 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2, FileText, MessageCircle } from 'lucide-react';
-import { useStore } from './store';
+import { useStore, usePartialAnalysis } from './store';
 import { FileUpload } from './components/FileUpload';
+import { PartialAnalysisBanner } from './components/PartialAnalysisBanner';
 import { RelationshipGraph, GraphLegend } from './components/RelationshipGraph';
 import { TimelineView } from './components/TimelineView';
 import { CharacterChronicle } from './components/CharacterChronicle';
@@ -22,8 +23,11 @@ import { UserMenu } from './components/UserMenu';
 import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
-import { saveKnowledgeGraph, saveNovelText } from './services/storage';
+import { BalanceAlertBanner } from './components/BalanceAlertBanner';
+import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeGraphById } from './services/storage';
+import { loadProgress, syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
+import { useResumeAnalysis } from './hooks/useResumeAnalysis';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -49,16 +53,57 @@ function App() {
   const sceneRangeEnd = useStore((s) => s.sceneRangeEnd);
   const selectSceneRange = useStore((s) => s.selectSceneRange);
   const selectedEntityId = useStore((s) => s.selectedEntityId);
+  const setCurrentDataId = useStore((s) => s.setCurrentDataId);
   const loadSubscription = useStore((s) => s.loadSubscription);
+  const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
+  const partialAnalysis = usePartialAnalysis();
   const [showDataManager, setShowDataManager] = useState(false);
   const [showSubscriptionPage, setShowSubscriptionPage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { addFile, isAdding: isAddingFile, progress: addProgress } = useAddFileAnalysis();
+  const { resume, clearSavedProgress, isResuming, progress: resumeProgress } = useResumeAnalysis();
 
-  // 로그인 시 구독 정보 로드
+  // 로그인 시 구독 정보 로드 + 탭 복귀 시 자동 갱신
   useEffect(() => {
     loadSubscription();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadSubscription();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [loadSubscription]);
+
+  // 마운트 시 부분 분석 상태 동기화 (타이틀 매칭)
+  useEffect(() => {
+    if (!knowledgeGraph) return;
+    const progress = loadProgress();
+    if (progress && progress.title === knowledgeGraph.metadata.title) {
+      setPartialAnalysis({
+        processedChunks: progress.processedChunks,
+        totalChunks: progress.totalChunks,
+        title: progress.title,
+        timestamp: progress.timestamp,
+        model: progress.model,
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만
+
+  // 마운트 시 sessionStorage에서 세션 복원
+  useEffect(() => {
+    const savedDataId = sessionStorage.getItem('currentDataId');
+    if (savedDataId && !knowledgeGraph) {
+      loadKnowledgeGraphById(savedDataId).then((loaded) => {
+        if (loaded) {
+          setKnowledgeGraph(loaded, undefined, savedDataId);
+          syncPartialAnalysis(setPartialAnalysis);
+        } else {
+          sessionStorage.removeItem('currentDataId');
+        }
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만
 
   // 지식 그래프가 변경되면 자동 저장
   // FileUpload에서 저장한 경우 currentDataId가 이미 있으므로 중복 저장 방지
@@ -80,6 +125,7 @@ function App() {
 
           const saved = await saveKnowledgeGraph(knowledgeGraph, novelId);
           if (cancelled) return;
+          setCurrentDataId(saved.id);
           console.log('[storage] 지식그래프 저장 완료:', saved.title, 'v' + saved.version);
           setSaveStatus('saved');
         } catch (err: unknown) {
@@ -104,6 +150,7 @@ function App() {
   // 데이터 관리자에서 불러오기 (ID 포함)
   const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph, dataId?: string) => {
     setKnowledgeGraph(loaded, undefined, dataId);
+    syncPartialAnalysis(setPartialAnalysis);
     setShowDataManager(false);
   };
 
@@ -138,7 +185,7 @@ function App() {
 
         {/* 하단: 저장된 데이터 그리드 (4열 - 가운데 2개가 위 박스와 같은 너비) */}
         <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
-          <SavedDataGrid onLoad={handleLoadKnowledgeGraph} />
+          <SavedDataGrid onLoad={handleLoadKnowledgeGraph} onShowSubscription={() => setShowSubscriptionPage(true)} />
         </div>
 
         {/* 모달 (업로드 화면에서도 접근 가능) */}
@@ -272,19 +319,19 @@ function App() {
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
               <Network aria-hidden="true" className="w-6 h-6 text-blue-600" />
-              <h1 className="font-bold text-gray-800">인물 관계도</h1>
+              <h1 className="font-bold text-gray-800 whitespace-nowrap sr-only md:not-sr-only">인물 관계도</h1>
             </div>
-            <span className="text-sm text-gray-500">
+            <span className="hidden lg:inline text-sm text-gray-500 truncate max-w-[200px]">
               {knowledgeGraph.metadata.title}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 xl:gap-4 shrink-0">
             {/* 통계 */}
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div className="hidden lg:flex items-center gap-4 text-sm text-gray-500">
               <span>엔티티 {knowledgeGraph.stats.totalEntities}</span>
               <span>관계 {knowledgeGraph.stats.totalEdges}</span>
               {scenes.length > 0 && <span>장면 {scenes.length}</span>}
@@ -296,7 +343,8 @@ function App() {
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                  aria-label={label}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all
                     ${viewMode === mode
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-800'
@@ -304,17 +352,17 @@ function App() {
                   `}
                 >
                   <Icon aria-hidden="true" className="w-4 h-4" />
-                  {label}
+                  <span className="hidden xl:inline">{label}</span>
                 </button>
               ))}
             </div>
 
             {/* 저장 상태 */}
             {saveStatus === 'saving' && (
-              <span className="text-xs text-gray-400 animate-pulse">저장 중...</span>
+              <span className="hidden lg:inline text-xs text-gray-400 animate-pulse">저장 중...</span>
             )}
             {saveStatus === 'saved' && (
-              <span className="flex items-center gap-1 text-xs text-green-600">
+              <span className="hidden lg:flex items-center gap-1 text-xs text-green-600">
                 <Save aria-hidden="true" className="w-3 h-3" />
                 저장됨
               </span>
@@ -326,14 +374,17 @@ function App() {
             {/* 데이터 관리 */}
             <button
               onClick={() => setShowDataManager(true)}
+              aria-label="데이터 관리"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <Database aria-hidden="true" className="w-4 h-4" />
-              데이터 관리
+              <span className="hidden xl:inline">데이터 관리</span>
             </button>
 
             {/* 파일 추가 */}
-            <label className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer ${
+            <label
+              aria-label="파일 추가"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer ${
               isAddingFile
                 ? 'bg-blue-100 text-blue-600'
                 : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
@@ -341,12 +392,12 @@ function App() {
               {isAddingFile ? (
                 <>
                   <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
-                  {addProgress || '추가 중...'}
+                  <span className="hidden xl:inline">{addProgress || '추가 중...'}</span>
                 </>
               ) : (
                 <>
                   <Plus aria-hidden="true" className="w-4 h-4" />
-                  파일 추가
+                  <span className="hidden xl:inline">파일 추가</span>
                 </>
               )}
               <input
@@ -365,10 +416,11 @@ function App() {
             {/* 리셋 */}
             <button
               onClick={reset}
+              aria-label="새 파일"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <RotateCcw aria-hidden="true" className="w-4 h-4" />
-              새 파일
+              <span className="hidden xl:inline">새 파일</span>
             </button>
 
             {/* 로그아웃 */}
@@ -376,6 +428,20 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* 잔액 알림 배너 */}
+      <BalanceAlertBanner onShowSubscription={() => setShowSubscriptionPage(true)} />
+
+      {/* 부분 분석 배너 */}
+      {partialAnalysis && (
+        <PartialAnalysisBanner
+          partialAnalysis={partialAnalysis}
+          onResume={resume}
+          onClear={clearSavedProgress}
+          isResuming={isResuming}
+          resumeProgress={resumeProgress}
+        />
+      )}
 
       {/* 장면 타임라인 (장면이 있을 때만) */}
       {viewMode === 'graph' && scenes.length > 0 && (
@@ -405,6 +471,7 @@ function App() {
                   edges={edgesWithOpacity}
                   selectedScene={currentScene ? { ...currentScene, sceneId: selectedSceneId! } : null}
                   sceneIndex={selectedSceneIndex + 1}
+                  onShowSubscription={() => setShowSubscriptionPage(true)}
                 />
               </div>
             </>
@@ -434,6 +501,7 @@ function App() {
         <DataManager
           onClose={() => setShowDataManager(false)}
           onLoad={handleLoadKnowledgeGraph}
+          onShowSubscription={() => { setShowDataManager(false); setShowSubscriptionPage(true); }}
         />
       )}
 

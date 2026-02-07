@@ -1,4 +1,4 @@
-# 저장소 및 동기화
+# 저장소
 
 지식 그래프 데이터의 저장, 로드, 버전 관리 기능입니다.
 
@@ -16,40 +16,24 @@ web/src/
 └── lib/mongodb.ts                # MongoDB 연결
 ```
 
-## 1. 아키텍처 (Dual Layer)
+## 1. 아키텍처 (서버 전용)
 
-```
-클라이언트 요청
-      ↓
-서버 API (MongoDB) ← 1차 시도
-      ↓ 실패 시
-로컬 IndexedDB ← 폴백
-```
+서버 API를 통해 MongoDB에 저장. 서버 실패 시 에러 반환 또는 빈 결과.
 
-### 저장소 구분
+### 서버 실패 시 동작
 
-| 저장소 | ID 형식 | 용도 |
-|--------|---------|------|
-| 서버 (MongoDB) | ObjectId | 기본 저장소 |
-| 로컬 (IndexedDB) | `kg_` 접두사 | 폴백/오프라인 |
+| 함수 | 서버 실패 시 |
+|------|------------|
+| `getSavedKnowledgeGraphList` | `[]` 반환 |
+| `loadKnowledgeGraph` | `null` 반환 |
+| `saveKnowledgeGraph` | **throw** (데이터 유실 방지) |
+| `saveNovelText` | **throw** (데이터 유실 방지) |
+| `updateKnowledgeGraph` | `false` 반환 |
+| `deleteKnowledgeGraph` | `false` 반환 |
+| `getVersionHistory` | `[]` 반환 |
+| `restoreVersion` | `null` 반환 |
 
 ## 2. 데이터 구조
-
-### SavedKnowledgeGraph
-
-```typescript
-interface SavedKnowledgeGraph {
-  id: string;
-  title: string;
-  savedAt: string;       // 최초 저장 시간
-  updatedAt: string;     // 최종 수정 시간
-  version: number;       // 버전 번호
-  data: NovelKnowledgeGraph;
-  entityCount: number;
-  edgeCount: number;
-  sceneCount: number;
-}
-```
 
 ### SavedKnowledgeGraphMeta (목록용)
 
@@ -78,7 +62,7 @@ interface KnowledgeGraphVersion {
 }
 ```
 
-## 3. 통합 API
+## 3. 클라이언트 API
 
 ### getSavedKnowledgeGraphList()
 
@@ -95,19 +79,16 @@ const list = await getSavedKnowledgeGraphList();
 
 ```typescript
 const graph = await loadKnowledgeGraph('507f1f77bcf86cd799439011');
-// 또는
-const localGraph = await loadKnowledgeGraph('kg_1234567890_abc123');
 ```
 
-### saveKnowledgeGraph(graph, novelId?, userId?, existingId?)
+### saveKnowledgeGraph(graph, novelId?, existingId?)
 
-지식 그래프를 저장합니다.
+지식 그래프를 저장합니다. 서버가 세션에서 userId를 추출합니다.
 
 ```typescript
 const meta = await saveKnowledgeGraph(
   knowledgeGraph,
   novelId,        // 연결된 소설 ID (선택)
-  userId,         // 사용자 ID (선택)
   existingId      // 기존 데이터 ID (업데이트 시)
 );
 ```
@@ -172,7 +153,6 @@ Response: SavedKnowledgeGraphMeta[]
 {
   knowledgeGraph: NovelKnowledgeGraph;
   novelId?: string;
-  userId?: string;
   existingId?: string;
 }
 
@@ -224,58 +204,15 @@ Response: Array<{ version, savedAt, note }>
 Response: NovelKnowledgeGraph
 ```
 
-## 6. 로컬 IndexedDB
+## 6. 소설 원본 저장
 
-### 데이터베이스 구조
-
-```
-character-relationship-db
-├── knowledgeGraphs (keyPath: id)
-└── versions (keyPath: [dataId, version])
-    └── index: dataId
-```
-
-### 주요 함수
-
-| 함수 | 설명 |
-|------|------|
-| `openDB()` | DB 연결 및 스키마 생성 |
-| `getLocalList()` | 목록 조회 |
-| `loadLocal(id)` | 개별 로드 |
-| `saveLocal(graph, existingId?)` | 저장 |
-| `updateLocal(id, graph)` | 업데이트 |
-| `deleteLocal(id)` | 삭제 |
-| `getLocalVersionHistory(dataId)` | 버전 히스토리 |
-| `restoreLocalVersion(dataId, version)` | 버전 복원 |
-
-### 기존 데이터 매칭 로직
-
-```typescript
-// 1. ID로 직접 찾기
-if (existingId) {
-  existing = await store.get(existingId);
-}
-
-// 2. 제목의 첫 부분으로 찾기 (하위 호환)
-if (!existing) {
-  const baseTitle = title.split(' + ')[0]; // "01화 + 02화" -> "01화"
-  existing = allItems.find(o => {
-    const existingBaseTitle = o.title.split(' + ')[0];
-    return existingBaseTitle === baseTitle;
-  });
-}
-```
-
-## 7. 소설 원본 저장
-
-### saveNovelText(title, text, knowledgeGraphId?, userId?)
+### saveNovelText(title, text, knowledgeGraphId?)
 
 ```typescript
 const { id, title } = await saveNovelText(
   '나의 소설',
   '소설 텍스트...',
-  knowledgeGraphId,
-  userId
+  knowledgeGraphId
 );
 ```
 
@@ -293,7 +230,7 @@ const novels = await getNovelList();
 // [{ id, title, textLength, savedAt, knowledgeGraphId }]
 ```
 
-## 8. 내보내기/가져오기
+## 7. 내보내기/가져오기
 
 ### exportKnowledgeGraph(data)
 
@@ -321,39 +258,18 @@ if (!data.metadata || !data.entities || !data.hyperedges) {
 }
 ```
 
-## 9. 저장소 초기화
-
-```typescript
-await clearAllStorage();
-// IndexedDB의 knowledgeGraphs, versions 스토어 전체 삭제
-```
-
-## 10. 에러 처리
-
-### 폴백 전략
-
-```typescript
-try {
-  // 서버 API 시도
-  const response = await fetch(`${API_BASE}/knowledge-graphs`);
-  if (!response.ok) throw new Error('API 응답 오류');
-  return await response.json();
-} catch (err) {
-  console.warn('[storage] 서버 실패, 로컬 사용:', err);
-  return getLocalList();  // 로컬 폴백
-}
-```
+## 8. 에러 처리
 
 ### 로그 패턴
 
 ```
-[storage] 서버 목록 조회 실패, 로컬 사용: Error
-[storage] 서버 저장 실패, 로컬 저장: Error
-[storage] 기존 데이터 업데이트: 01화 -> 01화 + 02화 (v2)
-[storage] 새 데이터 저장: 03화 (v1)
+[storage] 서버 목록 조회 실패: Error
+[storage] 서버 로드 실패: Error
+[storage] 서버 업데이트 실패: Error
+[storage] 서버 삭제 실패: Error
 ```
 
-## 11. 시퀀스 다이어그램
+## 9. 시퀀스 다이어그램
 
 ### 저장 흐름
 
@@ -368,23 +284,7 @@ App          storage.ts        Server API        MongoDB
  |<--완료--------|                  |               |
 ```
 
-### 폴백 흐름
+## 10. 주의사항
 
-```
-App          storage.ts        Server API        IndexedDB
- |               |                  |               |
- |--저장 요청--->|                  |               |
- |               |--POST----------->|               |
- |               |<--오류 발생------|               |
- |               |                  |               |
- |               |--saveLocal()-------------------->|
- |               |<--SavedMeta----------------------|
- |<--완료--------|                  |               |
-```
-
-## 12. 주의사항
-
-1. **ID 구분**: 로컬 ID(`kg_`)와 서버 ID를 구분하여 처리
-2. **버전 충돌**: 동시 편집 시 버전 히스토리로 복구 가능
-3. **오프라인**: 서버 연결 실패 시 자동으로 로컬 저장
-4. **데이터 마이그레이션**: 로컬 → 서버 마이그레이션은 별도 구현 필요
+1. **버전 충돌**: 동시 편집 시 버전 히스토리로 복구 가능
+2. **인증 모드**: `AUTH_ENABLED=false` 시 `userId='anonymous'`로 공유 네임스페이스

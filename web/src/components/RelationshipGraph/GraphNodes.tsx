@@ -42,6 +42,7 @@ export interface Props {
   onNodeClick?: (entity: Entity) => void;
   selectedScene?: Scene | null;
   sceneIndex?: number;
+  onShowSubscription?: () => void;
 }
 
 // --- Sub-components ---

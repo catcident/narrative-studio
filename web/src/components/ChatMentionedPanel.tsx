@@ -30,6 +30,25 @@ const SENTIMENT_COLORS: Record<string, string> = {
   neutral: '#6b7280',
 };
 
+// force-graph-2d 노드/링크 타입 (라이브러리가 x/y 좌표를 런타임에 추가)
+interface GraphNode {
+  id: string;
+  name: string;
+  category: EntityCategory;
+  color: string;
+  entity: Entity;
+  x: number;
+  y: number;
+}
+
+interface GraphLink {
+  source: GraphNode;
+  target: GraphNode;
+  label: string;
+  sentiment: string;
+  edge: HyperEdge;
+}
+
 // 툴팁 정보 타입
 interface TooltipInfo {
   type: 'node' | 'edge';
@@ -39,9 +58,12 @@ interface TooltipInfo {
 }
 
 export function ChatMentionedPanel() {
-  const { knowledgeGraph, chatMentionedEntities, selectEntity } = useStore();
+  const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const chatMentionedEntities = useStore((s) => s.chatMentionedEntities);
+  const selectEntity = useStore((s) => s.selectEntity);
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- force-graph-2d 인스턴스 타입 미제공
   const graphRef = useRef<any>(null);
 
   // 언급된 엔티티 목록 가져오기
@@ -65,6 +87,7 @@ export function ChatMentionedPanel() {
     if (!containerRef.current || mentionedEntities.length < 2) return;
 
     // 동적 import (force-graph는 CSR only)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- force-graph-2d 동적 import, 타입 미제공
     const ForceGraph = (await import('force-graph')).default as any;
 
     // 노드 데이터 변환
@@ -108,7 +131,7 @@ export function ChatMentionedPanel() {
       .graphData(graphData)
       .width(width)
       .height(height)
-      .nodeCanvasObject((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      .nodeCanvasObject((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const radius = 10;
 
         // 노드 원
@@ -130,13 +153,13 @@ export function ChatMentionedPanel() {
         ctx.fillText(label, node.x, node.y + radius + 3);
       })
       .nodeCanvasObjectMode(() => 'replace')
-      .nodePointerAreaPaint((node: any, color: string, ctx: CanvasRenderingContext2D) => {
+      .nodePointerAreaPaint((node: GraphNode, color: string, ctx: CanvasRenderingContext2D) => {
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(node.x, node.y, 14, 0, 2 * Math.PI);
         ctx.fill();
       })
-      .linkCanvasObject((link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      .linkCanvasObject((link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const start = link.source;
         const end = link.target;
         if (typeof start.x !== 'number' || typeof end.x !== 'number') return;
@@ -167,7 +190,7 @@ export function ChatMentionedPanel() {
       })
       .linkCanvasObjectMode(() => 'replace')
       .backgroundColor('#fafafa')
-      .onNodeHover((node: any) => {
+      .onNodeHover((node: GraphNode | null) => {
         if (node && graphRef.current && typeof node.x === 'number') {
           const screenCoords = graphRef.current.graph2ScreenCoords(node.x, node.y);
           const rect = containerRef.current?.getBoundingClientRect();
@@ -186,7 +209,7 @@ export function ChatMentionedPanel() {
           containerRef.current.style.cursor = node ? 'pointer' : 'default';
         }
       })
-      .onLinkHover((link: any) => {
+      .onLinkHover((link: GraphLink | null) => {
         if (link && graphRef.current && link.source && typeof link.source.x === 'number') {
           const midX = (link.source.x + link.target.x) / 2;
           const midY = (link.source.y + link.target.y) / 2;
@@ -204,7 +227,7 @@ export function ChatMentionedPanel() {
           setTooltip(null);
         }
       })
-      .onNodeClick((node: any) => {
+      .onNodeClick((node: GraphNode | null) => {
         if (node?.entity) {
           selectEntity(node.entity.id);
         }

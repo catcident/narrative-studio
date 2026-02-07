@@ -15,6 +15,7 @@ import {
   Plus,
   Check,
   X,
+  Crown,
 } from 'lucide-react';
 import {
   getSavedKnowledgeGraphList,
@@ -26,17 +27,20 @@ import {
   restoreVersion,
   type SavedKnowledgeGraphMeta,
 } from '../services/storage';
-import { useStore } from '../store';
+import { useStore, useExportFormats } from '../store';
 import type { NovelKnowledgeGraph } from '../types';
 import { ModalOverlay } from './ModalOverlay';
 
 interface Props {
   onClose: () => void;
   onLoad: (data: NovelKnowledgeGraph, dataId?: string) => void;
+  onShowSubscription?: () => void;
 }
 
-export function DataManager({ onClose, onLoad }: Props) {
+export function DataManager({ onClose, onLoad, onShowSubscription }: Props) {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
+  const exportFormats = useExportFormats();
+  const canExport = exportFormats.length > 0;
   const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string; addedFiles?: string | null }[]>([]);
@@ -89,6 +93,10 @@ export function DataManager({ onClose, onLoad }: Props) {
 
   // 데이터 내보내기
   const handleExport = async (id: string) => {
+    if (!canExport) {
+      onShowSubscription?.();
+      return;
+    }
     const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
       exportKnowledgeGraph(loaded);
@@ -124,6 +132,10 @@ export function DataManager({ onClose, onLoad }: Props) {
 
   // 현재 데이터 내보내기
   const handleExportCurrent = () => {
+    if (!canExport) {
+      onShowSubscription?.();
+      return;
+    }
     if (knowledgeGraph) {
       exportKnowledgeGraph(knowledgeGraph);
     }
@@ -172,13 +184,23 @@ export function DataManager({ onClose, onLoad }: Props) {
           </label>
 
           {knowledgeGraph && (
-            <button
-              onClick={handleExportCurrent}
-              className="flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            >
-              <Download className="w-4 h-4" aria-hidden="true" />
-              <span className="text-sm">현재 데이터 내보내기</span>
-            </button>
+            canExport ? (
+              <button
+                onClick={handleExportCurrent}
+                className="flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                <Download className="w-4 h-4" aria-hidden="true" />
+                <span className="text-sm">현재 데이터 내보내기</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => onShowSubscription?.()}
+                className="flex items-center gap-2 px-3 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors"
+              >
+                <Crown className="w-4 h-4" aria-hidden="true" />
+                <span className="text-sm">Basic 플랜부터 내보내기 가능</span>
+              </button>
+            )
           )}
         </div>
 
@@ -234,11 +256,18 @@ export function DataManager({ onClose, onLoad }: Props) {
                         </button>
                         <button
                           onClick={() => handleExport(item.id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="내보내기"
-                          aria-label="내보내기"
+                          className={`p-2 rounded-lg transition-colors ${
+                            canExport
+                              ? 'text-green-600 hover:bg-green-50'
+                              : 'text-amber-500 hover:bg-amber-50'
+                          }`}
+                          aria-label={canExport ? '내보내기' : 'Basic 이상에서 내보내기 가능'}
                         >
-                          <Download className="w-4 h-4" aria-hidden="true" />
+                          {canExport ? (
+                            <Download className="w-4 h-4" aria-hidden="true" />
+                          ) : (
+                            <Crown className="w-4 h-4" aria-hidden="true" />
+                          )}
                         </button>
                         <button
                           onClick={() => toggleVersions(item.id)}
@@ -340,7 +369,7 @@ export function DataManager({ onClose, onLoad }: Props) {
 
         {/* 푸터 */}
         <div className="p-4 border-t bg-gray-50 text-xs text-gray-500 rounded-b-xl">
-          데이터는 브라우저 로컬 저장소에 저장됩니다. 브라우저 데이터를 삭제하면 함께 삭제됩니다.
+          데이터는 서버에 저장됩니다.
         </div>
       </div>
     </ModalOverlay>

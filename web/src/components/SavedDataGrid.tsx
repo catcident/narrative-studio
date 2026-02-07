@@ -15,6 +15,7 @@ import {
   Check,
   X,
   Upload,
+  Crown,
 } from 'lucide-react';
 import {
   getSavedKnowledgeGraphList,
@@ -27,14 +28,17 @@ import {
   type SavedKnowledgeGraphMeta,
 } from '../services/storage';
 import type { NovelKnowledgeGraph } from '../types';
-import { useModels } from '../store';
+import { useModels, useExportFormats } from '../store';
 
 interface Props {
   onLoad: (data: NovelKnowledgeGraph, dataId?: string) => void;
+  onShowSubscription?: () => void;
 }
 
-export function SavedDataGrid({ onLoad }: Props) {
+export function SavedDataGrid({ onLoad, onShowSubscription }: Props) {
   const models = useModels();
+  const exportFormats = useExportFormats();
+  const canExport = exportFormats.length > 0;
   const [savedList, setSavedList] = useState<SavedKnowledgeGraphMeta[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
@@ -89,6 +93,10 @@ export function SavedDataGrid({ onLoad }: Props) {
   // 데이터 내보내기
   const handleExport = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canExport) {
+      onShowSubscription?.();
+      return;
+    }
     const loaded = await loadKnowledgeGraph(id);
     if (loaded) {
       exportKnowledgeGraph(loaded);
@@ -232,11 +240,16 @@ export function SavedDataGrid({ onLoad }: Props) {
               {/* 내보내기 */}
               <button
                 onClick={(e) => handleExport(item.id, e)}
-                className="p-1.5 bg-white/90 hover:bg-green-50 rounded-lg shadow-sm transition-colors"
-                title="JSON 내보내기"
-                aria-label="JSON 내보내기"
+                className={`p-1.5 bg-white/90 rounded-lg shadow-sm transition-colors ${
+                  canExport ? 'hover:bg-green-50' : 'hover:bg-amber-50'
+                }`}
+                aria-label={canExport ? 'JSON 내보내기' : 'Basic 이상에서 내보내기 가능'}
               >
-                <Download className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
+                {canExport ? (
+                  <Download className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
+                ) : (
+                  <Crown className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
+                )}
               </button>
 
               {/* 삭제 */}
