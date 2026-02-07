@@ -120,12 +120,13 @@ function entityToString(entity: Entity): string {
 
 /**
  * 관계 정보를 문자열로 변환
+ * statement는 entity description 복사본일 수 있어 오염 가능 → 타입/참여자만 사용
  */
 function edgeToString(edge: HyperEdge, entities: Record<string, Entity>): string {
   const entityNames = edge.entities
     .map((id) => entities[id]?.name || id)
     .join(', ');
-  return `- [${edge.type}] ${entityNames}: ${edge.statement}`;
+  return `- [${edge.type}] ${entityNames}`;
 }
 
 /**
@@ -180,15 +181,8 @@ const SYSTEM_PROMPT = `소설 챕터의 **설정 오류/모순**을 검증합니
  */
 function splitIntoChunks(
   previousFiles: FileGraphData[],
-  currentFile: FileGraphData,
-  allEntities: Record<string, Entity>
+  currentFile: FileGraphData
 ): { previousContext: string; currentContext: string }[] {
-  // 현재 파일 컨텍스트 생성
-  const currentEntitiesStr = currentFile.entities.map(entityToString).join('\n');
-  const currentEdgesStr = currentFile.edges
-    .map((e) => edgeToString(e, allEntities))
-    .join('\n');
-  const currentScenesStr = currentFile.scenes.map(sceneToString).join('\n');
 
   // 원본 텍스트가 길면 앞/중간/뒤 부분만 추출
   const truncateText = (text: string | undefined): string => {
@@ -210,7 +204,6 @@ ${truncateText(currentFile.originalText)}`;
 
   // 이전 파일들에서 현재 파일 엔티티들의 설정만 추출
   const relevantEntities: Entity[] = [];
-  const relevantEdges: HyperEdge[] = [];
 
   for (const pf of previousFiles) {
     // 현재 파일 엔티티와 겹치는 엔티티만
@@ -219,48 +212,42 @@ ${truncateText(currentFile.originalText)}`;
         relevantEntities.push(e);
       }
     });
-    // 현재 파일 엔티티가 포함된 관계만
-    pf.edges.forEach(edge => {
-      if (edge.entities.some(id => currentEntityIds.has(id))) {
-        if (!relevantEdges.find(re => re.id === edge.id)) {
-          relevantEdges.push(edge);
-        }
-      }
-    });
   }
 
-  // 기존 설정 컨텍스트 생성
-  const entitiesStr = relevantEntities.map(entityToString).join('\n');
-  const edgesStr = relevantEdges.map(e => edgeToString(e, allEntities)).join('\n');
+  // 이전 파일들의 장면 요약 추출 (파일별로 분리되어 있어 오염 없음)
+  const previousSceneSummaries = previousFiles
+    .map(pf => {
+      const scenesStr = pf.scenes
+        .map(s => sceneToString(s))
+        .join('\n');
+      return `[${pf.fileName}]\n${scenesStr}`;
+    })
+    .join('\n\n');
 
-  const previousContext = `[기존 설정 - 새 챕터에 등장하는 엔티티들의 이전 정보]
-엔티티:
+  // 기존 설정 컨텍스트 생성 (장면 요약 기반 — entity description/edge statement는 오염 가능하므로 제외)
+  const entitiesStr = relevantEntities.map(entityToString).join('\n');
+
+  const previousContext = `[기존 설정 - 이전 챕터들의 정보]
+등장인물:
 ${entitiesStr || '없음'}
 
-관계:
-${edgesStr || '없음'}`;
+장면 요약:
+${previousSceneSummaries || '없음'}`;
 
-  // 청크 분할 (컨텍스트가 너무 크면)
+  // 청크 분할 (컨텍스트가 너무 크면 파일 단위로 분할)
   const chunks: { previousContext: string; currentContext: string }[] = [];
+  const totalLen = previousContext.length + currentContext.length;
 
-  if (previousContext.length + currentContext.length > MAX_CONTEXT_CHARS) {
-    // 엔티티를 청크로 분할
-    const entitiesPerChunk = Math.ceil(relevantEntities.length / Math.ceil((previousContext.length + currentContext.length) / MAX_CONTEXT_CHARS));
-    for (let i = 0; i < relevantEntities.length; i += entitiesPerChunk) {
-      const chunkEntities = relevantEntities.slice(i, i + entitiesPerChunk);
-      const chunkEntityIds = new Set(chunkEntities.map(e => e.id));
-      const chunkEdges = relevantEdges.filter(edge => edge.entities.some(id => chunkEntityIds.has(id)));
+  if (totalLen > MAX_CONTEXT_CHARS && previousFiles.length > 1) {
+    // 이전 파일을 개별로 분할
+    for (const pf of previousFiles) {
+      const scenesStr = pf.scenes.map(s => sceneToString(s)).join('\n');
+      const chunkContext = `[기존 설정 - ${pf.fileName}]
+등장인물:
+${entitiesStr || '없음'}
 
-      const chunkEntitiesStr = chunkEntities.map(entityToString).join('\n');
-      const chunkEdgesStr = chunkEdges.map(e => edgeToString(e, allEntities)).join('\n');
-
-      const chunkContext = `[기존 설정 - 청크 ${Math.floor(i / entitiesPerChunk) + 1}]
-엔티티:
-${chunkEntitiesStr || '없음'}
-
-관계:
-${chunkEdgesStr || '없음'}`;
-
+장면 요약:
+${scenesStr || '없음'}`;
       chunks.push({ previousContext: chunkContext, currentContext });
     }
   } else {
@@ -272,7 +259,7 @@ ${chunkEdgesStr || '없음'}`;
     chunks.push({ previousContext: '기존 설정 없음 (새 엔티티만 등장)', currentContext });
   }
 
-  console.log(`[validation] ${currentFile.fileName}: ${relevantEntities.length}개 엔티티, ${relevantEdges.length}개 관계 → ${chunks.length}개 청크`);
+  console.log(`[validation] ${currentFile.fileName}: 이전 ${previousFiles.length}개 파일, ${relevantEntities.length}개 엔티티 → ${chunks.length}개 청크`);
 
   return chunks;
 }
@@ -372,12 +359,11 @@ interface LLMValidationResult {
 async function validateWithLLM(
   currentFile: FileGraphData,
   previousFiles: FileGraphData[],
-  allEntities: Record<string, Entity>,
   apiKey: string | undefined,
   model: string
 ): Promise<LLMValidationResult> {
   // 청크 분할
-  const chunks = splitIntoChunks(previousFiles, currentFile, allEntities);
+  const chunks = splitIntoChunks(previousFiles, currentFile);
 
   // 각 청크 검증 (순차 실행)
   const allIssues: ValidationIssue[] = [];
@@ -478,33 +464,11 @@ export async function validateFile(
   const currentData = extractFileGraphData(graph, currentFile, scopeFileIds);
   const previousData = previousFiles.map((f) => extractFileGraphData(graph, f, scopeFileIds));
 
-  // 범위 내 엔티티만 필터링
-  const scopeSceneIds = new Set<string>();
-  Object.values(graph.snapshots).forEach((scene) => {
-    if (scopeFileIds.has(scene.sourceFileId || '')) {
-      scopeSceneIds.add(scene.sceneId);
-    }
-  });
-
-  const scopedEntities: Record<string, Entity> = {};
-  Object.entries(graph.entities).forEach(([id, entity]) => {
-    // 이 엔티티가 범위 내 장면에 등장하는지 확인
-    const appearsInScope = Object.values(graph.snapshots).some(
-      (scene) =>
-        scopeSceneIds.has(scene.sceneId) &&
-        scene.charactersPresent?.includes(id)
-    );
-    if (appearsInScope) {
-      scopedEntities[id] = entity;
-    }
-  });
-
   // LLM 검증
   const model = context.model || DEFAULT_MODEL;
   const { issues, summary } = await validateWithLLM(
     currentData,
     previousData,
-    scopedEntities,  // 범위 내 엔티티만 전달
     context.apiKey,
     model
   );
