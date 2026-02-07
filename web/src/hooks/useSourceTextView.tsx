@@ -377,6 +377,7 @@ export function useSourceTextView() {
             return matchedFile.id;
           }
         }
+        console.warn(`[SourceTextView] 장면 ${scene.sceneId} 파일 매핑 실패: sourceFileId=${scene.sourceFileId}, sourceFile=${scene.sourceFile}, chapterNumber=${scene.chapterNumber}`);
         return null;
       };
 
@@ -392,6 +393,21 @@ export function useSourceTextView() {
           .sort((a, b) => a.order - b.order);
         allScenesInNewOrder.push(...fileScenes);
         console.log(`[SourceTextView] 파일 ${file.fileName} 장면: ${fileScenes.map(s => s.sceneId).join(', ')}`);
+      }
+
+      const totalScenes = Object.values(knowledgeGraph.snapshots).length;
+      console.log(`[SourceTextView] 장면 수집: ${allScenesInNewOrder.length}/${totalScenes}개`);
+      if (allScenesInNewOrder.length !== totalScenes) {
+        console.error(`[SourceTextView] ⚠️ 일부 장면이 파일에 매핑되지 않음! 누락: ${totalScenes - allScenesInNewOrder.length}개`);
+        // 매핑 안 된 장면도 끝에 추가
+        const collectedIds = new Set(allScenesInNewOrder.map(s => s.sceneId));
+        Object.values(knowledgeGraph.snapshots)
+          .filter(s => !collectedIds.has(s.sceneId))
+          .sort((a, b) => a.order - b.order)
+          .forEach(s => {
+            console.warn(`[SourceTextView] 미매핑 장면 추가: ${s.sceneId} (sourceFileId=${s.sourceFileId}, sourceFile=${s.sourceFile}, ch=${s.chapterNumber})`);
+            allScenesInNewOrder.push(s);
+          });
       }
 
       // 기존 order → 새 order 매핑 생성
