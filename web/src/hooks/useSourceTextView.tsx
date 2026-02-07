@@ -236,14 +236,26 @@ export function useSourceTextView() {
         edge.entities.forEach(entityId => entitiesWithRelations.add(entityId));
       });
 
-      // 7. entities에서 관계가 없는 엔티티 삭제
+      // 7. entities에서 관계가 없는 엔티티 삭제 + description 재구성
       const finalEntities: typeof knowledgeGraph.entities = {};
       Object.entries(newEntities).forEach(([entityId, entity]) => {
         // 관계가 있거나 장면이 남아있는 엔티티만 유지
         const hasRelations = entitiesWithRelations.has(entityId);
         const hasScenes = entity.scenes && entity.scenes.length > 0;
         if (hasRelations || hasScenes) {
-          finalEntities[entityId] = entity;
+          // description을 남은 장면 요약으로 재구성
+          // (삭제된 파일의 내용이 description에 남아있는 문제 방지)
+          const remainingSceneSummaries = (entity.scenes || [])
+            .map(sid => newSnapshots[sid]?.summary)
+            .filter(Boolean);
+          const rebuiltDescription = remainingSceneSummaries.length > 0
+            ? remainingSceneSummaries.join(' ')
+            : `${entity.name} (${entity.category})`;
+
+          finalEntities[entityId] = {
+            ...entity,
+            description: rebuiltDescription,
+          };
         }
       });
 
