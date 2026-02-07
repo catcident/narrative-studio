@@ -7,9 +7,10 @@ import { useState } from 'react';
 import { X, User, MapPin, Building, Sword, Clock, Zap, Info, ArrowRight, Heart, Swords, Users, Film } from 'lucide-react';
 import { useStore, useSelectedEntity, useEntityEdges } from '../store';
 import type { EntityCategory, HyperEdge, Entity } from '../types';
+import { CATEGORY_LABELS, CATEGORY_BG_CLASSES, RELATION_LABELS } from '../constants';
 
 // 카테고리 아이콘
-const CATEGORY_ICONS: Record<EntityCategory, any> = {
+const CATEGORY_ICONS: Record<EntityCategory, React.ComponentType<{ className?: string }>> = {
   character: User,
   location: MapPin,
   organization: Building,
@@ -20,32 +21,6 @@ const CATEGORY_ICONS: Record<EntityCategory, any> = {
   time_period: Clock,
   status: Info,
   emotion: Heart,
-};
-
-const CATEGORY_LABELS: Record<EntityCategory, string> = {
-  character: '인물',
-  location: '장소',
-  organization: '조직',
-  item: '아이템',
-  creature: '생물',
-  event: '사건',
-  concept: '개념',
-  time_period: '시간',
-  status: '상태',
-  emotion: '감정',
-};
-
-const CATEGORY_COLORS: Record<EntityCategory, string> = {
-  character: 'bg-blue-500',
-  location: 'bg-green-500',
-  organization: 'bg-purple-500',
-  item: 'bg-amber-500',
-  creature: 'bg-red-500',
-  event: 'bg-pink-500',
-  concept: 'bg-indigo-500',
-  time_period: 'bg-teal-500',
-  status: 'bg-slate-500',
-  emotion: 'bg-rose-500',
 };
 
 // 속성 라벨 한글화
@@ -76,32 +51,6 @@ const ATTR_LABELS: Record<string, string> = {
   outcome: '결과',
 };
 
-// 관계 유형 한글화
-const RELATION_LABELS: Record<string, string> = {
-  // 영어 -> 한글
-  family: '가족',
-  romantic: '연인',
-  friendship: '친구',
-  rivalry: '적대',
-  mentor: '스승',
-  subordinate: '부하',
-  trust: '신뢰',
-  belongs_to: '소속',
-  owns: '소유',
-  knows_about: '인지',
-  located_at: '위치',
-  related_to: '관련',
-  // 한글은 그대로 표시
-  '가족': '가족',
-  '연인': '연인',
-  '친구': '친구',
-  '적대': '적대',
-  '동료': '동료',
-  '주인': '주인',
-  '위치': '위치',
-  '소유': '소유',
-  '관련': '관련',
-};
 
 export function DetailPanel() {
   const { knowledgeGraph, selectEntity, selectedSceneId } = useStore();
@@ -348,7 +297,7 @@ export function DetailPanel() {
       <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${CATEGORY_COLORS[entity.category]} text-white`}>
+            <div className={`p-3 rounded-xl ${CATEGORY_BG_CLASSES[entity.category]} text-white`}>
               <Icon className="w-6 h-6" />
             </div>
             <div>

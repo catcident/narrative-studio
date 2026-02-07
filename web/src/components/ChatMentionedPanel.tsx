@@ -7,6 +7,7 @@ import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { User, MapPin, Building, Sword, Clock, Zap, Info, Heart, MessageCircle, X } from 'lucide-react';
 import { useStore } from '../store';
 import type { EntityCategory, Entity, HyperEdge } from '../types';
+import { CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 
 // 카테고리 아이콘
 const CATEGORY_ICONS: Record<EntityCategory, React.ComponentType<{ className?: string }>> = {
@@ -20,32 +21,6 @@ const CATEGORY_ICONS: Record<EntityCategory, React.ComponentType<{ className?: s
   time_period: Clock,
   status: Info,
   emotion: Heart,
-};
-
-const CATEGORY_LABELS: Record<EntityCategory, string> = {
-  character: '인물',
-  location: '장소',
-  organization: '조직',
-  item: '아이템',
-  creature: '생물',
-  event: '사건',
-  concept: '개념',
-  time_period: '시간',
-  status: '상태',
-  emotion: '감정',
-};
-
-const CATEGORY_COLORS: Record<EntityCategory, string> = {
-  character: '#3b82f6',
-  location: '#22c55e',
-  organization: '#a855f7',
-  item: '#f59e0b',
-  creature: '#ef4444',
-  event: '#ec4899',
-  concept: '#6366f1',
-  time_period: '#14b8a6',
-  status: '#64748b',
-  emotion: '#f43f5e',
 };
 
 // 감정별 엣지 색상

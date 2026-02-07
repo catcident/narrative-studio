@@ -6,19 +6,15 @@
 import { useState, useMemo } from 'react';
 import { Search, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import type { Entity, EntityCategory } from '../types';
+import { CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 
-const CATEGORY_INFO: Record<EntityCategory, { label: string; color: string }> = {
-  character: { label: '인물', color: '#3b82f6' },
-  location: { label: '장소', color: '#22c55e' },
-  organization: { label: '조직', color: '#a855f7' },
-  item: { label: '아이템', color: '#f59e0b' },
-  creature: { label: '생물', color: '#ef4444' },
-  event: { label: '사건', color: '#ec4899' },
-  concept: { label: '개념', color: '#6366f1' },
-  time_period: { label: '시간', color: '#14b8a6' },
-  status: { label: '상태', color: '#64748b' },
-  emotion: { label: '감정', color: '#f43f5e' },
-};
+// CATEGORY_INFO를 공유 상수에서 조합
+const CATEGORY_INFO: Record<EntityCategory, { label: string; color: string }> = Object.fromEntries(
+  (Object.keys(CATEGORY_COLORS) as EntityCategory[]).map(cat => [
+    cat,
+    { label: CATEGORY_LABELS[cat], color: CATEGORY_COLORS[cat] },
+  ])
+) as Record<EntityCategory, { label: string; color: string }>;
 
 interface Props {
   entities: Entity[];
