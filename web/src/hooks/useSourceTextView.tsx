@@ -454,7 +454,42 @@ export function useSourceTextView() {
         }
       });
 
-      // 5. 검증 결과 - 기존 결과 유지 (둘 다 통과면 순서 바꿔도 OK)
+      // 5. chapters 객체도 파일 순서에 맞게 업데이트
+      let newChapters = knowledgeGraph.chapters;
+      if (knowledgeGraph.chapters) {
+        const oldChapters = knowledgeGraph.chapters;
+        const reorderedChapters: Record<string, typeof oldChapters[string]> = {};
+
+        // 새 파일 순서에 맞게 챕터 재배치
+        newSourceFiles.forEach((file, idx) => {
+          const newChapterNum = idx + 1;
+          const newChapterId = `C${String(newChapterNum).padStart(4, '0')}`;
+
+          // 이 파일의 원래 챕터 번호 찾기 (기존 sourceFiles에서의 위치)
+          const oldFileIdx = currentFiles.findIndex(f => f.id === file.id);
+          const oldChapterNum = oldFileIdx + 1;
+          const oldChapterId = `C${String(oldChapterNum).padStart(4, '0')}`;
+
+          if (oldChapters[oldChapterId]) {
+            reorderedChapters[newChapterId] = {
+              ...oldChapters[oldChapterId],
+              id: newChapterId,
+              number: newChapterNum,
+            };
+          }
+        });
+
+        // 기존 챕터 중 파일에 매핑되지 않은 것들도 유지
+        Object.entries(oldChapters).forEach(([id, ch]) => {
+          if (!reorderedChapters[id]) {
+            reorderedChapters[id] = ch;
+          }
+        });
+
+        newChapters = reorderedChapters;
+      }
+
+      // 6. 검증 결과 - 기존 결과 유지 (둘 다 통과면 순서 바꿔도 OK)
       const newValidationResults: Record<string, FileValidationResult> = {};
       newSourceFiles.forEach((file, idx) => {
         if (idx === 0) {
@@ -475,7 +510,7 @@ export function useSourceTextView() {
         }
       });
 
-      // 6. 새 지식 그래프 생성
+      // 7. 새 지식 그래프 생성
       const updatedGraph: NovelKnowledgeGraph = {
         ...knowledgeGraph,
         metadata: {
@@ -483,15 +518,16 @@ export function useSourceTextView() {
           sourceFiles: newSourceFiles,
           updatedAt: new Date().toISOString(),
         },
+        chapters: newChapters,
         snapshots: newSnapshots,
         hyperedges: newHyperedges,
         validationResults: newValidationResults,
       };
 
-      // 7. 서버에 업데이트
+      // 8. 서버에 업데이트
       await updateKnowledgeGraph(currentDataId, updatedGraph);
 
-      // 8. 스토어 업데이트
+      // 9. 스토어 업데이트
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
 
       console.log(`[SourceTextView] 파일 순서 변경 완료`);

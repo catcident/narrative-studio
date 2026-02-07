@@ -143,7 +143,9 @@ export function SourceTextView() {
 
       {/* 파일 목록 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {filteredFiles.map((file, index) => {
+        {filteredFiles.map((file, filteredIndex) => {
+          // sourceFiles에서의 실제 인덱스 (검색 필터 시 filteredIndex와 다를 수 있음)
+          const index = sourceFiles.findIndex(f => f.id === file.id);
           const isExpanded = expandedFiles.has(file.id);
           const isCopied = copiedId === file.id;
           const validationResult = getValidationStatus(file.id);
