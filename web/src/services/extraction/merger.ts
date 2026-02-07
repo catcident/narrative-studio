@@ -90,7 +90,8 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
   const normalized = normalizeName(name);
   if (nameToId[normalized]) return nameToId[normalized];
 
-  // 3. 부분 매칭: 짧은 쪽 3글자 이상 AND 비율 50% 이상
+  // 3. 부분 매칭: 짧은 쪽 3글자 이상 AND 비율 80% 이상
+  // (성 생략, 경칭 차이 등만 매칭 — "고양이" vs "검은 고양이" 같은 수식어 차이는 매칭 안 함)
   if (name.length >= 3) {
     const nameLower = name.toLowerCase().replace(/\s+/g, '');
     for (const [entityName, id] of Object.entries(nameToId)) {
@@ -98,7 +99,7 @@ function findEntityId(name: string, nameToId: Record<string, string>): string | 
       const entityLower = entityName.toLowerCase().replace(/\s+/g, '');
       const shorter = Math.min(nameLower.length, entityLower.length);
       const longer = Math.max(nameLower.length, entityLower.length);
-      if (shorter / longer < 0.5) continue;
+      if (shorter / longer < 0.8) continue;
       if (entityLower.includes(nameLower) || nameLower.includes(entityLower)) {
         return id;
       }
@@ -142,13 +143,14 @@ function findSimilarEntity(name: string, nameMap: Record<string, number>): numbe
     }
   }
 
-  // 부분 매칭: 짧은 쪽 3글자 이상 AND 비율 50% 이상일 때만
+  // 부분 매칭: 짧은 쪽 3글자 이상 AND 비율 80% 이상일 때만
+  // (성 생략, 경칭 차이 등만 매칭 — "고양이" vs "검은 고양이" 같은 수식어 차이는 매칭 안 함)
   if (name.length >= 3) {
     for (const [existingName, idx] of Object.entries(nameMap)) {
       if (existingName.length < 3) continue;
       const shorter = Math.min(name.length, existingName.length);
       const longer = Math.max(name.length, existingName.length);
-      if (shorter / longer < 0.5) continue;
+      if (shorter / longer < 0.8) continue;
 
       const nameLow = name.toLowerCase().replace(/\s+/g, '');
       const existLow = existingName.toLowerCase().replace(/\s+/g, '');
