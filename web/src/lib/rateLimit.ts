@@ -20,7 +20,6 @@ const PLAN_RATE_LIMITS: Record<string, number> = {
   basic: 60,
   pro: 120,
   business: 240,
-  enterprise: 240,
 };
 
 /** planCode에 해당하는 분당 요청 제한 반환 */

@@ -23,6 +23,7 @@ export function ModalOverlay({ onClose, maxWidth = '2xl', children }: ModalOverl
       aria-modal="true"
       tabIndex={-1}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className={`bg-white rounded-xl shadow-2xl w-full ${MAX_WIDTH_CLASSES[maxWidth]}`}>
         {children}

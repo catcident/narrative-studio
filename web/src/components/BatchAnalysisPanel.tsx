@@ -118,7 +118,12 @@ export function BatchAnalysisPanel() {
         {queue.map((item) => (
           <li
             key={item.id}
-            className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-md bg-gray-50"
+            className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md ${
+              item.status === 'processing' ? 'bg-blue-50' :
+              item.status === 'completed' ? 'bg-green-50' :
+              item.status === 'failed' ? 'bg-red-50' :
+              'bg-gray-50'
+            }`}
           >
             <StatusIcon status={item.status} />
             <span className="flex-1 truncate text-gray-700">{item.fileName}</span>

@@ -63,7 +63,7 @@
 - **원안**: SSO/SAML 인증, 감사 로그, 전담 CSM, 커스텀 SLA(99.9%+), 데이터 레지던시, 커스텀 Rate Limit
 - **트리거**: Enterprise 문의 3건 이상
 - **난이도**: 높음 (SSO 연동 + 감사 로깅 인프라 + SLA 모니터링)
-- **현재 상태**: Enterprise 카드에 "맞춤 크레딧 + 전담 지원 + 맞춤 Rate Limit" 표시, mailto 링크
+- **현재 상태**: UI에서 Enterprise 카드 완전 제거됨 (2026-02-07). rateLimit.ts에서도 enterprise 항목 삭제. 문의 시 별도 대응
 
 ---
 

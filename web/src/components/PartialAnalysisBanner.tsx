@@ -79,7 +79,7 @@ export function PartialAnalysisBanner({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label={`분석 진행률 ${percent}%`}
-            className="w-24 h-1.5 bg-amber-200 rounded-full overflow-hidden"
+            className="w-24 h-2 bg-amber-200 rounded-full overflow-hidden"
           >
             <div
               className="h-full bg-amber-500 rounded-full transition-all duration-300"

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Building2, Mail, RefreshCw, Gift, ToggleLeft, ToggleRight } from 'lucide-react';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Gift } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
@@ -193,12 +193,12 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
                   className="relative"
                   aria-label={billingPeriod === 'monthly' ? '연간 결제로 전환' : '월간 결제로 전환'}
+                  role="switch"
+                  aria-checked={billingPeriod === 'annual'}
                 >
-                  {billingPeriod === 'monthly' ? (
-                    <ToggleLeft className="w-10 h-6 text-gray-400" aria-hidden="true" />
-                  ) : (
-                    <ToggleRight className="w-10 h-6 text-blue-600" aria-hidden="true" />
-                  )}
+                  <div className={`w-10 h-5 rounded-full relative transition-colors ${billingPeriod === 'annual' ? 'bg-purple-600' : 'bg-gray-300'}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billingPeriod === 'annual' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
                 </button>
                 <span className={`text-sm ${billingPeriod === 'annual' ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
                   연간
@@ -219,7 +219,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                     <div
                       key={plan.id}
                       className={`border-2 rounded-xl p-5 flex flex-col relative ${
-                        isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-300' : 'border-gray-200'
+                        isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-400 shadow-lg shadow-purple-100 bg-purple-50/30' : 'border-gray-200'
                       }`}
                     >
                       {isPopular && !isCurrent && (
@@ -308,56 +308,14 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                       </div>
 
                       {!isCurrent && (
-                        <button
-                          disabled
-                          className="mt-4 w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
-                        >
-                          준비 중
-                        </button>
+                        <p className="mt-4 text-center text-xs text-gray-400">
+                          결제 연동 준비 중
+                        </p>
                       )}
                     </div>
                   );
                 })}
 
-                {/* Enterprise 카드 */}
-                <div className="border-2 border-gray-600 rounded-xl p-5 flex flex-col bg-gray-50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Building2 aria-hidden="true" className="w-5 h-5 text-gray-700" />
-                    <h3 className="font-bold text-gray-800">Enterprise</h3>
-                  </div>
-
-                  <div className="mb-4">
-                    <span className="text-2xl font-bold text-gray-800">맞춤 견적</span>
-                  </div>
-
-                  <div className="text-sm text-gray-600 mb-4">
-                    대규모 사용을 위한 맞춤형 솔루션
-                  </div>
-
-                  <div className="space-y-2 text-sm flex-1">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>맞춤 크레딧 + 전체 모델</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>전담 지원</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>맞춤 Rate Limit</span>
-                    </div>
-                  </div>
-
-                  <a
-                    href="mailto:contact@catcident.com"
-                    aria-label="Enterprise 플랜 문의하기"
-                    className="mt-4 w-full py-2 px-4 bg-gray-800 text-white rounded-lg text-sm font-medium text-center hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Mail aria-hidden="true" className="w-4 h-4" />
-                    문의하기
-                  </a>
-                </div>
               </div>
             </div>
           ) : activeTab === 'packages' ? (
@@ -377,7 +335,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                     return (
                       <div key={pkg.id} className="border border-gray-200 rounded-xl p-5">
                         <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
-                        <div className="text-2xl font-bold text-blue-600 mb-1">
+                        <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
                           {pkg.credits.toLocaleString()} 크레딧
                         </div>
                         {pkg.bonus_pct > 0 && (

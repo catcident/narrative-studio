@@ -45,17 +45,17 @@ export function UsageSummary() {
         </div>
 
         {/* 내용 */}
-        <div className="p-6 space-y-4">
+        <div className="p-5 space-y-3">
           <div className="space-y-3">
             {isUsingPersonalKey ? (
-              <div className="flex items-center gap-1.5 text-sm text-emerald-700">
+              <div className="flex items-center gap-1.5 text-sm text-purple-700">
                 <Key aria-hidden="true" className="w-4 h-4" />
                 <span>크레딧 차감 없음 — 개인 API 키 사용</span>
               </div>
             ) : creditsUsed > 0 ? (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">사용 크레딧</span>
-                <span className="font-bold text-blue-600">~{creditsUsed.toLocaleString()} 크레딧</span>
+                <span className="text-base font-bold text-blue-600">~{creditsUsed.toLocaleString()} 크레딧</span>
               </div>
             ) : null}
             <div className="flex justify-between text-sm">

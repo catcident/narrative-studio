@@ -39,7 +39,7 @@ export function CreditBadge({ onClick, className = '' }: CreditBadgeProps) {
       ) : (
         <Coins aria-hidden="true" className="w-4 h-4" />
       )}
-      <span className="font-medium">{balance.toLocaleString()}</span>
+      <span className="font-medium tabular-nums">{balance.toLocaleString()}</span>
       <span className="text-xs opacity-75">{isUsingByok ? '개인 키' : '크레딧'}</span>
     </button>
   );

@@ -459,7 +459,7 @@ export function ChatView() {
                 "{knowledgeGraph.metadata.title}"에 대해 질문하세요
               </p>
               {isUsingPersonalKey && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                   <Key aria-hidden="true" className="w-3 h-3" />
                   개인 키
                 </span>

@@ -108,14 +108,12 @@ export function BalanceAlertBanner({ onShowSubscription }: BalanceAlertBannerPro
 
         {/* 우측: CTA + 닫기 */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {level !== 'info' && (
-            <button
-              onClick={onShowSubscription}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${config.ctaColor}`}
-            >
-              {level === 'warning' ? '크레딧 추가' : '업그레이드'}
-            </button>
-          )}
+          <button
+            onClick={onShowSubscription}
+            className={`${level === 'info' ? 'text-sm font-medium underline underline-offset-2' : 'px-3 py-1 text-sm font-medium rounded-md'} transition-colors ${config.ctaColor}`}
+          >
+            {level === 'info' ? '플랜 보기' : level === 'warning' ? '크레딧 추가' : '업그레이드'}
+          </button>
           <button
             onClick={handleDismiss}
             aria-label="알림 닫기"

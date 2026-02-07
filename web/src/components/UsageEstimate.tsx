@@ -42,7 +42,7 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
 
       <div className="space-y-1">
         {isUsingPersonalKey ? (
-          <div className="flex items-center gap-1.5 text-sm text-emerald-700">
+          <div className="flex items-center gap-1.5 text-sm text-purple-700">
             <Key aria-hidden="true" className="w-3.5 h-3.5" />
             <span>크레딧 미차감 — 개인 API 키로 직접 과금</span>
           </div>
@@ -67,7 +67,7 @@ export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
           </div>
         )}
         {creditBalance !== null && !isUsingPersonalKey && (
-          <div className="flex items-center gap-1 text-xs pt-1 border-t border-gray-200">
+          <div className="flex items-center gap-2 text-xs pt-2 mt-1 border-t border-gray-200">
             {canAfford ? (
               <>
                 <CheckCircle aria-hidden="true" className="w-3.5 h-3.5 text-green-500" />
