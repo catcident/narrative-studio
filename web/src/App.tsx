@@ -23,6 +23,7 @@ import { UserMenu } from './components/UserMenu';
 import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
 import { SubscriptionPage } from './components/SubscriptionPage';
+import { BalanceAlertBanner } from './components/BalanceAlertBanner';
 import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeGraphById } from './services/storage';
 import { loadProgress, syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
@@ -184,7 +185,7 @@ function App() {
 
         {/* 하단: 저장된 데이터 그리드 (4열 - 가운데 2개가 위 박스와 같은 너비) */}
         <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
-          <SavedDataGrid onLoad={handleLoadKnowledgeGraph} />
+          <SavedDataGrid onLoad={handleLoadKnowledgeGraph} onShowSubscription={() => setShowSubscriptionPage(true)} />
         </div>
 
         {/* 모달 (업로드 화면에서도 접근 가능) */}
@@ -423,6 +424,9 @@ function App() {
         </div>
       </header>
 
+      {/* 잔액 알림 배너 */}
+      <BalanceAlertBanner onShowSubscription={() => setShowSubscriptionPage(true)} />
+
       {/* 부분 분석 배너 */}
       {partialAnalysis && (
         <PartialAnalysisBanner
@@ -491,6 +495,7 @@ function App() {
         <DataManager
           onClose={() => setShowDataManager(false)}
           onLoad={handleLoadKnowledgeGraph}
+          onShowSubscription={() => { setShowDataManager(false); setShowSubscriptionPage(true); }}
         />
       )}
 

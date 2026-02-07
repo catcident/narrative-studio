@@ -6,6 +6,8 @@ import { create } from 'zustand';
 import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult, PartialAnalysisInfo } from './types';
 import { AVAILABLE_MODELS } from './types';
 import { getSubscription } from './services/billing';
+import type { ByokMode } from './services/extraction';
+import { getByokMode, setByokMode as persistByokMode } from './services/extraction';
 
 interface AppState {
   // 데이터
@@ -43,6 +45,10 @@ interface AppState {
   models: ModelInfo[];
   modelsLoaded: boolean;
   loadModels: () => Promise<void>;
+
+  // BYOK 모드 (앱 수준 — reset()에서 유지)
+  byokMode: ByokMode;
+  setByokMode: (mode: ByokMode) => void;
 
   // Config (앱 수준 — reset()에서 유지)
   authEnabled: boolean | null;
@@ -117,6 +123,12 @@ export const useStore = create<AppState>((set, get) => ({
       console.warn('[models] 동적 모델 로딩 실패, 정적 목록 유지:', err instanceof Error ? err.message : err);
       set({ modelsLoaded: true });
     }
+  },
+
+  byokMode: (typeof window !== 'undefined' ? getByokMode() : 'disabled') as ByokMode,
+  setByokMode: (mode) => {
+    persistByokMode(mode);
+    set({ byokMode: mode });
   },
 
   authEnabled: null,
@@ -201,6 +213,7 @@ export const useStore = create<AppState>((set, get) => ({
             plan: info.plan.code,
             planName: info.plan.name,
             creditBalance: info.credit_balance,
+            monthlyCredits: info.plan.monthly_credits,
             features: info.features,
             creditResetAt: info.credit_reset_at,
             status: info.status,
@@ -249,6 +262,8 @@ export const useModels = () => useStore((s) => s.models);
 export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);
 export const usePartialAnalysis = () => useStore((s) => s.partialAnalysis);
 export const useByokEnabled = () => useStore((s) => s.subscription?.features?.byok ?? false);
+export const useExportFormats = () => useStore((s) => s.subscription?.features?.export_formats ?? []);
+export const useByokMode = () => useStore((s) => s.byokMode);
 
 export const useCharacters = (): Entity[] => {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);

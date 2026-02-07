@@ -98,6 +98,8 @@ export interface ExtractionOptions {
   existingGraph?: NovelKnowledgeGraph;
   onChunkBilling?: ChunkBillingCallback;
   availableModelIds?: string[];  // 현재 사용 가능한 모델 ID 목록 (만료 모델 검증용)
+  byokMode?: ByokMode;
+  creditBalance?: number | null;
 }
 
 // --- 병합 타입 (merger.ts 내부 전용) ---
@@ -221,6 +223,43 @@ export async function validateApiKey(key: string): Promise<{ valid: boolean; err
   } catch {
     return { valid: false, error: '키 검증 중 네트워크 오류가 발생했습니다.' };
   }
+}
+
+// --- BYOK 모드 ---
+
+export type ByokMode = 'disabled' | 'credit-first' | 'always-byok';
+
+const BYOK_MODE_KEY = 'BYOK_MODE';
+
+export function getByokMode(): ByokMode {
+  if (typeof window === 'undefined') return 'disabled';
+  const stored = localStorage.getItem(BYOK_MODE_KEY);
+  if (stored === 'credit-first' || stored === 'always-byok') return stored;
+  // 기존 키가 있으면 하위호환으로 always-byok
+  if (hasApiKey()) return 'always-byok';
+  return 'disabled';
+}
+
+export function setByokMode(mode: ByokMode): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(BYOK_MODE_KEY, mode);
+  }
+}
+
+export function shouldUsePersonalKey(mode: ByokMode, creditBalance: number | null): boolean {
+  if (mode === 'disabled') return false;
+  if (mode === 'always-byok') return true;
+  // credit-first: 잔액 0 이하일 때만 개인 키
+  return creditBalance !== null && creditBalance <= 0;
+}
+
+/**
+ * BYOK 모드와 잔액에 따라 실제 사용할 API 키 반환.
+ * 개인 키를 사용하지 않을 경우 빈 문자열 → 서버 키 사용.
+ */
+export function getEffectiveApiKey(mode: ByokMode, creditBalance: number | null): string {
+  if (!shouldUsePersonalKey(mode, creditBalance)) return '';
+  return getApiKey();
 }
 
 // 클라이언트 측 fetch with timeout

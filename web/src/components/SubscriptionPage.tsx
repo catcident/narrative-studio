@@ -4,10 +4,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Building2, Mail } from 'lucide-react';
-import { useBillingSubscription, useByokEnabled } from '../store';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Building2, Mail, RefreshCw, Gift } from 'lucide-react';
+import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
+import type { ByokMode } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
 import { ModalOverlay } from './ModalOverlay';
 
@@ -20,6 +21,8 @@ interface SubscriptionPageProps {
 export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const subscription = useBillingSubscription();
   const byokEnabled = useByokEnabled();
+  const byokMode = useByokMode();
+  const setByokMode = useStore((s) => s.setByokMode);
   const [activeTab, setActiveTab] = useState<Tab>('plans');
   const [plans, setPlans] = useState<ServicePlan[]>([]);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
@@ -349,6 +352,31 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   ))}
                 </div>
               )}
+
+              {/* 첫 구매 보너스 안내 */}
+              {subscription?.features.can_purchase_credits && (
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+                  <Gift aria-hidden="true" className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800">첫 패키지 구매 시 +50% 보너스</p>
+                    <p className="text-xs text-green-600 mt-0.5">첫 구매 보너스는 준비 중입니다.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 자동 리로드 (준비 중) */}
+              {subscription?.features.can_purchase_credits && (
+                <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RefreshCw aria-hidden="true" className="w-4 h-4 text-gray-400" />
+                    <h4 className="text-sm font-medium text-gray-500">자동 리로드</h4>
+                    <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-500 rounded-full">준비 중</span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    잔액이 설정한 임계값 이하로 떨어지면 자동으로 크레딧을 충전합니다. 자동 리로드 시 +10% 보너스가 적용됩니다.
+                  </p>
+                </div>
+              )}
             </div>
           ) : activeTab === 'history' ? (
             /* 사용 내역 */
@@ -415,6 +443,33 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   <p className="text-xs text-green-600 mt-2">API 키가 저장되었습니다.</p>
                 )}
               </div>
+
+              {/* BYOK 모드 선택 */}
+              {hasLocalKey && (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700 mb-3">API 키 사용 모드</p>
+                  <div className="space-y-2">
+                    {([
+                      { mode: 'credit-first' as ByokMode, label: '크레딧 우선 (소진 시 개인 키로 전환)', recommended: true },
+                      { mode: 'always-byok' as ByokMode, label: '항상 개인 키 사용' },
+                    ]).map(({ mode, label, recommended }) => (
+                      <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="byokMode"
+                          checked={byokMode === mode}
+                          onChange={() => setByokMode(mode)}
+                          className="text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {label}
+                          {recommended && <span className="text-xs text-blue-500 ml-1">(추천)</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* 안내 */}
               <div className="text-sm text-gray-500 space-y-2">

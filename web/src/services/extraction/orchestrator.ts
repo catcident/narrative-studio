@@ -5,7 +5,7 @@
 import type { NovelKnowledgeGraph, PartialAnalysisInfo } from '../../types';
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from '../../types';
 import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions } from './types';
-import { EMPTY_CHUNK_DATA } from './types';
+import { EMPTY_CHUNK_DATA, getEffectiveApiKey, getByokMode } from './types';
 import { splitIntoSmartChunksWithSource } from './chunker';
 import { selectRelevantEntities, filterEntitiesByNames, buildAccumulatedGraph } from './selector';
 import { extractFromChunk } from './extractor';
@@ -98,7 +98,11 @@ export function clearProgress(): void {
 }
 
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
-  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling, availableModelIds } = options;
+  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling, availableModelIds, byokMode: optByokMode, creditBalance } = options;
+
+  // BYOK 모드에 따른 유효 API 키 결정 (세션 시작 시 1회)
+  const byokMode = optByokMode ?? getByokMode();
+  const effectiveApiKey = getEffectiveApiKey(byokMode, creditBalance ?? null);
   // 텍스트를 스마트하게 청크로 분할 (장/화 경계, 문장 끝 기준)
   const CHUNK_SIZE = 5000;
   let chunks: string[] = [];
@@ -213,7 +217,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemainingSeconds);
 
         // LLM으로 관련 엔티티 선별
-        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
+        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel, effectiveApiKey);
 
         // selector billing 추적 (토큰 사용량 누적)
         if (selectionBilling && onChunkBilling) {
@@ -231,7 +235,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       }
 
       console.log(`[extraction] 청크 ${i + 1}: 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
-      const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
+      const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey);
 
       if (extracted) {
         // billing 정보를 콜백으로 전달 (토큰 사용량 누적)
@@ -344,7 +348,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
   // LLM 병합 검토: 같은 대상인데 다른 이름으로 추출된 것을 병합
   onProgress?.('엔티티 병합 검토 중...');
-  const reviewed = await reviewEntityMerges(merged, useModel);
+  const reviewed = await reviewEntityMerges(merged, useModel, effectiveApiKey);
 
   // 후처리: 누락된 관계 자동 생성
   onProgress?.('관계 검증 및 보완 중...');

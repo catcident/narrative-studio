@@ -386,6 +386,22 @@ export async function finalizeHold(
   }
 }
 
+// ==================== 잔액 알림 ====================
+
+export type BalanceAlertLevel = 'none' | 'info' | 'warning' | 'critical';
+
+export function getBalanceAlertLevel(
+  creditBalance: number,
+  monthlyCredits: number,
+): BalanceAlertLevel {
+  if (monthlyCredits <= 0) return 'none';
+  if (creditBalance <= 0) return 'critical';
+  const usedPercent = ((monthlyCredits - creditBalance) / monthlyCredits) * 100;
+  if (usedPercent >= 90) return 'warning';
+  if (usedPercent >= 75) return 'info';
+  return 'none';
+}
+
 /** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 */
 export function calculateCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
   if (chunks.length === 0) return 0;
