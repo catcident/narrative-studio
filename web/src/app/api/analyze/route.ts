@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
-import { checkAnalyzeEligibility, updateBalanceCache, isCachedByokEnabled } from '@/lib/balanceCache';
+import { checkAnalyzeEligibility, isCachedByokEnabled } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { getModelCosts, tokenCostUsd, costUsdToCredits, resolveTokenBilling, type DeductResult } from '@/lib/modelCosts';
-import { getCachedModels } from '@/lib/modelCache';
-import { proxyToCatcident } from '@/services/billingProxy';
+import { resolveTokenBilling } from '@/lib/modelCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -80,9 +78,6 @@ export async function POST(request: NextRequest) {
     // 프롬프트 크기 로깅
     console.log(`[analyze] 모델: ${model}, 프롬프트 크기: ${prompt.length}자, BYOK: ${isUsingPersonalKey}`);
 
-    // billing 활성 시 모델 캐시 사전 워밍 (OpenRouter 호출과 병렬)
-    const dynamicModelsPromise = userId ? getCachedModels() : null;
-
     const response = await fetchWithTimeout(
       'https://openrouter.ai/api/v1/chat/completions',
       {
@@ -120,54 +115,11 @@ export async function POST(request: NextRequest) {
     // 토큰 사용량 결정: usage 필드 우선, 없으면 텍스트 길이에서 추정
     const billing = resolveTokenBilling(data, prompt.length, '[analyze]');
 
-    // 청크별 실시간 크레딧 차감 (BYOK 시 스킵)
-    let deductResult: DeductResult | null = null;
-    let insufficientBalance = false;
-
-    if (!isUsingPersonalKey && userId && userId !== 'anonymous' && billing) {
-      const dynamicModels = dynamicModelsPromise ? await dynamicModelsPromise : [];
-      const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
-      const credits = costUsdToCredits(
-        tokenCostUsd(billing.prompt_tokens, billing.completion_tokens, inputCost, outputCost)
-      );
-
-      if (credits > 0) {
-        try {
-          const deductResponse = await proxyToCatcident('/credits/deduct/', accessToken, {
-            method: 'POST',
-            body: JSON.stringify({
-              service: 'storygraph',
-              amount: credits,
-              description: '소설 분석 (청크)',
-              metadata: { model, prompt_tokens: billing.prompt_tokens, completion_tokens: billing.completion_tokens },
-            }),
-          });
-
-          if (deductResponse.ok) {
-            const result: DeductResult = await deductResponse.json();
-            deductResult = result;
-            updateBalanceCache(userId, result.balance_after);
-          } else if (deductResponse.status === 402) {
-            insufficientBalance = true;
-            console.warn(`[analyze] 잔액 부족으로 차감 실패 (사용량: ${credits}cr)`);
-          } else {
-            // Fail-open: 차감 실패해도 분석 데이터는 반환
-            console.error(`[analyze] 차감 실패 (${deductResponse.status}), fail-open`);
-          }
-        } catch (err: unknown) {
-          console.error('[analyze] 차감 네트워크 오류, fail-open:', err instanceof Error ? err.message : err);
-        }
-      }
-    }
-
-    // 클라이언트 UI용 billing 정보
+    // 클라이언트 UI용 billing 정보 (토큰 사용량만 — 차감은 세션 settle 시 일괄 처리)
     if (billing) {
       data._billing = {
         ...billing,
         model,
-        credits_deducted: isUsingPersonalKey ? 0 : (deductResult?.amount_deducted ?? 0),
-        balance_after: isUsingPersonalKey ? null : (deductResult?.balance_after ?? null),
-        insufficient_balance: insufficientBalance,
         byok: isUsingPersonalKey,
       };
     }

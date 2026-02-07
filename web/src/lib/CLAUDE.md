@@ -208,7 +208,7 @@ if (AUTH_ENABLED && isUsingPersonalKey && userId) {
   if (!byokAllowed) return 403;
 }
 
-// 차감 후 캐시 갱신
+// settle 정산 후 캐시 갱신
 updateBalanceCache(userId, balance_after);
 ```
 
@@ -249,27 +249,34 @@ if (limited) {
 
 ```typescript
 // 상수
-MARGIN, USD_TO_KRW, KRW_PER_CREDIT, CHARS_PER_TOKEN,
+USD_TO_KRW, KRW_PER_CREDIT, CHARS_PER_TOKEN,
 CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
 DEFAULT_INPUT_COST, DEFAULT_OUTPUT_COST
 
+// 연속 마크업 함수 (단일 MARGIN 상수 대체)
+continuousMarkup(costUsd) → number  // 10x→5x 로그 보간 (소액일수록 마크업 높음)
+
 // 공유 헬퍼 (수식 중복 제거)
 tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost) → number
-costUsdToCredits(costUsd) → number
+costUsdToCredits(costUsd) → number  // 내부적으로 continuousMarkup() 사용
 
 // 모델 비용 조회 (AVAILABLE_MODELS에서)
 getModelCosts(model) → { inputCost, outputCost }
 
 // 서버 공유 타입/함수 (analyze, chat 라우트 공용)
 interface TokenBilling { prompt_tokens: number; completion_tokens: number; }
-interface DeductResult { balance_after: number; amount_deducted: number; }
 resolveTokenBilling(data, promptLength, logPrefix) → TokenBilling | null  // logPrefix 필수!
 ```
 
 **⚠️ `resolveTokenBilling` 호출 규칙**: `logPrefix`에 기본값 없음. 호출부에서 반드시 명시적으로 전달 (예: `'[analyze]'`, `'[chat]'`).
 
+**⚠️ 마크업 함수 설명**:
+- 기존 단일 `MARGIN=3.0` → 연속 마크업 함수로 교체 (10x→5x 로그 보간)
+- 소액 요청(저렴한 모델)일수록 마크업이 높고, 고액 요청일수록 마크업 감소
+- `costUsdToCredits(costUsd)` 내부에서 자동 적용됨
+
 **⚠️ 상수 변경 시 주의사항**:
-- `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값. 순수 한국어 소설은 과소추정될 수 있으나 `MARGIN=3.0`이 보상.
+- `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값.
 - 새 모델 추가 시 `types.ts`의 `AVAILABLE_MODELS`에 `inputCost`/`outputCost` 추가 — 이것이 단일 진실 공급원.
 
 ---

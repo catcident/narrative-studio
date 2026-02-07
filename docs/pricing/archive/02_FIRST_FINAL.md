@@ -1,11 +1,13 @@
+> **⛔ SUPERSEDED** — 이 문서는 [PRICING.md](../PRICING.md)로 대체되었습니다. 아래 내용은 검토 과정의 기록으로만 보존됩니다.
+
 # StoryGraph 최종 요금 체계 — 확정안 + 마진 분석
 
 > 분석일: 2026-02-06
 > 브랜치: feature/partial-analysis-indicator
-> 상태: 서비스 런칭 전
-> 관련 문서: [PRICING_ANALYSIS.md](./PRICING_ANALYSIS.md) — 초기 분석 및 문제점 도출
+> 상태: **SUPERSEDED**
+> 관련 문서: [01_INITIAL_ANALYSIS.md](./01_INITIAL_ANALYSIS.md) — 초기 분석 및 문제점 도출
 
-이 문서는 [초기 분석](./PRICING_ANALYSIS.md)에서 도출된 문제점을 해결한 **최종 확정 요금 체계**와, 다양한 시나리오별 **마진 적절성 분석**을 담고 있습니다.
+이 문서는 [초기 분석](./01_INITIAL_ANALYSIS.md)에서 도출된 문제점을 해결한 **최종 확정 요금 체계**와, 다양한 시나리오별 **마진 적절성 분석**을 담고 있습니다.
 
 ---
 

@@ -70,27 +70,29 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 
 ```
 클라이언트 → /api/billing/* → billingProxy.ts → catcident-backend
+클라이언트 → /api/session/* → 세션 hold/settle/release
 ```
 
-**과금 흐름 (청크별 실시간 차감)**:
+**과금 흐름 (세션 hold/settle/release)**:
 
 1. `checkSufficientBalance()` → 잔액 > 0 확인
-2. `extractKnowledgeGraph({ onChunkBilling })` → 청크별 분석
-3. `/api/analyze`가 OpenRouter 호출 후 즉시 크레딧 차감 (`proxyToCatcident('/credits/deduct/')`)
-4. 클라이언트가 `balance_after`로 CreditBadge 실시간 갱신
-5. 잔액 소진 시 `insufficient_balance` 플래그로 분석 중단 → 부분 결과 반환
+2. `holdCredits(estimatedAmount)` → `/api/session/hold` → 예상 크레딧 선점 (hold)
+3. `extractKnowledgeGraph({ onChunkBilling })` → 청크별 분석 (토큰 사용량 누적만)
+4. 성공 시: `settleCredits(sessionId, actualUsage)` → `/api/session/settle` → 실제 사용량 정산
+5. 실패 시: `releaseCredits(sessionId)` → `/api/session/release` → hold 해제 (크레딧 복원)
 
 **핵심 원칙**:
-- **서버가 각 청크의 실제 토큰 사용량으로 즉시 차감** — 선차감/정산 없음
-- **클라이언트는 `balance_after`로 잔액 실시간 동기화** — 별도 잔액 조회 불필요
-- 잔액 부족 시 분석 즉시 중단 + 이미 완료된 청크까지 부분 결과 반환
+- **hold → 분석 → settle (성공) / release (실패)** 세션 패턴
+- **`/api/analyze`는 과금 없이 순수 LLM 프록시** — 토큰 정보만 반환
+- **`_billing` 응답에는 토큰 정보만 포함**: `{ model, prompt_tokens, completion_tokens, byok }`
+- **settle 시에만 실제 크레딧 차감** + CreditBadge 잔액 갱신
 
 > 상세 흐름도: [services/CLAUDE.md](src/services/CLAUDE.md#billing-추적-필수-규칙)
 > 서버 모듈 상세: [lib/CLAUDE.md](src/lib/CLAUDE.md#modelcoststs--모델-비용-공유-모듈)
 
 **서버 측 방어선**:
 - 잔액 체크 (`balanceCache.ts`) + Rate Limiting (`rateLimit.ts`)
-- 크레딧 차감 금액 서버 계산 (`modelCosts.ts`) — 실제 토큰 사용량 기반
+- 크레딧 계산: 연속 마크업 함수 (10x→5x 로그 보간) 적용 (`modelCosts.ts`)
 - OpenRouter usage 누락 시 토큰 추정 폴백
 
 **AUTH_ENABLED=false 배포** (Railway 등):
@@ -102,12 +104,12 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 채팅 1건 = LLM 호출 3회 (①의도분석, ②데이터선별, ③최종답변). `/api/chat`에서 과금 처리.
 
 ```
-①② 비스트리밍 (DEFAULT_MODEL): deductCreditsForResponse() → _billing 응답 필드
+①② 비스트리밍 (DEFAULT_MODEL): _billing에 토큰 정보 반환
 ③  스트리밍 (사용자 모델): ReadableStream 인터셉트 → 종료 후 event: billing SSE 이벤트
 ```
 
-- 서버: `deductForTokens()` 공용 헬퍼 (스트리밍/비스트리밍 공통 차감 로직)
-- 클라이언트: `CallBilling[]` → `ChatMessageBilling` 합산 (totalCreditsDeducted, finalBalanceAfter)
+- 서버: 각 호출의 `_billing`에 토큰 정보 포함 (`model`, `prompt_tokens`, `completion_tokens`)
+- 클라이언트: `CallBilling[]` → `ChatMessageBilling` 합산 (토큰 사용량 누적)
 - 사전 체크: `ensureSufficientBalance()` + `estimateChatCost()` → 잔액 부족 시 전송 차단
 - 대화 이력 제한: `MAX_HISTORY_CHARS = 45000` (~30K tokens)
 - `fetchWithTimeout(120s)`: analyze와 동일한 타임아웃
@@ -118,7 +120,7 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 export const GET = billingGetHandler('/plans/?service=storygraph', 'plans GET');
 
 // POST 프록시: billingPostHandler(path, logLabel)
-export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST');
+export const POST = billingPostHandler('/session/hold/', 'session/hold POST');
 ```
 
 ### 스토리지 (서버 전용)
@@ -150,10 +152,12 @@ export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST'
 | `POST /api/knowledge-graphs/[id]/restore/[version]` | 특정 버전 복원 |
 | `GET /api/billing/subscription` | 구독 정보 조회 (catcident 프록시) |
 | `GET /api/billing/credits/balance` | 크레딧 잔액 조회 |
-| `POST /api/billing/credits/deduct` | 크레딧 차감 |
 | `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
 | `GET /api/billing/plans` | 요금제 목록 |
 | `GET /api/billing/packages` | 크레딧 상품 목록 |
+| `POST /api/session/hold` | 분석 세션 크레딧 선점 (hold) |
+| `POST /api/session/settle` | 분석 세션 정산 (실제 차감) |
+| `POST /api/session/release` | 분석 세션 해제 (hold 복원) |
 
 ## 환경 변수
 

@@ -3,22 +3,30 @@
  *
  * 단일 진실 공급원(single source of truth): AVAILABLE_MODELS (types.ts)
  * 클라이언트(billing.ts)와 서버(/api/analyze) 양쪽에서 사용.
+ *
+ * 마크업 정책: 모델 청크 원가에 따라 연속 마크업 (로그 보간)
+ * - 저가 모델(Flash Lite): MAX_MARKUP(10x) → 소액 거래 최소 마진 확보
+ * - 고가 모델(Sonnet): MIN_MARKUP(5x) → 대량 소비 시 경쟁력 유지
  */
 
 import { AVAILABLE_MODELS, type ModelInfo } from '@/types';
 
 // 상수
-export const MARGIN = 3.0;
-export const USD_TO_KRW = 1400;
+export const USD_TO_KRW = 1500;
 export const KRW_PER_CREDIT = 10;
 // 한국어 텍스트는 ~1.0 char/token이지만, 시스템 프롬프트(영문)와 혼합되므로 보수적으로 1.5 사용.
-// MARGIN=3.0이 한국어 과소추정분을 보상.
 export const CHARS_PER_TOKEN = 1.5;
 export const CHUNK_SIZE = 5000;
 export const CHUNK_OVERLAP = 300;
 export const OUTPUT_RATIO = 0.45;
 export const DEFAULT_INPUT_COST = 1.0; // per 1M tokens
 export const DEFAULT_OUTPUT_COST = 5.0; // per 1M tokens
+
+// 연속 마크업 상수
+export const MAX_MARKUP = 10.0;
+export const MIN_MARKUP = 5.0;
+export const COST_MIN = 0.00070;  // Flash Lite 청크 원가 USD
+export const COST_MAX = 0.03252;  // Sonnet 청크 원가 USD
 
 // Selector 추정 상수 (estimateUsageLocally에서 selector 호출 비용 추정용)
 // ENTITY_SELECTION_PROMPT(~500자) + textPreview(1000자) + SYSTEM_PROMPT(~250자) + entitySummaries 평균(~1000자)
@@ -45,9 +53,31 @@ export function tokenCostUsd(
   return (promptTokens / 1_000_000) * inputCost + (completionTokens / 1_000_000) * outputCost;
 }
 
-/** USD 비용에서 크레딧으로 변환 (마진 포함, 최소 1) */
-export function costUsdToCredits(costUsd: number): number {
-  return Math.max(1, Math.ceil((costUsd * USD_TO_KRW * MARGIN) / KRW_PER_CREDIT));
+/** 모델의 청크 원가에서 연속 마크업 계산 (로그 보간, clamped [MIN_MARKUP, MAX_MARKUP]) */
+export function calculateMarkup(chunkCostUsd: number): number {
+  if (chunkCostUsd <= COST_MIN) return MAX_MARKUP;
+  if (chunkCostUsd >= COST_MAX) return MIN_MARKUP;
+  const t = Math.log(chunkCostUsd / COST_MIN) / Math.log(COST_MAX / COST_MIN);
+  return MAX_MARKUP - (MAX_MARKUP - MIN_MARKUP) * t;
+}
+
+/** 모델의 단일 청크(5000자) 원가 USD */
+export function calculateChunkCostUsd(model: string, dynamicModels?: ModelInfo[]): number {
+  const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
+  const inputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
+  const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
+  return tokenCostUsd(inputTokens, outputTokens, inputCost, outputCost);
+}
+
+/** 세션 전체 크레딧 계산 (마크업은 추출 모델 청크 원가 기반) */
+export function calculateSessionCredits(totalSessionCostUsd: number, chunkCostUsd: number): number {
+  return Math.max(1, Math.ceil((totalSessionCostUsd * calculateMarkup(chunkCostUsd) * USD_TO_KRW) / KRW_PER_CREDIT));
+}
+
+/** USD 비용에서 크레딧으로 변환 (모델 기반 연속 마크업, 최소 1) */
+export function costUsdToCredits(costUsd: number, model: string, dynamicModels?: ModelInfo[]): number {
+  const chunkCost = calculateChunkCostUsd(model, dynamicModels);
+  return Math.max(1, Math.ceil((costUsd * calculateMarkup(chunkCost) * USD_TO_KRW) / KRW_PER_CREDIT));
 }
 
 // ==================== 서버 공유 타입/함수 ====================

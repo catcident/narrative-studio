@@ -130,7 +130,7 @@ NextAuth.js SessionProvider 래퍼
 ### UsageSummary.tsx
 
 분석 완료 후 사용량 요약 모달. `store.showUsageSummary`로 표시 제어.
-- `calculateCreditsFromTokens()`로 실제 토큰 → 크레딧 역산 표시
+- settle 정산 결과 기반 크레딧 표시
 - 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
 
 ### SubscriptionPage.tsx

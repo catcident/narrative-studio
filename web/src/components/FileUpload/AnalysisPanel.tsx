@@ -3,7 +3,7 @@
  * API 키 입력, 모델 선택, 제목/작가 입력, 파일 목록, 텍스트 입력, 등록 버튼
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Key, Cpu, BookOpen, User, FileCheck, FileText, Loader2, AlertCircle, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { UsageEstimate } from '../UsageEstimate';
 import type { ModelInfo, NovelKnowledgeGraph } from '../../types';
@@ -97,6 +97,8 @@ export function AnalysisPanel({
   handleRegister,
   uploadAreaSlot,
 }: AnalysisPanelProps) {
+  const [showAllModels, setShowAllModels] = useState(false);
+
   return (
     <>
       {/* API 키 입력 - 환경변수 없을 때만 경고, 또는 사용자가 직접 입력 원할 때 */}
@@ -225,12 +227,34 @@ export function AnalysisPanel({
                   : 'bg-white border-purple-300 text-gray-800'
               }`}
             >
-              {availableModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
-                </option>
-              ))}
+              {/* 핵심 모델 */}
+              <optgroup label="핵심 모델">
+                {availableModels.filter(m => m.coreModel !== false).map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                  </option>
+                ))}
+              </optgroup>
+              {/* 추가 모델 (showAllModels일 때만) */}
+              {showAllModels && availableModels.some(m => m.coreModel === false) && (
+                <optgroup label="추가 모델">
+                  {availableModels.filter(m => m.coreModel === false).map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
+            {/* 더 보기 / 접기 토글 */}
+            {!lockedModel && availableModels.some(m => m.coreModel === false) && (
+              <button
+                onClick={() => setShowAllModels(!showAllModels)}
+                className="text-xs text-purple-500 hover:text-purple-700 mt-1"
+              >
+                {showAllModels ? '핵심 모델만 보기' : `더 많은 모델 보기 (${availableModels.filter(m => m.coreModel === false).length}종)`}
+              </button>
+            )}
             {lockedModel && (
               <p className="text-xs text-purple-600 mt-1">
                 이 문서는 {allModels.find(m => m.id === lockedModel)?.name || lockedModel}로 분석되었습니다. 추가 분석도 같은 모델을 사용합니다.

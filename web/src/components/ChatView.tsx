@@ -149,6 +149,30 @@ export function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // 채팅 횟수 제한
+  const maxChatsPerAnalysis = subscription?.features?.max_chats_per_analysis ?? -1;
+  const graphId = knowledgeGraph?.metadata?.id;
+  const chatCountKey = graphId ? `chat_count_${graphId}` : null;
+
+  const getCurrentChatCount = useCallback((): number => {
+    if (!chatCountKey) return 0;
+    return parseInt(localStorage.getItem(chatCountKey) || '0', 10);
+  }, [chatCountKey]);
+
+  const incrementChatCount = useCallback(() => {
+    if (!chatCountKey) return;
+    const current = getCurrentChatCount();
+    localStorage.setItem(chatCountKey, String(current + 1));
+  }, [chatCountKey, getCurrentChatCount]);
+
+  const [chatCount, setChatCount] = useState(0);
+  // chatCountKey 변경 시 초기값 로드
+  useEffect(() => {
+    setChatCount(getCurrentChatCount());
+  }, [chatCountKey, getCurrentChatCount]);
+
+  const isChatLimitReached = maxChatsPerAnalysis !== -1 && chatCount >= maxChatsPerAnalysis;
+
   // 그래프 식별자
   const graphIdentifier = knowledgeGraph
     ? getGraphIdentifier(knowledgeGraph.metadata.id, knowledgeGraph.metadata.title)
@@ -241,7 +265,7 @@ export function ChatView() {
 
   // 메시지 전송
   const handleSend = async () => {
-    if (!input.trim() || isLoading || !knowledgeGraph) return;
+    if (!input.trim() || isLoading || !knowledgeGraph || isChatLimitReached) return;
     setInsufficientCredits(null);
 
     // 잔액 사전 확인 (subscription이 있고, BYOK가 아닐 때만)
@@ -304,6 +328,10 @@ export function ChatView() {
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
+
+      // 채팅 횟수 증가
+      incrementChatCount();
+      setChatCount(prev => prev + 1);
 
       // 답변에서 언급된 엔티티 추출하여 store에 저장
       const responseContent = result.content || fullResponse;
@@ -393,8 +421,18 @@ export function ChatView() {
     }
   };
 
+  // 플랜에 따른 모델 필터링
+  const availableModels = useMemo(() => {
+    const active = models.filter(m => m.available !== false);
+    const allowedModelIds = subscription?.features?.models;
+    if (allowedModelIds && allowedModelIds !== 'all') {
+      return active.filter(m => (allowedModelIds as string[]).includes(m.id));
+    }
+    return active;
+  }, [models, subscription?.features?.models]);
+
   // 모델 정보 가져오기
-  const currentModel = models.find(m => m.id === selectedModel) || models[0];
+  const currentModel = availableModels.find(m => m.id === selectedModel) || availableModels[0];
 
   if (!knowledgeGraph) {
     return (
@@ -447,7 +485,7 @@ export function ChatView() {
                     <span className="text-xs text-gray-500">모델 선택</span>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
-                    {models.map(model => (
+                    {availableModels.map(model => (
                       <button
                         key={model.id}
                         onClick={() => {
@@ -621,6 +659,18 @@ export function ChatView() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* 채팅 한도 도달 */}
+      {isChatLimitReached && (
+        <div className="flex-shrink-0 bg-amber-50 border-t border-amber-200 px-4 py-3 text-center" role="status">
+          <p className="text-sm text-amber-800">
+            이 분석의 채팅 한도({maxChatsPerAnalysis}회)에 도달했습니다.
+          </p>
+          <p className="text-sm text-blue-600 mt-1">
+            Basic 플랜에서 무제한 채팅을 이용할 수 있습니다.
+          </p>
+        </div>
+      )}
+
       {/* 잔액 부족 경고 */}
       {insufficientCredits && (
         <div className="flex-shrink-0 bg-amber-50 border-t border-amber-200 px-4 py-2" role="status">
@@ -654,8 +704,8 @@ export function ChatView() {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            aria-label={isLoading ? '전송 중' : '전송'}
+            disabled={!input.trim() || isLoading || isChatLimitReached}
+            aria-label={isChatLimitReached ? '채팅 한도 도달' : isLoading ? '전송 중' : '전송'}
             className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {isLoading ? (

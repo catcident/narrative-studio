@@ -215,18 +215,9 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         // LLM으로 관련 엔티티 선별
         const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel);
 
-        // selector billing 추적
+        // selector billing 추적 (토큰 사용량 누적)
         if (selectionBilling && onChunkBilling) {
           onChunkBilling(i, selectionBilling);
-        }
-
-        // 잔액 소진 체크 (selector에서 감지)
-        if (selectionBilling?.insufficient_balance) {
-          console.warn(`[extraction] 잔액 소진 (selector): 청크 ${i + 1}에서 중단`);
-          onProgress?.(`크레딧 부족으로 중단 (${i}/${totalChunks} 완료). 이어하기로 재개할 수 있습니다.`);
-          saveCurrentProgress(i);
-          loopCompleted = false;
-          break;
         }
 
         // 선별된 이름으로 필터링
@@ -242,18 +233,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       console.log(`[extraction] 청크 ${i + 1}: 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
       const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel);
 
-      // 잔액 소진 체크 (extractor에서 감지)
-      if (billing?.insufficient_balance) {
-        console.warn(`[extraction] 잔액 소진 (extractor): 청크 ${i + 1}에서 중단`);
-        onProgress?.(`크레딧 부족으로 중단 (${i}/${totalChunks} 완료). 이어하기로 재개할 수 있습니다.`);
-        if (billing && onChunkBilling) onChunkBilling(i, billing);
-        saveCurrentProgress(i);
-        loopCompleted = false;
-        break;
-      }
-
       if (extracted) {
-        // billing 정보를 콜백으로 전달
+        // billing 정보를 콜백으로 전달 (토큰 사용량 누적)
         if (billing && onChunkBilling) {
           onChunkBilling(i, billing);
         }

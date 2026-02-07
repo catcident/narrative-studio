@@ -31,7 +31,9 @@ async function deductForTokens(
   const dynamicModels = dynamicModelsPromise ? await dynamicModelsPromise : [];
   const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
   const credits = costUsdToCredits(
-    tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost)
+    tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost),
+    model,
+    dynamicModels,
   );
 
   let deductResult: DeductResult | null = null;

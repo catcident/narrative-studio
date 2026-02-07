@@ -1,7 +1,9 @@
+> **⛔ SUPERSEDED** — 이 문서는 [PRICING.md](../PRICING.md)로 대체되었습니다. 아래 내용은 검토 과정의 기록으로만 보존됩니다.
+
 # StoryGraph 요금제 체계 검토 보고서
 
 > 검토일: 2026-02-06
-> 검토 대상: PRICING_FINAL.md (확정안), PRICING_ANALYSIS.md (초기 분석), BILLING_BLUEPRINT.md (구현 설계)
+> 검토 대상: → [PRICING.md](../PRICING.md)
 > 검토 목적: 사용자 구독/결제 유인 충분성 평가 + 고가 기본 요금제 추가 필요성 검토
 
 ---

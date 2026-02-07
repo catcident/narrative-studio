@@ -1420,11 +1420,11 @@ export function estimateChatCost(
   const flashCosts = getModelCosts(DEFAULT_MODEL, dynamicModels);
   const call1InputTokens = Math.ceil(800 / CHARS_PER_TOKEN);  // 시스템 프롬프트 + 질문
   const call1OutputTokens = Math.ceil(100 / CHARS_PER_TOKEN);
-  const call1Credits = costUsdToCredits(tokenCostUsd(call1InputTokens, call1OutputTokens, flashCosts.inputCost, flashCosts.outputCost));
+  const call1Credits = costUsdToCredits(tokenCostUsd(call1InputTokens, call1OutputTokens, flashCosts.inputCost, flashCosts.outputCost), DEFAULT_MODEL, dynamicModels);
 
   const call2InputTokens = Math.ceil(3000 / CHARS_PER_TOKEN);  // 엔티티/청크 목록
   const call2OutputTokens = Math.ceil(200 / CHARS_PER_TOKEN);
-  const call2Credits = costUsdToCredits(tokenCostUsd(call2InputTokens, call2OutputTokens, flashCosts.inputCost, flashCosts.outputCost));
+  const call2Credits = costUsdToCredits(tokenCostUsd(call2InputTokens, call2OutputTokens, flashCosts.inputCost, flashCosts.outputCost), DEFAULT_MODEL, dynamicModels);
 
   // ③ 최종 답변: 시스템 프롬프트 + 컨텍스트 + 이력(MAX_HISTORY_CHARS 제한) + max_tokens(2000)
   let historyChars = 0;
@@ -1441,7 +1441,7 @@ export function estimateChatCost(
   const call3OutputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);  // max_tokens
 
   const modelCosts = getModelCosts(model, dynamicModels);
-  const call3Credits = costUsdToCredits(tokenCostUsd(call3InputTokens, call3OutputTokens, modelCosts.inputCost, modelCosts.outputCost));
+  const call3Credits = costUsdToCredits(tokenCostUsd(call3InputTokens, call3OutputTokens, modelCosts.inputCost, modelCosts.outputCost), model, dynamicModels);
 
   return call1Credits + call2Credits + call3Credits;
 }

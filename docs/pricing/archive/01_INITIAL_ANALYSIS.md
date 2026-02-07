@@ -1,10 +1,12 @@
+> **⛔ SUPERSEDED** — 이 문서는 [PRICING.md](../PRICING.md)로 대체되었습니다. 아래 내용은 검토 과정의 기록으로만 보존됩니다.
+
 # StoryGraph 요금제 체계 종합 분석 보고서
 
 > 분석일: 2026-02-06
 > 브랜치: feature/partial-analysis-indicator
-> 후속 문서: [PRICING_FINAL.md](./PRICING_FINAL.md) — 최종 확정 요금 체계 + 마진 분석
+> 후속 문서: → [PRICING.md](../PRICING.md)
 
-이 문서는 기존 요금 체계의 문제점을 분석한 초기 보고서입니다. 이 분석을 기반으로 도출된 **최종 확정 요금 체계**는 [PRICING_FINAL.md](./PRICING_FINAL.md)를 참조하세요.
+이 문서는 기존 요금 체계의 문제점을 분석한 초기 보고서입니다. 이 분석을 기반으로 도출된 **최종 확정 요금 체계**는 [PRICING.md](../PRICING.md)를 참조하세요.
 
 ## 1. 현재 요금 구조 요약
 

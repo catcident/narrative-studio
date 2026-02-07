@@ -103,6 +103,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
   const planIcon = (code: string) => {
     switch (code) {
+      case 'business': return <Crown aria-hidden="true" className="w-5 h-5" />;
       case 'pro': return <Crown aria-hidden="true" className="w-5 h-5" />;
       case 'basic': return <Zap aria-hidden="true" className="w-5 h-5" />;
       default: return <Star aria-hidden="true" className="w-5 h-5" />;
@@ -111,6 +112,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
   const planColor = (code: string) => {
     switch (code) {
+      case 'business': return 'border-amber-300 bg-amber-50';
       case 'pro': return 'border-purple-300 bg-purple-50';
       case 'basic': return 'border-blue-300 bg-blue-50';
       default: return 'border-gray-300 bg-gray-50';
@@ -160,16 +162,23 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
             </div>
           ) : activeTab === 'plans' ? (
             /* 플랜 비교 */
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${plans.length <= 3 ? 'md:grid-cols-3' : plans.length <= 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
               {plans.map(plan => {
                 const isCurrent = subscription?.plan === plan.code;
+                const isPopular = plan.code === 'pro';
                 return (
                   <div
                     key={plan.id}
-                    className={`border-2 rounded-xl p-5 flex flex-col ${
-                      isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : 'border-gray-200'
+                    className={`border-2 rounded-xl p-5 flex flex-col relative ${
+                      isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-300' : 'border-gray-200'
                     }`}
                   >
+                    {isPopular && !isCurrent && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs px-3 py-0.5 bg-purple-600 text-white rounded-full whitespace-nowrap">
+                        가장 인기
+                      </span>
+                    )}
+
                     <div className="flex items-center gap-2 mb-3">
                       {planIcon(plan.code)}
                       <h3 className="font-bold text-gray-800">{plan.name}</h3>
@@ -191,6 +200,11 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
                     <div className="text-sm text-gray-600 mb-4">
                       월 {plan.monthly_credits.toLocaleString()} 크레딧
+                      {plan.monthly_credits > 0 && plan.price_krw > 0 && (
+                        <span className="text-xs text-gray-400 ml-1">
+                          ({Math.round(plan.price_krw / plan.monthly_credits * 10) / 10}원/cr)
+                        </span>
+                      )}
                     </div>
 
                     <div className="space-y-2 text-sm flex-1">
@@ -205,6 +219,22 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                           <span>{(plan.features.models as string[]).length}개 모델 사용 가능</span>
                         </div>
                       )}
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <span>최대 {plan.features.max_file_size_mb}MB 파일</span>
+                      </div>
+                      {plan.features.max_saved_graphs !== undefined && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs}개`}</span>
+                        </div>
+                      )}
+                      {plan.features.max_chats_per_analysis !== undefined && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span>채팅 {plan.features.max_chats_per_analysis === -1 ? '무제한' : `${plan.features.max_chats_per_analysis}회/분석`}</span>
+                        </div>
+                      )}
                       {plan.features.byok && (
                         <div className="flex items-center gap-2 text-gray-600">
                           <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -217,10 +247,6 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                           <span>추가 크레딧 구매 가능</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        <span>최대 {plan.features.max_file_size_mb}MB 파일</span>
-                      </div>
                     </div>
 
                     {!isCurrent && (
@@ -254,13 +280,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         {pkg.credits.toLocaleString()} 크레딧
                       </div>
                       {pkg.bonus_pct > 0 && (
-                        <div className="text-xs text-green-600 font-medium mb-3">
+                        <div className="text-xs text-green-600 font-medium mb-1">
                           +{pkg.bonus_pct}% 보너스
                         </div>
                       )}
-                      <div className="text-sm text-gray-500 mb-4">
+                      <div className="text-sm text-gray-500 mb-1">
                         {pkg.price_krw.toLocaleString()}원
+                        <span className="text-xs text-gray-400 ml-1">
+                          ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
+                        </span>
                       </div>
+                      <div className="text-xs text-gray-400 mb-4">만료 없음</div>
                       <button
                         disabled
                         className="w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
