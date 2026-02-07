@@ -85,32 +85,10 @@ function extractFileGraphData(
       }
     });
 
-    // 엔티티 정보를 범위 내 장면 기준으로 재구성
+    // 엔티티 정보를 범위 내 장면 기준으로 필터링
+    // description/attributes는 검증에서 사용하지 않음 (병합 데이터라 오염 가능)
     entities = Object.values(graph.entities)
-      .filter((e) => entityIds.has(e.id))
-      .map((e) => {
-        // 해당 엔티티가 등장하는 범위 내 장면들의 요약에서 정보 추출
-        const relevantScenes = Object.values(graph.snapshots).filter(
-          (scene) =>
-            scopeSceneIds.has(scene.sceneId) &&
-            scene.charactersPresent?.includes(e.id)
-        );
-
-        // 범위 내 장면들의 요약을 엔티티 설명으로 사용
-        const scopedDescription = relevantScenes
-          .map((s) => s.summary)
-          .filter(Boolean)
-          .slice(0, 3) // 최대 3개 장면
-          .join(' / ');
-
-        return {
-          ...e,
-          description: scopedDescription || `${e.name} (${e.category})`,
-          // attributes는 전체 그래프에서 병합된 값이라 범위 외 파일의 정보를 포함할 수 있음
-          // 범위 내 장면 요약(description)만으로 검증하도록 attributes 제거
-          attributes: undefined,
-        };
-      });
+      .filter((e) => entityIds.has(e.id));
   } else {
     entities = Object.values(graph.entities).filter((e) =>
       entityIds.has(e.id)
@@ -130,20 +108,12 @@ function extractFileGraphData(
 
 /**
  * 엔티티 정보를 문자열로 변환 (LLM 프롬프트용)
+ * description/attributes는 병합 데이터라 오염 가능 → 이름/카테고리/별칭만 사용
  */
 function entityToString(entity: Entity): string {
   let str = `- ${entity.name} (${entity.category})`;
-  if (entity.description) {
-    str += `: ${entity.description}`;
-  }
   if (entity.aliases && entity.aliases.length > 0) {
     str += ` [별칭: ${entity.aliases.join(', ')}]`;
-  }
-  if (entity.attributes && Object.keys(entity.attributes).length > 0) {
-    const attrs = Object.entries(entity.attributes)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ');
-    str += ` {${attrs}}`;
   }
   return str;
 }
@@ -177,7 +147,7 @@ function sceneToString(scene: SceneSnapshot): string {
 const SYSTEM_PROMPT = `소설 챕터의 **설정 오류/모순**을 검증합니다.
 
 ## 입력 데이터
-- **[기존 설정]**: 이전 챕터들에서 확립된 캐릭터/엔티티 정보 (지식그래프)
+- **[기존 설정]**: 이전 챕터들의 지식그래프 (엔티티 목록, 관계)
 - **[새 챕터 원본]**: 검증할 새 챕터의 원본 텍스트
 
 ## 반드시 찾아야 할 오류 (심각)
