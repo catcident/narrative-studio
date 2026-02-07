@@ -435,15 +435,17 @@ export function useSourceTextView() {
         fileIdToChapterNumber[file.id] = idx + 1;
       });
 
-      // 연속된 order 재부여 (1부터 시작) + chapterNumber도 파일 순서에 맞게 업데이트
+      // 연속된 order 재부여 (1부터 시작) + chapterNumber, chapter ID도 파일 순서에 맞게 업데이트
       allScenesInNewOrder.forEach((scene, idx) => {
         const fileId = getFileIdForScene(scene);
         const newChapterNumber = fileId ? fileIdToChapterNumber[fileId] : scene.chapterNumber;
+        const newChapterId = newChapterNumber ? `C${String(newChapterNumber).padStart(4, '0')}` : undefined;
         const newOrder = idx + 1;
         const updatedScene = {
           ...newSnapshots[scene.sceneId],
           order: newOrder,
           chapterNumber: newChapterNumber ?? scene.chapterNumber,
+          chapter: newChapterId ?? newSnapshots[scene.sceneId].chapter,
         };
         // time 필드에서 "장면 N" 패턴 업데이트
         if (updatedScene.time) {
