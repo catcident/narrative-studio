@@ -272,6 +272,7 @@ export interface BillingSubscription {
   plan: string;
   planName: string;
   creditBalance: number;
+  purchasedCreditBalance: number;
   monthlyCredits: number;
   features: PlanFeatures;
   creditResetAt: string | null;

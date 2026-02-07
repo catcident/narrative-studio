@@ -243,6 +243,7 @@ export const useStore = create<AppState>((set, get) => ({
             plan: info.plan.code,
             planName: info.plan.name,
             creditBalance: info.credit_balance,
+            purchasedCreditBalance: info.purchased_credit_balance ?? 0,
             monthlyCredits: info.plan.monthly_credits,
             features: info.features,
             creditResetAt: info.credit_reset_at,
@@ -292,6 +293,7 @@ export const useEntityEdges = (entityId: string | null): HyperEdge[] => {
 
 export const useBillingSubscription = () => useStore((s) => s.subscription);
 export const useCreditBalance = () => useStore((s) => s.subscription?.creditBalance ?? null);
+export const usePurchasedCreditBalance = () => useStore((s) => s.subscription?.purchasedCreditBalance ?? null);
 export const useAuthEnabled = () => useStore((s) => s.authEnabled);
 export const useModels = () => useStore((s) => s.models);
 export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);

@@ -257,11 +257,11 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                       </div>
 
                       <div className="text-sm text-gray-600 mb-4">
-                        월 {plan.monthly_credits.toLocaleString()} 크레딧
+                        <span>월 {plan.monthly_credits.toLocaleString()} 크레딧</span>
                         {plan.monthly_credits > 0 && price > 0 && (
-                          <span className="text-xs text-gray-400 ml-1">
-                            ({Math.round(price / plan.monthly_credits * 10) / 10}원/cr)
-                          </span>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {Math.round(price / plan.monthly_credits * 10) / 10}원/cr
+                          </div>
                         )}
                       </div>
 
@@ -284,13 +284,13 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         {plan.features.max_saved_graphs !== undefined && (
                           <div className="flex items-center gap-2 text-gray-600">
                             <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs}개`}</span>
+                            <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs.toLocaleString()}개`}</span>
                           </div>
                         )}
-                        {plan.features.max_chats_per_analysis !== undefined && (
+                        {plan.features.max_chats_per_analysis !== undefined && plan.features.max_chats_per_analysis !== -1 && (
                           <div className="flex items-center gap-2 text-gray-600">
                             <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>채팅 {plan.features.max_chats_per_analysis === -1 ? '무제한' : `${plan.features.max_chats_per_analysis}회/분석`}</span>
+                            <span>분석당 채팅 {plan.features.max_chats_per_analysis}회</span>
                           </div>
                         )}
                         {plan.features.byok && (

@@ -27,6 +27,7 @@ async function deductForTokens(
   accessToken: string | undefined,
   dynamicModelsPromise: Promise<import('@/types').ModelInfo[]> | null,
   logPrefix: string,
+  idempotencyKey?: string,
 ): Promise<{ deductResult: DeductResult | null; insufficientBalance: boolean }> {
   const dynamicModels = dynamicModelsPromise ? await dynamicModelsPromise : [];
   const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
@@ -48,6 +49,7 @@ async function deductForTokens(
           amount: credits,
           description: '소설 채팅',
           metadata: { model, prompt_tokens: promptTokens, completion_tokens: completionTokens },
+          idempotency_key: idempotencyKey,
         }),
       });
 
@@ -78,6 +80,7 @@ async function deductCreditsForResponse(
   accessToken: string | undefined,
   dynamicModelsPromise: Promise<import('@/types').ModelInfo[]> | null,
   logPrefix: string,
+  idempotencyKey?: string,
 ): Promise<{ deductResult: DeductResult | null; insufficientBalance: boolean }> {
   const billing = resolveTokenBilling(data, promptLength, logPrefix);
 
@@ -87,7 +90,7 @@ async function deductCreditsForResponse(
 
   const result = await deductForTokens(
     billing.prompt_tokens, billing.completion_tokens,
-    model, userId, accessToken, dynamicModelsPromise, logPrefix,
+    model, userId, accessToken, dynamicModelsPromise, logPrefix, idempotencyKey,
   );
 
   data._billing = {
@@ -104,7 +107,7 @@ async function deductCreditsForResponse(
 export async function POST(request: NextRequest) {
   console.log('[chat] POST 요청 수신');
   try {
-    const { messages, apiKey: userApiKey, model: userModel, stream: userStream } = await request.json();
+    const { messages, apiKey: userApiKey, model: userModel, stream: userStream, idempotency_key: reqIdempotencyKey } = await request.json();
 
     const apiKey = userApiKey || ENV_API_KEY;
     const model = userModel || DEFAULT_MODEL;
@@ -220,6 +223,7 @@ export async function POST(request: NextRequest) {
       } else {
         await deductCreditsForResponse(
           data, totalPromptChars, model, userId ?? '', accessToken, dynamicModelsPromise, '[chat]',
+          typeof reqIdempotencyKey === 'string' ? reqIdempotencyKey : undefined,
         );
       }
 
@@ -246,6 +250,7 @@ export async function POST(request: NextRequest) {
     // 로컬 상수로 캡처 (non-null assertion 방지)
     const billingUserId = userId;
     const billingByok = isUsingPersonalKey;
+    const billingIdempotencyKey = typeof reqIdempotencyKey === 'string' ? reqIdempotencyKey : undefined;
 
     const outputStream = new ReadableStream({
       async pull(controller) {
@@ -284,6 +289,7 @@ export async function POST(request: NextRequest) {
                   const { deductResult, insufficientBalance } = await deductForTokens(
                     promptTokens, completionTokens,
                     model, billingUserId, accessToken, dynamicModelsPromise, '[chat]',
+                    billingIdempotencyKey,
                   );
                   billingEvent = {
                     prompt_tokens: promptTokens,

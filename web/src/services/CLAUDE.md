@@ -227,7 +227,7 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 
 ```typescript
 // API 함수 (서버 프록시 경유)
-getSubscription()           // 구독 정보 (plan, balance, features)
+getSubscription()           // 구독 정보 (plan, balance, purchased_credit_balance, features)
 getCreditBalance()          // 잔액만 조회
 getUsageHistory(page)       // 거래 내역 (페이지네이션)
 getPlans()                  // 요금제 목록

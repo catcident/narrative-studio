@@ -82,7 +82,9 @@ export async function POST(request: NextRequest) {
       actual_amount: actualCredits,
       description: typeof rawBody.description === 'string' ? rawBody.description : undefined,
       metadata: typeof rawBody.metadata === 'object' && rawBody.metadata !== null ? rawBody.metadata : undefined,
-      idempotency_key: typeof rawBody.idempotency_key === 'string' ? rawBody.idempotency_key : undefined,
+      idempotency_key: typeof rawBody.idempotency_key === 'string'
+        ? rawBody.idempotency_key
+        : `settle_${holdToken}`,
       service: 'storygraph',
     });
 

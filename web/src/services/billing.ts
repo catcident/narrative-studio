@@ -124,6 +124,7 @@ export interface SubscriptionInfo {
   };
   status: string;
   credit_balance: number;
+  purchased_credit_balance: number;
   credit_reset_at: string | null;
   features: PlanFeatures;
   started_at: string;

@@ -88,6 +88,7 @@ async function analyzeQueryWithLLM(
         ],
         apiKey,
         stream: false,
+        idempotency_key: crypto.randomUUID(),
       }),
     });
 
@@ -213,6 +214,7 @@ ${chunkList || '(없음)'}`
         ],
         apiKey,
         stream: false,
+        idempotency_key: crypto.randomUUID(),
       }),
     });
 
@@ -342,6 +344,7 @@ ${connectedList}
         ],
         apiKey,
         stream: false,
+        idempotency_key: crypto.randomUUID(),
       }),
     });
 
@@ -1308,6 +1311,7 @@ export async function sendChatMessage(
       model,
       messages: apiMessages,
       apiKey: userApiKey,
+      idempotency_key: crypto.randomUUID(),
     }),
   });
 

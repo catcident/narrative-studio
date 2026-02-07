@@ -324,14 +324,14 @@ function App() {
               <Network aria-hidden="true" className="w-6 h-6 text-blue-600" />
               <h1 className="font-bold text-gray-800">인물 관계도</h1>
             </div>
-            <span className="text-sm text-gray-500">
+            <span className="hidden lg:inline text-sm text-gray-500 truncate max-w-[200px]">
               {knowledgeGraph.metadata.title}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 xl:gap-4">
             {/* 통계 */}
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div className="hidden lg:flex items-center gap-4 text-sm text-gray-500">
               <span>엔티티 {knowledgeGraph.stats.totalEntities}</span>
               <span>관계 {knowledgeGraph.stats.totalEdges}</span>
               {scenes.length > 0 && <span>장면 {scenes.length}</span>}
@@ -343,6 +343,7 @@ function App() {
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
+                  aria-label={label}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all
                     ${viewMode === mode
                       ? 'bg-white text-blue-600 shadow-sm'
@@ -351,17 +352,17 @@ function App() {
                   `}
                 >
                   <Icon aria-hidden="true" className="w-4 h-4" />
-                  {label}
+                  <span className="hidden xl:inline">{label}</span>
                 </button>
               ))}
             </div>
 
             {/* 저장 상태 */}
             {saveStatus === 'saving' && (
-              <span className="text-xs text-gray-400 animate-pulse">저장 중...</span>
+              <span className="hidden lg:inline text-xs text-gray-400 animate-pulse">저장 중...</span>
             )}
             {saveStatus === 'saved' && (
-              <span className="flex items-center gap-1 text-xs text-green-600">
+              <span className="hidden lg:flex items-center gap-1 text-xs text-green-600">
                 <Save aria-hidden="true" className="w-3 h-3" />
                 저장됨
               </span>
@@ -373,14 +374,17 @@ function App() {
             {/* 데이터 관리 */}
             <button
               onClick={() => setShowDataManager(true)}
+              aria-label="데이터 관리"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <Database aria-hidden="true" className="w-4 h-4" />
-              데이터 관리
+              <span className="hidden xl:inline">데이터 관리</span>
             </button>
 
             {/* 파일 추가 */}
-            <label className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer ${
+            <label
+              aria-label="파일 추가"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer ${
               isAddingFile
                 ? 'bg-blue-100 text-blue-600'
                 : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
@@ -388,12 +392,12 @@ function App() {
               {isAddingFile ? (
                 <>
                   <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
-                  {addProgress || '추가 중...'}
+                  <span className="hidden xl:inline">{addProgress || '추가 중...'}</span>
                 </>
               ) : (
                 <>
                   <Plus aria-hidden="true" className="w-4 h-4" />
-                  파일 추가
+                  <span className="hidden xl:inline">파일 추가</span>
                 </>
               )}
               <input
@@ -412,10 +416,11 @@ function App() {
             {/* 리셋 */}
             <button
               onClick={reset}
+              aria-label="새 파일"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <RotateCcw aria-hidden="true" className="w-4 h-4" />
-              새 파일
+              <span className="hidden xl:inline">새 파일</span>
             </button>
 
             {/* 로그아웃 */}
