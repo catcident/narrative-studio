@@ -684,10 +684,14 @@ const VALID_LORE_CATEGORIES = new Set<string>([
   'organization_detail', 'item_detail', 'event',
 ]);
 
-// LLM이 잘못 생성하는 엔티티 이름 패턴 정리
-const INVALID_ENTITY_NAMES = new Set([
+// LLM이 카테고리명을 이름으로 잘못 쓰는 패턴 (항상 필터)
+const CATEGORY_AS_NAME = new Set([
   'concept', 'character', 'location', 'item', 'creature', 'event', 'organization',
-  '나', '그', '그녀', '그들', '화자', '주인공',
+]);
+
+// 대명사/지시어 (resolve 시도 후 실패할 때만 필터)
+const PRONOUN_NAMES = new Set([
+  '나', '그', '그녀', '그들', '화자', '주인공', '저', '우리',
 ]);
 
 function cleanEntityName(name: string): string {
@@ -751,14 +755,14 @@ export function mergeLoreEntries(
       // 1. 이름 정리: 괄호/별칭 제거
       let entityName = cleanEntityName(raw.entity_name);
 
-      // 2. 병합 매핑 적용
-      entityName = entityNameMapping[entityName] || entityNameMapping[raw.entity_name] || entityName;
-
-      // 3. 무효한 이름 필터링 (카테고리명이나 대명사를 이름으로 쓴 경우)
-      if (INVALID_ENTITY_NAMES.has(entityName.toLowerCase())) {
+      // 2. 카테고리명을 이름으로 쓴 경우 즉시 필터 (resolve 불가)
+      if (CATEGORY_AS_NAME.has(entityName.toLowerCase())) {
         skippedInvalid++;
         continue;
       }
+
+      // 3. 병합 매핑 적용 (대명사 resolve 포함: "나" → "고양이" 등)
+      entityName = entityNameMapping[entityName] || entityNameMapping[raw.entity_name] || entityName;
 
       // 4. 알려진 엔티티 이름으로 매칭 시도 (LLM이 약간 다르게 쓴 경우 보정)
       if (knownNamesLower.length > 0) {
@@ -780,6 +784,13 @@ export function mergeLoreEntries(
             }
           }
         }
+      }
+
+      // 5. 대명사가 resolve되지 못한 경우에만 필터링
+      // (entityNameMapping이나 knownEntity 매칭으로 실제 이름이 되었으면 통과)
+      if (PRONOUN_NAMES.has(entityName.toLowerCase())) {
+        skippedInvalid++;
+        continue;
       }
 
       // 장면 ID: 청크별 로컬 → S-format 매핑
