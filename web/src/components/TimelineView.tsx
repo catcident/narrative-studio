@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { Clock, Users, ChevronDown, ChevronRight, Sparkles, BookOpen, Heart, Swords, MessageCircle } from 'lucide-react';
 import { useStore } from '../store';
 import type { HyperEdge, Entity } from '../types';
+import { getSortedScenes, getEdgesByScene, getCharacters } from '../services/knowledgeGraphQueries';
 
 // 관계 유형별 설정
 const RELATION_CONFIG: Record<string, { label: string; icon: typeof Heart; color: string }> = {
@@ -64,19 +65,14 @@ export function TimelineView() {
     const snapshots = knowledgeGraph.snapshots || {};
     const chapters = knowledgeGraph.chapters || {};
 
-    // 장면 정렬: order 필드 기준 (파일 순서 반영)
-    // chapterNumber는 표시용으로만 사용하고 정렬에는 order를 사용
-    const sortedScenes = Object.values(snapshots)
-      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    const sortedScenes = getSortedScenes(snapshots);
 
     return sortedScenes.map((scene: any) => {
       const sceneId = scene.sceneId;
       // order 필드 사용 (파일 순서 변경 시 업데이트됨), 없으면 sceneId에서 추출
       const sceneNum = scene.order || parseInt(sceneId.replace('S', '').replace(/^0+/, '') || '0');
 
-      // 이 장면의 관계들
-      const edges = Object.values(knowledgeGraph.hyperedges)
-        .filter((edge: any) => edge.scenes?.includes(sceneId)) as HyperEdge[];
+      const edges = getEdgesByScene(knowledgeGraph.hyperedges, sceneId);
 
       // 관련 엔티티들
       const entityIds = new Set<string>();
@@ -180,7 +176,7 @@ export function TimelineView() {
             </div>
             <div className="text-center">
               <div className="text-lg font-bold text-green-600">
-                {Object.values(knowledgeGraph.entities).filter(e => e.category === 'character').length}
+                {getCharacters(knowledgeGraph.entities).length}
               </div>
               <div className="text-[10px] text-gray-400">인물</div>
             </div>
@@ -199,7 +195,7 @@ export function TimelineView() {
             <div className="space-y-4">
               {events.map((event, eventIndex) => {
                 const isExpanded = expandedEvents.has(event.id);
-                const characters = event.entities.filter(e => e.category === 'character');
+                const characters = getCharacters(event.entities);
                 const mainSentiment = event.edges[0]?.sentiment || 'neutral';
                 const style = SENTIMENT_STYLES[mainSentiment];
 

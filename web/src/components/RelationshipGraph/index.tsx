@@ -18,6 +18,7 @@ import type { Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useStore } from '../../store';
 import type { Entity, HyperEdge, EntityCategory } from '../../types';
+import { getCharacters, getEntitiesByCategory } from '../../services/knowledgeGraphQueries';
 import { Eye, EyeOff, Focus, Filter, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { EntitySelector } from '../EntitySelector';
 import { CATEGORY_COLORS, RELATION_COLORS, RELATION_LABELS, SENTIMENT_STROKE_STYLES, CHARACTER_COLORS } from '../../constants';
@@ -48,7 +49,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
 
   // 인물 목록 추출
   const characters = useMemo(() =>
-    entities.filter(e => e.category === 'character'),
+    getCharacters(entities),
     [entities]
   );
 
@@ -146,7 +147,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
   // 간소화 모드: 인물만 표시
   const displayEntities = useMemo(() => {
     if (viewMode === 'simple') {
-      return filteredEntities.filter(e => e.category === 'character');
+      return getCharacters(filteredEntities);
     }
     return filteredEntities;
   }, [filteredEntities, viewMode]);
@@ -172,8 +173,8 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
 
   // 노드 생성 - 인물/장소는 특별하게, 나머지는 작게
   const initialNodes = useMemo(() => {
-    const chars = displayEntities.filter(e => e.category === 'character');
-    const locations = displayEntities.filter(e => e.category === 'location');
+    const chars = getCharacters(displayEntities);
+    const locations = getEntitiesByCategory(displayEntities, 'location');
     const others = displayEntities.filter(e => e.category !== 'character' && e.category !== 'location');
 
     const centerX = 400;

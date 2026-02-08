@@ -8,6 +8,7 @@ import { X, User, MapPin, Building, Sword, Clock, Zap, Info, ArrowRight, Heart, 
 import { useStore, useSelectedEntity, useEntityEdges } from '../store';
 import type { EntityCategory, HyperEdge, Entity } from '../types';
 import { CATEGORY_LABELS, CATEGORY_BG_CLASSES, RELATION_LABELS } from '../constants';
+import { getEdgesByScene } from '../services/knowledgeGraphQueries';
 
 // 카테고리 아이콘
 const CATEGORY_ICONS: Record<EntityCategory, React.ComponentType<{ className?: string }>> = {
@@ -74,7 +75,7 @@ export function DetailPanel() {
 
   // 현재 장면에서의 관계만 필터링
   const edges = selectedSceneId
-    ? allEdges.filter(e => e.scenes?.includes(selectedSceneId))
+    ? getEdgesByScene(allEdges, selectedSceneId)
     : allEdges;
 
   // 현재 장면에서의 엔티티 정보 (sceneData에서 가져오기)

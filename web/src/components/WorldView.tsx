@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react';
 import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Package, Globe, Filter, Star, Link2 } from 'lucide-react';
 import { useStore } from '../store';
 import type { Entity, HyperEdge } from '../types';
+import { getEntitiesByCategory, getEdgesByEntity } from '../services/knowledgeGraphQueries';
 
 type WorldTab = 'locations' | 'organizations' | 'concepts' | 'items';
 
@@ -39,10 +40,10 @@ export function WorldView() {
       minImportance <= 1 || (e.importance || 5) >= minImportance;
 
     return {
-      locations: entities.filter(e => e.category === 'location' && filterByImportance(e)),
-      organizations: entities.filter(e => e.category === 'organization' && filterByImportance(e)),
-      concepts: entities.filter(e => e.category === 'concept' && filterByImportance(e)),
-      items: entities.filter(e => e.category === 'item' && filterByImportance(e)),
+      locations: getEntitiesByCategory(entities, 'location').filter(filterByImportance),
+      organizations: getEntitiesByCategory(entities, 'organization').filter(filterByImportance),
+      concepts: getEntitiesByCategory(entities, 'concept').filter(filterByImportance),
+      items: getEntitiesByCategory(entities, 'item').filter(filterByImportance),
     };
   }, [knowledgeGraph, minImportance]);
 
@@ -51,10 +52,10 @@ export function WorldView() {
     if (!knowledgeGraph) return { locations: 0, organizations: 0, concepts: 0, items: 0 };
     const entities = Object.values(knowledgeGraph.entities);
     return {
-      locations: entities.filter(e => e.category === 'location').length,
-      organizations: entities.filter(e => e.category === 'organization').length,
-      concepts: entities.filter(e => e.category === 'concept').length,
-      items: entities.filter(e => e.category === 'item').length,
+      locations: getEntitiesByCategory(entities, 'location').length,
+      organizations: getEntitiesByCategory(entities, 'organization').length,
+      concepts: getEntitiesByCategory(entities, 'concept').length,
+      items: getEntitiesByCategory(entities, 'item').length,
     };
   }, [knowledgeGraph]);
 
@@ -97,7 +98,7 @@ export function WorldView() {
     };
 
     const getRelatedEdges = (entityId: string): HyperEdge[] => {
-      return edges.filter(edge => edge.entities.includes(entityId));
+      return getEdgesByEntity(edges, entityId);
     };
 
     const buildNode = (entity: Entity): TreeNode => {
@@ -153,7 +154,7 @@ export function WorldView() {
       entity: org,
       children: [] as TreeNode[],
       relatedCharacters: orgMembers.get(org.id) || [],
-      relatedEdges: edges.filter(e => e.entities.includes(org.id)),
+      relatedEdges: getEdgesByEntity(edges, org.id),
     }));
   }, [knowledgeGraph, categorizedEntities.organizations]);
 
@@ -184,7 +185,7 @@ export function WorldView() {
         entity: item,
         children: [] as TreeNode[],
         relatedCharacters: owners,
-        relatedEdges: edges.filter(e => e.entities.includes(item.id)),
+        relatedEdges: getEdgesByEntity(edges, item.id),
       };
     });
   }, [knowledgeGraph, categorizedEntities.items]);
@@ -200,7 +201,7 @@ export function WorldView() {
       entity: concept,
       children: [] as TreeNode[],
       relatedCharacters: [],
-      relatedEdges: edges.filter(e => e.entities.includes(concept.id)),
+      relatedEdges: getEdgesByEntity(edges, concept.id),
     }));
   }, [knowledgeGraph, categorizedEntities.concepts]);
 
