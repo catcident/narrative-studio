@@ -348,7 +348,12 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
   // LLM 병합 검토: 같은 대상인데 다른 이름으로 추출된 것을 병합
   onProgress?.('엔티티 병합 검토 중...');
-  const reviewed = await reviewEntityMerges(merged, useModel, effectiveApiKey);
+  const { result: reviewed, billing: mergerBilling } = await reviewEntityMerges(merged, useModel, effectiveApiKey);
+
+  // merger review billing 추적 (토큰 사용량 누적)
+  if (mergerBilling && onChunkBilling) {
+    onChunkBilling(totalChunks, mergerBilling);
+  }
 
   // 후처리: 누락된 관계 자동 생성
   onProgress?.('관계 검증 및 보완 중...');

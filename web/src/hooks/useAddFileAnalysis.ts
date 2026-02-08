@@ -47,10 +47,10 @@ export function useAddFileAnalysis() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        await ensureSufficientBalance(subscription, authEnabled);
+        const estimate = subscription ? estimateUsageLocally(text.length, model, allModels) : null;
+        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
-        if (subscription) {
-          const estimate = estimateUsageLocally(text.length, model, allModels);
+        if (subscription && estimate) {
           const holdResult = await holdCredits(estimate.estimated_credits, model, estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');

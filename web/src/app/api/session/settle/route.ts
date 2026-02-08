@@ -3,7 +3,7 @@ import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { updateBalanceCache } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
-import { tokenCostUsd, getModelCosts, calculateChunkCostUsd, calculateSessionCredits } from '@/lib/modelCosts';
+import { tokenCostUsd, getModelCosts, calculateMixedSessionCredits } from '@/lib/modelCosts';
 import { getCachedModels } from '@/lib/modelCache';
 
 interface ChunkUsage {
@@ -61,21 +61,22 @@ export async function POST(request: NextRequest) {
 
     // 서버가 금액 재계산 — 클라이언트 값 무시
     const dynamicModels = await getCachedModels();
-    let totalSessionCostUsd = 0;
     const validatedChunks = chunks as ChunkUsage[];
+    const chunkCostData: { costUsd: number; model: string }[] = [];
 
     for (const chunk of validatedChunks) {
       if (typeof chunk.model !== 'string' || typeof chunk.prompt_tokens !== 'number' || typeof chunk.completion_tokens !== 'number') {
         return NextResponse.json({ error: 'Invalid chunk format: each chunk needs model, prompt_tokens, completion_tokens' }, { status: 400 });
       }
       const costs = getModelCosts(chunk.model, dynamicModels);
-      totalSessionCostUsd += tokenCostUsd(chunk.prompt_tokens, chunk.completion_tokens, costs.inputCost, costs.outputCost);
+      chunkCostData.push({
+        costUsd: tokenCostUsd(chunk.prompt_tokens, chunk.completion_tokens, costs.inputCost, costs.outputCost),
+        model: chunk.model,
+      });
     }
 
-    // 마크업은 첫 번째 chunk의 모델 기준 (추출 모델)
-    const firstChunk = validatedChunks[0];
-    const chunkCostUsd = calculateChunkCostUsd(firstChunk.model, dynamicModels);
-    const actualCredits = calculateSessionCredits(totalSessionCostUsd, chunkCostUsd);
+    // 혼합 모델 대응: 각 청크의 모델별 마크업 적용 후 합산 → 1회 올림
+    const actualCredits = calculateMixedSessionCredits(chunkCostData, dynamicModels);
 
     const body = JSON.stringify({
       hold_token: holdToken,

@@ -6,31 +6,31 @@
 import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo } from '../types';
 import { DEFAULT_MODEL } from '../types';
 import { searchSimilarEntities, searchSimilarChunks, type ChunkSearchResult } from './embedding';
-import { getModelCosts, tokenCostUsd, costUsdToCredits, CHARS_PER_TOKEN } from '@/lib/modelCosts';
+import { getModelCosts, tokenCostUsd, CHARS_PER_TOKEN, calculateMixedSessionCredits } from '@/lib/modelCosts';
 
 // ==================== Billing 타입 ====================
 
-/** 개별 LLM 호출의 billing 정보 (서버 _billing 필드, ChunkBilling과 동일 형태) */
+/** 개별 LLM 호출의 billing 정보 (서버 _billing 필드 — 토큰 정보만) */
 interface CallBilling {
   prompt_tokens: number;
   completion_tokens: number;
   model: string;
-  credits_deducted?: number;
-  balance_after?: number | null;
-  insufficient_balance?: boolean;
+  byok?: boolean;
 }
 
-/** 채팅 메시지 전체의 합산 billing */
+/** 채팅 메시지 전체의 합산 billing (토큰 사용량 집계) */
 export interface ChatMessageBilling {
-  totalCreditsDeducted: number;
-  finalBalanceAfter: number | null;
-  insufficientBalance: boolean;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  byok: boolean;
 }
 
 /** sendChatMessage 반환 타입 */
 export interface ChatResult {
   content: string;
   billing: ChatMessageBilling | null;
+  /** settle에 사용할 청크별 토큰 사용량 (hold/settle 패턴용) */
+  chunkUsages: import('../types').ChunkUsage[];
 }
 
 /** 대화 이력 토큰 제한 (약 30K tokens) */
@@ -277,7 +277,7 @@ async function decideConnectedNodes(
   relatedEdges: HyperEdge[],
   entities: Record<string, Entity>,
   apiKey?: string
-): Promise<ConnectedNodeDecision> {
+): Promise<{ decision: ConnectedNodeDecision; billing: CallBilling | null }> {
   // 연결된 노드 후보 추출
   const connectedCandidates = new Map<string, { name: string; relations: string[] }>();
 
@@ -300,7 +300,7 @@ async function decideConnectedNodes(
 
   // 연결 노드가 없으면 바로 반환
   if (connectedCandidates.size === 0) {
-    return { needsConnectedNodes: false, selectedNodeIds: [] };
+    return { decision: { needsConnectedNodes: false, selectedNodeIds: [] }, billing: null };
   }
 
   // 선택된 노드 이름들
@@ -350,10 +350,11 @@ ${connectedList}
 
     if (!response.ok) {
       console.warn('[decideConnected] API 오류, 기본값 사용');
-      return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
+      return { decision: { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) }, billing: null };
     }
 
     const data = await response.json();
+    const callBilling: CallBilling | null = data._billing ?? null;
     const content = data.choices?.[0]?.message?.content || '';
 
     const match = content.match(/\{[\s\S]*\}/);
@@ -364,13 +365,13 @@ ${connectedList}
         selectedNodeIds: Array.isArray(parsed.selectedNodeIds) ? parsed.selectedNodeIds : [],
       };
       console.log('[decideConnected] LLM 판단:', result);
-      return result;
+      return { decision: result, billing: callBilling };
     }
 
-    return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
+    return { decision: { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) }, billing: callBilling };
   } catch (err: unknown) {
     console.warn('[decideConnected] 오류, 기본값 사용:', err);
-    return { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) };
+    return { decision: { needsConnectedNodes: true, selectedNodeIds: Array.from(connectedCandidates.keys()).slice(0, 10) }, billing: null };
   }
 }
 
@@ -379,6 +380,10 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  /** settle 후 실제 차감 크레딧 (assistant 메시지에만, BYOK 시 null) */
+  creditsUsed?: number | null;
+  /** BYOK 사용 여부 */
+  byok?: boolean;
 }
 
 export interface ChatContext {
@@ -1219,13 +1224,14 @@ export async function sendChatMessage(
   // [4단계] 연결 노드 필요 여부 판단 (LLM이 그래프 구조 보고 결정)
   let connectedArray: string[] = [];
   if (relatedEdges.length > 0 && lastUserMessage) {
-    const connectedNodeDecision = await decideConnectedNodes(
+    const { decision: connectedNodeDecision, billing: connectedBilling } = await decideConnectedNodes(
       lastUserMessage.content,
       foundEntityIds,
       relatedEdges,
       context.knowledgeGraph.entities,
       userApiKey || undefined
     );
+    if (connectedBilling) billings.push(connectedBilling);
 
     if (connectedNodeDecision.needsConnectedNodes) {
       const connectedEntityIds = new Set<string>();
@@ -1322,21 +1328,32 @@ export async function sendChatMessage(
     throw errObj;
   }
 
-  /** billing 합산 헬퍼 */
-  const aggregateBilling = (): ChatMessageBilling | null => {
-    if (billings.length === 0) return null;
-    let totalCredits = 0;
-    let lastBalance: number | null = null;
-    let insufficient = false;
-    for (const b of billings) {
-      totalCredits += b.credits_deducted ?? 0;
-      if (b.balance_after != null) lastBalance = b.balance_after;
-      if (b.insufficient_balance) insufficient = true;
+  /** billing 합산 + ChunkUsage 변환 헬퍼 */
+  const aggregateBilling = (): { billing: ChatMessageBilling | null; chunkUsages: import('../types').ChunkUsage[] } => {
+    if (billings.length === 0) return { billing: null, chunkUsages: [] };
+    let totalPrompt = 0;
+    let totalCompletion = 0;
+    let isByok = false;
+    const chunkUsages: import('../types').ChunkUsage[] = [];
+    for (let i = 0; i < billings.length; i++) {
+      const b = billings[i];
+      totalPrompt += b.prompt_tokens;
+      totalCompletion += b.completion_tokens;
+      if (b.byok) isByok = true;
+      chunkUsages.push({
+        chunkIndex: i,
+        promptTokens: b.prompt_tokens,
+        completionTokens: b.completion_tokens,
+        model: b.model,
+      });
     }
     return {
-      totalCreditsDeducted: totalCredits,
-      finalBalanceAfter: lastBalance,
-      insufficientBalance: insufficient,
+      billing: {
+        totalPromptTokens: totalPrompt,
+        totalCompletionTokens: totalCompletion,
+        byok: isByok,
+      },
+      chunkUsages,
     };
   };
 
@@ -1400,7 +1417,8 @@ export async function sendChatMessage(
       }
     }
 
-    return { content: fullContent, billing: aggregateBilling() };
+    const { billing, chunkUsages } = aggregateBilling();
+    return { content: fullContent, billing, chunkUsages };
   }
 
   const data = await response.json();
@@ -1408,14 +1426,15 @@ export async function sendChatMessage(
   if (data._billing) {
     billings.push(data._billing);
   }
-  return { content: data.choices?.[0]?.message?.content || '', billing: aggregateBilling() };
+  const { billing: finalBilling, chunkUsages: finalChunkUsages } = aggregateBilling();
+  return { content: data.choices?.[0]?.message?.content || '', billing: finalBilling, chunkUsages: finalChunkUsages };
 }
 
 /**
  * 채팅 메시지 전송 비용 사전 추정 (크레딧 단위)
  *
- * 호출 구조: ①의도분석(Flash) + ②데이터선별(Flash, 조건부) + ③최종답변(사용자 모델)
- * ①②는 DEFAULT_MODEL(Flash) 기준 고정 추정, ③만 사용자 모델 기반.
+ * 호출 구조: ①의도분석(Flash) + ②데이터선별(Flash, 조건부) + ③최종답변(사용자 모델) + ④연결노드판단(Flash, 조건부)
+ * 세션 패턴: USD 합산 → 1회 올림 (서버 settle과 일치).
  */
 export function estimateChatCost(
   messages: ChatMessage[],
@@ -1423,17 +1442,21 @@ export function estimateChatCost(
   model: string,
   dynamicModels?: ModelInfo[],
 ): number {
-  // ①② Flash 호출 고정 추정 (~2 크레딧)
   const flashCosts = getModelCosts(DEFAULT_MODEL, dynamicModels);
-  const call1InputTokens = Math.ceil(800 / CHARS_PER_TOKEN);  // 시스템 프롬프트 + 질문
+
+  // ① 의도분석 (Flash)
+  const call1InputTokens = Math.ceil(800 / CHARS_PER_TOKEN);
   const call1OutputTokens = Math.ceil(100 / CHARS_PER_TOKEN);
-  const call1Credits = costUsdToCredits(tokenCostUsd(call1InputTokens, call1OutputTokens, flashCosts.inputCost, flashCosts.outputCost), DEFAULT_MODEL, dynamicModels);
 
-  const call2InputTokens = Math.ceil(3000 / CHARS_PER_TOKEN);  // 엔티티/청크 목록
+  // ② 데이터선별 (Flash)
+  const call2InputTokens = Math.ceil(3000 / CHARS_PER_TOKEN);
   const call2OutputTokens = Math.ceil(200 / CHARS_PER_TOKEN);
-  const call2Credits = costUsdToCredits(tokenCostUsd(call2InputTokens, call2OutputTokens, flashCosts.inputCost, flashCosts.outputCost), DEFAULT_MODEL, dynamicModels);
 
-  // ③ 최종 답변: 시스템 프롬프트 + 컨텍스트 + 이력(MAX_HISTORY_CHARS 제한) + max_tokens(2000)
+  // ④ 연결노드판단 (Flash)
+  const call4InputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);
+  const call4OutputTokens = Math.ceil(100 / CHARS_PER_TOKEN);
+
+  // ③ 최종 답변 (사용자 모델): 시스템 프롬프트 + 컨텍스트 + 이력 + max_tokens
   let historyChars = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
     historyChars += messages[i].content.length;
@@ -1442,15 +1465,20 @@ export function estimateChatCost(
       break;
     }
   }
-
   const totalInputChars = contextChars + historyChars;
   const call3InputTokens = Math.ceil(totalInputChars / CHARS_PER_TOKEN);
-  const call3OutputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);  // max_tokens
-
+  const call3OutputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);
   const modelCosts = getModelCosts(model, dynamicModels);
-  const call3Credits = costUsdToCredits(tokenCostUsd(call3InputTokens, call3OutputTokens, modelCosts.inputCost, modelCosts.outputCost), model, dynamicModels);
 
-  return call1Credits + call2Credits + call3Credits;
+  // USD 비용 개별 계산 → calculateMixedSessionCredits로 합산 후 1회 올림
+  const chunks = [
+    { costUsd: tokenCostUsd(call1InputTokens, call1OutputTokens, flashCosts.inputCost, flashCosts.outputCost), model: DEFAULT_MODEL },
+    { costUsd: tokenCostUsd(call2InputTokens, call2OutputTokens, flashCosts.inputCost, flashCosts.outputCost), model: DEFAULT_MODEL },
+    { costUsd: tokenCostUsd(call3InputTokens, call3OutputTokens, modelCosts.inputCost, modelCosts.outputCost), model },
+    { costUsd: tokenCostUsd(call4InputTokens, call4OutputTokens, flashCosts.inputCost, flashCosts.outputCost), model: DEFAULT_MODEL },
+  ];
+
+  return calculateMixedSessionCredits(chunks, dynamicModels);
 }
 
 /**

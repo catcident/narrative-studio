@@ -51,10 +51,10 @@ export function useBatchAnalysis() {
 
         // 잔액 확인 + hold (billing 활성 시)
         if (!isUsingPersonalKey) {
-          await ensureSufficientBalance(freshSubscription, freshAuthEnabled);
+          const estimate = freshSubscription ? estimateUsageLocally(item.charCount, item.model, freshModels) : null;
+          await ensureSufficientBalance(freshSubscription, freshAuthEnabled, estimate?.estimated_credits);
 
-          if (freshSubscription) {
-            const estimate = estimateUsageLocally(item.charCount, item.model, freshModels);
+          if (freshSubscription && estimate) {
             const holdResult = await holdCredits(estimate.estimated_credits, item.model, estimate.chunks);
             if (!holdResult.ok) {
               const errorMsg = holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류';

@@ -13,12 +13,15 @@ import type {
   ChunkUsage,
   ModelInfo,
 } from '../types';
+import { DEFAULT_MODEL } from '../types';
 import type { ChunkBillingCallback } from './extraction/types';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
   SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
+  MERGER_REVIEW_PROMPT_CHARS, MERGER_REVIEW_OUTPUT_TOKENS, MERGER_REVIEW_MODEL,
+  EMBEDDING_INPUT_COST, AVG_ENTITY_TOKENS, AVG_CHUNK_EMBED_TOKENS,
   getModelCosts, tokenCostUsd, costUsdToCredits,
-  calculateSessionCredits, calculateChunkCostUsd,
+  calculateSessionCredits, calculateChunkCostUsd, calculateMixedSessionCredits,
 } from '@/lib/modelCosts';
 
 const BASE = '/api/billing';
@@ -255,6 +258,8 @@ const ZERO_ESTIMATE: UsageEstimate = {
  * (기존: 청크별 costUsdToCredits 호출 → 올림 N회 → 과다 추정)
  * - extractor: 매 청크 1회 호출
  * - selector: 청크 2부터 1회 호출 (엔티티 선별)
+ * - merger review: 3청크 이상일 때 1회 호출 (엔티티 병합 검토)
+ * - embedding: 엔티티 + 청크 임베딩 (투명성 목적, 크레딧 영향 미미)
  */
 export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
   if (charCount <= 0) return ZERO_ESTIMATE;
@@ -289,6 +294,20 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
       totalCostUsd += selCostUsd;
     }
   }
+
+  // merger review: 3청크 이상일 때 1회 호출 (엔티티 병합 검토)
+  if (chunks >= 3) {
+    const mergerCosts = getModelCosts(MERGER_REVIEW_MODEL, dynamicModels);
+    const mergerInputTokens = Math.ceil(MERGER_REVIEW_PROMPT_CHARS / CHARS_PER_TOKEN);
+    totalCostUsd += tokenCostUsd(mergerInputTokens, MERGER_REVIEW_OUTPUT_TOKENS, mergerCosts.inputCost, mergerCosts.outputCost);
+    totalInputTokens += mergerInputTokens;
+    totalOutputTokens += MERGER_REVIEW_OUTPUT_TOKENS;
+  }
+
+  // embedding: 엔티티 + 청크 임베딩 (투명성 목적, 크레딧 영향 미미 — 대부분 0-1cr)
+  const estimatedEntities = Math.ceil(chunks * 3); // ~3 엔티티/청크 경험치
+  const embedTokens = estimatedEntities * AVG_ENTITY_TOKENS + chunks * AVG_CHUNK_EMBED_TOKENS;
+  totalCostUsd += (embedTokens / 1_000_000) * EMBEDDING_INPUT_COST;
 
   // 세션 수준 크레딧 계산 (올림 1회)
   const chunkCostUsd = calculateChunkCostUsd(model, dynamicModels);
@@ -335,6 +354,7 @@ export async function checkSufficientBalance(): Promise<
 export async function ensureSufficientBalance(
   subscription: BillingSubscription | null,
   authEnabled?: boolean | null,
+  estimatedCredits?: number,
 ): Promise<void> {
   if (!subscription) {
     if (authEnabled !== false) {
@@ -344,6 +364,15 @@ export async function ensureSufficientBalance(
   }
   const result = await checkSufficientBalance();
   if (!result.sufficient) throw new Error(result.error);
+
+  // 예상 비용과 잔액 비교 (서버 hold가 최종 안전장치)
+  if (estimatedCredits !== undefined && estimatedCredits > 0) {
+    if (subscription.creditBalance < estimatedCredits) {
+      throw new Error(
+        `크레딧이 부족합니다. (필요: ~${estimatedCredits}, 잔액: ${subscription.creditBalance})`,
+      );
+    }
+  }
 }
 
 // ==================== Billing 콜백 ====================
@@ -377,22 +406,29 @@ export function chunkUsageToSettleChunks(chunks: ChunkUsage[]) {
  * hold된 세션을 정산(settle) 또는 해제(release).
  * 처리된 청크가 있으면 settle, 없으면 release.
  */
+/** settle/release 결과 */
+export interface FinalizeHoldResult {
+  actualCredits: number | null;  // settle 시 실제 차감 크레딧, release 시 null
+}
+
 export async function finalizeHold(
   holdToken: string,
   chunks: ChunkUsage[],
   description: string,
   updateBalance: (balance: number) => void,
-): Promise<void> {
+): Promise<FinalizeHoldResult> {
   if (chunks.length > 0) {
     const result = await settleCredits(holdToken, chunkUsageToSettleChunks(chunks), description);
     if (result.ok && result.data.balance_after !== null) {
       updateBalance(result.data.balance_after);
     }
+    return { actualCredits: result.ok ? result.data.actual_credits : null };
   } else {
     const result = await releaseCredits(holdToken);
     if (result.ok && result.data.balance_after !== null) {
       updateBalance(result.data.balance_after);
     }
+    return { actualCredits: null };
   }
 }
 
@@ -412,10 +448,64 @@ export function getBalanceAlertLevel(
   return 'none';
 }
 
-/** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 */
+/** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 (레거시 — 청크별 올림으로 과다 추정) */
 export function calculateCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
   if (chunks.length === 0) return 0;
   return chunks.reduce((sum, chunk) =>
     sum + calculateCreditsFromTokens(chunk.promptTokens, chunk.completionTokens, chunk.model, dynamicModels),
   0);
+}
+
+/**
+ * 세션 수준 크레딧 계산 (서버 settle 로직 미러링).
+ * 각 청크의 실제 토큰 사용량에서 모델별 USD 비용 산출 → calculateMixedSessionCredits로 1회 올림.
+ * calculateCreditsFromChunks보다 정확 (서버 정산액과 일치).
+ */
+export function calculateSessionCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
+  if (chunks.length === 0) return 0;
+  const chunkCostData = chunks.map(chunk => {
+    const { inputCost, outputCost } = getModelCosts(chunk.model, dynamicModels);
+    return {
+      costUsd: tokenCostUsd(chunk.promptTokens, chunk.completionTokens, inputCost, outputCost),
+      model: chunk.model,
+    };
+  });
+  return calculateMixedSessionCredits(chunkCostData, dynamicModels);
+}
+
+// ==================== 검증 비용 추정 ====================
+
+/**
+ * 검증 비용 추정 (파일 수 기반).
+ * 첫 파일은 자동 통과 → 실제 LLM 호출은 (fileCount - 1)회.
+ * 각 호출은 DEFAULT_MODEL 사용 (validation.ts의 기본 모델).
+ *
+ * @param fileCount  sourceFiles 수
+ * @param model      사용 모델 (기본 DEFAULT_MODEL)
+ * @param dynamicModels  동적 모델 목록
+ * @returns 예상 크레딧
+ */
+export function estimateValidationCost(
+  fileCount: number,
+  model?: string,
+  dynamicModels?: ModelInfo[],
+): number {
+  const callCount = Math.max(0, fileCount - 1); // 첫 파일 자동 통과
+  if (callCount === 0) return 0;
+
+  const validationModel = model || DEFAULT_MODEL;
+  const costs = getModelCosts(validationModel, dynamicModels);
+
+  // 검증 프롬프트: ~15,000자 컨텍스트 → ~10K tokens input, ~200 tokens output
+  const inputTokensPerCall = Math.ceil(15000 / CHARS_PER_TOKEN);
+  const outputTokensPerCall = 200;
+
+  const chunks: { costUsd: number; model: string }[] = [];
+  for (let i = 0; i < callCount; i++) {
+    chunks.push({
+      costUsd: tokenCostUsd(inputTokensPerCall, outputTokensPerCall, costs.inputCost, costs.outputCost),
+      model: validationModel,
+    });
+  }
+  return calculateMixedSessionCredits(chunks, dynamicModels);
 }

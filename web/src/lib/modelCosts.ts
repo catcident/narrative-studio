@@ -34,6 +34,16 @@ export const SELECTOR_PROMPT_CHARS = 2750;
 export const SELECTOR_OUTPUT_TOKENS = 100;
 export const SELECTOR_MODEL = 'google/gemini-2.0-flash-001';
 
+// Merger review 추정 상수 (3청크 이상일 때 1회 호출)
+export const MERGER_REVIEW_PROMPT_CHARS = 2500;
+export const MERGER_REVIEW_OUTPUT_TOKENS = 200;
+export const MERGER_REVIEW_MODEL = 'google/gemini-2.0-flash-001';
+
+// Embedding 추정 상수 (임베딩 비용 투명성)
+export const EMBEDDING_INPUT_COST = 0.02; // openai/text-embedding-3-small per 1M tokens
+export const AVG_ENTITY_TOKENS = 50;
+export const AVG_CHUNK_EMBED_TOKENS = 3000;
+
 /** 모델 비용 조회: dynamicModels 우선, 없으면 AVAILABLE_MODELS, 없으면 기본값 */
 export function getModelCosts(model: string, dynamicModels?: ModelInfo[]): { inputCost: number; outputCost: number } {
   const found = dynamicModels?.find((m) => m.id === model)
@@ -78,6 +88,24 @@ export function calculateSessionCredits(totalSessionCostUsd: number, chunkCostUs
 export function costUsdToCredits(costUsd: number, model: string, dynamicModels?: ModelInfo[]): number {
   const chunkCost = calculateChunkCostUsd(model, dynamicModels);
   return Math.max(1, Math.ceil((costUsd * calculateMarkup(chunkCost) * USD_TO_KRW) / KRW_PER_CREDIT));
+}
+
+/**
+ * 혼합 모델 세션의 크레딧 계산 (서버 settle 로직 미러링).
+ * 각 청크의 costUsd에 해당 모델의 마크업을 적용 후 합산 → 1회 ceil.
+ * 단일 모델 세션에서는 calculateSessionCredits()와 동일 결과.
+ */
+export function calculateMixedSessionCredits(
+  chunks: { costUsd: number; model: string }[],
+  dynamicModels?: ModelInfo[],
+): number {
+  if (chunks.length === 0) return 0;
+  let totalKrw = 0;
+  for (const chunk of chunks) {
+    const chunkCostUsd = calculateChunkCostUsd(chunk.model, dynamicModels);
+    totalKrw += chunk.costUsd * calculateMarkup(chunkCostUsd) * USD_TO_KRW;
+  }
+  return Math.max(1, Math.ceil(totalKrw / KRW_PER_CREDIT));
 }
 
 // ==================== 서버 공유 타입/함수 ====================

@@ -6,9 +6,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare, AlertTriangle, Key } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useStore, useModels, useBillingSubscription, useCreditBalance, useByokEnabled } from '../store';
+import { useStore, useModels, useBillingSubscription, useCreditBalance, useByokEnabled, useAuthEnabled } from '../store';
 import { sendChatMessage, estimateChatCost, generateMessageId, type ChatMessage } from '../services/chat';
-import { ensureSufficientBalance } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold } from '../services/billing';
 import { hasApiKey } from '../services/extraction';
 import { DEFAULT_MODEL } from '../types';
 
@@ -134,6 +134,7 @@ export function ChatView() {
   const subscription = useBillingSubscription();
   const creditBalance = useCreditBalance();
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const authEnabled = useAuthEnabled();
   const byokEnabled = useByokEnabled();
   const isUsingPersonalKey = byokEnabled && hasApiKey();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -263,28 +264,39 @@ export function ChatView() {
     return 1000 + entityCount * 100 + edgeCount * 80;
   }, [knowledgeGraph]);
 
-  // 메시지 전송
+  // 메시지 전송 (hold/settle 패턴)
   const handleSend = async () => {
     if (!input.trim() || isLoading || !knowledgeGraph || isChatLimitReached) return;
     setInsufficientCredits(null);
 
-    // 잔액 사전 확인 (subscription이 있고, BYOK가 아닐 때만)
-    if (subscription && !isUsingPersonalKey) {
-      try {
-        await ensureSufficientBalance(subscription);
-      } catch {
-        setInsufficientCredits('크레딧이 부족합니다.');
-        return;
-      }
+    // stale closure 방지: 비동기 시점에서 최신 state 사용
+    const { subscription: latestSub, updateCreditBalance: latestUpdateBalance } = useStore.getState();
+    const shouldBill = latestSub && !isUsingPersonalKey;
 
-      // 비용 사전 추정
-      const estimated = estimateChatCost(messages, contextChars, selectedModel);
-      if (creditBalance !== null && estimated > creditBalance) {
-        setInsufficientCredits(
-          `이 메시지를 보내려면 약 ${estimated} 크레딧이 필요합니다 (현재: ${creditBalance})`
-        );
+    // 비용 사전 추정
+    const estimatedCredits = estimateChatCost(messages, contextChars, selectedModel);
+
+    // 잔액 사전 확인 (subscription이 있고, BYOK가 아닐 때만)
+    if (shouldBill) {
+      try {
+        await ensureSufficientBalance(latestSub, authEnabled, estimatedCredits);
+      } catch (err: unknown) {
+        setInsufficientCredits(err instanceof Error ? err.message : '크레딧이 부족합니다.');
         return;
       }
+    }
+
+    // hold 획득
+    let holdToken: string | null = null;
+    if (shouldBill) {
+      const holdResult = await holdCredits(estimatedCredits, selectedModel, 4);
+      if (!holdResult.ok) {
+        if (holdResult.status === 402) {
+          setInsufficientCredits('크레딧이 부족합니다.');
+        }
+        return;
+      }
+      holdToken = holdResult.data.hold_token;
     }
 
     const userMessage: ChatMessage = {
@@ -314,9 +326,11 @@ export function ChatView() {
         knowledgeGraph.metadata.id
       );
 
-      // billing 잔액 갱신 (BYOK가 아닌 경우에만)
-      if (!isUsingPersonalKey && result.billing?.finalBalanceAfter != null) {
-        updateCreditBalance(result.billing.finalBalanceAfter);
+      // settle (hold가 있을 때만)
+      let settledCredits: number | null = null;
+      if (holdToken) {
+        const settleResult = await finalizeHold(holdToken, result.chunkUsages, '소설 채팅', latestUpdateBalance);
+        settledCredits = settleResult.actualCredits;
       }
 
       const assistantMessage: ChatMessage = {
@@ -324,6 +338,8 @@ export function ChatView() {
         role: 'assistant',
         content: result.content || fullResponse,
         timestamp: new Date(),
+        creditsUsed: settledCredits,
+        byok: isUsingPersonalKey || undefined,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -338,6 +354,11 @@ export function ChatView() {
       const mentionedIds = extractMentionedEntities(responseContent, knowledgeGraph.entities);
       setChatMentionedEntities(mentionedIds);
     } catch (err: unknown) {
+      // 실패 시 release (hold가 있을 때만)
+      if (holdToken) {
+        await finalizeHold(holdToken, [], '소설 채팅 실패', useStore.getState().updateCreditBalance);
+      }
+
       // 402 잔액 부족 → 인라인 배너만 표시 (채팅 버블 중복 방지)
       const status = (err as Error & { status?: number }).status;
       if (status === 402) {
@@ -766,8 +787,17 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         )}
-        <div className={`text-xs mt-2 ${isUser ? 'text-green-100' : 'text-gray-400'}`}>
-          {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+        <div className={`text-xs mt-2 flex items-center gap-2 ${isUser ? 'text-green-100' : 'text-gray-400'}`}>
+          <span>{message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+          {!isUser && message.byok && (
+            <span className="text-purple-500 flex items-center gap-0.5">
+              <Key className="w-3 h-3" aria-hidden="true" />
+              개인 키
+            </span>
+          )}
+          {!isUser && message.creditsUsed != null && message.creditsUsed > 0 && (
+            <span>{message.creditsUsed.toLocaleString()} 크레딧</span>
+          )}
         </div>
       </div>
     </div>

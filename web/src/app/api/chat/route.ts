@@ -1,113 +1,25 @@
 /**
  * 소설 채팅 API 엔드포인트
- * 스트리밍 응답 지원 + 서버 사이드 과금 (/api/analyze 패턴)
+ * 스트리밍 응답 지원 + 토큰 정보 반환 (과금은 클라이언트 hold/settle 패턴)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { checkAnalyzeEligibility, updateBalanceCache, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
+import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
 import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
-import { getCachedModels } from '@/lib/modelCache';
 import {
-  getModelCosts, tokenCostUsd, costUsdToCredits, CHARS_PER_TOKEN,
-  resolveTokenBilling, type DeductResult,
+  CHARS_PER_TOKEN,
+  resolveTokenBilling,
 } from '@/lib/modelCosts';
-import { proxyToCatcident } from '@/services/billingProxy';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
-/** 토큰 기반 크레딧 차감 (스트리밍/비스트리밍 공용) */
-async function deductForTokens(
-  promptTokens: number,
-  completionTokens: number,
-  model: string,
-  userId: string,
-  accessToken: string | undefined,
-  dynamicModelsPromise: Promise<import('@/types').ModelInfo[]> | null,
-  logPrefix: string,
-  idempotencyKey?: string,
-): Promise<{ deductResult: DeductResult | null; insufficientBalance: boolean }> {
-  const dynamicModels = dynamicModelsPromise ? await dynamicModelsPromise : [];
-  const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
-  const credits = costUsdToCredits(
-    tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost),
-    model,
-    dynamicModels,
-  );
-
-  let deductResult: DeductResult | null = null;
-  let insufficientBalance = false;
-
-  if (credits > 0) {
-    try {
-      const deductResponse = await proxyToCatcident('/credits/deduct/', accessToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          service: 'storygraph',
-          amount: credits,
-          description: '소설 채팅',
-          metadata: { model, prompt_tokens: promptTokens, completion_tokens: completionTokens },
-          idempotency_key: idempotencyKey,
-        }),
-      });
-
-      if (deductResponse.ok) {
-        const result: DeductResult = await deductResponse.json();
-        deductResult = result;
-        updateBalanceCache(userId, result.balance_after);
-      } else if (deductResponse.status === 402) {
-        insufficientBalance = true;
-        console.warn(`${logPrefix} 잔액 부족으로 차감 실패 (사용량: ${credits}cr)`);
-      } else {
-        console.error(`${logPrefix} 차감 실패 (${deductResponse.status}), fail-open`);
-      }
-    } catch (err: unknown) {
-      console.error(`${logPrefix} 차감 네트워크 오류, fail-open:`, err instanceof Error ? err.message : err);
-    }
-  }
-
-  return { deductResult, insufficientBalance };
-}
-
-/** 비스트리밍 응답에 대해 크레딧 차감 수행 + _billing 필드 추가 */
-async function deductCreditsForResponse(
-  data: Record<string, unknown>,
-  promptLength: number,
-  model: string,
-  userId: string,
-  accessToken: string | undefined,
-  dynamicModelsPromise: Promise<import('@/types').ModelInfo[]> | null,
-  logPrefix: string,
-  idempotencyKey?: string,
-): Promise<{ deductResult: DeductResult | null; insufficientBalance: boolean }> {
-  const billing = resolveTokenBilling(data, promptLength, logPrefix);
-
-  if (!userId || userId === 'anonymous' || !billing) {
-    return { deductResult: null, insufficientBalance: false };
-  }
-
-  const result = await deductForTokens(
-    billing.prompt_tokens, billing.completion_tokens,
-    model, userId, accessToken, dynamicModelsPromise, logPrefix, idempotencyKey,
-  );
-
-  data._billing = {
-    ...billing,
-    credits_deducted: result.deductResult?.amount_deducted ?? 0,
-    balance_after: result.deductResult?.balance_after ?? null,
-    insufficient_balance: result.insufficientBalance,
-    model,
-  };
-
-  return result;
-}
-
 export async function POST(request: NextRequest) {
   console.log('[chat] POST 요청 수신');
   try {
-    const { messages, apiKey: userApiKey, model: userModel, stream: userStream, idempotency_key: reqIdempotencyKey } = await request.json();
+    const { messages, apiKey: userApiKey, model: userModel, stream: userStream } = await request.json();
 
     const apiKey = userApiKey || ENV_API_KEY;
     const model = userModel || DEFAULT_MODEL;
@@ -170,9 +82,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`[chat] 모델: ${model}, 메시지 수: ${messages.length}, 스트리밍: ${stream}, 프롬프트: ${totalPromptChars}자, BYOK: ${isUsingPersonalKey}`);
 
-    // billing 활성 시 모델 캐시 사전 워밍 (OpenRouter 호출과 병렬)
-    const dynamicModelsPromise = userId ? getCachedModels() : null;
-
     const response = await fetchWithTimeout(
       'https://openrouter.ai/api/v1/chat/completions',
       {
@@ -207,24 +116,14 @@ export async function POST(request: NextRequest) {
     if (!stream) {
       const data = await response.json();
 
-      if (isUsingPersonalKey) {
-        // BYOK: 차감 스킵, billing 정보만 추가
-        const billing = resolveTokenBilling(data, totalPromptChars, '[chat]');
-        if (billing) {
-          data._billing = {
-            ...billing,
-            credits_deducted: 0,
-            balance_after: null,
-            insufficient_balance: false,
-            byok: true,
-            model,
-          };
-        }
-      } else {
-        await deductCreditsForResponse(
-          data, totalPromptChars, model, userId ?? '', accessToken, dynamicModelsPromise, '[chat]',
-          typeof reqIdempotencyKey === 'string' ? reqIdempotencyKey : undefined,
-        );
+      // 토큰 정보만 반환 (과금은 클라이언트 hold/settle 패턴)
+      const billing = resolveTokenBilling(data, totalPromptChars, '[chat]');
+      if (billing) {
+        data._billing = {
+          ...billing,
+          model,
+          byok: isUsingPersonalKey || undefined,
+        };
       }
 
       return NextResponse.json(data);
@@ -250,14 +149,13 @@ export async function POST(request: NextRequest) {
     // 로컬 상수로 캡처 (non-null assertion 방지)
     const billingUserId = userId;
     const billingByok = isUsingPersonalKey;
-    const billingIdempotencyKey = typeof reqIdempotencyKey === 'string' ? reqIdempotencyKey : undefined;
 
     const outputStream = new ReadableStream({
       async pull(controller) {
         try {
           const { done, value } = await upstreamReader.read();
           if (done) {
-            // 스트림 종료 → billing 처리 후 billing SSE 이벤트 추가
+            // 스트림 종료 → 토큰 정보만 billing SSE 이벤트로 전송
             if (billingUserId && billingUserId !== 'anonymous') {
               try {
                 let promptTokens: number;
@@ -272,34 +170,12 @@ export async function POST(request: NextRequest) {
                   console.warn(`[chat] 스트리밍 usage 누락, 추정값 사용: prompt~${promptTokens}, completion~${completionTokens}`);
                 }
 
-                let billingEvent: Record<string, unknown>;
-
-                if (billingByok) {
-                  // BYOK: 차감 스킵
-                  billingEvent = {
-                    prompt_tokens: promptTokens,
-                    completion_tokens: completionTokens,
-                    model,
-                    credits_deducted: 0,
-                    balance_after: null,
-                    insufficient_balance: false,
-                    byok: true,
-                  };
-                } else {
-                  const { deductResult, insufficientBalance } = await deductForTokens(
-                    promptTokens, completionTokens,
-                    model, billingUserId, accessToken, dynamicModelsPromise, '[chat]',
-                    billingIdempotencyKey,
-                  );
-                  billingEvent = {
-                    prompt_tokens: promptTokens,
-                    completion_tokens: completionTokens,
-                    model,
-                    credits_deducted: deductResult?.amount_deducted ?? 0,
-                    balance_after: deductResult?.balance_after ?? null,
-                    insufficient_balance: insufficientBalance,
-                  };
-                }
+                const billingEvent: Record<string, unknown> = {
+                  prompt_tokens: promptTokens,
+                  completion_tokens: completionTokens,
+                  model,
+                  byok: billingByok || undefined,
+                };
 
                 const sseEvent = `event: billing\ndata: ${JSON.stringify(billingEvent)}\n\n`;
                 controller.enqueue(new TextEncoder().encode(sseEvent));

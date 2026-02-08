@@ -340,10 +340,10 @@ export function FileUpload() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        await ensureSufficientBalance(subscription, authEnabled);
+        const estimate = subscription ? estimateUsageLocally(combinedText.length, currentModel, allModels) : null;
+        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
-        if (subscription) {
-          const estimate = estimateUsageLocally(combinedText.length, currentModel, allModels);
+        if (subscription && estimate) {
           const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
@@ -453,21 +453,20 @@ export function FileUpload() {
       // 남은 청크에 대해서만 잔액 확인 + hold (billing 활성 시)
       let holdToken: string | null = null;
       if (!isUsingPersonalKey) {
-        await ensureSufficientBalance(subscription, authEnabled);
+        const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
+        const estimate = subscription && remainingChunks > 0
+          ? estimateUsageLocally(remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP), resumeModel, allModels)
+          : null;
+        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
-        if (subscription) {
-          const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
-          if (remainingChunks > 0) {
-            const chunkCharCount = remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP);
-            const estimate = estimateUsageLocally(chunkCharCount, resumeModel, allModels);
-            const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
-            if (!holdResult.ok) {
-              throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
-            }
-            holdToken = holdResult.data.hold_token;
-            if (holdResult.data.balance_after !== null) {
-              updateCreditBalance(holdResult.data.balance_after);
-            }
+        if (subscription && estimate) {
+          const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
           }
         }
       }
@@ -604,10 +603,10 @@ export function FileUpload() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        await ensureSufficientBalance(subscription, authEnabled);
+        const estimate = subscription ? estimateUsageLocally(text.length, currentModel, allModels) : null;
+        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
-        if (subscription) {
-          const estimate = estimateUsageLocally(text.length, currentModel, allModels);
+        if (subscription && estimate) {
           const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');

@@ -4,7 +4,7 @@
 
 import { X, FileCheck, Key } from 'lucide-react';
 import { useStore, useCreditBalance, useModels, useByokEnabled } from '../store';
-import { calculateCreditsFromChunks } from '../services/billing';
+import { calculateSessionCreditsFromChunks } from '../services/billing';
 import { hasApiKey } from '../services/extraction';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 import { ModalOverlay } from './ModalOverlay';
@@ -24,8 +24,8 @@ export function UsageSummary() {
   const totalChunks = currentUsage.chunks.length;
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
 
-  // 실제 토큰에서 크레딧 역산 (청크별 개별 모델 반영, 동적 가격 사용)
-  const creditsUsed = calculateCreditsFromChunks(currentUsage.chunks, allModels);
+  // 세션 수준 크레딧 계산 (서버 settle과 동일 수식 — 합산 후 1회 올림)
+  const creditsUsed = calculateSessionCreditsFromChunks(currentUsage.chunks, allModels);
 
   return (
     <ModalOverlay onClose={() => setShowUsageSummary(false)} maxWidth="md">
@@ -55,7 +55,7 @@ export function UsageSummary() {
             ) : creditsUsed > 0 ? (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">사용 크레딧</span>
-                <span className="text-base font-bold text-blue-600">~{creditsUsed.toLocaleString()} 크레딧</span>
+                <span className="text-base font-bold text-blue-600">{creditsUsed.toLocaleString()} 크레딧</span>
               </div>
             ) : null}
             <div className="flex justify-between text-sm">

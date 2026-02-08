@@ -14,6 +14,7 @@ import type {
   SceneSnapshot,
 } from '../types';
 import { DEFAULT_MODEL } from '../types';
+import type { ChunkBilling } from './extraction/types';
 
 // ==================== 상수 ====================
 
@@ -29,6 +30,7 @@ interface ValidationContext {
   apiKey?: string;  // 옵셔널 - 서버에서 환경변수 사용 가능
   model?: string;
   onProgress?: (fileId: string, status: ValidationStatus) => void;
+  onChunkBilling?: (chunkIndex: number, billing: ChunkBilling) => void;
 }
 
 interface FileGraphData {
@@ -268,6 +270,7 @@ ${scenesStr || '없음'}`;
 interface ChunkValidationResult {
   issues: ValidationIssue[];
   summary: string;
+  billing: ChunkBilling | null;
 }
 
 /**
@@ -311,13 +314,19 @@ ${currentContext}
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
+    // _billing 파싱 (Phase 4: 검증 과금 추적)
+    const rawBilling = data._billing;
+    const billing: ChunkBilling | null = rawBilling
+      ? { prompt_tokens: rawBilling.prompt_tokens || 0, completion_tokens: rawBilling.completion_tokens || 0, model: rawBilling.model || model }
+      : null;
+
     console.log(`[validation] 청크 ${chunkIndex} LLM 응답:`, content);
 
     // JSON 파싱
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.warn(`[validation] 청크 ${chunkIndex} JSON 파싱 실패 - JSON 없음:`, content);
-      return { issues: [], summary: '검증 결과를 파싱할 수 없습니다.' };
+      return { issues: [], summary: '검증 결과를 파싱할 수 없습니다.', billing };
     }
 
     console.log(`[validation] 청크 ${chunkIndex} JSON 매칭:`, jsonMatch[0]);
@@ -340,10 +349,11 @@ ${currentContext}
     return {
       issues,
       summary: parsed.summary || '검토 요약 없음',
+      billing,
     };
   } catch (err: unknown) {
     console.error(`[validation] 청크 ${chunkIndex} 검증 실패:`, err);
-    return { issues: [], summary: '검증 중 오류 발생' };
+    return { issues: [], summary: '검증 중 오류 발생', billing: null };
   }
 }
 
@@ -351,6 +361,7 @@ ${currentContext}
 interface LLMValidationResult {
   issues: ValidationIssue[];
   summary: string;
+  billings: ChunkBilling[];
 }
 
 /**
@@ -368,6 +379,7 @@ async function validateWithLLM(
   // 각 청크 검증 (순차 실행)
   const allIssues: ValidationIssue[] = [];
   const allSummaries: string[] = [];
+  const allBillings: ChunkBilling[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -385,6 +397,9 @@ async function validateWithLLM(
     allIssues.push(...result.issues);
     if (result.summary) {
       allSummaries.push(result.summary);
+    }
+    if (result.billing) {
+      allBillings.push(result.billing);
     }
   }
 
@@ -404,7 +419,7 @@ async function validateWithLLM(
   }
   console.log(`[validation] ${currentFile.fileName} 요약:`, summary);
 
-  return { issues: uniqueIssues, summary };
+  return { issues: uniqueIssues, summary, billings: allBillings };
 }
 
 // ==================== 공개 API ====================
@@ -466,12 +481,17 @@ export async function validateFile(
 
   // LLM 검증
   const model = context.model || DEFAULT_MODEL;
-  const { issues, summary } = await validateWithLLM(
+  const { issues, summary, billings } = await validateWithLLM(
     currentData,
     previousData,
     context.apiKey,
     model
   );
+
+  // billing 콜백 호출 (hold/settle 패턴 지원)
+  for (let i = 0; i < billings.length; i++) {
+    context.onChunkBilling?.(i, billings[i]);
+  }
 
   // 이슈가 하나라도 있으면 failed (error든 warning이든)
   const status: ValidationStatus = issues.length > 0 ? 'failed' : 'passed';

@@ -8,7 +8,7 @@ import type {
 } from '../../types';
 import type {
   ChunkExtractedData, MergedExtraction, MergedEntity, MergedRelationship,
-  MergedScene, MergedChapter, MergedTimelinePoint,
+  MergedScene, MergedChapter, MergedTimelinePoint, ChunkBilling,
 } from './types';
 import { getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_MERGE_REVIEW_PROMPT } from './prompts';
@@ -296,13 +296,13 @@ export async function reviewEntityMerges(
   merged: MergedExtraction,
   model?: string,
   apiKeyOverride?: string,
-): Promise<MergedExtraction> {
+): Promise<{ result: MergedExtraction; billing: ChunkBilling | null }> {
   const { entities } = merged;
 
   // 엔티티가 3개 이하면 검토 불필요
   if (entities.length <= 3) {
     console.log('[extraction] 엔티티 3개 이하, 병합 검토 스킵');
-    return merged;
+    return { result: merged, billing: null };
   }
 
   // 엔티티 목록을 텍스트로 변환
@@ -329,10 +329,16 @@ export async function reviewEntityMerges(
 
     if (!response.ok) {
       console.warn('[extraction] 병합 검토 API 오류, 스킵');
-      return merged;
+      return { result: merged, billing: null };
     }
 
     const data = await response.json();
+    const mergerBilling: ChunkBilling | null = data._billing ? {
+      prompt_tokens: data._billing.prompt_tokens ?? 0,
+      completion_tokens: data._billing.completion_tokens ?? 0,
+      model: data._billing.model ?? 'google/gemini-2.0-flash-001',
+      byok: data._billing.byok,
+    } : null;
     const content = data.choices?.[0]?.message?.content || '';
 
     let suggestions: MergeSuggestion[] = [];
@@ -344,12 +350,12 @@ export async function reviewEntityMerges(
       }
     } catch {
       console.warn('[extraction] 병합 검토 JSON 파싱 실패, 스킵');
-      return merged;
+      return { result: merged, billing: mergerBilling };
     }
 
     if (suggestions.length === 0) {
       console.log('[extraction] LLM 병합 검토: 병합할 것 없음');
-      return merged;
+      return { result: merged, billing: mergerBilling };
     }
 
     // 병합 적용
@@ -408,13 +414,16 @@ export async function reviewEntityMerges(
     console.log(`[extraction] LLM 병합 검토 완료: ${entities.length} → ${newEntities.length}개 엔티티`);
 
     return {
-      ...merged,
-      entities: newEntities,
-      relationships: filteredRelationships,
+      result: {
+        ...merged,
+        entities: newEntities,
+        relationships: filteredRelationships,
+      },
+      billing: mergerBilling,
     };
   } catch (err: unknown) {
     console.warn('[extraction] 병합 검토 오류, 스킵:', err);
-    return merged;
+    return { result: merged, billing: null };
   }
 }
 

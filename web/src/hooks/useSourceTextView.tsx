@@ -3,9 +3,11 @@
  */
 
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { useStore, useIsValidating, useValidatingFileId } from '../store';
+import { useStore, useIsValidating, useValidatingFileId, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile } from '../services/validation';
+import { hasApiKey } from '../services/extraction';
+import { ensureSufficientBalance, holdCredits, finalizeHold, estimateValidationCost } from '../services/billing';
 import { useAddFileAnalysis } from './useAddFileAnalysis';
 import {
   getScenesByFile,
@@ -13,7 +15,7 @@ import {
   buildMoveFileGraph,
   buildEditFileGraph,
 } from '../services/knowledgeGraphUtils';
-import type { NovelKnowledgeGraph, FileValidationResult } from '../types';
+import type { NovelKnowledgeGraph, FileValidationResult, ChunkUsage } from '../types';
 
 export function useSourceTextView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
@@ -23,6 +25,12 @@ export function useSourceTextView() {
   const validatingFileId = useValidatingFileId();
   const setIsValidating = useStore((s) => s.setIsValidating);
   const setValidatingFileId = useStore((s) => s.setValidatingFileId);
+  const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const loadSubscription = useStore((s) => s.loadSubscription);
+  const subscription = useBillingSubscription();
+  const allModels = useModels();
+  const byokEnabled = useByokEnabled();
+  const authEnabled = useAuthEnabled();
 
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,7 +168,7 @@ export function useSourceTextView() {
     }
   }, [knowledgeGraph, currentDataId, setKnowledgeGraph]);
 
-  // 파일 검증 핸들러
+  // 파일 검증 핸들러 (hold/settle 패턴)
   const handleValidateFile = async (fileId: string) => {
     if (!knowledgeGraph || !currentDataId || isValidating) return;
 
@@ -168,10 +176,46 @@ export function useSourceTextView() {
     setValidatingFileId(fileId);
 
     try {
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const validationModel = knowledgeGraph.metadata.model;
+
+      // 단일 파일 검증: LLM 호출 1회 (첫 파일은 자동 통과 — validateFile 내부 처리)
+      let holdToken: string | null = null;
+      if (!isUsingPersonalKey) {
+        const estimatedCredits = estimateValidationCost(2, validationModel, allModels); // 최소 1회 호출
+        await ensureSufficientBalance(subscription, authEnabled, estimatedCredits);
+
+        if (subscription && estimatedCredits > 0) {
+          const holdResult = await holdCredits(estimatedCredits, validationModel || 'validation', 1);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
+          }
+        }
+      }
+
+      // billing 수집
+      const chunkUsages: ChunkUsage[] = [];
+
       const result = await validateFile(knowledgeGraph, fileId, {
         apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
-        model: knowledgeGraph.metadata.model,
+        model: validationModel,
+        onChunkBilling: (chunkIndex, billing) => {
+          chunkUsages.push({
+            chunkIndex,
+            promptTokens: billing.prompt_tokens,
+            completionTokens: billing.completion_tokens,
+            model: billing.model,
+          });
+        },
       });
+
+      if (holdToken) {
+        await finalizeHold(holdToken, chunkUsages, `파일 검증: ${fileId}`, updateCreditBalance);
+      }
 
       await saveValidationResult(fileId, result);
 
@@ -185,10 +229,11 @@ export function useSourceTextView() {
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
+      loadSubscription();
     }
   };
 
-  // 전체/이어서 검증 핸들러
+  // 전체/이어서 검증 핸들러 (hold/settle 패턴)
   const handleValidateAll = async (continueFromLast: boolean = false) => {
     if (!knowledgeGraph || !currentDataId || isValidating || isValidatingAll) return;
 
@@ -199,6 +244,9 @@ export function useSourceTextView() {
     abortValidationRef.current = false;
 
     try {
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const validationModel = knowledgeGraph.metadata.model;
+
       let startIndex = 1;
       if (continueFromLast) {
         for (let i = 1; i < files.length; i++) {
@@ -210,24 +258,69 @@ export function useSourceTextView() {
         }
       }
 
-      for (let i = startIndex; i < files.length; i++) {
-        if (abortValidationRef.current) break;
+      const remainingFiles = files.length - startIndex;
 
-        const file = files[i];
-        setValidatingFileId(file.id);
-        setIsValidating(true);
+      // 전체 검증 세션에 대해 hold
+      let holdToken: string | null = null;
+      const allChunkUsages: ChunkUsage[] = [];
 
-        const result = await validateFile(knowledgeGraph, file.id, {
-          apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
-          model: knowledgeGraph.metadata.model,
-        });
+      if (!isUsingPersonalKey) {
+        // fileCount = remainingFiles + 1 (startIndex 이전 파일은 이미 통과)
+        const estimatedCredits = estimateValidationCost(remainingFiles + 1, validationModel, allModels);
+        await ensureSufficientBalance(subscription, authEnabled, estimatedCredits);
 
-        await saveValidationResult(file.id, result);
-
-        if (result.status === 'failed') {
-          setExpandedIssues(prev => new Set([...prev, file.id]));
-          break;
+        if (subscription && estimatedCredits > 0) {
+          const holdResult = await holdCredits(estimatedCredits, validationModel || 'validation', remainingFiles);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
+          }
         }
+      }
+
+      let validationCompleted = false;
+      try {
+        for (let i = startIndex; i < files.length; i++) {
+          if (abortValidationRef.current) break;
+
+          const file = files[i];
+          setValidatingFileId(file.id);
+          setIsValidating(true);
+
+          const result = await validateFile(knowledgeGraph, file.id, {
+            apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
+            model: validationModel,
+            onChunkBilling: (chunkIndex, billing) => {
+              allChunkUsages.push({
+                chunkIndex: allChunkUsages.length,
+                promptTokens: billing.prompt_tokens,
+                completionTokens: billing.completion_tokens,
+                model: billing.model,
+              });
+            },
+          });
+
+          await saveValidationResult(file.id, result);
+
+          if (result.status === 'failed') {
+            setExpandedIssues(prev => new Set([...prev, file.id]));
+            break;
+          }
+        }
+        validationCompleted = true;
+      } catch (validationErr: unknown) {
+        if (holdToken) {
+          await finalizeHold(holdToken, allChunkUsages, '전체 검증 중단', updateCreditBalance);
+        }
+        throw validationErr;
+      }
+
+      if (holdToken && validationCompleted) {
+        const desc = abortValidationRef.current ? '전체 검증 취소' : '전체 검증 완료';
+        await finalizeHold(holdToken, allChunkUsages, desc, updateCreditBalance);
       }
     } catch (err: unknown) {
       console.error('[validation] 전체 검증 중 오류:', err);
@@ -235,6 +328,7 @@ export function useSourceTextView() {
       setIsValidating(false);
       setValidatingFileId(null);
       setIsValidatingAll(false);
+      loadSubscription();
     }
   };
 
