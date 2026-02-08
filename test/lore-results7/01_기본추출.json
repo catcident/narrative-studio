@@ -1,0 +1,291 @@
+{
+  "_test": {
+    "file": "01_기본추출",
+    "timestamp": "2026-02-08T16:23:07.038Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "검은 고양이",
+        "category": "character",
+        "aliases": [
+          "까망이"
+        ],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "민수",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "골목",
+        "category": "location",
+        "aliases": [
+          "어두운 골목"
+        ],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "참치캔",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "수진",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "회색 고양이",
+        "category": "character",
+        "aliases": [
+          "잿빛이"
+        ],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "쓰레기통",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "담요",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "우유",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "우산",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      }
+    ],
+    "relationships": 10,
+    "scenes": 2,
+    "mergeSuggestions": [
+      {
+        "keep": "검은 고양이",
+        "merge": "까망이",
+        "reason": "검은 고양이의 별칭이 까망이임"
+      },
+      {
+        "keep": "골목",
+        "merge": "어두운 골목",
+        "reason": "골목의 별칭이 어두운 골목임"
+      },
+      {
+        "keep": "회색 고양이",
+        "merge": "잿빛이",
+        "reason": "회색 고양이의 별칭이 잿빛이임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 12,
+    "mergedLoreCount": 12,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "까망이": "검은 고양이",
+    "어두운 골목": "골목",
+    "잿빛이": "회색 고양이"
+  },
+  "loreEntries": [
+    {
+      "entityName": "검은 고양이",
+      "category": "appearance",
+      "content": "검은 고양이",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민수",
+      "category": "personality",
+      "content": "학교에서 돌아오는 길에 골목을 지나간다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민수",
+      "category": "outfit",
+      "content": "참치캔을 가지고 다닌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민수",
+      "category": "relationship_detail",
+      "content": "고양이 까망이에게 밥을 준다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민수",
+      "category": "personality",
+      "content": "고양이에게 말을 건다.",
+      "quote": "야, 거기 고양이.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "수진",
+      "category": "relationship_detail",
+      "content": "민수의 같은 반 친구",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "수진",
+      "category": "personality",
+      "content": "고양이를 좋아한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "수진",
+      "category": "personality",
+      "content": "민수가 고양이에게 밥 주는 것을 알고 있다.",
+      "quote": "민수야, 너 또 고양이한테 밥 주고 있어?",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민수",
+      "category": "outfit",
+      "content": "우산을 쓰고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "relationship_detail",
+      "content": "새끼 고양이 잿빛이를 데리고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "appearance",
+      "content": "회색 고양이",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "수진",
+      "category": "outfit",
+      "content": "담요와 우유를 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    }
+  ],
+  "scoring": {
+    "total": 93,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (appearance, personality, outfit, relationship_detail)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 6개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "12/12 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "12개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 4,
+    "loreEntryCount": 12,
+    "byEntity": {
+      "검은 고양이": 2,
+      "민수": 5,
+      "수진": 4,
+      "회색 고양이": 1
+    },
+    "byCategory": {
+      "appearance": 2,
+      "personality": 4,
+      "outfit": 3,
+      "relationship_detail": 3
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

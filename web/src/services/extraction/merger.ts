@@ -817,9 +817,13 @@ export function mergeLoreEntries(
 
       // 5. 대명사가 resolve되지 못한 경우에만 필터링
       // (entityNameMapping이나 knownEntity 매칭으로 실제 이름이 되었으면 통과)
+      // 단, LLM A가 "나"를 실제 엔티티로 뽑은 경우(knownEntityNames에 있음) → 필터 안 함
       if (PRONOUN_NAMES.has(entityName.toLowerCase())) {
-        skippedInvalid++;
-        continue;
+        const isActualEntity = knownNamesLower.some(k => k.lower === entityName.toLowerCase());
+        if (!isActualEntity) {
+          skippedInvalid++;
+          continue;
+        }
       }
 
       // 장면 ID: 청크별 로컬 → S-format 매핑

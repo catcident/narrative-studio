@@ -1,0 +1,506 @@
+{
+  "_test": {
+    "file": "L04_세계관설정_테스트",
+    "timestamp": "2026-02-08T16:23:55.651Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "실버리온",
+        "category": "location",
+        "aliases": [
+          "아스트라 왕국"
+        ],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "아스트라 마법 아카데미",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "유라",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "원소학부",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "라미레스 교수",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "마나",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "카이",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "에어커터",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "금지 마법 목록",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "생명 마법",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "정신 지배 마법",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "차원 마법",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      }
+    ],
+    "relationships": 8,
+    "scenes": 4,
+    "mergeSuggestions": [
+      {
+        "keep": "실버리온",
+        "merge": "아스트라 왕국",
+        "reason": "실버리온은 아스트라 왕국의 수도이므로, 아스트라 왕국은 더 넓은 범위의 장소를 지칭하고 실버리온은 더 구체적인 장소를 지칭한다. 따라서 실버리온으로 병합하는 것이 적절하다."
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 41,
+    "mergedLoreCount": 41,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "아스트라 왕국": "실버리온"
+  },
+  "loreEntries": [
+    {
+      "entityName": "실버리온",
+      "category": "lore",
+      "content": "대륙 중앙에 위치한 왕국이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "실버리온",
+      "category": "lore",
+      "content": "아스트라 왕국의 수도로, 마법과 기술이 공존하는 도시이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라 마법 아카데미",
+      "category": "lore",
+      "content": "실버리온 도시 중심에 위치한 300년 역사의 아카데미이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라 마법 아카데미",
+      "category": "lore",
+      "content": "원소학부, 치유학부, 소환학부, 연금학부, 전투학부의 5개 학부로 나뉜다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "유라",
+      "category": "background",
+      "content": "아스트라 마법 아카데미 신입생이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "유라",
+      "category": "lore",
+      "content": "원소학부에 배정되었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "원소학부",
+      "category": "lore",
+      "content": "불, 물, 바람, 땅의 네 원소를 다루는 마법을 가르친다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "유라",
+      "category": "lore",
+      "content": "바람 속성을 주속성으로 부여받았다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라 마법 아카데미",
+      "category": "lore",
+      "content": "캠퍼스 내 마법 결투는 반드시 결투장에서만 허용된다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라 마법 아카데미",
+      "category": "lore",
+      "content": "무허가 마법 사용은 3일 정학이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라 마법 아카데미",
+      "category": "lore",
+      "content": "학년은 1년부터 5년까지 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라 마법 아카데미",
+      "category": "lore",
+      "content": "5년차에 졸업 시험을 통과하면 정식 마법사 자격증이 나온다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "라미레스 교수",
+      "category": "personality",
+      "content": "신입생들에게 환영 인사를 한다.",
+      "quote": "환영합니다, 신입생 여러분.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "라미레스 교수",
+      "category": "ability",
+      "content": "바람 속성의 대마법사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "라미레스 교수",
+      "category": "background",
+      "content": "아카데미에서 40년간 근무한 원로이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "마법",
+      "category": "lore",
+      "content": "마나를 소비하여 발동한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마나",
+      "category": "lore",
+      "content": "모든 생명체에 존재하는 영적 에너지이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법사",
+      "category": "lore",
+      "content": "마나 용량에 따라 1등급에서 9등급으로 나뉜다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법사",
+      "category": "lore",
+      "content": "대부분의 졸업생은 5~7등급 수준이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법 시전",
+      "category": "lore",
+      "content": "집중, 구축, 발동의 세 단계가 필요하다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법 시전",
+      "category": "lore",
+      "content": "집중은 마나를 끌어모으는 단계이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법 시전",
+      "category": "lore",
+      "content": "구축은 마법의 형태를 만드는 단계이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법 시전",
+      "category": "lore",
+      "content": "발동은 마법을 외부로 방출하는 단계이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마법사",
+      "category": "lore",
+      "content": "숙련된 마법사는 세 단계를 동시에 수행할 수 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "에어커터",
+      "category": "lore",
+      "content": "바람 속성의 기본 주문이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "카이",
+      "category": "background",
+      "content": "원소학부 2년차 선배이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "카이",
+      "category": "ability",
+      "content": "불 속성이고, 학년 1등의 천재라 불린다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "카이",
+      "category": "personality",
+      "content": "유라에게 마법 시전에 대한 조언을 해준다.",
+      "quote": "거기, 구축 단계에서 마나를 너무 많이 쓰고 있어.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "카이",
+      "category": "personality",
+      "content": "바람 마법의 본질은 마나 효율이라고 말한다.",
+      "quote": "에어커터는 마나 효율이 핵심이야. 적은 마나로 최대 위력을 끌어내는 게 바람 마법의 본질이지.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "금지 마법",
+      "category": "lore",
+      "content": "왕국법으로 사용이 금지된 마법들이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "금지 마법",
+      "category": "lore",
+      "content": "생명 마법, 정신 지배 마법, 차원 마법 세 종류가 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "생명 마법",
+      "category": "lore",
+      "content": "죽은 자를 되살리는 마법이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "생명 마법",
+      "category": "lore",
+      "content": "부활된 존재는 이성을 잃고 폭주한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "정신 지배 마법",
+      "category": "lore",
+      "content": "타인의 의지를 빼앗는 마법이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "정신 지배 마법",
+      "category": "lore",
+      "content": "200년 전 대전쟁의 원인이었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "차원 마법",
+      "category": "lore",
+      "content": "다른 차원의 문을 여는 마법이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "차원 마법",
+      "category": "lore",
+      "content": "100년 전 마계의 문이 열린 사건 이후 금지되었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "카이",
+      "category": "personality",
+      "content": "마법 자체에 선악은 없다고 생각한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "카이",
+      "category": "personality",
+      "content": "금지 마법은 사용자의 의도와 관계없이 재앙을 부른다고 생각한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "카이",
+      "category": "background",
+      "content": "200년 전 정신 지배 마법을 연구했던 가문 출신이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "카이",
+      "category": "background",
+      "content": "가문의 죄로 귀족 지위를 박탈당한 역사가 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 98,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "3/3 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (background, personality, ability)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 29개, 비인물 엔티티 9개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 8,
+        "max": 10,
+        "detail": "31/41 연결 (미연결: 마법, 마법사, 마법 시전, 금지 마법)"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "41개 (최소 6개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 3,
+    "loreEntryCount": 41,
+    "byEntity": {
+      "실버리온": 2,
+      "아스트라 마법 아카데미": 6,
+      "유라": 3,
+      "원소학부": 1,
+      "라미레스 교수": 3,
+      "마법": 1,
+      "마나": 1,
+      "마법사": 3,
+      "마법 시전": 4,
+      "에어커터": 1,
+      "카이": 8,
+      "금지 마법": 2,
+      "생명 마법": 2,
+      "정신 지배 마법": 2,
+      "차원 마법": 2
+    },
+    "byCategory": {
+      "lore": 29,
+      "background": 5,
+      "personality": 5,
+      "ability": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

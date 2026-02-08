@@ -351,14 +351,13 @@ async function runTest(testFile: string, prompts: ReturnType<typeof loadPrompts>
     knownEntityNames,
   );
 
-  // ─── 결과 분석 ───
+  // ─── 포괄적 결과 분석 + 점수 ───
   console.log(`\n${'─'.repeat(40)}`);
   console.log('결과 분석');
   console.log('─'.repeat(40));
 
   // 엔티티별 로어 엔트리 수
   const byEntity: Record<string, RawLoreEntry[]> = {};
-  // 카테고리별 수
   const byCat: Record<string, number> = {};
   for (const entry of loreEntries) {
     if (!byEntity[entry.entityName]) byEntity[entry.entityName] = [];
@@ -368,59 +367,133 @@ async function runTest(testFile: string, prompts: ReturnType<typeof loadPrompts>
 
   console.log(`\n  총 로어 엔트리: ${loreEntries.length}개`);
   console.log(`  엔티티별:`);
-  for (const [name, entries] of Object.entries(byEntity).sort((a, b) => b[1].length - a[1].length)) {
-    const cats = new Set(entries.map(e => e.category));
-    console.log(`    ${name}: ${entries.length}개 (${[...cats].join(', ')})`);
+  for (const [name, ents] of Object.entries(byEntity).sort((a, b) => b[1].length - a[1].length)) {
+    const cats = new Set(ents.map(e => e.category));
+    console.log(`    ${name}: ${ents.length}개 (${[...cats].join(', ')})`);
   }
   console.log(`  카테고리별:`);
   for (const [cat, count] of Object.entries(byCat).sort((a, b) => b[1] - a[1])) {
     console.log(`    ${cat}: ${count}개`);
   }
 
-  // 장면 매핑 검증
-  const orphanScenes = loreEntries.filter(e => !e.sceneId || e.sceneId.startsWith('S0000'));
-  if (orphanScenes.length > 0) {
-    console.log(`  ⚠ 매핑 안 된 장면: ${orphanScenes.length}개`);
-  }
+  // ─── 점수 평가 (100점 만점) ───
+  const scores: { name: string; score: number; max: number; detail: string }[] = [];
+  const characterEntities = merged.entities.filter(e => e.category === 'character' || e.category === 'creature');
+  const nonCharEntities = merged.entities.filter(e => e.category !== 'character' && e.category !== 'creature');
 
-  // 중복 검사 (같은 엔티티+카테고리에서 유사한 content)
+  // 1. 주인공 커버리지 (20점) — 모든 캐릭터 엔티티에 로어가 있는지
+  const charsWithLore = characterEntities.filter(c => byEntity[c.name]);
+  const charCoverage = characterEntities.length > 0 ? charsWithLore.length / characterEntities.length : 1;
+  const charCoverageScore = Math.round(charCoverage * 20);
+  const missingChars = characterEntities.filter(c => !byEntity[c.name]).map(c => c.name);
+  scores.push({
+    name: '주인공/인물 커버리지',
+    score: charCoverageScore, max: 20,
+    detail: missingChars.length > 0
+      ? `${charsWithLore.length}/${characterEntities.length} 커버 (누락: ${missingChars.join(', ')})`
+      : `${charsWithLore.length}/${characterEntities.length} 전원 커버`,
+  });
+
+  // 2. 카테고리 다양성 (15점) — 인물 로어에 최소 3가지 카테고리가 있는지
+  const charCategories = ['appearance', 'personality', 'background', 'ability', 'motivation', 'outfit', 'relationship_detail'];
+  const charCategoriesUsed = new Set(loreEntries.filter(e => charCategories.includes(e.category)).map(e => e.category));
+  const catDiversityRaw = Math.min(charCategoriesUsed.size / 3, 1);
+  const catDiversityScore = Math.round(catDiversityRaw * 15);
+  scores.push({
+    name: '카테고리 다양성',
+    score: catDiversityScore, max: 15,
+    detail: `${charCategoriesUsed.size}종 사용 (${[...charCategoriesUsed].join(', ')})`,
+  });
+
+  // 3. 중복 없음 (15점)
   let dupCount = 0;
-  for (const [name, entries] of Object.entries(byEntity)) {
-    for (let i = 0; i < entries.length; i++) {
-      for (let j = i + 1; j < entries.length; j++) {
-        if (entries[i].category === entries[j].category) {
-          // 간단한 겹침 체크
-          const wordsI = new Set((entries[i].content.match(/[가-힣]{2,}/g) || []).map(w => w.toLowerCase()));
-          const wordsJ = new Set((entries[j].content.match(/[가-힣]{2,}/g) || []).map(w => w.toLowerCase()));
+  for (const [, ents] of Object.entries(byEntity)) {
+    for (let i = 0; i < ents.length; i++) {
+      for (let j = i + 1; j < ents.length; j++) {
+        if (ents[i].category === ents[j].category) {
+          const wordsI = new Set((ents[i].content.match(/[가-힣]{2,}/g) || []).map(w => w.toLowerCase()));
+          const wordsJ = new Set((ents[j].content.match(/[가-힣]{2,}/g) || []).map(w => w.toLowerCase()));
           if (wordsI.size > 0 && wordsJ.size > 0) {
             let overlap = 0;
             for (const w of wordsI) { if (wordsJ.has(w)) overlap++; }
-            const similarity = overlap / Math.min(wordsI.size, wordsJ.size);
-            if (similarity >= 0.7) {
+            if (overlap / Math.min(wordsI.size, wordsJ.size) >= 0.7) {
               dupCount++;
-              console.log(`  ⚠ 유사 중복: [${name}/${entries[i].category}]`);
-              console.log(`    A: "${entries[i].content.slice(0, 60)}"`);
-              console.log(`    B: "${entries[j].content.slice(0, 60)}"`);
+              console.log(`  ⚠ 유사 중복: [${ents[i].entity_name}/${ents[i].category}]`);
+              console.log(`    A: "${ents[i].content.slice(0, 60)}"`);
+              console.log(`    B: "${ents[j].content.slice(0, 60)}"`);
             }
           }
         }
       }
     }
   }
-  if (dupCount === 0) {
-    console.log(`  ✓ 유사 중복 없음`);
-  }
+  const dupScore = dupCount === 0 ? 15 : Math.max(0, 15 - dupCount * 3);
+  scores.push({ name: '중복 없음', score: dupScore, max: 15, detail: dupCount === 0 ? '✓ 중복 0건' : `⚠ ${dupCount}건 중복` });
 
-  // 대명사 체크 (resolve 안 된 "나" 등)
-  const pronounEntries = loreEntries.filter(e => ['나', '저', '화자', '주인공'].includes(e.entityName));
-  if (pronounEntries.length > 0) {
-    console.log(`  ⚠ 대명사 resolve 실패: ${pronounEntries.length}개`);
-    for (const e of pronounEntries.slice(0, 3)) {
-      console.log(`    "${e.entityName}": ${e.content.slice(0, 50)}`);
-    }
+  // 4. 장면 매핑 (10점)
+  const orphanScenes = loreEntries.filter(e => !e.sceneId || e.sceneId === 'S0000');
+  const sceneMappingRatio = loreEntries.length > 0 ? (loreEntries.length - orphanScenes.length) / loreEntries.length : 1;
+  const sceneScore = Math.round(sceneMappingRatio * 10);
+  scores.push({ name: '장면 매핑', score: sceneScore, max: 10, detail: orphanScenes.length > 0 ? `⚠ ${orphanScenes.length}개 미매핑` : '✓ 전체 매핑 성공' });
+
+  // 5. 세계관/설정 lore (10점) — 장소/아이템/세계관 lore가 있는지
+  const loreCat = byCat['lore'] || 0;
+  const hasWorldBuilding = nonCharEntities.length > 0;  // 텍스트에 장소/아이템이 있는지
+  let worldScore: number;
+  if (!hasWorldBuilding) {
+    worldScore = loreCat > 0 ? 10 : 7;  // 세계관 없는 텍스트면 감점 안 함
   } else {
-    console.log(`  ✓ 대명사 모두 resolve됨`);
+    worldScore = loreCat >= 3 ? 10 : loreCat >= 1 ? 7 : 3;
   }
+  scores.push({ name: '세계관/lore', score: worldScore, max: 10, detail: `lore ${loreCat}개, 비인물 엔티티 ${nonCharEntities.length}개` });
+
+  // 6. 대명사 resolve (10점)
+  const pronounEntries = loreEntries.filter(e => {
+    const PRONOUNS = ['나', '저', '화자', '주인공', '그', '그녀'];
+    // "나"가 실제 LLM A 엔티티 이름이면 대명사 미처리가 아님
+    if (PRONOUNS.includes(e.entityName)) {
+      const isActualEntity = characterEntities.some(c => c.name === e.entityName);
+      return !isActualEntity;
+    }
+    return false;
+  });
+  const pronounScore = pronounEntries.length === 0 ? 10 : Math.max(0, 10 - pronounEntries.length * 3);
+  scores.push({ name: '대명사 resolve', score: pronounScore, max: 10, detail: pronounEntries.length === 0 ? '✓ 전체 resolve' : `⚠ ${pronounEntries.length}개 미처리` });
+
+  // 7. 엔트리-엔티티 연결성 (10점) — 로어 엔트리의 entityName이 LLM A 엔티티에 있는지
+  const allEntityNames = new Set(merged.entities.map(e => e.name));
+  const connectedEntries = loreEntries.filter(e => allEntityNames.has(e.entityName));
+  const connectionRatio = loreEntries.length > 0 ? connectedEntries.length / loreEntries.length : 1;
+  const connectionScore = Math.round(connectionRatio * 10);
+  const disconnected = loreEntries.filter(e => !allEntityNames.has(e.entityName));
+  const disconnectedNames = [...new Set(disconnected.map(e => e.entityName))];
+  scores.push({
+    name: '엔트리-엔티티 연결',
+    score: connectionScore, max: 10,
+    detail: disconnectedNames.length > 0
+      ? `${connectedEntries.length}/${loreEntries.length} 연결 (미연결: ${disconnectedNames.join(', ')})`
+      : `${connectedEntries.length}/${loreEntries.length} 전체 연결`,
+  });
+
+  // 8. 볼륨 (10점) — 엔트리 수가 적절한지 (너무 적으면 감점)
+  const expectedMin = Math.max(characterEntities.length * 2, 5);
+  const volumeRatio = Math.min(loreEntries.length / expectedMin, 1);
+  const volumeScore = Math.round(volumeRatio * 10);
+  scores.push({ name: '충분한 추출량', score: volumeScore, max: 10, detail: `${loreEntries.length}개 (최소 ${expectedMin}개 기대)` });
+
+  // 총점
+  const totalScore = scores.reduce((a, b) => a + b.score, 0);
+  const totalMax = scores.reduce((a, b) => a + b.max, 0);
+
+  console.log(`\n  ${'─'.repeat(40)}`);
+  console.log(`  📊 점수 평가 (${totalScore}/${totalMax})`);
+  console.log(`  ${'─'.repeat(40)}`);
+  for (const s of scores) {
+    const bar = s.score === s.max ? '✓' : s.score >= s.max * 0.7 ? '△' : '✗';
+    console.log(`  ${bar} ${s.name}: ${s.score}/${s.max} — ${s.detail}`);
+  }
+  const grade = totalScore >= 90 ? 'A+' : totalScore >= 85 ? 'A' : totalScore >= 80 ? 'B+' : totalScore >= 70 ? 'B' : totalScore >= 60 ? 'C' : 'D';
+  console.log(`\n  🏆 최종 등급: ${grade} (${totalScore}점)`);
 
   // 결과 저장
   const result = {
@@ -444,9 +517,15 @@ async function runTest(testFile: string, prompts: ReturnType<typeof loadPrompts>
       quote: e.quote || null,
       sceneId: e.sceneId,
     })),
+    scoring: {
+      total: totalScore,
+      max: totalMax,
+      grade,
+      items: scores.map(s => ({ name: s.name, score: s.score, max: s.max, detail: s.detail })),
+    },
     summary: {
       entityCount: merged.entities.length,
-      characterCount: merged.entities.filter(e => e.category === 'character').length,
+      characterCount: characterEntities.length,
       loreEntryCount: loreEntries.length,
       byEntity: Object.fromEntries(Object.entries(byEntity).map(([k, v]) => [k, v.length])),
       byCategory: byCat,
@@ -507,12 +586,21 @@ async function main() {
     }
   }
 
-  // 전체 요약
+  // 전체 요약 + 점수
   console.log(`\n${'='.repeat(60)}\n전체 결과\n${'='.repeat(60)}`);
+  let totalAll = 0, countAll = 0;
   for (const [n, r] of Object.entries(results)) {
     if ('error' in r) { console.log(`  ${n}: ❌ ${r.error}`); continue; }
+    const sc = (r as Record<string, unknown>).scoring as { total: number; grade: string } | undefined;
+    const grade = sc ? `${sc.grade} (${sc.total}점)` : '?';
     const s = r.summary as Record<string, unknown>;
-    console.log(`  ${n}: 엔티티 ${s.entityCount}, 로어 ${s.loreEntryCount}개, 중복 ${s.duplicateCount}, 대명사미처리 ${s.pronounUnresolved}`);
+    console.log(`  ${n}: ${grade} | 엔티티 ${s.entityCount}, 로어 ${s.loreEntryCount}개, 중복 ${s.duplicateCount}`);
+    if (sc) { totalAll += sc.total; countAll++; }
+  }
+  if (countAll > 0) {
+    const avg = Math.round(totalAll / countAll);
+    const avgGrade = avg >= 90 ? 'A+' : avg >= 85 ? 'A' : avg >= 80 ? 'B+' : avg >= 70 ? 'B' : avg >= 60 ? 'C' : 'D';
+    console.log(`\n  📊 전체 평균: ${avgGrade} (${avg}점/${countAll}개 테스트)`);
   }
 }
 

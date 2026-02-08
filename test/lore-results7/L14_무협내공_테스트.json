@@ -1,0 +1,477 @@
+{
+  "_test": {
+    "file": "L14_무협내공_테스트",
+    "timestamp": "2026-02-08T16:24:42.962Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "서연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "청풍검파",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "소청하",
+        "category": "character",
+        "aliases": [
+          "백운검 소청하"
+        ],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "진우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "청풍십이검",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "흑사문",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "독고진",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "무림맹",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "곽상현",
+        "category": "character",
+        "aliases": [
+          "철검무적 곽상현"
+        ],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "사패",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "청운산",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "산문",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      }
+    ],
+    "relationships": 11,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "소청하",
+        "merge": "백운검 소청하",
+        "reason": "소청하의 별칭"
+      },
+      {
+        "keep": "곽상현",
+        "merge": "철검무적 곽상현",
+        "reason": "곽상현의 별칭"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 42,
+    "mergedLoreCount": 36,
+    "deduped": 6
+  },
+  "entityNameMapping": {
+    "백운검 소청하": "소청하",
+    "철검무적 곽상현": "곽상현"
+  },
+  "loreEntries": [
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "무림 오대 문파 중 하나이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "300년의 역사를 자랑한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "검술과 경공에 특화된 문파이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "본거지는 구름 위에 자리잡고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "'구름 위의 검객'이라는 별호를 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "서연",
+      "category": "background",
+      "content": "평범한 농가의 딸이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "서연",
+      "category": "ability",
+      "content": "타고난 뼈대가 무공을 익히기에 적합하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소청하",
+      "category": "appearance",
+      "content": "머리가 이미 백발이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소청하",
+      "category": "appearance",
+      "content": "피부는 팽팽하고 눈빛은 청년 같다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소청하",
+      "category": "ability",
+      "content": "내공은 갑자 60년(120년) 수준이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소청하",
+      "category": "background",
+      "content": "청풍검파 47대 장문인이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소청하",
+      "category": "background",
+      "content": "검성이라 불리는 당대 최고의 검객이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소청하",
+      "category": "personality",
+      "content": "내공이 깊은 무인은 노화가 느리다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "제자 등급은 외문 제자, 내문 제자, 진전 제자 세 단계이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "외문 제자는 기초 무공만 배울 수 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청풍검파",
+      "category": "lore",
+      "content": "내문 제자가 되어야 청풍검법을 전수받는다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "진우",
+      "category": "background",
+      "content": "내문 제자로, 입문 5년차이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "진우",
+      "category": "ability",
+      "content": "청풍검법 삼십육 초식 중 이십사 초식까지 익힌 실력자이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "기",
+      "category": "lore",
+      "content": "인체의 경락을 따라 흐르는 에너지이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "경락",
+      "category": "lore",
+      "content": "12정경과 기경팔맥으로 이루어져 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "내공",
+      "category": "lore",
+      "content": "경락을 통해 기를 축적하고 운용하는 능력이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서연",
+      "category": "ability",
+      "content": "한 달간 수련한 끝에 기초 내공의 첫 관문을 통과했다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서연",
+      "category": "ability",
+      "content": "단전에 기를 모으는 축기 단계를 달성했다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "청풍십이검",
+      "category": "lore",
+      "content": "청풍검법 기초이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "청풍십이검",
+      "category": "lore",
+      "content": "바람처럼 빠르고 가벼운 검술로, 속도와 정확성이 핵심이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "청풍십이검",
+      "category": "lore",
+      "content": "검 끝에 내공을 실어 바람을 일으키는 것이 궁극의 경지이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "독고진",
+      "category": "background",
+      "content": "사패의 일원인 흑사문의 문주이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "독고진",
+      "category": "ability",
+      "content": "독공의 달인이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "독고진",
+      "category": "appearance",
+      "content": "독 때문에 생긴 검은 반점이 얼굴에 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "독고진",
+      "category": "appearance",
+      "content": "왼손의 손톱은 보랏빛으로 변해 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "무림맹",
+      "category": "lore",
+      "content": "정도 문파의 연합 조직이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "곽상현",
+      "category": "background",
+      "content": "철검무적으로, 무림맹의 맹주이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "사패",
+      "category": "lore",
+      "content": "무림맹에 속하지 않은 네 개의 세력이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "사패",
+      "category": "lore",
+      "content": "정사 대립의 역사가 200년 넘었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "독고진",
+      "category": "personality",
+      "content": "야망이 가득하지만, 동시에 깊은 피로감도 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "독고진",
+      "category": "ability",
+      "content": "독은 공기 중에 퍼져 반경 50보 내의 모든 생명을 마비시킨다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 99,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "5/5 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (background, ability, appearance, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 17개, 비인물 엔티티 7개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 9,
+        "max": 10,
+        "detail": "33/36 연결 (미연결: 기, 경락, 내공)"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "36개 (최소 10개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 5,
+    "loreEntryCount": 36,
+    "byEntity": {
+      "청풍검파": 8,
+      "서연": 4,
+      "소청하": 6,
+      "진우": 2,
+      "기": 1,
+      "경락": 1,
+      "내공": 1,
+      "청풍십이검": 3,
+      "독고진": 6,
+      "무림맹": 1,
+      "곽상현": 1,
+      "사패": 2
+    },
+    "byCategory": {
+      "lore": 17,
+      "background": 6,
+      "ability": 7,
+      "appearance": 4,
+      "personality": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

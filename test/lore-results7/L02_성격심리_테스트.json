@@ -1,0 +1,317 @@
+{
+  "_test": {
+    "file": "L02_성격심리_테스트",
+    "timestamp": "2026-02-08T16:23:26.870Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "현우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "소연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "태민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "교수님",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "단체 채팅방",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "발표 자료",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      }
+    ],
+    "relationships": 10,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 24,
+    "mergedLoreCount": 24,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "완벽주의자 성격으로 발표 자료에 오타 하나도 용납하지 않는다.",
+      "quote": "다시 해.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "자기 기준을 절대 낮추지 않는다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "갈등을 극도로 싫어한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "소심한 성격 뒤에 강한 책임감이 숨어 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소연",
+      "category": "motivation",
+      "content": "맡은 일은 밤을 새워서라도 끝내려고 한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "팀의 분위기 메이커이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "어떤 상황에서도 웃음을 잃지 않으려 노력한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "사람들 사이에서 자연스럽게 중재 역할을 한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "낙천적이지만 때로는 너무 가볍다는 소리를 듣기도 한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "현우",
+      "category": "motivation",
+      "content": "교수님한테 A를 받으려고 한다.",
+      "quote": "농담이 아니야. 이거 교수님한테 A 받으려면 제대로 해야 해.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "다른 사람에게 엄격하지만 자신에게는 더 가혹하다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "현우",
+      "category": "motivation",
+      "content": "잠을 줄여가며 일한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "비판을 개인적인 공격으로 받아들이는 경향이 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "자존감이 낮은 편이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "한 번 실수하면 며칠이고 자책한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "남들의 감정을 떠안느라 정작 자신의 감정은 돌보지 못한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "혼자 있는 밤에는 종종 무기력에 빠진다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "감정 표현이 서툴다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "현우",
+      "category": "background",
+      "content": "어릴 때부터 아버지의 엄격한 교육 아래 자랐다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "감정을 드러내는 것을 약함으로 여긴다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "갈등이 해소되면 금방 마음을 푼다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "한 번 용서하면 과거의 일은 완전히 잊어버리는 성격이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "태민",
+      "category": "motivation",
+      "content": "항상 남들을 웃게 해야 한다는 압박감을 느낀다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "밝은 웃음 뒤에는 깊은 외로움이 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 88,
+    "max": 100,
+    "grade": "A",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 15,
+        "max": 20,
+        "detail": "3/4 커버 (누락: 교수님)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (personality, motivation, background)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 2개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "24/24 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "24개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 6,
+    "characterCount": 4,
+    "loreEntryCount": 24,
+    "byEntity": {
+      "현우": 8,
+      "소연": 8,
+      "태민": 8
+    },
+    "byCategory": {
+      "personality": 19,
+      "motivation": 4,
+      "background": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

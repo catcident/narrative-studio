@@ -1,0 +1,274 @@
+{
+  "_test": {
+    "file": "L15_주인공누락_테스트",
+    "timestamp": "2026-02-08T16:24:54.581Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "나",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "골목",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "쓰레기통",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "회색 고양이",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "참치",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "검은 고양이",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "쥐",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "파란 지붕 밑",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "얼룩 고양이",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "생선",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 14,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 19,
+    "mergedLoreCount": 13,
+    "deduped": 6
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "주인공 고양이",
+      "category": "background",
+      "content": "골목의 차가운 바닥에서 태어났다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "주인공 고양이",
+      "category": "background",
+      "content": "어미의 얼굴을 기억하지 못한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "주인공 고양이",
+      "category": "background",
+      "content": "매일 쓰레기통을 뒤지며 생활한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "주인공 고양이",
+      "category": "personality",
+      "content": "싸움을 싫어한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "appearance",
+      "content": "주인공 고양이보다 조금 작고 털이 짧다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "personality",
+      "content": "눈빛이 날카롭다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "회색 고양이는 해당 골목의 터줏대감이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "appearance",
+      "content": "이 일대에서 가장 덩치가 크다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "appearance",
+      "content": "근육질 몸에 짧은 검은 털을 가졌다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "appearance",
+      "content": "왼쪽 귀가 반쯤 찢어져 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "appearance",
+      "content": "갈색과 흰색이 섞인 예쁜 무늬를 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "appearance",
+      "content": "조그만 체구에 큰 눈을 가졌다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "personality",
+      "content": "겁이 많다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 86,
+    "max": 100,
+    "grade": "A",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 12,
+        "max": 20,
+        "detail": "3/5 커버 (누락: 나, 쥐)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (background, personality, appearance)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 1개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 7,
+        "max": 10,
+        "detail": "9/13 연결 (미연결: 주인공 고양이)"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "13개 (최소 10개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 5,
+    "loreEntryCount": 13,
+    "byEntity": {
+      "주인공 고양이": 4,
+      "회색 고양이": 3,
+      "검은 고양이": 3,
+      "얼룩 고양이": 3
+    },
+    "byCategory": {
+      "background": 3,
+      "personality": 3,
+      "appearance": 6,
+      "lore": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}
