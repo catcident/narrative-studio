@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis } from '../../store';
+import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis, useAuthEnabled } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../../services/billing';
@@ -80,6 +80,7 @@ export function FileUpload() {
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
   const canBatchAnalysis = useCanBatchAnalysis();
+  const authEnabled = useAuthEnabled();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -334,21 +335,23 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      // 세션 hold: BYOK가 아닌 경우 + billing 활성 시 예상 크레딧 선차감
+      // 세션 hold: BYOK가 아닌 경우 잔액 확인 + billing 활성 시 hold
       const isUsingPersonalKey = byokEnabled && hasApiKey();
       let holdToken: string | null = null;
 
-      if (!isUsingPersonalKey && subscription) {
-        await ensureSufficientBalance(subscription);
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription, authEnabled);
 
-        const estimate = estimateUsageLocally(combinedText.length, currentModel, allModels);
-        const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
-        if (!holdResult.ok) {
-          throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
-        }
-        holdToken = holdResult.data.hold_token;
-        if (holdResult.data.balance_after !== null) {
-          updateCreditBalance(holdResult.data.balance_after);
+        if (subscription) {
+          const estimate = estimateUsageLocally(combinedText.length, currentModel, allModels);
+          const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
+          }
         }
       }
 
@@ -447,22 +450,24 @@ export function FileUpload() {
       // 만료 모델이면 현재 선택된 모델로 override
       const resumeModel = invalidSavedModel ? currentModel : (savedProgress.model || currentModel);
 
-      // 남은 청크에 대해서만 hold (billing 활성 시)
+      // 남은 청크에 대해서만 잔액 확인 + hold (billing 활성 시)
       let holdToken: string | null = null;
-      if (!isUsingPersonalKey && subscription) {
-        await ensureSufficientBalance(subscription);
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription, authEnabled);
 
-        const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
-        if (remainingChunks > 0) {
-          const chunkCharCount = remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP);
-          const estimate = estimateUsageLocally(chunkCharCount, resumeModel, allModels);
-          const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
-          if (!holdResult.ok) {
-            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
-          }
-          holdToken = holdResult.data.hold_token;
-          if (holdResult.data.balance_after !== null) {
-            updateCreditBalance(holdResult.data.balance_after);
+        if (subscription) {
+          const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
+          if (remainingChunks > 0) {
+            const chunkCharCount = remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP);
+            const estimate = estimateUsageLocally(chunkCharCount, resumeModel, allModels);
+            const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
+            if (!holdResult.ok) {
+              throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+            }
+            holdToken = holdResult.data.hold_token;
+            if (holdResult.data.balance_after !== null) {
+              updateCreditBalance(holdResult.data.balance_after);
+            }
           }
         }
       }
@@ -594,21 +599,23 @@ export function FileUpload() {
         throw new Error('내용이 비어있습니다.');
       }
 
-      // 세션 hold: BYOK가 아닌 경우 + billing 활성 시 예상 크레딧 선차감
+      // 세션 hold: BYOK가 아닌 경우 잔액 확인 + billing 활성 시 hold
       const isUsingPersonalKey = byokEnabled && hasApiKey();
       let holdToken: string | null = null;
 
-      if (!isUsingPersonalKey && subscription) {
-        await ensureSufficientBalance(subscription);
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription, authEnabled);
 
-        const estimate = estimateUsageLocally(text.length, currentModel, allModels);
-        const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
-        if (!holdResult.ok) {
-          throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
-        }
-        holdToken = holdResult.data.hold_token;
-        if (holdResult.data.balance_after !== null) {
-          updateCreditBalance(holdResult.data.balance_after);
+        if (subscription) {
+          const estimate = estimateUsageLocally(text.length, currentModel, allModels);
+          const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
+          }
         }
       }
 

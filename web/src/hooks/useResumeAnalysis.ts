@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../store';
+import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
 import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
@@ -15,6 +15,7 @@ export function useResumeAnalysis() {
   const subscription = useBillingSubscription();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
+  const authEnabled = useAuthEnabled();
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
   const setError = useStore((s) => s.setError);
   const setLoading = useStore((s) => s.setLoading);
@@ -50,22 +51,24 @@ export function useResumeAnalysis() {
       // 만료 모델이면 DEFAULT_MODEL로 대체
       const resumeModel = invalidSavedModel ? DEFAULT_MODEL : (savedProgress.model || DEFAULT_MODEL);
 
-      // 남은 청크에 대해서만 hold
+      // 남은 청크에 대해서만 잔액 확인 + hold
       let holdToken: string | null = null;
-      if (!isUsingPersonalKey && subscription) {
-        await ensureSufficientBalance(subscription);
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription, authEnabled);
 
-        const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
-        if (remainingChunks > 0) {
-          const chunkCharCount = remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP);
-          const estimate = estimateUsageLocally(chunkCharCount, resumeModel, allModels);
-          const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
-          if (!holdResult.ok) {
-            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
-          }
-          holdToken = holdResult.data.hold_token;
-          if (holdResult.data.balance_after !== null) {
-            updateCreditBalance(holdResult.data.balance_after);
+        if (subscription) {
+          const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
+          if (remainingChunks > 0) {
+            const chunkCharCount = remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP);
+            const estimate = estimateUsageLocally(chunkCharCount, resumeModel, allModels);
+            const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
+            if (!holdResult.ok) {
+              throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+            }
+            holdToken = holdResult.data.hold_token;
+            if (holdResult.data.balance_after !== null) {
+              updateCreditBalance(holdResult.data.balance_after);
+            }
           }
         }
       }
@@ -114,7 +117,7 @@ export function useResumeAnalysis() {
     }
   }, [subscription, allModels, setKnowledgeGraph, setError, setLoading,
       addChunkUsage, updateCreditBalance, resetCurrentUsage,
-      setShowUsageSummary, loadSubscription, setPartialAnalysis, byokEnabled]);
+      setShowUsageSummary, loadSubscription, setPartialAnalysis, byokEnabled, authEnabled]);
 
   const clearSavedProgress = useCallback(() => {
     clearProgress();

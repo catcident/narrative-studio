@@ -329,10 +329,19 @@ export async function checkSufficientBalance(): Promise<
 
 /**
  * 구독이 활성화된 경우 잔액 부족 시 에러를 throw.
- * 구독이 없으면 (billing 비활성) 아무 동작 없이 통과.
+ * subscription=null + authEnabled=false → billing 비활성 → 통과 (Railway 데모).
+ * subscription=null + authEnabled=true → 구독 로딩 미완료/실패 → 에러 (프로덕션 보호).
  */
-export async function ensureSufficientBalance(subscription: BillingSubscription | null): Promise<void> {
-  if (!subscription) return;
+export async function ensureSufficientBalance(
+  subscription: BillingSubscription | null,
+  authEnabled?: boolean | null,
+): Promise<void> {
+  if (!subscription) {
+    if (authEnabled !== false) {
+      throw new Error('구독 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+    return;
+  }
   const result = await checkSufficientBalance();
   if (!result.sufficient) throw new Error(result.error);
 }

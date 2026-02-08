@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../store';
+import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
 import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
@@ -17,6 +17,7 @@ export function useAddFileAnalysis() {
   const subscription = useBillingSubscription();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
+  const authEnabled = useAuthEnabled();
   const addChunkUsage = useStore((s) => s.addChunkUsage);
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
@@ -45,17 +46,19 @@ export function useAddFileAnalysis() {
       const model = graphToUse.metadata.model || DEFAULT_MODEL;
       let holdToken: string | null = null;
 
-      if (!isUsingPersonalKey && subscription) {
-        await ensureSufficientBalance(subscription);
+      if (!isUsingPersonalKey) {
+        await ensureSufficientBalance(subscription, authEnabled);
 
-        const estimate = estimateUsageLocally(text.length, model, allModels);
-        const holdResult = await holdCredits(estimate.estimated_credits, model, estimate.chunks);
-        if (!holdResult.ok) {
-          throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
-        }
-        holdToken = holdResult.data.hold_token;
-        if (holdResult.data.balance_after !== null) {
-          updateCreditBalance(holdResult.data.balance_after);
+        if (subscription) {
+          const estimate = estimateUsageLocally(text.length, model, allModels);
+          const holdResult = await holdCredits(estimate.estimated_credits, model, estimate.chunks);
+          if (!holdResult.ok) {
+            throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+          }
+          holdToken = holdResult.data.hold_token;
+          if (holdResult.data.balance_after !== null) {
+            updateCreditBalance(holdResult.data.balance_after);
+          }
         }
       }
 
@@ -103,7 +106,7 @@ export function useAddFileAnalysis() {
     }
   }, [knowledgeGraph, currentDataId, subscription, addChunkUsage,
       updateCreditBalance, setKnowledgeGraph, setShowUsageSummary,
-      setError, resetCurrentUsage, setLoading, loadSubscription, allModels, setPartialAnalysis, byokEnabled]);
+      setError, resetCurrentUsage, setLoading, loadSubscription, allModels, setPartialAnalysis, byokEnabled, authEnabled]);
 
   const addFile = useCallback(async (
     file: File,
