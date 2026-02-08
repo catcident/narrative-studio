@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     );
     const data = await response.json().catch(() => ({ error: 'Invalid response from billing service' }));
     return NextResponse.json(data, { status: response.status });
-  } catch (error) {
-    console.error('[billing] credits/transactions GET error:', error);
+  } catch (err: unknown) {
+    console.error('[billing] credits/transactions GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

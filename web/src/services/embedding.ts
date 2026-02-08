@@ -52,8 +52,8 @@ export async function createEntityEmbeddings(
     }
 
     return { success: true, count: data.count };
-  } catch (err) {
-    return { success: false, count: 0, error: (err as Error).message };
+  } catch (err: unknown) {
+    return { success: false, count: 0, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -72,11 +72,13 @@ export async function searchSimilarEntities(
       keywords: keywords.join(','),
       topK: topK.toString(),
     });
+
+    const headers: Record<string, string> = {};
     if (apiKey) {
-      params.set('apiKey', apiKey);
+      headers['X-API-Key'] = apiKey;
     }
 
-    const response = await fetch(`/api/embeddings?${params}`);
+    const response = await fetch(`/api/embeddings?${params}`, { headers });
     const data = await response.json();
 
     if (!response.ok) {
@@ -85,8 +87,8 @@ export async function searchSimilarEntities(
     }
 
     return data.results || [];
-  } catch (err) {
-    console.error('[embedding] 검색 오류:', err);
+  } catch (err: unknown) {
+    console.error('[embedding] 검색 오류:', err instanceof Error ? err.message : err);
     return [];
   }
 }
@@ -137,8 +139,8 @@ export async function createChunkEmbeddings(
     }
 
     return { success: true, count: data.count };
-  } catch (err) {
-    return { success: false, count: 0, error: (err as Error).message };
+  } catch (err: unknown) {
+    return { success: false, count: 0, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -157,11 +159,13 @@ export async function searchSimilarChunks(
       query,
       topK: topK.toString(),
     });
+
+    const headers: Record<string, string> = {};
     if (apiKey) {
-      params.set('apiKey', apiKey);
+      headers['X-API-Key'] = apiKey;
     }
 
-    const response = await fetch(`/api/chunk-embeddings?${params}`);
+    const response = await fetch(`/api/chunk-embeddings?${params}`, { headers });
     const data = await response.json();
 
     if (!response.ok) {
@@ -170,8 +174,8 @@ export async function searchSimilarChunks(
     }
 
     return data.results || [];
-  } catch (err) {
-    console.error('[chunk-embedding] 검색 오류:', err);
+  } catch (err: unknown) {
+    console.error('[chunk-embedding] 검색 오류:', err instanceof Error ? err.message : err);
     return [];
   }
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
-import { getEmbeddings, cosineSimilarity } from '@/lib/embeddings';
+import { getEmbeddings, cosineSimilarity } from '@/lib/embeddingUtils';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
       count: documents.length,
       message: `${documents.length}개 엔티티 임베딩 완료`
     });
-  } catch (err) {
-    console.error('[embeddings] 오류:', err);
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('[embeddings] 오류:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Embedding creation failed' }, { status: 500 });
   }
 }
 
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const graphId = searchParams.get('graphId');
     const keywords = searchParams.get('keywords'); // 쉼표로 구분된 키워드들
-    const apiKey = searchParams.get('apiKey') || ENV_API_KEY;
+    const apiKey = request.headers.get('x-api-key') || ENV_API_KEY;
     const topK = parseInt(searchParams.get('topK') || '10');
 
     if (!graphId || !keywords) {
@@ -151,8 +151,8 @@ export async function GET(request: NextRequest) {
       .slice(0, topK);
 
     return NextResponse.json({ results: finalResults });
-  } catch (err) {
-    console.error('[embeddings/search] 오류:', err);
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('[embeddings/search] 오류:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Embedding search failed' }, { status: 500 });
   }
 }

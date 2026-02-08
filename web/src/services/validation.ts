@@ -326,7 +326,7 @@ ${currentContext}
     console.log(`[validation] 청크 ${chunkIndex} 파싱 결과:`, JSON.stringify(parsed, null, 2));
 
     const issues = (parsed.issues || []).map(
-      (issue: any, idx: number) => ({
+      (issue: Record<string, string | undefined>, idx: number) => ({
         id: `${currentFileId}_chunk${chunkIndex}_issue_${idx + 1}`,
         type: issue.type || 'other',
         severity: issue.severity || 'warning',
@@ -341,7 +341,7 @@ ${currentContext}
       issues,
       summary: parsed.summary || '검토 요약 없음',
     };
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(`[validation] 청크 ${chunkIndex} 검증 실패:`, err);
     return { issues: [], summary: '검증 중 오류 발생' };
   }

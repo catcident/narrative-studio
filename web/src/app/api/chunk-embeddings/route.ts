@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
-import { getEmbeddings, cosineSimilarity } from '@/lib/embeddings';
+import { getEmbeddings, cosineSimilarity } from '@/lib/embeddingUtils';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
       count: documents.length,
       message: `${documents.length}개 청크 임베딩 완료`
     });
-  } catch (err) {
-    console.error('[chunk-embeddings] 오류:', err);
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('[chunk-embeddings] 오류:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Chunk embedding creation failed' }, { status: 500 });
   }
 }
 
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const graphId = searchParams.get('graphId');
     const query = searchParams.get('query'); // 검색 질문
-    const apiKey = searchParams.get('apiKey') || ENV_API_KEY;
+    const apiKey = request.headers.get('x-api-key') || ENV_API_KEY;
     const topK = parseInt(searchParams.get('topK') || '3');
 
     if (!graphId || !query) {
@@ -131,8 +131,8 @@ export async function GET(request: NextRequest) {
       .filter(r => r.similarity > 0.3); // 임계값
 
     return NextResponse.json({ results });
-  } catch (err) {
-    console.error('[chunk-embeddings/search] 오류:', err);
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('[chunk-embeddings/search] 오류:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Chunk embedding search failed' }, { status: 500 });
   }
 }

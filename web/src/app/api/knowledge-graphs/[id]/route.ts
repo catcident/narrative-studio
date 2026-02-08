@@ -67,7 +67,7 @@ export async function GET(
     }
 
     return NextResponse.json(knowledgeGraph);
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs/[id] GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -121,7 +121,7 @@ export async function PUT(
     );
 
     return NextResponse.json({ success: result.modifiedCount > 0 });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs/[id] PUT error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -145,7 +145,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: result.deletedCount > 0 });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs/[id] DELETE error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

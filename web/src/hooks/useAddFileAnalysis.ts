@@ -4,18 +4,19 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useStore, useBillingSubscription, useModels } from '../store';
-import { extractKnowledgeGraph } from '../services/extraction';
+import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../store';
+import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
 import { readFileAsText } from '../services/fileReader';
-import { getAvailableModelIds } from '../types';
+import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
 
 export function useAddFileAnalysis() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const currentDataId = useStore((s) => s.currentDataId);
   const subscription = useBillingSubscription();
   const allModels = useModels();
+  const byokEnabled = useByokEnabled();
   const addChunkUsage = useStore((s) => s.addChunkUsage);
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
@@ -24,6 +25,7 @@ export function useAddFileAnalysis() {
   const resetCurrentUsage = useStore((s) => s.resetCurrentUsage);
   const setLoading = useStore((s) => s.setLoading);
   const loadSubscription = useStore((s) => s.loadSubscription);
+  const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
 
   const [isAdding, setIsAdding] = useState(false);
   const [progress, setProgress] = useState('');
@@ -39,31 +41,61 @@ export function useAddFileAnalysis() {
     resetCurrentUsage();
 
     try {
-      await ensureSufficientBalance(subscription);
+      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const model = graphToUse.metadata.model || DEFAULT_MODEL;
+      let holdToken: string | null = null;
+
+      if (!isUsingPersonalKey && subscription) {
+        await ensureSufficientBalance(subscription);
+
+        const estimate = estimateUsageLocally(text.length, model, allModels);
+        const holdResult = await holdCredits(estimate.estimated_credits, model, estimate.chunks);
+        if (!holdResult.ok) {
+          throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
+        }
+        holdToken = holdResult.data.hold_token;
+        if (holdResult.data.balance_after !== null) {
+          updateCreditBalance(holdResult.data.balance_after);
+        }
+      }
 
       setProgress('추가 분석 중...');
-      const updated = await extractKnowledgeGraph({
-        text,
-        title: graphToUse.metadata.title,
-        onProgress: (msg) => setProgress(msg),
-        model: graphToUse.metadata.model,
-        fileNames: [fileName],
-        existingGraph: graphToUse,
-        onChunkBilling: createBillingCallback(addChunkUsage, updateCreditBalance),
-        availableModelIds: getAvailableModelIds(allModels),
-      });
+      let updated;
+      try {
+        updated = await extractKnowledgeGraph({
+          text,
+          title: graphToUse.metadata.title,
+          onProgress: (msg) => setProgress(msg),
+          model,
+          fileNames: [fileName],
+          existingGraph: graphToUse,
+          onChunkBilling: createBillingCallback(addChunkUsage),
+          availableModelIds: getAvailableModelIds(allModels),
+        });
+      } catch (extractionErr: unknown) {
+        if (holdToken) {
+          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 중단: ${fileName}`, updateCreditBalance);
+        }
+        throw extractionErr;
+      }
+
+      if (holdToken) {
+        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 완료: ${fileName}`, updateCreditBalance);
+      }
 
       setProgress('저장 중...');
       const saved = await saveKnowledgeGraph(
-        updated, undefined, undefined, currentDataId || undefined,
+        updated, undefined, currentDataId || undefined,
       );
       setKnowledgeGraph(updated, undefined, saved.id);
+      syncPartialAnalysis(setPartialAnalysis);
       setProgress('');
       setShowUsageSummary(true);
     } catch (err: unknown) {
       console.error('[extraction] 파일 추가 오류:', err);
       setError(err instanceof Error ? err.message : '파일 추가 중 오류가 발생했습니다.');
       setProgress('');
+      syncPartialAnalysis(setPartialAnalysis);
     } finally {
       setIsAdding(false);
       setLoading(false);
@@ -71,7 +103,7 @@ export function useAddFileAnalysis() {
     }
   }, [knowledgeGraph, currentDataId, subscription, addChunkUsage,
       updateCreditBalance, setKnowledgeGraph, setShowUsageSummary,
-      setError, resetCurrentUsage, setLoading, loadSubscription, allModels]);
+      setError, resetCurrentUsage, setLoading, loadSubscription, allModels, setPartialAnalysis, byokEnabled]);
 
   const addFile = useCallback(async (
     file: File,

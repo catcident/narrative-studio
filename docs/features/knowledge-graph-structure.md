@@ -296,12 +296,4 @@ knowledge_graphs 컬렉션
 └── versions: Version[]  // 버전 히스토리
 ```
 
-### 로컬 (IndexedDB)
-
-```
-knowledge-graphs 스토어
-└── id: string (kg_ 접두사)
-└── data: NovelKnowledgeGraph
-```
-
-서버 저장 실패 시 로컬에 자동 폴백됩니다.
+서버 저장 실패 시 에러를 반환합니다.

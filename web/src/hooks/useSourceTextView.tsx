@@ -180,8 +180,8 @@ export function useSourceTextView() {
       }
 
       return result;
-    } catch (error) {
-      console.error('[validation] 검증 실패:', error);
+    } catch (err: unknown) {
+      console.error('[validation] 검증 실패:', err);
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
@@ -229,8 +229,8 @@ export function useSourceTextView() {
           break;
         }
       }
-    } catch (error) {
-      console.error('[validation] 전체 검증 중 오류:', error);
+    } catch (err: unknown) {
+      console.error('[validation] 전체 검증 중 오류:', err);
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
@@ -291,8 +291,8 @@ export function useSourceTextView() {
         await updateKnowledgeGraph(updatedDataId, finalGraph);
         setKnowledgeGraph(finalGraph, undefined, updatedDataId);
       }
-    } catch (error) {
-      console.error('[SourceTextView] 텍스트 수정 실패:', error);
+    } catch (err: unknown) {
+      console.error('[SourceTextView] 텍스트 수정 실패:', err);
       alert('텍스트 수정에 실패했습니다.');
     } finally {
       setIsSavingEdit(false);

@@ -3,7 +3,7 @@
  * API 키 입력, 모델 선택, 제목/작가 입력, 파일 목록, 텍스트 입력, 등록 버튼
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Key, Cpu, BookOpen, User, FileCheck, FileText, Loader2, AlertCircle, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { UsageEstimate } from '../UsageEstimate';
 import type { ModelInfo, NovelKnowledgeGraph } from '../../types';
@@ -17,6 +17,11 @@ interface AnalysisPanelProps {
   apiKeyInput: string;
   setApiKeyInput: (v: string) => void;
   handleSaveApiKey: () => void;
+  byokEnabled: boolean;
+  onRemoveApiKey: () => void;
+  onClearKeyValidationError: () => void;
+  keyValidationLoading: boolean;
+  keyValidationError: string | null;
   // Model
   currentModel: string;
   lockedModel: string | undefined;
@@ -48,6 +53,9 @@ interface AnalysisPanelProps {
   canRegister: boolean;
   // Register
   handleRegister: () => void;
+  // Batch analysis (Pro+ multi-file)
+  canBatchAnalysis: boolean;
+  onBatchAnalysis?: () => void;
   // Slot for upload area (rendered between title/author and file list)
   uploadAreaSlot?: React.ReactNode;
 }
@@ -60,6 +68,11 @@ export function AnalysisPanel({
   apiKeyInput,
   setApiKeyInput,
   handleSaveApiKey,
+  byokEnabled,
+  onRemoveApiKey,
+  onClearKeyValidationError,
+  keyValidationLoading,
+  keyValidationError,
   currentModel,
   lockedModel,
   localLoading,
@@ -85,8 +98,12 @@ export function AnalysisPanel({
   fullTitle,
   canRegister,
   handleRegister,
+  canBatchAnalysis,
+  onBatchAnalysis,
   uploadAreaSlot,
 }: AnalysisPanelProps) {
+  const [showAllModels, setShowAllModels] = useState(false);
+
   return (
     <>
       {/* API 키 입력 - 환경변수 없을 때만 경고, 또는 사용자가 직접 입력 원할 때 */}
@@ -122,15 +139,35 @@ export function AnalysisPanel({
         </div>
       )}
 
-      {/* 자신의 API 키 사용 옵션 */}
-      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && (
-        <div className="text-center">
+      {/* 자신의 API 키 사용 옵션 — byokEnabled일 때만 표시 (서버키 없는 경우 제외) */}
+      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && byokEnabled && (
+        <div className="text-center space-y-1">
           <button
             onClick={() => setShowApiKeyInput(true)}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
             <Key aria-hidden="true" className="w-3 h-3 inline mr-1" />
             {hasLocalKey ? '내 API 키 변경' : '내 API 키 사용하기'}
+          </button>
+          {hasLocalKey && (
+            <button
+              onClick={onRemoveApiKey}
+              className="block mx-auto text-xs text-red-400 hover:text-red-600"
+            >
+              개인 키 삭제 (서버 키로 복귀)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* byok 미지원 플랜: 로컬키 있으면 삭제 버튼 표시 */}
+      {(hasEnvKey || hasLocalKey) && !showApiKeyInput && !byokEnabled && hasLocalKey && (
+        <div className="text-center">
+          <button
+            onClick={onRemoveApiKey}
+            className="text-xs text-red-400 hover:text-red-600"
+          >
+            개인 키 삭제 (서버 키로 복귀)
           </button>
         </div>
       )}
@@ -144,20 +181,26 @@ export function AnalysisPanel({
               onChange={(e) => setApiKeyInput(e.target.value)}
               placeholder={hasLocalKey ? '••••••••' : 'sk-or-...'}
               className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+              disabled={keyValidationLoading}
             />
             <button
               onClick={handleSaveApiKey}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+              disabled={keyValidationLoading || !apiKeyInput.trim()}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             >
-              저장
+              {keyValidationLoading && <Loader2 aria-hidden="true" className="w-3 h-3 animate-spin" />}
+              {keyValidationLoading ? '검증 중' : '저장'}
             </button>
             <button
-              onClick={() => setShowApiKeyInput(false)}
+              onClick={() => { setShowApiKeyInput(false); onClearKeyValidationError(); }}
               className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
             >
               취소
             </button>
           </div>
+          {keyValidationError && (
+            <p className="text-xs text-red-600 mt-1.5">{keyValidationError}</p>
+          )}
         </div>
       )}
 
@@ -184,12 +227,34 @@ export function AnalysisPanel({
                   : 'bg-white border-purple-300 text-gray-800'
               }`}
             >
-              {availableModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
-                </option>
-              ))}
+              {/* 핵심 모델 */}
+              <optgroup label="핵심 모델">
+                {availableModels.filter(m => m.coreModel !== false).map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                  </option>
+                ))}
+              </optgroup>
+              {/* 추가 모델 (showAllModels일 때만) */}
+              {showAllModels && availableModels.some(m => m.coreModel === false) && (
+                <optgroup label="추가 모델">
+                  {availableModels.filter(m => m.coreModel === false).map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
+            {/* 더 보기 / 접기 토글 */}
+            {!lockedModel && availableModels.some(m => m.coreModel === false) && (
+              <button
+                onClick={() => setShowAllModels(!showAllModels)}
+                className="text-xs text-purple-500 hover:text-purple-700 mt-1"
+              >
+                {showAllModels ? '핵심 모델만 보기' : `더 많은 모델 보기 (${availableModels.filter(m => m.coreModel === false).length}종)`}
+              </button>
+            )}
             {lockedModel && (
               <p className="text-xs text-purple-600 mt-1">
                 이 문서는 {allModels.find(m => m.id === lockedModel)?.name || lockedModel}로 분석되었습니다. 추가 분석도 같은 모델을 사용합니다.
@@ -372,24 +437,39 @@ export function AnalysisPanel({
 
           {/* 등록 버튼 */}
           <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={handleRegister}
-              disabled={!canRegister || localLoading}
-              className={`w-full max-w-md py-3 px-6 rounded-xl font-medium text-lg transition-all ${
-                canRegister
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {localLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
-                  분석 중...
-                </span>
-              ) : (
-                '등록하기'
+            <div className="flex gap-2 w-full max-w-md">
+              <button
+                onClick={handleRegister}
+                disabled={!canRegister || localLoading}
+                className={`flex-1 py-3 px-6 rounded-xl font-medium text-lg transition-all ${
+                  canRegister
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {localLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
+                    분석 중...
+                  </span>
+                ) : (
+                  canBatchAnalysis && selectedFiles.length > 1 ? '통합 분석' : '등록하기'
+                )}
+              </button>
+              {canBatchAnalysis && selectedFiles.length > 1 && onBatchAnalysis && (
+                <button
+                  onClick={onBatchAnalysis}
+                  disabled={!canRegister || localLoading}
+                  className={`py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+                    canRegister
+                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  개별 분석
+                </button>
               )}
-            </button>
+            </div>
             {!canRegister && !isDuplicateTitle && (
               <p className="text-xs text-gray-500">
                 {!bookTitle.trim() && '제목'}

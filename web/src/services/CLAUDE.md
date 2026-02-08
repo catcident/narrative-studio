@@ -15,8 +15,8 @@
 | `selector.ts` | 엔티티 선별 (LLM 기반) + API 키 관리 |
 | `extractor.ts` | 단일 청크 LLM 추출 + JSON 복구 |
 | `merger.ts` | 결과 병합 + 관계 추론 + 지식 그래프 구조화 |
-| `orchestrator.ts` | 메인 파이프라인 + 진행상황 저장/복원 |
-| `index.ts` | Public API re-export |
+| `orchestrator.ts` | 메인 파이프라인 + 진행상황 저장/복원 + `syncPartialAnalysis` |
+| `index.ts` | Public API re-export only (함수 구현 금지) |
 
 ### 모듈 의존성 규칙
 
@@ -112,7 +112,7 @@ interface ExtractionOptions {
 }
 
 // 진행상황 관리
-saveProgress(), loadProgress(), clearProgress()
+saveProgress(), loadProgress(), clearProgress(), syncPartialAnalysis(setter)
 
 // API 키 관리
 setApiKey(), hasApiKey(), getApiKey()
@@ -120,7 +120,7 @@ setApiKey(), hasApiKey(), getApiKey()
 
 ### ⚠️ Billing 추적 필수 규칙
 
-**청크별 실시간 차감 흐름**:
+**세션 hold/settle/release 흐름**:
 
 ```
 클라이언트                    Next.js 서버                catcident-backend
@@ -128,25 +128,38 @@ setApiKey(), hasApiKey(), getApiKey()
 checkSufficientBalance()    GET /api/billing/credits/balance
                               ← balance > 0 확인
 
+holdCredits(estimated)      POST /api/session/hold
+                              ──→  예상 크레딧 선점
+                              ← { sessionId, held_amount }
+
 extractKnowledgeGraph({ onChunkBilling })
   → /api/analyze (청크 1)   ──→  OpenRouter 호출
-                              ↓ 토큰 사용량 기반 크레딧 계산 (modelCosts.ts)
-                              ──→  /credits/deduct/ (즉시 차감)
-                              ← { billing, balance_after, insufficient_balance? }
-  onChunkBilling(billing)   ← CreditBadge 실시간 갱신
+                              ← { _billing: { model, prompt_tokens, completion_tokens } }
+  onChunkBilling(billing)   ← 토큰 사용량 누적 (잔액 갱신 없음)
 
-  → /api/analyze (청크 2)   ──→  OpenRouter 호출
-                              ↓ 잔액 부족 시 insufficient_balance: true 반환
-                              ← 분석 중단, 부분 결과 반환
+  → /api/analyze (청크 N)   ──→  OpenRouter 호출
+                              ← { _billing: { model, prompt_tokens, completion_tokens } }
+
+[성공] settleCredits(sessionId, actualUsage)
+                            POST /api/session/settle
+                              ──→  실제 사용량 정산 (hold 해제 + 차감)
+                              ← { balance_after }
+                              → CreditBadge 잔액 갱신
+
+[실패] releaseCredits(sessionId)
+                            POST /api/session/release
+                              ──→  hold 해제 (크레딧 복원)
 ```
 
 새로운 분석 경로를 추가할 때 체크리스트:
-- [ ] `onChunkBilling` 콜백 전달 — 실시간 잔액 갱신 + UI 표시
+- [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 UI 표시
 - [ ] `ensureSufficientBalance(subscription)` 분석 시작 전 호출
-- [ ] `insufficient_balance` 응답 시 분석 중단 + 부분 결과 반환 처리
+- [ ] `holdCredits()` → 분석 → `settleCredits()` / `releaseCredits()` 세션 패턴 준수
 - [ ] 402 응답 명시 처리 (selector, extractor 모두) — generic error에 흡수 금지
 - [ ] `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
+- [ ] hold/settle/release 호출 전 `&& subscription` 가드 — `subscription === null`이면 billing 전체 스킵
+- [ ] `syncPartialAnalysis(setPartialAnalysis)` — extraction 완료/실패 후 반드시 호출 (success + error 양쪽)
 
 ### 파일 추가 분석
 
@@ -160,38 +173,20 @@ extractKnowledgeGraph({ onChunkBilling })
 
 ## storage.ts - 스토리지 서비스
 
-지식 그래프 데이터 영속화 관리
+지식 그래프 데이터 영속화 관리 (서버 MongoDB 전용)
 
-### Dual Layer 아키텍처
+### 서버 실패 시 동작
 
-```typescript
-// 저장/로드 흐름
-try {
-  return await serverAPI();  // MongoDB 우선
-} catch {
-  return await localIndexedDB();  // 폴백
-}
-```
-
-### IndexedDB 스키마
-
-**Database**: `character-relationship-db`
-
-| Store | keyPath | 설명 |
-|-------|---------|------|
-| `knowledgeGraphs` | `id` | 메인 데이터 |
-| `versions` | `[dataId, version]` | 버전 히스토리 |
-
-### 버전 관리 로직
-
-1. 저장 시 기존 데이터 존재 확인
-2. 존재하면 `versions` 스토어에 이전 버전 보관
-3. `version` 필드 증가 후 업데이트
-
-### ID 구분
-
-- **로컬**: `kg_` 접두사 (예: `kg_1706123456789_abc1234`)
-- **서버**: MongoDB ObjectId (24자 hex)
+| 함수 | 서버 실패 시 |
+|------|------------|
+| `getSavedKnowledgeGraphList` | `[]` 반환 |
+| `loadKnowledgeGraph` | `null` 반환 |
+| `saveKnowledgeGraph` | **throw** (데이터 유실 방지) |
+| `updateKnowledgeGraph` | `false` 반환 |
+| `deleteKnowledgeGraph` | `false` 반환 |
+| `getVersionHistory` | `[]` 반환 |
+| `restoreVersion` | `null` 반환 |
+| `saveNovelText` | **throw** (데이터 유실 방지) |
 
 ### 주요 함수
 
@@ -199,7 +194,7 @@ try {
 // 목록/CRUD
 getSavedKnowledgeGraphList()
 loadKnowledgeGraph(id)
-saveKnowledgeGraph(knowledgeGraph, novelId?, userId?, existingId?)
+saveKnowledgeGraph(knowledgeGraph, novelId?, existingId?)
 deleteKnowledgeGraph(id)
 
 // 버전 관리
@@ -207,7 +202,7 @@ getVersionHistory(dataId)
 restoreVersion(dataId, version)
 
 // 소설 원본 관리
-saveNovelText(title, text, knowledgeGraphId?, userId?)
+saveNovelText(title, text, knowledgeGraphId?)
 loadNovelText(id)
 getNovelList()
 
@@ -233,7 +228,7 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 
 ```typescript
 // API 함수 (서버 프록시 경유)
-getSubscription()           // 구독 정보 (plan, balance, features)
+getSubscription()           // 구독 정보 (plan, balance, purchased_credit_balance, features)
 getCreditBalance()          // 잔액만 조회
 getUsageHistory(page)       // 거래 내역 (페이지네이션)
 getPlans()                  // 요금제 목록
@@ -248,8 +243,13 @@ calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
 ensureSufficientBalance(subscription)  // subscription 있으면 잔액 확인, 없으면 통과
 
-// Billing 콜백 생성
-createBillingCallback(addChunkUsage, updateCreditBalance?)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백
+// 세션 관리
+holdCredits(estimatedAmount)            // 분석 전 크레딧 선점
+settleCredits(sessionId, actualUsage)   // 분석 성공 시 정산
+releaseCredits(sessionId)               // 분석 실패 시 hold 해제
+
+// Billing 콜백 생성 (리턴 타입: ChunkBillingCallback)
+createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백 (토큰 사용량 누적만)
 ```
 
 ### 로컬 추정 함수 동기화
@@ -261,14 +261,14 @@ createBillingCallback(addChunkUsage, updateCreditBalance?)  // extractKnowledgeG
 ### 중요 규칙
 
 - **charCount vs bytes**: 분석 함수에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
-- **차감 금액**: 서버가 실제 OpenRouter 토큰 사용량 기반으로 계산 후 즉시 차감
-- **부분 실패**: 분석 도중 잔액 소진 시 `insufficient_balance` 플래그로 중단 → 이미 완료된 청크까지 부분 결과 반환
+- **세션 패턴**: hold → 분석 → settle (성공) / release (실패). `/api/analyze`는 과금 없이 토큰 정보만 반환
 - **잔액 확인**: 모든 분석 진입점에서 `checkSufficientBalance()` 호출 필수
-- **실시간 갱신**: `onChunkBilling` 콜백의 `balance_after`로 CreditBadge 실시간 동기화
+- **토큰 누적**: `onChunkBilling` 콜백은 토큰 사용량 누적만 수행 — 잔액 갱신은 settle 시에만
+- **settle 시 잔액 갱신**: `settleCredits()` 응답의 `balance_after`로 CreditBadge 갱신
 
 ### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
 
-`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. 서버가 OpenRouter 응답 후 토큰 사용량을 계산하여 즉시 크레딧을 차감하고, 응답의 `_billing` 필드에 `{ prompt_tokens, completion_tokens, credits_deducted, balance_after, insufficient_balance }`를 포함하여 반환.
+`/api/analyze`는 `{ prompt, apiKey, model }` 만 수신. 서버가 OpenRouter 응답 후 토큰 사용량을 계산하여, 응답의 `_billing` 필드에 `{ model, prompt_tokens, completion_tokens, byok }` (토큰 정보만)를 포함하여 반환. 크레딧 차감은 별도 세션 settle 단계에서 수행.
 
 ### ⚠️ ChunkBilling 타입 일관성
 
@@ -305,6 +305,50 @@ if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
 
 ---
 
+## chat.ts - 소설 채팅 서비스
+
+지식 그래프와 원본 텍스트를 기반으로 소설에 대해 대화하는 채팅 서비스.
+
+### 호출 구조 (1 메시지 = 3 LLM 호출)
+
+```
+①의도분석 (DEFAULT_MODEL, 비스트리밍) → 키워드 + 카테고리 추출
+②데이터선별 (DEFAULT_MODEL, 비스트리밍) → 필요한 엔티티/청크 선택 (조건부)
+③최종답변 (사용자 모델, 스트리밍) → 컨텍스트 기반 답변 생성
+```
+
+### Billing 통합
+
+- `CallBilling`: 개별 호출의 billing 정보 (서버 `_billing` 필드, `model: string` 필수)
+- `ChatMessageBilling`: 3개 호출의 토큰 사용량 합산
+- `ChatResult`: `{ content, billing }` — `sendChatMessage` 반환 타입
+- SSE `event: billing` 파싱: `nextEventType` 상태 머신으로 처리
+
+### 대화 이력 제한
+
+`MAX_HISTORY_CHARS = 45000` (~30K tokens). 최신 메시지부터 역순으로 추가, 한도 초과 시 중단.
+
+### SSE 라인 버퍼
+
+TCP 세그먼트 경계에서 잘린 불완전한 행 처리:
+```typescript
+let lineBuffer = '';
+// 매 reader.read() 시:
+const rawText = lineBuffer + decoder.decode(value, { stream: true });
+const splitLines = rawText.split('\n');
+lineBuffer = splitLines.pop() || '';  // 마지막 불완전 행 보관
+```
+
+### 비용 사전 추정
+
+```typescript
+estimateChatCost(messages, contextChars, model, dynamicModels?) → number  // 크레딧 단위
+```
+
+①② Flash 고정 추정 + ③ 사용자 모델 기반 추정. `ChatView.tsx`에서 전송 전 잔액 비교용.
+
+---
+
 ## billingProxy.ts - 서버 사이드 프록시
 
 catcident-backend billing API로의 서버 사이드 프록시 유틸리티
@@ -330,7 +374,9 @@ export const GET = billingGetHandler('/new-endpoint/?service=storygraph', 'new-e
 ```typescript
 // billingProxy.ts 내부
 const ALLOWED_POST_FIELDS: Record<string, string[]> = {
-  '/credits/deduct/': ['amount', 'description', 'metadata', 'idempotency_key'],
+  '/session/hold/': ['estimated_credits', 'description', 'metadata'],
+  '/session/settle/': ['session_id', 'actual_usage', 'metadata'],
+  '/session/release/': ['session_id'],
   '/new-endpoint/': ['field1', 'field2'],  // ← 새 라우트 추가
 };
 ```

@@ -294,6 +294,7 @@ interface MergeSuggestion {
 export async function reviewEntityMerges(
   merged: MergedExtraction,
   model?: string,
+  apiKeyOverride?: string,
 ): Promise<MergedExtraction> {
   const { entities } = merged;
 
@@ -313,7 +314,7 @@ export async function reviewEntityMerges(
 
   try {
     const reviewModel = 'google/gemini-2.0-flash-001';
-    const userApiKey = getApiKey();
+    const userApiKey = apiKeyOverride !== undefined ? apiKeyOverride : getApiKey();
 
     const response = await fetchWithClientTimeout('/api/analyze', {
       method: 'POST',
@@ -410,7 +411,7 @@ export async function reviewEntityMerges(
       entities: newEntities,
       relationships: filteredRelationships,
     };
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn('[extraction] 병합 검토 오류, 스킵:', err);
     return merged;
   }

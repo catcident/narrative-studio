@@ -38,7 +38,7 @@ export async function GET(
       note: v.note,
       addedFiles: v.addedFiles || null,
     })));
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[api] knowledge-graphs/[id]/versions GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

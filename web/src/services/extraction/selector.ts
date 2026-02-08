@@ -75,6 +75,7 @@ export async function selectRelevantEntities(
   chunkText: string,
   graph: AccumulatedGraph,
   model?: string,
+  apiKeyOverride?: string,
 ): Promise<SelectionResult> {
   // 엔티티가 1개 이하면 선별 없이 전체 반환
   const entityCount = Object.keys(graph.entities).length;
@@ -104,7 +105,7 @@ export async function selectRelevantEntities(
   try {
     // 빠른 모델로 선별 (gemini-flash 사용)
     const selectionModel = 'google/gemini-2.0-flash-001';
-    const userApiKey = getApiKey();
+    const userApiKey = apiKeyOverride !== undefined ? apiKeyOverride : getApiKey();
 
     const response = await fetchWithClientTimeout('/api/analyze', {
       method: 'POST',

@@ -2,8 +2,8 @@
  * Billing API 클라이언트 서비스
  * 서버 사이드 프록시 (/api/billing/)를 통해 catcident billing API에 접근
  *
- * 과금 흐름: /api/analyze가 OpenRouter 호출 후 즉시 청크별 크레딧 차감.
- * 클라이언트는 잔액 사전 확인 + UI 표시용 콜백만 담당.
+ * 과금 흐름 (세션 hold/settle/release):
+ *   holdCredits(예상) → /api/analyze (토큰 정보만) → settleCredits(실제) / releaseCredits(취소)
  */
 
 import type {
@@ -13,10 +13,12 @@ import type {
   ChunkUsage,
   ModelInfo,
 } from '../types';
+import type { ChunkBillingCallback } from './extraction/types';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
   SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
   getModelCosts, tokenCostUsd, costUsdToCredits,
+  calculateSessionCredits, calculateChunkCostUsd,
 } from '@/lib/modelCosts';
 
 const BASE = '/api/billing';
@@ -68,6 +70,47 @@ async function billingFetchList<T>(path: string): Promise<BillingListResult<T>> 
   }
 }
 
+// ==================== 세션 API 타입 ====================
+
+export interface HoldResult {
+  hold_token: string | null;
+  amount: number;
+  expires_at: string | null;
+  balance_after: number | null;
+  byok?: boolean;
+}
+
+export interface SettleResult {
+  balance_after: number | null;
+  amount_deducted: number;
+  refunded: number;
+  actual_credits: number;
+  byok?: boolean;
+}
+
+export interface ReleaseResult {
+  balance_after: number | null;
+  refunded: number;
+}
+
+// ==================== 세션 API fetcher ====================
+
+async function sessionFetch<T>(path: string, init?: RequestInit): Promise<BillingResult<T>> {
+  try {
+    const res = await fetch(`/api/session${path}`, init);
+    if (!res.ok) {
+      if (res.status === 401) return { ok: false, reason: 'auth', status: 401 };
+      if (res.status === 402) return { ok: false, reason: 'error', status: 402, message: '크레딧이 부족합니다.' };
+      return { ok: false, reason: 'error', status: res.status };
+    }
+    return { ok: true, data: await res.json() };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[billing] session${path} error:`, message);
+    return { ok: false, reason: 'error', message };
+  }
+}
+
 // ==================== 구독 ====================
 
 export interface SubscriptionInfo {
@@ -81,6 +124,7 @@ export interface SubscriptionInfo {
   };
   status: string;
   credit_balance: number;
+  purchased_credit_balance: number;
   credit_reset_at: string | null;
   features: PlanFeatures;
   started_at: string;
@@ -142,6 +186,50 @@ export async function getCreditPackages(): Promise<BillingListResult<CreditPacka
   return billingFetchList<CreditPackage>('/packages');
 }
 
+// ==================== 세션 API 함수 ====================
+
+/** 분석 시작 전 예상 크레딧 선차감 (hold) */
+export async function holdCredits(
+  estimatedCredits: number,
+  model: string,
+  totalChunks: number,
+  metadata?: Record<string, unknown>,
+): Promise<BillingResult<HoldResult>> {
+  return sessionFetch<HoldResult>('/hold', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      estimated_credits: estimatedCredits,
+      model,
+      total_chunks: totalChunks,
+      metadata,
+    }),
+  });
+}
+
+/** 분석 완료 후 실제 사용량으로 정산 (settle) */
+export async function settleCredits(
+  holdToken: string,
+  chunks: Array<{ model: string; prompt_tokens: number; completion_tokens: number }>,
+  description?: string,
+  metadata?: Record<string, unknown>,
+): Promise<BillingResult<SettleResult>> {
+  return sessionFetch<SettleResult>('/settle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hold_token: holdToken, chunks, description, metadata }),
+  });
+}
+
+/** hold 취소 — 분석 실패/취소 시 전액 환불 (release) */
+export async function releaseCredits(holdToken: string): Promise<BillingResult<ReleaseResult>> {
+  return sessionFetch<ReleaseResult>('/release', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hold_token: holdToken }),
+  });
+}
+
 // ==================== 로컬 추정 (순수 함수) ====================
 
 export interface UsageEstimate {
@@ -163,8 +251,8 @@ const ZERO_ESTIMATE: UsageEstimate = {
 /**
  * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
  *
- * 실제 과금은 API 호출당 costUsdToCredits(최소 1cr)이 적용되므로,
- * 청크별·호출별 크레딧을 개별 계산하여 합산해야 예상치가 정확함.
+ * 세션 수준 크레딧 계산: 전체 세션 비용을 합산한 뒤 calculateSessionCredits() 1회 호출.
+ * (기존: 청크별 costUsdToCredits 호출 → 올림 N회 → 과다 추정)
  * - extractor: 매 청크 1회 호출
  * - selector: 청크 2부터 1회 호출 (엔티티 선별)
  */
@@ -177,13 +265,11 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
   const extractorCosts = getModelCosts(model, dynamicModels);
   const selectorCosts = getModelCosts(SELECTOR_MODEL, dynamicModels);
 
-  let totalCredits = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalCostUsd = 0;
 
   for (let i = 0; i < chunks; i++) {
-    // Extractor: 매 청크 호출
     const chunkChars = Math.min(CHUNK_SIZE, charCount - i * effectiveChunk);
     const extInputTokens = Math.ceil(chunkChars / CHARS_PER_TOKEN);
     const extOutputTokens = Math.ceil(extInputTokens * OUTPUT_RATIO);
@@ -192,9 +278,7 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
     totalInputTokens += extInputTokens;
     totalOutputTokens += extOutputTokens;
     totalCostUsd += extCostUsd;
-    totalCredits += costUsdToCredits(extCostUsd);
 
-    // Selector: 청크 2부터 호출 (첫 청크는 이전 엔티티가 없어 선별 불필요)
     if (i >= 1) {
       const selInputTokens = Math.ceil(SELECTOR_PROMPT_CHARS / CHARS_PER_TOKEN);
       const selOutputTokens = SELECTOR_OUTPUT_TOKENS;
@@ -203,12 +287,15 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
       totalInputTokens += selInputTokens;
       totalOutputTokens += selOutputTokens;
       totalCostUsd += selCostUsd;
-      totalCredits += costUsdToCredits(selCostUsd);
     }
   }
 
+  // 세션 수준 크레딧 계산 (올림 1회)
+  const chunkCostUsd = calculateChunkCostUsd(model, dynamicModels);
+  const estimated_credits = calculateSessionCredits(totalCostUsd, chunkCostUsd);
+
   return {
-    estimated_credits: totalCredits,
+    estimated_credits,
     estimated_input_tokens: totalInputTokens,
     estimated_output_tokens: totalOutputTokens,
     estimated_cost_usd: totalCostUsd,
@@ -223,7 +310,7 @@ export function calculateCreditsFromTokens(promptTokens: number, completionToken
   if (promptTokens <= 0 && completionTokens <= 0) return 0;
 
   const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
-  return costUsdToCredits(tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost));
+  return costUsdToCredits(tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost), model, dynamicModels);
 }
 
 // ==================== 잔액 사전 확인 ====================
@@ -252,11 +339,10 @@ export async function ensureSufficientBalance(subscription: BillingSubscription 
 
 // ==================== Billing 콜백 ====================
 
-/** extractKnowledgeGraph에 전달할 billing 콜백 생성 (실시간 잔액 업데이트 지원) */
+/** extractKnowledgeGraph에 전달할 billing 콜백 생성 (세션 과금 — 잔액은 settle 시 갱신) */
 export function createBillingCallback(
   addChunkUsage: (chunk: ChunkUsage) => void,
-  updateCreditBalance?: (n: number) => void,
-): (chunkIndex: number, billing: { prompt_tokens: number; completion_tokens: number; model: string; balance_after?: number | null }) => void {
+): ChunkBillingCallback {
   return (chunkIndex, billing) => {
     addChunkUsage({
       chunkIndex,
@@ -264,10 +350,57 @@ export function createBillingCallback(
       completionTokens: billing.completion_tokens,
       model: billing.model,
     });
-    if (updateCreditBalance && billing.balance_after != null) {
-      updateCreditBalance(billing.balance_after);
-    }
   };
+}
+
+// ==================== 세션 정산 헬퍼 ====================
+
+/** ChunkUsage[] → settle API에 전달할 형태로 변환 */
+export function chunkUsageToSettleChunks(chunks: ChunkUsage[]) {
+  return chunks.map(c => ({
+    model: c.model,
+    prompt_tokens: c.promptTokens,
+    completion_tokens: c.completionTokens,
+  }));
+}
+
+/**
+ * hold된 세션을 정산(settle) 또는 해제(release).
+ * 처리된 청크가 있으면 settle, 없으면 release.
+ */
+export async function finalizeHold(
+  holdToken: string,
+  chunks: ChunkUsage[],
+  description: string,
+  updateBalance: (balance: number) => void,
+): Promise<void> {
+  if (chunks.length > 0) {
+    const result = await settleCredits(holdToken, chunkUsageToSettleChunks(chunks), description);
+    if (result.ok && result.data.balance_after !== null) {
+      updateBalance(result.data.balance_after);
+    }
+  } else {
+    const result = await releaseCredits(holdToken);
+    if (result.ok && result.data.balance_after !== null) {
+      updateBalance(result.data.balance_after);
+    }
+  }
+}
+
+// ==================== 잔액 알림 ====================
+
+export type BalanceAlertLevel = 'none' | 'info' | 'warning' | 'critical';
+
+export function getBalanceAlertLevel(
+  creditBalance: number,
+  monthlyCredits: number,
+): BalanceAlertLevel {
+  if (monthlyCredits <= 0) return 'none';
+  if (creditBalance <= 0) return 'critical';
+  const usedPercent = ((monthlyCredits - creditBalance) / monthlyCredits) * 100;
+  if (usedPercent >= 90) return 'warning';
+  if (usedPercent >= 75) return 'info';
+  return 'none';
 }
 
 /** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 */

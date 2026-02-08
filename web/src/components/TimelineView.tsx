@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Clock, Users, ChevronDown, ChevronRight, Sparkles, BookOpen, Heart, Swords, MessageCircle } from 'lucide-react';
 import { useStore } from '../store';
-import type { HyperEdge, Entity } from '../types';
+import type { HyperEdge, Entity, SceneSnapshot } from '../types';
 import { getSortedScenes, getEdgesByScene, getCharacters } from '../services/knowledgeGraphQueries';
 
 // 관계 유형별 설정
@@ -67,7 +67,7 @@ export function TimelineView() {
 
     const sortedScenes = getSortedScenes(snapshots);
 
-    return sortedScenes.map((scene: any) => {
+    return sortedScenes.map((scene) => {
       const sceneId = scene.sceneId;
       // order 필드 사용 (파일 순서 변경 시 업데이트됨), 없으면 sceneId에서 추출
       const sceneNum = scene.order || parseInt(sceneId.replace('S', '').replace(/^0+/, '') || '0');
@@ -108,7 +108,7 @@ export function TimelineView() {
         sceneNum,
         time: scene.time || `장면 ${sceneNum}`,
         // 새 필드(timeMarker) 우선, 기존 데이터 호환(timeElapsed)
-        timeMarker: scene.timeMarker || scene.timeElapsed,
+        timeMarker: scene.timeMarker || (scene as SceneSnapshot & { timeElapsed?: string }).timeElapsed,
         location: scene.location,
         summary: scene.summary,
         chapter: scene.chapterNumber || (chapterInfo?.number),
