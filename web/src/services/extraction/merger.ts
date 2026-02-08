@@ -725,6 +725,12 @@ export function mergeLoreEntries(
     const chunkLore = allExtractedLore[chunkIdx];
     if (!chunkLore?.length) continue;
 
+    // 디버그: 이 청크에서 LLM B가 사용한 장면 번호 분포
+    const sceneNums = chunkLore.map(e => e.scene);
+    const uniqueScenes = [...new Set(sceneNums)].sort((a, b) => a - b);
+    const chunkMapping = chunkSceneMappings[chunkIdx] || {};
+    console.log(`[lorebook] 청크 ${chunkIdx + 1}: LLM B 장면번호=${uniqueScenes.join(',')}, 매핑 키=${Object.keys(chunkMapping).join(',')}, 매핑 값=${Object.values(chunkMapping).join(',')}`);
+
     // 이 청크의 파일 인덱스 → sourceFileId
     const fileIndex = chunkSourceFileIndices[chunkIdx] ?? 0;
     const fileId = sourceFileIds?.[fileIndex] || undefined;

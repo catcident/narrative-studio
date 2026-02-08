@@ -1,5 +1,5 @@
 /**
- * 로어북 뷰어 — 왼쪽 카드 그리드 + 오른쪽 상세 패널
+ * 로어북 뷰어 — 왼쪽 포켓몬 스타일 카드 그리드 + 오른쪽 상세 패널
  */
 
 import { useState, useMemo } from 'react';
@@ -80,16 +80,51 @@ function getEntityIcon(category?: EntityCategory) {
   }
 }
 
-function getEntityColor(category?: EntityCategory): { text: string; bg: string; border: string } {
+/** 엔티티 카테고리별 카드 테마 컬러 */
+function getCardTheme(category?: EntityCategory): {
+  gradient: string; border: string; iconBg: string; iconColor: string; accent: string; glow: string;
+} {
   switch (category) {
-    case 'character': return { text: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
-    case 'creature': return { text: '#d97706', bg: '#fffbeb', border: '#fde68a' };
-    case 'location': return { text: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' };
-    case 'organization': return { text: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' };
-    case 'item': return { text: '#d97706', bg: '#fffbeb', border: '#fde68a' };
-    case 'event': return { text: '#be123c', bg: '#fff1f2', border: '#fecdd3' };
-    case 'concept': return { text: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
-    default: return { text: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
+    case 'character': return {
+      gradient: 'from-blue-500 to-indigo-600',
+      border: '#818cf8', iconBg: '#eef2ff', iconColor: '#4f46e5',
+      accent: '#6366f1', glow: 'rgba(99,102,241,0.15)',
+    };
+    case 'creature': return {
+      gradient: 'from-amber-500 to-orange-600',
+      border: '#f59e0b', iconBg: '#fffbeb', iconColor: '#d97706',
+      accent: '#f59e0b', glow: 'rgba(245,158,11,0.15)',
+    };
+    case 'location': return {
+      gradient: 'from-emerald-500 to-teal-600',
+      border: '#10b981', iconBg: '#ecfdf5', iconColor: '#059669',
+      accent: '#10b981', glow: 'rgba(16,185,129,0.15)',
+    };
+    case 'organization': return {
+      gradient: 'from-purple-500 to-violet-600',
+      border: '#8b5cf6', iconBg: '#f5f3ff', iconColor: '#7c3aed',
+      accent: '#8b5cf6', glow: 'rgba(139,92,246,0.15)',
+    };
+    case 'item': return {
+      gradient: 'from-yellow-500 to-amber-600',
+      border: '#eab308', iconBg: '#fefce8', iconColor: '#ca8a04',
+      accent: '#eab308', glow: 'rgba(234,179,8,0.15)',
+    };
+    case 'event': return {
+      gradient: 'from-rose-500 to-pink-600',
+      border: '#f43f5e', iconBg: '#fff1f2', iconColor: '#e11d48',
+      accent: '#f43f5e', glow: 'rgba(244,63,94,0.15)',
+    };
+    case 'concept': return {
+      gradient: 'from-cyan-500 to-sky-600',
+      border: '#06b6d4', iconBg: '#ecfeff', iconColor: '#0891b2',
+      accent: '#06b6d4', glow: 'rgba(6,182,212,0.15)',
+    };
+    default: return {
+      gradient: 'from-gray-500 to-slate-600',
+      border: '#94a3b8', iconBg: '#f8fafc', iconColor: '#64748b',
+      accent: '#94a3b8', glow: 'rgba(148,163,184,0.15)',
+    };
   }
 }
 
@@ -178,13 +213,11 @@ export function LorebookView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, activeTab, tabConfig, entityCategoryMap, searchQuery]);
 
-  // 선택된 엔티티의 카드 데이터
   const selectedCard = useMemo(() => {
     if (!selectedEntity) return null;
     return entityCards.find(c => c.name === selectedEntity) || null;
   }, [selectedEntity, entityCards]);
 
-  // 탭 전환 시 선택 초기화
   const handleTabChange = (tabId: EntityTab) => {
     setActiveTab(tabId);
     setSelectedEntity(null);
@@ -216,7 +249,7 @@ export function LorebookView() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-100">
       {/* ─── 헤더: 탭 + 검색 ─── */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
         <div className="flex items-center gap-2">
@@ -270,20 +303,20 @@ export function LorebookView() {
       {/* ─── 메인: 왼쪽 카드 그리드 + 오른쪽 상세 ─── */}
       <div className="flex-1 flex overflow-hidden">
         {/* 왼쪽: 카드 그리드 */}
-        <div className={`overflow-y-auto p-3 ${selectedCard ? 'w-1/2 border-r border-gray-200' : 'w-full'}`}>
+        <div className={`overflow-y-auto p-4 ${selectedCard ? 'w-1/2 border-r border-gray-200' : 'w-full'}`}>
           {entityCards.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <Search className="w-6 h-6 mx-auto mb-2 opacity-40" />
               <p className="text-xs">검색 결과가 없습니다</p>
             </div>
           ) : (
-            <div className={`grid gap-2.5 ${
+            <div className={`grid gap-3 ${
               selectedCard
                 ? 'grid-cols-2 xl:grid-cols-3'
-                : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+                : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
             }`}>
               {entityCards.map(card => (
-                <EntityCard
+                <PokemonCard
                   key={card.name}
                   card={card}
                   isSelected={selectedEntity === card.name}
@@ -311,9 +344,9 @@ export function LorebookView() {
   );
 }
 
-// ─── 엔티티 카드 (컴팩트) ───
+// ─── 포켓몬 스타일 카드 ───
 
-function EntityCard({
+function PokemonCard({
   card,
   isSelected,
   kgCategory,
@@ -325,56 +358,79 @@ function EntityCard({
   onClick: () => void;
 }) {
   const EntityIcon = getEntityIcon(kgCategory);
-  const color = getEntityColor(kgCategory);
-
-  // 보유 카테고리 수
+  const theme = getCardTheme(kgCategory);
   const uniqueCats = new Set(card.entries.map(e => e.category));
 
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-lg border-2 p-3 transition-all hover:shadow-md ${
-        isSelected
-          ? 'border-blue-400 bg-blue-50 shadow-md ring-1 ring-blue-200'
-          : 'border-gray-200 bg-white hover:border-gray-300'
+      className={`text-left rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+        isSelected ? 'ring-2 shadow-lg scale-[1.02]' : 'shadow-md'
       }`}
+      style={{
+        borderWidth: '2px',
+        borderStyle: 'solid',
+        borderColor: isSelected ? theme.accent : theme.border + '60',
+        boxShadow: isSelected ? `0 4px 20px ${theme.glow}` : undefined,
+        ringColor: theme.accent,
+      }}
     >
-      {/* 아이콘 + 이름 */}
-      <div className="flex items-center gap-2 mb-2">
+      {/* 카드 상단 그라데이션 헤더 */}
+      <div
+        className={`bg-gradient-to-r ${theme.gradient} px-3 py-2.5 flex items-center gap-2`}
+      >
         <div
-          className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: color.bg, border: `1px solid ${color.border}` }}
+          className="w-7 h-7 rounded-full flex items-center justify-center shadow-sm"
+          style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
         >
-          <EntityIcon className="w-3.5 h-3.5" style={{ color: color.text }} />
+          <EntityIcon className="w-3.5 h-3.5" style={{ color: theme.iconColor }} />
         </div>
-        <span className="text-xs font-bold text-gray-900 truncate leading-tight">{card.name}</span>
+        <span className="text-xs font-bold text-white truncate flex-1 drop-shadow-sm">
+          {card.name}
+        </span>
       </div>
 
-      {/* 카테고리 뱃지들 */}
-      <div className="flex flex-wrap gap-1">
-        {Array.from(uniqueCats).slice(0, 4).map(cat => {
-          const config = CATEGORY_CONFIG[cat as LoreCategory];
-          if (!config) return null;
-          return (
-            <span
-              key={cat}
-              className="text-[9px] px-1 py-0.5 rounded font-medium leading-none"
-              style={{ backgroundColor: config.bg, color: config.color }}
-            >
-              {config.label}
+      {/* 카드 바디 */}
+      <div className="bg-white px-3 py-2.5">
+        {/* 카테고리 뱃지 */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {Array.from(uniqueCats).slice(0, 4).map(cat => {
+            const config = CATEGORY_CONFIG[cat as LoreCategory];
+            if (!config) return null;
+            return (
+              <span
+                key={cat}
+                className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
+                style={{ backgroundColor: config.bg, color: config.color, border: `1px solid ${config.border}` }}
+              >
+                {config.label}
+              </span>
+            );
+          })}
+          {uniqueCats.size > 4 && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">
+              +{uniqueCats.size - 4}
             </span>
-          );
-        })}
-        {uniqueCats.size > 4 && (
-          <span className="text-[9px] px-1 py-0.5 rounded font-medium bg-gray-100 text-gray-500">
-            +{uniqueCats.size - 4}
-          </span>
-        )}
+          )}
+        </div>
+
+        {/* 대표 내용 미리보기 (첫 항목) */}
+        <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">
+          {card.entries[0]?.content || ''}
+        </p>
       </div>
 
-      {/* 건수 */}
-      <div className="mt-2 text-[10px] text-gray-400 font-medium">
-        {card.count}개 항목
+      {/* 카드 하단 풋터 */}
+      <div
+        className="px-3 py-1.5 flex items-center justify-between"
+        style={{ backgroundColor: theme.glow }}
+      >
+        <span className="text-[10px] font-bold" style={{ color: theme.accent }}>
+          {card.count}개 항목
+        </span>
+        <span className="text-[9px] text-gray-400">
+          {uniqueCats.size}종
+        </span>
       </div>
     </button>
   );
@@ -394,7 +450,7 @@ function DetailPanel({
   onClose: () => void;
 }) {
   const EntityIcon = getEntityIcon(kgCategory);
-  const color = getEntityColor(kgCategory);
+  const theme = getCardTheme(kgCategory);
 
   // 카테고리별 그룹핑
   const byCategory: Record<string, LoreEntry[]> = {};
@@ -413,21 +469,21 @@ function DetailPanel({
 
   return (
     <div className="w-1/2 h-full flex flex-col bg-white">
-      {/* 헤더 */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 flex items-center gap-3">
+      {/* 헤더 — 그라데이션 */}
+      <div className={`flex-shrink-0 bg-gradient-to-r ${theme.gradient} px-4 py-3 flex items-center gap-3`}>
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: color.bg, border: `1px solid ${color.border}` }}
+          className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+          style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
         >
-          <EntityIcon className="w-4 h-4" style={{ color: color.text }} />
+          <EntityIcon className="w-5 h-5" style={{ color: theme.iconColor }} />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 truncate">{card.name}</h2>
-          <p className="text-[11px] text-gray-400">{card.count}개 항목</p>
+          <h2 className="text-sm font-bold text-white truncate drop-shadow-sm">{card.name}</h2>
+          <p className="text-[11px] text-white/70">{card.count}개 항목</p>
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+          className="p-1 rounded-md hover:bg-white/20 text-white/80 hover:text-white transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -444,7 +500,7 @@ function DetailPanel({
             <div
               key={cat}
               className="rounded-lg overflow-hidden"
-              style={{ border: `1px solid ${config.border}` }}
+              style={{ border: `1.5px solid ${config.border}` }}
             >
               {/* 카테고리 헤더 */}
               <div
@@ -456,7 +512,7 @@ function DetailPanel({
                   {config.label}
                 </span>
                 <span
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{ backgroundColor: config.color + '18', color: config.color }}
                 >
                   {catEntries.length}
@@ -466,12 +522,12 @@ function DetailPanel({
               {/* 엔트리 목록 */}
               <div className="bg-white divide-y divide-gray-100">
                 {catEntries.map(entry => (
-                  <div key={entry.id} className="px-3 py-2.5">
+                  <div key={entry.id} className="px-3 py-3">
                     <p className="text-[13px] text-gray-800 leading-relaxed">{entry.content}</p>
                     {entry.quote && (
                       <div
-                        className="mt-1.5 px-2.5 py-1.5 rounded-md"
-                        style={{ backgroundColor: '#faf5ff', borderLeft: '3px solid #c084fc' }}
+                        className="mt-2 px-3 py-2 rounded-md"
+                        style={{ backgroundColor: '#faf5ff', borderLeft: `3px solid ${config.color}40` }}
                       >
                         <p className="text-xs text-purple-700 italic leading-relaxed flex items-start gap-1.5">
                           <Quote className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
@@ -479,8 +535,8 @@ function DetailPanel({
                         </p>
                       </div>
                     )}
-                    <span className="text-[10px] text-gray-400 font-medium mt-1 block">
-                      장면 {sceneOrderMap[entry.sceneId] ?? '?'}
+                    <span className="text-[10px] text-gray-400 font-medium mt-1.5 block">
+                      장면 {sceneOrderMap[entry.sceneId] ?? entry.sceneId}
                     </span>
                   </div>
                 ))}

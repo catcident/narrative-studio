@@ -325,6 +325,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
         // 빈 결과로 추가 (장면 번호 유지를 위해)
         allExtracted.push(EMPTY_CHUNK_DATA);
+        allExtractedLore.push([]);  // 로어북도 빈 배열로 인덱스 맞추기
 
         // 진행상황 저장 (실패한 청크도 처리됨으로 표시)
         saveCurrentProgress(i + 1);
@@ -424,6 +425,14 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
   // 알려진 엔티티 이름 목록 (로어북 엔티티명 보정용)
   const knownEntityNames = validated.entities.map(e => e.name);
+
+  // 디버그: 장면 매핑 상태 확인
+  console.log(`[lorebook] 청크별 장면 매핑 수: ${chunkLocalToSFormat.map((m, i) => `청크${i + 1}=${Object.keys(m).length}개`).join(', ')}`);
+  if (chunkLocalToSFormat.length > 0) {
+    const first = chunkLocalToSFormat[0];
+    console.log(`[lorebook] 청크1 매핑 예시:`, JSON.stringify(first));
+  }
+  console.log(`[lorebook] 로어 청크 수: ${allExtractedLore.length}, 각 청크별 엔트리 수: ${allExtractedLore.map((l, i) => `청크${i + 1}=${l.length}`).join(', ')}`);
 
   const mergedLore = mergeLoreEntries(
     allExtractedLore,
