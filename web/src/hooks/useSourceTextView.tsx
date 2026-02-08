@@ -140,8 +140,8 @@ export function useSourceTextView() {
       const updatedGraph = deleteFileFromGraph(knowledgeGraph, fileId, fileName);
       await updateKnowledgeGraph(currentDataId, updatedGraph);
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
-    } catch (error) {
-      console.error('[SourceTextView] 파일 삭제 실패:', error);
+    } catch (err: unknown) {
+      console.error('[SourceTextView] 파일 삭제 실패:', err);
       alert('파일 삭제에 실패했습니다.');
     } finally {
       setDeletingFileId(null);
@@ -160,8 +160,8 @@ export function useSourceTextView() {
       if (!updatedGraph) return;
       await updateKnowledgeGraph(currentDataId, updatedGraph);
       setKnowledgeGraph(updatedGraph, undefined, currentDataId);
-    } catch (error) {
-      console.error('[SourceTextView] 파일 순서 변경 실패:', error);
+    } catch (err: unknown) {
+      console.error('[SourceTextView] 파일 순서 변경 실패:', err);
       alert('파일 순서 변경에 실패했습니다.');
     } finally {
       setMovingFileId(null);

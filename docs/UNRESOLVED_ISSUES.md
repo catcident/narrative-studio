@@ -9,7 +9,11 @@
 > 청크별 차감 리팩토링 후 코드 리뷰/심플리파이어 ~25건 → 모두 해결 (커밋 26a355c, 1f7c1aa, 6ef72b7, a124ae4)
 > 추가 6건 해결: SF-1, SF-2, SF-5, SF-7, CS-7(selector), CS-8
 >
-> **현재 미해결 이슈: 2건** (아키텍처 수준, 향후 별도 PR에서 처리)
+> **현재 미해결 이슈: 0건** (전부 해결 완료)
+>
+> CS-1: useAddFileAnalysis 훅으로 중복 제거 (커밋 참조)
+> CS-7/CS-11: MergedExtraction + AccumulatedGraph 타입 도입 (커밋 참조)
+> CHAT-1: decideConnectedNodes billing 수집 + 채팅 세션 hold/settle 전환 (2026-02-08)
 
 ---
 
@@ -77,9 +81,9 @@
 
 ---
 
-## 미해결 #1: App.tsx vs FileUpload.tsx "파일 추가" 로직 중복 (CS-1)
+## ~~미해결 #1: App.tsx vs FileUpload.tsx "파일 추가" 로직 중복 (CS-1)~~ — 해결 완료
 
-> 심각도: MEDIUM | 별도 PR 권장
+> ✅ `useAddFileAnalysis` 훅으로 해결 (`web/src/hooks/useAddFileAnalysis.ts`)
 
 ### 현상
 
@@ -136,9 +140,9 @@ ensureSufficientBalance(subscription)
 
 ---
 
-## 미해결 #2: merger.ts 타입 안전성 (CS-7 잔여 + CS-11)
+## ~~미해결 #2: merger.ts 타입 안전성 (CS-7 잔여 + CS-11)~~ — 해결 완료
 
-> 심각도: MEDIUM | 별도 PR 권장 | 규모가 크므로 단독 작업 필요
+> ✅ `MergedExtraction` 내부 타입 도입 (`extraction/types.ts`), `AccumulatedGraph` 경량 반환으로 해결
 
 ### 현상
 
@@ -257,8 +261,9 @@ interface AccumulatedGraph {
 
 ## 요약
 
-| # | 이슈 | 파일 | any 건수 | 심각도 | 비고 |
-|---|------|------|----------|--------|------|
-| CS-1 | 파일 추가 로직 중복 | App.tsx, FileUpload.tsx | — | MEDIUM | 추상화 비용 > 중복 비용 |
-| CS-7/CS-11 | merger.ts 타입 안전성 | merger.ts, selector.ts | 56곳 (실질 52곳) | MEDIUM | hyperedge 필드명 불일치 선행 필요 |
-| **합계** | **2건** | | | | |
+| # | 이슈 | 상태 | 해결 방법 |
+|---|------|------|----------|
+| CS-1 | 파일 추가 로직 중복 | ✅ 해결 | `useAddFileAnalysis` 훅 추출 |
+| CS-7/CS-11 | merger.ts 타입 안전성 | ✅ 해결 | `MergedExtraction` + `AccumulatedGraph` 타입 도입 |
+| CHAT-1 | decideConnectedNodes billing 미수집 | ✅ 해결 | billing 수집 + 채팅 세션 hold/settle 전환 |
+| **합계** | **0건 미해결** | | |

@@ -151,15 +151,20 @@ extractKnowledgeGraph({ onChunkBilling })
                               ──→  hold 해제 (크레딧 복원)
 ```
 
-새로운 분석 경로를 추가할 때 체크리스트:
-- [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 UI 표시
-- [ ] `ensureSufficientBalance(subscription, authEnabled)` 분석 시작 전 호출 — 프로덕션에서 subscription 미로딩 시 에러
-- [ ] `holdCredits()` → 분석 → `settleCredits()` / `releaseCredits()` 세션 패턴 준수
-- [ ] 402 응답 명시 처리 (selector, extractor 모두) — generic error에 흡수 금지
-- [ ] `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
+새로운 과금 서비스(분석, 채팅, 검증 등)를 추가할 때 체크리스트:
+- [ ] `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)` — 3번째 파라미터로 예상 비용 전달
+- [ ] `holdCredits()` → 작업 → `finalizeHold()` 세션 패턴 준수
+- [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 (잔액 갱신 없음)
+- [ ] `_billing` 응답에서 `model: string` 필수 확인 — `ChunkBilling` 타입 준수
+- [ ] `finalizeHold` 성공/실패 양쪽에서 호출 — try-catch에서 chunks.length === 0이면 release
+- [ ] 402 응답 명시 처리 — generic error에 흡수 금지
+- [ ] `subscription === null` 가드 — hold/settle/release 호출 전 체크 → null이면 billing 전체 스킵
+- [ ] `isUsingPersonalKey` BYOK 가드 — 개인 키 사용 시 billing 전체 스킵
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
-- [ ] hold/settle/release 호출 전 `&& subscription` 가드 — `subscription === null`이면 billing 전체 스킵
-- [ ] `syncPartialAnalysis(setPartialAnalysis)` — extraction 완료/실패 후 반드시 호출 (success + error 양쪽)
+- [ ] `useStore.getState()` — 비동기 콜백 내부에서 stale closure 방지
+- [ ] UI 크레딧 표시는 `calculateSessionCreditsFromChunks()` 사용 — `calculateCreditsFromChunks()`는 레거시
+- [ ] (extraction 전용) `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
+- [ ] (extraction 전용) `syncPartialAnalysis(setPartialAnalysis)` — 완료/실패 후 반드시 호출 (success + error 양쪽)
 
 ### 파일 추가 분석
 
@@ -235,18 +240,25 @@ getPlans()                  // 요금제 목록
 getCreditPackages()         // 크레딧 상품 목록
 
 // 로컬 순수 함수 (API 호출 없음)
-estimateUsageLocally(charCount, model)  // 로컬 예상 비용 계산 (UsageEstimate용)
+estimateUsageLocally(charCount, model)  // 로컬 예상 비용 계산 (extractor+selector+merger+embedding 포함)
 calculateCreditsFromTokens(prompt, completion, model)  // 단일 모델 토큰→크레딧
-calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합산
+calculateCreditsFromChunks(chunks)      // 레거시: 청크별 올림 합산 (과다 추정)
+calculateSessionCreditsFromChunks(chunks)  // 세션 수준: 서버 settle 미러링 (1회 올림, 정확)
+estimateValidationCost(fileCount, model?)  // 검증 비용 추정 (첫 파일 자동 통과)
+estimateChatCost(messages, contextChars, model)  // 채팅 비용 추정 (4회 호출 포함)
 
 // 잔액 확인
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
-ensureSufficientBalance(subscription, authEnabled?)  // 잔액 확인 + 프로덕션 안전 체크
+ensureSufficientBalance(subscription, authEnabled?, estimatedCredits?)  // 잔액 확인 + 예상 비용 비교
 
 // 세션 관리
 holdCredits(estimatedAmount)            // 분석 전 크레딧 선점
 settleCredits(sessionId, actualUsage)   // 분석 성공 시 정산
 releaseCredits(sessionId)               // 분석 실패 시 hold 해제
+
+// 정산 헬퍼
+finalizeHold(holdToken, chunks, desc, updateBalance)  // settle/release 분기 + balance 갱신 → FinalizeHoldResult
+chunkUsageToSettleChunks(chunks)  // ChunkUsage[] → settle API 형태 변환
 
 // Billing 콜백 생성 (리턴 타입: ChunkBillingCallback)
 createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백 (토큰 사용량 누적만)
@@ -262,9 +274,12 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onCh
 
 - **charCount vs bytes**: 분석 함수에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
 - **세션 패턴**: hold → 분석 → settle (성공) / release (실패). `/api/analyze`는 과금 없이 토큰 정보만 반환
-- **잔액 확인**: 모든 분석 진입점에서 `checkSufficientBalance()` 호출 필수
+- **잔액 확인**: 모든 분석 진입점에서 `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)` 호출 필수
+- **예상 비용 전달**: `ensureSufficientBalance`의 3번째 파라미터 `estimatedCredits`로 예상 비용 > 잔액 시 사전 차단
 - **토큰 누적**: `onChunkBilling` 콜백은 토큰 사용량 누적만 수행 — 잔액 갱신은 settle 시에만
 - **settle 시 잔액 갱신**: `settleCredits()` 응답의 `balance_after`로 CreditBadge 갱신
+- **크레딧 표시**: UI 표시용 크레딧은 `calculateSessionCreditsFromChunks()` 사용 (서버 settle 미러링). `calculateCreditsFromChunks()`는 레거시 (과다 추정)
+- **`finalizeHold` 반환값**: `FinalizeHoldResult.actualCredits` — settle 시 실제 차감 크레딧, release 시 null
 
 ### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
 
@@ -309,19 +324,23 @@ if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
 
 지식 그래프와 원본 텍스트를 기반으로 소설에 대해 대화하는 채팅 서비스.
 
-### 호출 구조 (1 메시지 = 3 LLM 호출)
+### 호출 구조 (1 메시지 = 최대 4 LLM 호출)
 
 ```
 ①의도분석 (DEFAULT_MODEL, 비스트리밍) → 키워드 + 카테고리 추출
 ②데이터선별 (DEFAULT_MODEL, 비스트리밍) → 필요한 엔티티/청크 선택 (조건부)
 ③최종답변 (사용자 모델, 스트리밍) → 컨텍스트 기반 답변 생성
+④연결노드판단 (DEFAULT_MODEL, 비스트리밍) → 관련 엔티티 판단 (조건부)
 ```
 
-### Billing 통합
+### Billing 통합 (세션 hold/settle 패턴)
 
+- `/api/chat`은 토큰 정보만 반환 (과금 없음) — extraction과 동일 패턴
 - `CallBilling`: 개별 호출의 billing 정보 (서버 `_billing` 필드, `model: string` 필수)
-- `ChatMessageBilling`: 3개 호출의 토큰 사용량 합산
-- `ChatResult`: `{ content, billing }` — `sendChatMessage` 반환 타입
+- `ChatResult`: `{ content, billing, chunkUsages }` — `sendChatMessage` 반환 타입
+- `chunkUsages: ChunkUsage[]`: 4개 호출의 토큰 사용량 → settle에 전달
+- `ChatView.tsx`에서 hold/settle 세션 패턴 적용 (`useAddFileAnalysis` 패턴 참조)
+- `ChatMessage.creditsUsed`: settle 응답의 `actual_credits` → 메시지 인라인 표시
 - SSE `event: billing` 파싱: `nextEventType` 상태 머신으로 처리
 
 ### 대화 이력 제한
@@ -345,7 +364,8 @@ lineBuffer = splitLines.pop() || '';  // 마지막 불완전 행 보관
 estimateChatCost(messages, contextChars, model, dynamicModels?) → number  // 크레딧 단위
 ```
 
-①② Flash 고정 추정 + ③ 사용자 모델 기반 추정. `ChatView.tsx`에서 전송 전 잔액 비교용.
+①②④ Flash 고정 추정 + ③ 사용자 모델 기반 추정 → `calculateMixedSessionCredits`로 세션 수준 올림.
+`ChatView.tsx`에서 `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)`으로 전송 전 차단.
 
 ---
 

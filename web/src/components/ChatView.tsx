@@ -274,7 +274,7 @@ export function ChatView() {
     const shouldBill = latestSub && !isUsingPersonalKey;
 
     // 비용 사전 추정
-    const estimatedCredits = estimateChatCost(messages, contextChars, selectedModel);
+    const estimatedCredits = estimateChatCost(messages, contextChars, selectedModel, models);
 
     // 잔액 사전 확인 (subscription이 있고, BYOK가 아닐 때만)
     if (shouldBill) {
@@ -293,10 +293,15 @@ export function ChatView() {
       if (!holdResult.ok) {
         if (holdResult.status === 402) {
           setInsufficientCredits('크레딧이 부족합니다.');
+        } else {
+          setInsufficientCredits('크레딧 선점에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
         return;
       }
       holdToken = holdResult.data.hold_token;
+      if (holdResult.data.balance_after !== null) {
+        latestUpdateBalance(holdResult.data.balance_after);
+      }
     }
 
     const userMessage: ChatMessage = {

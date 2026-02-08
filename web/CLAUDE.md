@@ -101,18 +101,20 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 - 클라이언트 셀렉터 permissive fallback: `useByokEnabled`→true, `useExportFormats`→전체, `useCanBatchAnalysis`→true
 - Hold/settle 스킵: `subscription === null`이면 hold/settle 전체 생략, extraction만 진행 (`holdToken`이 null로 유지)
 
-**채팅 과금 흐름 (스트리밍 + 3회 호출)**:
+**채팅 과금 흐름 (세션 hold/settle + 최대 4회 호출)**:
 
-채팅 1건 = LLM 호출 3회 (①의도분석, ②데이터선별, ③최종답변). `/api/chat`에서 과금 처리.
+채팅 1건 = LLM 호출 최대 4회 (①의도분석, ②데이터선별, ③최종답변, ④연결노드판단). `/api/chat`은 토큰 정보만 반환 (과금 없음).
 
 ```
-①② 비스트리밍 (DEFAULT_MODEL): _billing에 토큰 정보 반환
-③  스트리밍 (사용자 모델): ReadableStream 인터셉트 → 종료 후 event: billing SSE 이벤트
+①②④ 비스트리밍 (DEFAULT_MODEL): _billing에 토큰 정보 반환
+③   스트리밍 (사용자 모델): ReadableStream 인터셉트 → 종료 후 event: billing SSE 이벤트
 ```
 
-- 서버: 각 호출의 `_billing`에 토큰 정보 포함 (`model`, `prompt_tokens`, `completion_tokens`)
-- 클라이언트: `CallBilling[]` → `ChatMessageBilling` 합산 (토큰 사용량 누적)
-- 사전 체크: `ensureSufficientBalance()` + `estimateChatCost()` → 잔액 부족 시 전송 차단
+- 서버: 각 호출의 `_billing`에 토큰 정보만 포함 (`model`, `prompt_tokens`, `completion_tokens`, `byok`)
+- 클라이언트: `sendChatMessage()` → `chunkUsages: ChunkUsage[]` 수집
+- **세션 패턴**: `holdCredits(estimatedCredits)` → `sendChatMessage()` → `finalizeHold(holdToken, chunkUsages)`
+- 사전 체크: `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)` → 예상 비용 > 잔액 시 전송 차단
+- 인라인 표시: `ChatMessage.creditsUsed` — settle 응답 `actual_credits` 기반
 - 대화 이력 제한: `MAX_HISTORY_CHARS = 45000` (~30K tokens)
 - `fetchWithTimeout(120s)`: analyze와 동일한 타임아웃
 
