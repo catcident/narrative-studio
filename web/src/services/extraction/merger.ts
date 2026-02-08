@@ -712,6 +712,25 @@ function cleanEntityName(name: string): string {
 }
 
 /**
+ * 두 문자열의 유사도 계산 (0~1, 1=동일)
+ * 핵심 명사(한글 2자 이상 단어)의 겹침 비율로 판단
+ */
+function contentSimilarity(a: string, b: string): number {
+  const extractWords = (s: string) => {
+    const words = s.match(/[가-힣]{2,}|[a-zA-Z]{3,}/g) || [];
+    return new Set(words.map(w => w.toLowerCase()));
+  };
+  const wordsA = extractWords(a);
+  const wordsB = extractWords(b);
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let overlap = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) overlap++;
+  }
+  return overlap / Math.min(wordsA.size, wordsB.size);
+}
+
+/**
  * 청크별 raw 로어 엔트리를 병합하고 글로벌 장면 ID로 매핑
  * chunkSceneMappings: 청크별 로컬 장면 번호 → "S0001" 형식 매핑
  * entityNameMapping: 엔티티 병합(reviewEntityMerges) 후 "old name" → "keep name" 매핑
@@ -829,10 +848,30 @@ export function mergeLoreEntries(
         if (!sceneId) sceneId = `S${String(raw.scene).padStart(4, '0')}`;
       }
 
-      // 중복 제거 키: 같은 (엔티티, 카테고리, 장면, content 앞 30자)
-      const dedupKey = `${entityName}|${category}|${sceneId}|${raw.content.slice(0, 30)}`;
+      // 중복 제거: 같은 (엔티티, 카테고리)에서 내용이 유사하면 스킵
+      // 1단계: 정확히 같은 content prefix 중복
+      const dedupKey = `${entityName}|${category}|${raw.content.slice(0, 30)}`;
       if (seen.has(dedupKey)) continue;
       seen.add(dedupKey);
+
+      // 2단계: 같은 (엔티티, 카테고리)의 기존 엔트리와 의미 유사도 비교
+      const groupKey = `${entityName}|${category}`;
+      let isDuplicate = false;
+      for (const existing of entries) {
+        if (`${existing.entityName}|${existing.category}` !== groupKey) continue;
+        if (contentSimilarity(raw.content, existing.content) >= 0.7) {
+          // 더 긴(구체적인) 내용을 유지, 짧은 것 스킵
+          if (raw.content.length > existing.content.length) {
+            existing.content = raw.content;
+            if (raw.quote && (!existing.quote || raw.quote.length > existing.quote.length)) {
+              existing.quote = raw.quote;
+            }
+          }
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (isDuplicate) continue;
 
       counter++;
       entries.push({

@@ -511,7 +511,7 @@ function DetailPanel({
                         </div>
                       )}
                       <span className="text-[10px] text-gray-400 font-medium mt-1.5 block">
-                        장면 {sceneOrderMap[entry.sceneId] ?? entry.sceneId}
+                        장면 {sceneOrderMap[entry.sceneId] ?? (parseInt(entry.sceneId.replace(/\D/g, ''), 10) || entry.sceneId)}
                       </span>
                     </div>
                   ))}
