@@ -182,6 +182,7 @@ export interface MergedExtraction {
   chapters: MergedChapter[];
   timeline?: MergedTimelinePoint[];
   loreEntries?: RawLoreEntry[];  // 모든 청크의 로어 엔트리 (장면 ID 미매핑)
+  chunkSceneOffsets?: Array<Record<number, number>>;  // 청크별 로컬→글로벌 장면 매핑
 }
 
 /** buildAccumulatedGraph() 반환 — 경량 축적 그래프 (orchestrator/selector 내부 전용) */

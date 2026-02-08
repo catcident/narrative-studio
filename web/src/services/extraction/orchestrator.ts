@@ -399,10 +399,27 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     }
   }
 
-  // 장면 ID 매핑: 글로벌 번호 기반 (mergeExtractions과 동일한 로직)
-  const sceneIdMapping: Record<number, string> = {};
+  // 장면 ID 매핑: 글로벌 번호 → S-format (buildKnowledgeGraph와 동일)
+  // 이것은 글로벌 scene.id → "S0001" 형식
+  const globalSceneIdMapping: Record<number, string> = {};
   for (const scene of validated.scenes) {
-    sceneIdMapping[scene.id] = `S${String(scene.id).padStart(4, '0')}`;
+    globalSceneIdMapping[scene.id] = `S${String(scene.id).padStart(4, '0')}`;
+  }
+
+  // 로어북용: 청크별 로컬→글로벌→S-format 매핑 구축
+  // chunkSceneOffsets[chunkIdx] = { localSceneId → globalSceneId }
+  // globalSceneIdMapping = { globalSceneId → "S0001" }
+  // 합치면: chunkLocalToSFormat[chunkIdx] = { localSceneId → "S0001" }
+  const chunkSceneOffsets = merged.chunkSceneOffsets || [];
+  const chunkLocalToSFormat: Array<Record<number, string>> = [];
+  for (let ci = 0; ci < chunkSceneOffsets.length; ci++) {
+    const localToGlobal = chunkSceneOffsets[ci];
+    const localToS: Record<number, string> = {};
+    for (const [localStr, globalId] of Object.entries(localToGlobal)) {
+      const local = Number(localStr);
+      localToS[local] = globalSceneIdMapping[globalId] || `S${String(globalId).padStart(4, '0')}`;
+    }
+    chunkLocalToSFormat.push(localToS);
   }
 
   // 알려진 엔티티 이름 목록 (로어북 엔티티명 보정용)
@@ -411,7 +428,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   const mergedLore = mergeLoreEntries(
     allExtractedLore,
     chunkSourceFileIndices,
-    sceneIdMapping,
+    chunkLocalToSFormat,
     entityNameMapping,
     finalFileNames,
     undefined,

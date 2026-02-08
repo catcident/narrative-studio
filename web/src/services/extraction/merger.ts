@@ -174,6 +174,8 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
   const chapters: MergedChapter[] = [];
   const chapterMap: Record<string, number> = {};
   const nameMap: Record<string, number> = {};
+  // 청크별 로컬→글로벌 장면 매핑 (로어북 병합용)
+  const chunkSceneOffsets: Array<Record<number, number>> = [];
 
   let globalSceneOffset = 0;
 
@@ -223,6 +225,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
         sourceFileIndex,
       });
     }
+    chunkSceneOffsets.push(localToGlobal);
     globalSceneOffset += chunkScenes.length || 1;
 
     // 엔티티 병합
@@ -279,7 +282,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
 
   console.log(`[extraction] 병합 완료: 최종 entities=${entities.length}, relationships=${relationships.length}, scenes=${scenes.length}, chapters=${chapters.length}`);
   console.log(`[extraction] 인물 목록: ${entities.filter(e => e.category === 'character').map(e => e.name).join(', ')}`);
-  return { entities, relationships, scenes, chapters };
+  return { entities, relationships, scenes, chapters, chunkSceneOffsets };
 }
 
 // --- LLM 병합 검토 ---
@@ -697,13 +700,14 @@ function cleanEntityName(name: string): string {
 
 /**
  * 청크별 raw 로어 엔트리를 병합하고 글로벌 장면 ID로 매핑
+ * chunkSceneMappings: 청크별 로컬 장면 번호 → "S0001" 형식 매핑
  * entityNameMapping: 엔티티 병합(reviewEntityMerges) 후 "old name" → "keep name" 매핑
  * knownEntityNames: KG에 존재하는 엔티티 이름 목록 (이름 매칭용)
  */
 export function mergeLoreEntries(
   allExtractedLore: RawLoreEntry[][],
   chunkSourceFileIndices: number[],
-  sceneIdMapping: Record<number, string>,
+  chunkSceneMappings: Array<Record<number, string>>,
   entityNameMapping: Record<string, string>,
   fileNames?: string[],
   sourceFileIds?: string[],
@@ -767,8 +771,25 @@ export function mergeLoreEntries(
         }
       }
 
-      // 장면 ID: 로컬 → 글로벌 매핑
-      const sceneId = sceneIdMapping[raw.scene] || `S${String(raw.scene).padStart(4, '0')}`;
+      // 장면 ID: 청크별 로컬 → S-format 매핑
+      // LLM B의 장면 번호는 청크 로컬이므로, LLM A의 같은 청크 매핑으로 근사
+      const chunkMapping = chunkSceneMappings[chunkIdx] || {};
+      let sceneId = chunkMapping[raw.scene];
+      if (!sceneId) {
+        // LLM B가 LLM A와 다른 장면 수를 뽑은 경우: 가장 가까운 장면에 매핑
+        const availableScenes = Object.keys(chunkMapping).map(Number).sort((a, b) => a - b);
+        if (availableScenes.length > 0) {
+          // 비례 매핑: LLM B의 장면 번호를 LLM A의 장면 범위에 대응
+          const maxLoreScene = raw.scene;
+          const maxLlmAScene = availableScenes[availableScenes.length - 1];
+          const mappedIdx = Math.min(
+            Math.round((maxLoreScene - 1) / Math.max(maxLoreScene, 1) * availableScenes.length),
+            availableScenes.length - 1
+          );
+          sceneId = chunkMapping[availableScenes[Math.max(0, mappedIdx)]];
+        }
+        if (!sceneId) sceneId = `S${String(raw.scene).padStart(4, '0')}`;
+      }
 
       // 중복 제거 키: 같은 (엔티티, 카테고리, 장면, content 앞 30자)
       const dedupKey = `${entityName}|${category}|${sceneId}|${raw.content.slice(0, 30)}`;
