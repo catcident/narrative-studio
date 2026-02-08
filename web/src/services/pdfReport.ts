@@ -5,11 +5,9 @@
  */
 
 import type { NovelKnowledgeGraph, Entity, HyperEdge, SceneSnapshot, EntityCategory } from '../types';
+import { loadFontBase64, FONT_FAMILY } from './fontLoader';
 
 // jsPDF / autotable은 동적 import로 지연 로딩 (번들 크기 절감)
-
-const FONT_NAME = 'NotoSansKR';
-const FONT_URL = 'https://cdn.jsdelivr.net/gh/nicholasgasior/gfonts-base64/noto-sans-kr/NotoSansKR-Regular.ttf.base64.txt';
 
 const CATEGORY_LABELS: Record<EntityCategory, string> = {
   character: '인물',
@@ -30,28 +28,6 @@ function truncate(text: string | undefined, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
 }
 
-// 폰트 base64 캐시
-let fontBase64Cache: string | null = null;
-
-async function loadFontBase64(): Promise<string | null> {
-  if (fontBase64Cache) return fontBase64Cache;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(FONT_URL, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      console.error('[export] Font download failed:', response.status);
-      return null;
-    }
-    fontBase64Cache = await response.text();
-    return fontBase64Cache;
-  } catch (err: unknown) {
-    console.error('[export] Font download error:', err instanceof Error ? err.message : err);
-    return null;
-  }
-}
 
 interface PdfModules {
   jsPDF: typeof import('jspdf').jsPDF;
@@ -94,13 +70,13 @@ export async function exportPdfReport(
   // 한국어 폰트 등록
   if (fontBase64) {
     doc.addFileToVFS('NotoSansKR-Regular.ttf', fontBase64);
-    doc.addFont('NotoSansKR-Regular.ttf', FONT_NAME, 'normal');
-    doc.setFont(FONT_NAME);
+    doc.addFont('NotoSansKR-Regular.ttf', FONT_FAMILY, 'normal');
+    doc.setFont(FONT_FAMILY);
   }
 
   const setFont = (size: number, style: 'normal' | 'bold' = 'normal') => {
     if (fontBase64) {
-      doc.setFont(FONT_NAME, style);
+      doc.setFont(FONT_FAMILY, style);
     }
     doc.setFontSize(size);
   };
@@ -201,7 +177,7 @@ export async function exportPdfReport(
     head: [['이름', '카테고리', '중요도', '별칭', '등장수']],
     body: entityRows,
     styles: {
-      font: fontBase64 ? FONT_NAME : 'helvetica',
+      font: fontBase64 ? FONT_FAMILY : 'helvetica',
       fontSize: 8,
       cellPadding: 2,
     },
@@ -246,7 +222,7 @@ export async function exportPdfReport(
     head: [['엔티티', '유형', '감정', '강도', '설명']],
     body: edgeRows,
     styles: {
-      font: fontBase64 ? FONT_NAME : 'helvetica',
+      font: fontBase64 ? FONT_FAMILY : 'helvetica',
       fontSize: 8,
       cellPadding: 2,
     },
@@ -290,7 +266,7 @@ export async function exportPdfReport(
       head: [['순서', '챕터', '시간', '장소', '인물', '요약']],
       body: sceneRows,
       styles: {
-        font: fontBase64 ? FONT_NAME : 'helvetica',
+        font: fontBase64 ? FONT_FAMILY : 'helvetica',
         fontSize: 7,
         cellPadding: 2,
       },
