@@ -681,9 +681,24 @@ const VALID_LORE_CATEGORIES = new Set<string>([
   'organization_detail', 'item_detail', 'event',
 ]);
 
+// LLM이 잘못 생성하는 엔티티 이름 패턴 정리
+const INVALID_ENTITY_NAMES = new Set([
+  'concept', 'character', 'location', 'item', 'creature', 'event', 'organization',
+  '나', '그', '그녀', '그들', '화자', '주인공',
+]);
+
+function cleanEntityName(name: string): string {
+  // 괄호 내용 제거: "고양이(나)" → "고양이", "서준(별칭: 나)" → "서준"
+  let cleaned = name.replace(/\s*\([^)]*\)\s*/g, '').trim();
+  // 대괄호 제거: "고양이[주인공]" → "고양이"
+  cleaned = cleaned.replace(/\s*\[[^\]]*\]\s*/g, '').trim();
+  return cleaned || name.trim();
+}
+
 /**
  * 청크별 raw 로어 엔트리를 병합하고 글로벌 장면 ID로 매핑
  * entityNameMapping: 엔티티 병합(reviewEntityMerges) 후 "old name" → "keep name" 매핑
+ * knownEntityNames: KG에 존재하는 엔티티 이름 목록 (이름 매칭용)
  */
 export function mergeLoreEntries(
   allExtractedLore: RawLoreEntry[][],
@@ -692,10 +707,15 @@ export function mergeLoreEntries(
   entityNameMapping: Record<string, string>,
   fileNames?: string[],
   sourceFileIds?: string[],
+  knownEntityNames?: string[],
 ): LoreEntry[] {
   const entries: LoreEntry[] = [];
   const seen = new Set<string>();  // 중복 제거: "entityName|category|sceneId|contentPrefix"
   let counter = 0;
+  let skippedInvalid = 0;
+
+  // 알려진 엔티티 이름으로 퍼지 매칭을 위한 맵
+  const knownNamesLower = (knownEntityNames || []).map(n => ({ original: n, lower: n.toLowerCase() }));
 
   for (let chunkIdx = 0; chunkIdx < allExtractedLore.length; chunkIdx++) {
     const chunkLore = allExtractedLore[chunkIdx];
@@ -713,8 +733,39 @@ export function mergeLoreEntries(
         ? raw.category as LoreCategory
         : 'event';
 
-      // 엔티티 이름: 병합 매핑 적용
-      const entityName = entityNameMapping[raw.entity_name] || raw.entity_name;
+      // 1. 이름 정리: 괄호/별칭 제거
+      let entityName = cleanEntityName(raw.entity_name);
+
+      // 2. 병합 매핑 적용
+      entityName = entityNameMapping[entityName] || entityNameMapping[raw.entity_name] || entityName;
+
+      // 3. 무효한 이름 필터링 (카테고리명이나 대명사를 이름으로 쓴 경우)
+      if (INVALID_ENTITY_NAMES.has(entityName.toLowerCase())) {
+        skippedInvalid++;
+        continue;
+      }
+
+      // 4. 알려진 엔티티 이름으로 매칭 시도 (LLM이 약간 다르게 쓴 경우 보정)
+      if (knownNamesLower.length > 0) {
+        const nameLower = entityName.toLowerCase();
+        // 정확 매칭
+        const exact = knownNamesLower.find(k => k.lower === nameLower);
+        if (exact) {
+          entityName = exact.original;
+        } else {
+          // 부분 매칭 (80% 이상 길이 비율)
+          for (const known of knownNamesLower) {
+            const shorter = Math.min(nameLower.length, known.lower.length);
+            const longer = Math.max(nameLower.length, known.lower.length);
+            if (shorter >= 2 && shorter / longer >= 0.8) {
+              if (known.lower.includes(nameLower) || nameLower.includes(known.lower)) {
+                entityName = known.original;
+                break;
+              }
+            }
+          }
+        }
+      }
 
       // 장면 ID: 로컬 → 글로벌 매핑
       const sceneId = sceneIdMapping[raw.scene] || `S${String(raw.scene).padStart(4, '0')}`;
@@ -737,6 +788,9 @@ export function mergeLoreEntries(
     }
   }
 
+  if (skippedInvalid > 0) {
+    console.log(`[lorebook] 무효한 엔티티 이름 ${skippedInvalid}개 건너뜀`);
+  }
   console.log(`[lorebook] 병합 완료: ${entries.length}개 로어 엔트리`);
   return entries;
 }

@@ -405,12 +405,17 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     sceneIdMapping[scene.id] = `S${String(scene.id).padStart(4, '0')}`;
   }
 
+  // 알려진 엔티티 이름 목록 (로어북 엔티티명 보정용)
+  const knownEntityNames = validated.entities.map(e => e.name);
+
   const mergedLore = mergeLoreEntries(
     allExtractedLore,
     chunkSourceFileIndices,
     sceneIdMapping,
     entityNameMapping,
     finalFileNames,
+    undefined,
+    knownEntityNames,
   );
   console.log(`[extraction] 로어북 병합: ${mergedLore.length}개 엔트리`);
 
