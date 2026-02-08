@@ -141,8 +141,21 @@ export function SourceTextView() {
         )}
       </div>
 
+      {/* 수정 중 로딩 오버레이 */}
+      {isSavingEdit && (
+        <div className="flex-shrink-0 bg-blue-50 border-b border-blue-200 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" aria-hidden="true" />
+            <div>
+              <div className="text-sm font-medium text-blue-800">파일 수정 중...</div>
+              <div className="text-xs text-blue-600">삭제 후 재분석이 진행됩니다. 잠시만 기다려주세요.</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 파일 목록 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-3 ${isSavingEdit ? 'opacity-50 pointer-events-none' : ''}`}>
         {filteredFiles.map((file, filteredIndex) => {
           // sourceFiles에서의 실제 인덱스 (검색 필터 시 filteredIndex와 다를 수 있음)
           const index = sourceFiles.findIndex(f => f.id === file.id);

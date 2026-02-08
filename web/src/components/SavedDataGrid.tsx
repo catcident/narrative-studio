@@ -16,6 +16,9 @@ import {
   X,
   Upload,
   Crown,
+  Loader2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import {
   getSavedKnowledgeGraphList,
@@ -44,6 +47,9 @@ export function SavedDataGrid({ onLoad, onShowSubscription }: Props) {
   const [versions, setVersions] = useState<{ version: number; savedAt: string; note?: string }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // 목록 새로고침
   const refreshList = async () => {
@@ -128,6 +134,41 @@ export function SavedDataGrid({ onLoad, onShowSubscription }: Props) {
     e.target.value = '';
   };
 
+  // 선택 토글
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // 전체 선택/해제
+  const toggleSelectAll = () => {
+    if (selectedIds.size === savedList.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(savedList.map(item => item.id)));
+    }
+  };
+
+  // 일괄 삭제
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      for (const id of selectedIds) {
+        await deleteKnowledgeGraph(id);
+      }
+      setSelectedIds(new Set());
+      setConfirmBulkDelete(false);
+      await refreshList();
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
     const now = new Date();
@@ -155,7 +196,52 @@ export function SavedDataGrid({ onLoad, onShowSubscription }: Props) {
     <div className="mt-8 pt-6 border-t border-gray-200">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-700">저장된 데이터</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-semibold text-gray-700">저장된 데이터</h3>
+          {savedList.length > 1 && (
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+            >
+              {selectedIds.size === savedList.length ? (
+                <CheckSquare className="w-3.5 h-3.5" aria-hidden="true" />
+              ) : (
+                <Square className="w-3.5 h-3.5" aria-hidden="true" />
+              )}
+              {selectedIds.size > 0 ? `${selectedIds.size}개 선택` : '선택'}
+            </button>
+          )}
+          {selectedIds.size > 0 && (
+            confirmBulkDelete ? (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-red-600">{selectedIds.size}개 삭제?</span>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors disabled:opacity-50"
+                >
+                  {isBulkDeleting ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Check className="w-3 h-3" aria-hidden="true" />}
+                  확인
+                </button>
+                <button
+                  onClick={() => setConfirmBulkDelete(false)}
+                  disabled={isBulkDeleting}
+                  className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmBulkDelete(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                선택 삭제
+              </button>
+            )
+          )}
+        </div>
         <label className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded cursor-pointer transition-colors">
           <Upload className="w-3.5 h-3.5" aria-hidden="true" />
           <span>JSON 가져오기</span>
@@ -184,12 +270,27 @@ export function SavedDataGrid({ onLoad, onShowSubscription }: Props) {
             {/* 카드 */}
             <button
               onClick={() => handleLoad(item.id)}
-              className="w-full text-left p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
+              className={`w-full text-left p-4 bg-white border rounded-xl hover:border-blue-300 hover:shadow-md transition-all ${
+                selectedIds.has(item.id) ? 'border-blue-400 ring-1 ring-blue-200' : 'border-gray-200'
+              }`}
             >
-              {/* 제목 */}
-              <h4 className="font-medium text-gray-800 truncate pr-8" title={item.title}>
+              {/* 제목 + 선택 체크박스 */}
+              <div className="flex items-start gap-2">
+                <button
+                  onClick={(e) => toggleSelect(item.id, e)}
+                  className="flex-shrink-0 mt-0.5 p-0.5 rounded hover:bg-gray-100 transition-colors"
+                  aria-label={selectedIds.has(item.id) ? '선택 해제' : '선택'}
+                >
+                  {selectedIds.has(item.id) ? (
+                    <CheckSquare className="w-4 h-4 text-blue-500" aria-hidden="true" />
+                  ) : (
+                    <Square className="w-4 h-4 text-gray-300 group-hover:text-gray-400" aria-hidden="true" />
+                  )}
+                </button>
+              <h4 className="font-medium text-gray-800 truncate pr-6 flex-1" title={item.title}>
                 {item.title}
               </h4>
+              </div>
 
               {/* 통계 */}
               <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">

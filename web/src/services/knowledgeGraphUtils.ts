@@ -479,17 +479,16 @@ export function buildEditFileGraph(
   };
   const reordered = reorderScenes(graphWithRemappedFiles, renumbered.sourceFiles);
 
-  // 검증 결과: originalFileIndex 이전만 유지
+  // 검증 결과: 수정된 파일만 리셋, 나머지는 유지
   const newValidation: Record<string, FileValidationResult> = {};
-  renumbered.sourceFiles.forEach((f, idx) => {
-    if (idx < originalFileIndex) {
-      const oldFile = updatedFiles.find(uf => uf.fileName === f.fileName);
-      if (oldFile && graph.validationResults?.[oldFile.id]) {
-        newValidation[f.id] = {
-          ...graph.validationResults[oldFile.id],
-          fileId: f.id,
-        };
-      }
+  renumbered.sourceFiles.forEach((f) => {
+    if (f.fileName === fileName) return; // 수정된 파일은 검증 리셋
+    const oldFile = updatedFiles.find(uf => uf.fileName === f.fileName);
+    if (oldFile && graph.validationResults?.[oldFile.id]) {
+      newValidation[f.id] = {
+        ...graph.validationResults[oldFile.id],
+        fileId: f.id,
+      };
     }
   });
 

@@ -17,7 +17,7 @@
  */
 
 import { useRef, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, Minus, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, Minus, Search, X, RotateCcw } from 'lucide-react';
 
 interface Scene {
   sceneId: string;
@@ -275,6 +275,25 @@ export function SceneTimeline({
             <Minus className="w-3 h-3" aria-hidden="true" />
             범위
           </button>
+
+          {/* 초기화 버튼 - 장면 선택이나 범위가 있을 때만 표시 */}
+          {(selectedSceneId || sceneRangeStart || isRangeMode) && (
+            <button
+              onClick={() => {
+                if (isRangeMode) {
+                  setIsRangeMode(false);
+                  setRangeSelecting(null);
+                }
+                onSelectRange(null, null);
+                onSelectScene(null);
+              }}
+              className="px-2 py-1 text-xs rounded flex items-center gap-1 bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
+              title="선택 초기화"
+            >
+              <RotateCcw className="w-3 h-3" aria-hidden="true" />
+              초기화
+            </button>
+          )}
 
           {/* 점프 입력 */}
           {showJumpInput ? (

@@ -19,7 +19,7 @@ import '@xyflow/react/dist/style.css';
 import { useStore, useExportFormats } from '../../store';
 import type { Entity, HyperEdge, EntityCategory } from '../../types';
 import { getCharacters, getEntitiesByCategory } from '../../services/knowledgeGraphQueries';
-import { Eye, EyeOff, Focus, Filter, PanelLeftOpen, PanelLeftClose, Image, FileText, Crown, FileDown } from 'lucide-react';
+import { Eye, EyeOff, Filter, PanelLeftOpen, PanelLeftClose, Image, FileText, Crown, FileDown } from 'lucide-react';
 import { exportGraphAsPng, exportGraphAsSvg, captureGraphAsPngDataUrl } from '../../services/graphExport';
 import { EntitySelector } from '../EntitySelector';
 import { CATEGORY_COLORS, RELATION_COLORS, RELATION_LABELS, SENTIMENT_STROKE_STYLES, CHARACTER_COLORS } from '../../constants';
@@ -164,7 +164,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
   const [viewMode, setViewMode] = useState<GraphViewMode>('full');
   const [focusedCharIds, setFocusedCharIds] = useState<string[]>([]);
   const [minConnections, setMinConnections] = useState<number>(1);  // 최소 연결 횟수 필터
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
 
   // 인물 목록 추출
@@ -771,66 +771,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
             <EyeOff className="w-3 h-3" aria-hidden="true" />
             간소화
           </button>
-          <button
-            onClick={() => setViewMode('focused')}
-            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
-              viewMode === 'focused'
-                ? 'bg-purple-100 text-purple-700 font-medium'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="인물 중심"
-          >
-            <Focus className="w-3 h-3" aria-hidden="true" />
-            인물 중심
-          </button>
           </div>
-
-        {/* 인물 중심 모드: 인물 다중 선택 */}
-        {viewMode === 'focused' && (
-          <div className="border-t border-gray-100 pt-2">
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-[10px] text-gray-400">관점 인물 선택 (다중):</div>
-              {focusedCharIds.length > 0 && (
-                <button
-                  onClick={() => setFocusedCharIds([])}
-                  className="text-[9px] text-gray-400 hover:text-red-500"
-                >
-                  초기화
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1 max-w-[200px]">
-              {characters.map((char, i) => {
-                const isSelected = focusedCharIds.includes(char.id);
-                return (
-                  <button
-                    key={char.id}
-                    onClick={() => {
-                      if (isSelected) {
-                        setFocusedCharIds(focusedCharIds.filter(id => id !== char.id));
-                      } else {
-                        setFocusedCharIds([...focusedCharIds, char.id]);
-                      }
-                    }}
-                    className={`px-1.5 py-0.5 text-[10px] rounded transition-all ${
-                      isSelected
-                        ? 'text-white shadow'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    style={isSelected ? { backgroundColor: getCharColor(i) } : undefined}
-                  >
-                    {char.name}
-                  </button>
-                );
-              })}
-            </div>
-            {focusedCharIds.length > 0 && (
-              <div className="text-[9px] text-blue-500 mt-1">
-                {focusedCharIds.length}명 선택됨
-              </div>
-            )}
-          </div>
-        )}
 
         {/* 연결 횟수 필터 - 선택된 엔티티가 있을 때만 */}
         {selectedEntityIds.length > 0 && (
