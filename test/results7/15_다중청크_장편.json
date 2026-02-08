@@ -1,0 +1,465 @@
+{
+  "_test": {
+    "file": "15_다중청크_장편",
+    "timestamp": "2026-02-08T04:07:13.204Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 마을"
+    },
+    {
+      "id": 2,
+      "title": "2화: 방학"
+    },
+    {
+      "id": 3,
+      "title": "3화: 사건"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "녹원리",
+      "time": null,
+      "summary": "윤기태와 박순덕 노부부가 녹원리에 살고 있다. 윤기태는 정자나무 아래에서 김판석과 바둑을 두고, 박순덕은 경로당에서 이정자와 수다를 떤다. 윤기태의 아들 윤용준과 며느리 최서연, 손녀 윤하나에 대한 이야기가 나온다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "녹원리",
+      "time": null,
+      "summary": "하나가 녹원리에 도착하여 할아버지 윤기태의 마중을 받고, 할머니 박순덕의 요리를 먹으며 행복해한다. 다음 날, 하나는 마을에서 이민규를 만나 금방 친해진다. 마을 이장 손태호가 아이들에게 뒷산 너머에 가지 말라고 경고한다.",
+      "time_marker": "다음 날",
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "뒷산",
+      "time": null,
+      "summary": "하나와 민규가 뒷산에서 길을 잃는다. 기태와 판석이 아이들을 찾아 나서고, 순덕은 용준에게 전화한다. 손태호 이장이 수색대를 꾸리고, 이정자는 민규를 걱정한다. 기태가 아이들을 발견하고, 용준과 서연이 녹원리에 도착한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "윤기태",
+      "category": "character",
+      "description": "녹원리에 사는 노인. 박순덕의 남편.",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "박순덕",
+      "category": "character",
+      "description": "녹원리에 사는 노인. 윤기태의 아내.",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "녹원리",
+      "category": "location",
+      "description": "윤기태와 박순덕 노부부가 사는 작은 마을.",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "정자나무",
+      "category": "location",
+      "description": "마을 입구에 있는 정자나무.",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "김판석",
+      "category": "character",
+      "description": "윤기태의 바둑 친구. 이웃집 사람.",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "윤용준",
+      "category": "character",
+      "description": "윤기태의 아들. 서울에서 변호사로 일한다.",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "최서연",
+      "category": "character",
+      "description": "윤용준의 아내. 초등학교 교사.",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "윤하나",
+      "category": "character",
+      "description": "윤용준과 최서연의 딸. 윤기태와 박순덕의 손녀.",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "경로당",
+      "category": "location",
+      "description": "마을 경로당.",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "이정자",
+      "category": "character",
+      "description": "박순덕과 수다를 떠는 할머니. 이민규의 할머니.",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "이민규",
+      "category": "character",
+      "description": "이정자의 손자. 윤하나와 같은 나이.",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "손태호",
+      "category": "character",
+      "description": "마을 이장.",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "뒷산",
+      "category": "location",
+      "description": "하나와 민규가 길을 잃은 산.",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "멧돼지",
+      "category": "character",
+      "description": "뒷산에 나오는 멧돼지.",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "절벽",
+      "category": "location",
+      "description": "기태가 아이들을 발견한 절벽 근처.",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "윤기태",
+      "to": "박순덕",
+      "type": "가족",
+      "description": "부부",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤기태",
+      "to": "윤용준",
+      "type": "가족",
+      "description": "아버지-아들",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤용준",
+      "to": "최서연",
+      "type": "가족",
+      "description": "부부",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤용준",
+      "to": "윤하나",
+      "type": "가족",
+      "description": "아버지-딸",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤기태",
+      "to": "윤하나",
+      "type": "가족",
+      "description": "할아버지-손녀",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박순덕",
+      "to": "윤하나",
+      "type": "가족",
+      "description": "할머니-손녀",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤기태",
+      "to": "김판석",
+      "type": "친구",
+      "description": "바둑 친구",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박순덕",
+      "to": "이정자",
+      "type": "친구",
+      "description": "수다 친구",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이정자",
+      "to": "이민규",
+      "type": "가족",
+      "description": "할머니-손자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤기태",
+      "to": "정자나무",
+      "type": "위치",
+      "description": "정자나무 아래에서 바둑을 둠",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박순덕",
+      "to": "경로당",
+      "type": "위치",
+      "description": "경로당에서 수다를 떰",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤기태",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "거주",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박순덕",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "거주",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤하나",
+      "to": "이민규",
+      "type": "친구",
+      "description": "새로운 친구",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "윤하나",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "방문",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "이민규",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "거주",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "손태호",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "이장",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "윤하나",
+      "to": "뒷산",
+      "type": "위치",
+      "description": "길을 잃음",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "이민규",
+      "to": "뒷산",
+      "type": "위치",
+      "description": "길을 잃음",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "윤기태",
+      "to": "뒷산",
+      "type": "위치",
+      "description": "수색",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "김판석",
+      "to": "뒷산",
+      "type": "위치",
+      "description": "수색",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "손태호",
+      "to": "녹원리",
+      "type": "소속",
+      "description": "이장",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "윤용준",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "방문",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "최서연",
+      "to": "녹원리",
+      "type": "위치",
+      "description": "방문",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "윤하나",
+      "to": "절벽",
+      "type": "위치",
+      "description": "발견",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "이민규",
+      "to": "절벽",
+      "type": "위치",
+      "description": "발견",
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "윤기태",
+      "merge": "기태",
+      "reason": "소설 내에서 '기태'는 '윤기태'를 지칭하는 것으로 보임"
+    },
+    {
+      "keep": "박순덕",
+      "merge": "순덕",
+      "reason": "소설 내에서 '순덕'은 '박순덕'을 지칭하는 것으로 보임"
+    }
+  ],
+  "summary": {
+    "entityCount": 15,
+    "characterCount": 10,
+    "locationCount": 5,
+    "itemCount": 0,
+    "conceptCount": 0,
+    "relationshipCount": 26,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

@@ -1,0 +1,343 @@
+{
+  "_test": {
+    "file": "19_학교_따돌림",
+    "timestamp": "2026-02-08T04:08:08.709Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 전학생"
+    },
+    {
+      "id": 2,
+      "title": "2화: 진실"
+    },
+    {
+      "id": 3,
+      "title": "3화: 선택"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "중학교 2학년 3반",
+      "time": "3월",
+      "summary": "서윤이 새 학교인 중학교 2학년 3반으로 전학을 와서 한미영 선생님의 소개를 받고, 반장 이채린의 도움으로 학교에 적응하려 하지만, 윤지가 채린과 너무 가까이 지내지 말라고 경고한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "학교",
+      "time": null,
+      "summary": "채린의 인기가 많지만 서윤은 이상함을 느끼고, 소현이 채린에게 왕따를 당하고 있다는 사실을 알게 된다. 현우도 소현의 말을 확인해준다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "학교",
+      "time": null,
+      "summary": "서윤은 채린에게 소현을 괴롭히는 이유를 묻지만 위협을 받는다. 한미영 선생님과 상담교사 박지훈 선생님이 학교폭력 조사를 시작하고, 현우가 증언하여 채린은 학교폭력위원회에 회부된다. 소현은 서윤에게 고마움을 표한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "서윤",
+      "category": "character",
+      "description": "전학생",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "한미영",
+      "category": "character",
+      "description": "담임 선생님",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "이채린",
+      "category": "character",
+      "description": "반장",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "윤지",
+      "category": "character",
+      "description": "같은 반 학생",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "소현",
+      "category": "character",
+      "description": "같은 반 학생, 채린에게 왕따를 당함",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "현우",
+      "category": "character",
+      "description": "같은 반 학생",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "박지훈",
+      "category": "character",
+      "description": "상담교사",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "중학교 2학년 3반",
+      "category": "location",
+      "description": "서윤이 전학 온 반",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "학교",
+      "category": "location",
+      "description": "소현과 서윤이 대화하는 장소",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "학교폭력위원회",
+      "category": "concept",
+      "description": "채린이 회부된 곳",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "서윤",
+      "to": "한미영",
+      "type": "소속",
+      "description": "학생-선생님",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "이채린",
+      "type": "친구",
+      "description": "처음에는 친구 관계",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "윤지",
+      "type": "친구",
+      "description": "같은 반 친구",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "소현",
+      "type": "친구",
+      "description": "도움을 주는 친구 관계",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "현우",
+      "type": "친구",
+      "description": "같은 반 친구",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "소현",
+      "type": "적대",
+      "description": "가해자-피해자",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "현우",
+      "to": "소현",
+      "type": "친구",
+      "description": "같은 반 친구",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "한미영",
+      "to": "박지훈",
+      "type": "동료",
+      "description": "학교 선생님 동료",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "전학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "반장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤지",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "같은 반 학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "한미영",
+      "to": "중학교 2학년 3반",
+      "type": "위치",
+      "description": "담임 선생님",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "소현",
+      "to": "학교",
+      "type": "위치",
+      "description": "왕따 피해 학생",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "현우",
+      "to": "학교",
+      "type": "위치",
+      "description": "같은 반 학생",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "학교",
+      "type": "위치",
+      "description": "가해 학생",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "서윤",
+      "to": "학교",
+      "type": "위치",
+      "description": "전학생",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "한미영",
+      "to": "학교",
+      "type": "위치",
+      "description": "선생님",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "박지훈",
+      "to": "학교",
+      "type": "위치",
+      "description": "상담교사",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "이채린",
+      "to": "학교폭력위원회",
+      "type": "소속",
+      "description": "회부됨",
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [],
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 7,
+    "locationCount": 2,
+    "itemCount": 0,
+    "conceptCount": 1,
+    "relationshipCount": 19,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

@@ -1,0 +1,485 @@
+{
+  "_test": {
+    "file": "18_SF_우주배경",
+    "timestamp": "2026-02-08T04:07:55.261Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 아르테미스호"
+    },
+    {
+      "id": 2,
+      "title": "2화: 이상 신호"
+    },
+    {
+      "id": 3,
+      "title": "3화: 도착"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "아르테미스호 브리지",
+      "time": null,
+      "summary": "함장 나유리가 승무원 동결 해제를 명령하고, 부함장 크리스 웨인이 동결 캡슐 오류를 보고한다. 오류가 난 캡슐에는 과학자 오세진 박사가 들어 있었다. 의무관 릴리 첸이 오세진 박사를 해동시키고, 나유리가 오세진에게 목적지와 그의 역할에 대해 설명한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "아르테미스호",
+      "time": "항해 6개월째",
+      "summary": "통신관 안도윤이 목적지 행성에서 인공적인 신호를 포착한다. 함장 나유리는 긴급 회의를 소집하고, 오세진 박사가 신호를 분석하여 지적 생명체의 신호임을 밝힌다. 크리스 웨인은 계획 변경을 주장하지만, 나유리는 계획대로 진행하되 대비할 것을 결정한다.",
+      "time_marker": "항해 6개월째",
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "케플러-442b 궤도",
+      "time": null,
+      "summary": "아르테미스호가 케플러-442b 궤도에 도달하고, 행성 표면에 거대한 구조물이 보인다. 나유리는 세진, 크리스, 장해준으로 착륙팀을 편성한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 4,
+      "chapter": 3,
+      "location": "케플러-442b 구조물 내부",
+      "time": null,
+      "summary": "착륙팀이 구조물 내부에서 장해준이 벽면의 문자를 발견하고, 세진이 분석하여 1만 년 전에 멸망한 문명의 자동화 시스템에서 신호가 보내졌음을 알아낸다. 크리스가 생존자 여부를 묻는 순간, 구조물 깊숙한 곳에서 빛이 켜진다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "나유리",
+      "category": "character",
+      "description": "아르테미스호 함장",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "크리스 웨인",
+      "category": "character",
+      "description": "아르테미스호 부함장",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "오세진",
+      "category": "character",
+      "description": "과학자, 테라포밍 기술 전문가",
+      "aliases": [
+        "세진"
+      ],
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "릴리 첸",
+      "category": "character",
+      "description": "아르테미스호 의무관",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "안도윤",
+      "category": "character",
+      "description": "아르테미스호 통신관",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "아르테미스호",
+      "category": "item",
+      "description": "인류 최초의 항성간 이민선",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "케플러-442b",
+      "category": "location",
+      "description": "목적지 행성",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "장해준",
+      "category": "character",
+      "description": "보안요원",
+      "aliases": [],
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "구조물",
+      "category": "location",
+      "description": "케플러-442b 행성 표면에 있는 거대한 구조물",
+      "aliases": [
+        "도시",
+        "버려진 도시"
+      ],
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "자동화된 시스템",
+      "category": "concept",
+      "description": "멸망한 문명의 자동화된 시스템",
+      "aliases": [],
+      "scenes": [
+        4
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "나유리",
+      "to": "아르테미스호",
+      "type": "소속",
+      "description": "함장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "아르테미스호",
+      "type": "소속",
+      "description": "부함장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "오세진",
+      "to": "아르테미스호",
+      "type": "소속",
+      "description": "과학자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "릴리 첸",
+      "to": "아르테미스호",
+      "type": "소속",
+      "description": "의무관",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "안도윤",
+      "to": "아르테미스호",
+      "type": "소속",
+      "description": "통신관",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "장해준",
+      "to": "아르테미스호",
+      "type": "소속",
+      "description": "보안요원",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "나유리",
+      "to": "크리스 웨인",
+      "type": "동료",
+      "description": "함장-부함장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "나유리",
+      "to": "오세진",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "나유리",
+      "to": "릴리 첸",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "나유리",
+      "to": "안도윤",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "나유리",
+      "to": "장해준",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "오세진",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "릴리 첸",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "안도윤",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "장해준",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "오세진",
+      "to": "릴리 첸",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "오세진",
+      "to": "안도윤",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "오세진",
+      "to": "장해준",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "릴리 첸",
+      "to": "안도윤",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "릴리 첸",
+      "to": "장해준",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "안도윤",
+      "to": "장해준",
+      "type": "동료",
+      "description": "함선 승무원",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "아르테미스호",
+      "to": "케플러-442b",
+      "type": "위치",
+      "description": "궤도",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "나유리",
+      "to": "아르테미스호 브리지",
+      "type": "위치",
+      "description": "함장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "아르테미스호 브리지",
+      "type": "위치",
+      "description": "부함장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "오세진",
+      "to": "아르테미스호 브리지",
+      "type": "위치",
+      "description": "회의 참석",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "릴리 첸",
+      "to": "아르테미스호 브리지",
+      "type": "위치",
+      "description": "회의 참석",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "안도윤",
+      "to": "아르테미스호 브리지",
+      "type": "위치",
+      "description": "회의 참석",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "오세진",
+      "to": "구조물",
+      "type": "위치",
+      "description": "착륙팀",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "크리스 웨인",
+      "to": "구조물",
+      "type": "위치",
+      "description": "착륙팀",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "장해준",
+      "to": "구조물",
+      "type": "위치",
+      "description": "착륙팀",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "자동화된 시스템",
+      "to": "구조물",
+      "type": "위치",
+      "description": "구조물 내부에 존재",
+      "scenes": [
+        4
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "오세진",
+      "merge": "세진",
+      "reason": "오세진의 별칭이 세진임"
+    },
+    {
+      "keep": "구조물",
+      "merge": "도시",
+      "reason": "구조물의 별칭이 도시임"
+    },
+    {
+      "keep": "구조물",
+      "merge": "버려진 도시",
+      "reason": "구조물의 별칭이 버려진 도시임"
+    }
+  ],
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 6,
+    "locationCount": 2,
+    "itemCount": 1,
+    "conceptCount": 1,
+    "relationshipCount": 31,
+    "sceneCount": 4,
+    "chapterCount": 3
+  }
+}

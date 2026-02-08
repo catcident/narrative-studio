@@ -1,0 +1,515 @@
+{
+  "_test": {
+    "file": "14_직장_상하관계",
+    "timestamp": "2026-02-08T04:06:57.169Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 입사"
+    },
+    {
+      "id": 2,
+      "title": "2화: 프로젝트"
+    },
+    {
+      "id": 3,
+      "title": "3화: 보고"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "한솔그룹 경영기획실",
+      "time": null,
+      "summary": "김태리가 한솔그룹 경영기획실 신입사원으로 입사하고, 기획1팀에 배치되어 팀원들을 소개받는다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "회의실",
+      "time": null,
+      "summary": "이 상무가 핵심 프로젝트를 기획1팀에 맡기고, 한 회장의 관심과 빠른 결과 보고를 요구한다. 정 팀장은 태리에게 자료 조사를 맡기고, 태리는 은별 대리의 도움을 받아 밤새 자료를 만든다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 2,
+      "location": "기획2팀 사무실",
+      "time": null,
+      "summary": "안소미 팀장이 정현수 팀장에게 신입에게 무리한 업무를 시키지 말라고 걱정하며, 인력 지원을 제안한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 4,
+      "chapter": 3,
+      "location": "한 회장 앞",
+      "time": null,
+      "summary": "태리가 한 회장 앞에서 발표하고, 한 회장은 태리를 칭찬한다. 이 상무는 정 팀장의 공으로 돌린다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 5,
+      "chapter": 3,
+      "location": "회의 후",
+      "time": null,
+      "summary": "민우 차장이 태리에게 커피를 건네며 격려하고, 은별 대리는 태리를 팀 에이스라고 칭찬한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "김태리",
+      "category": "character",
+      "description": "한솔그룹 경영기획실 신입사원",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "이동준",
+      "category": "character",
+      "description": "한솔그룹 경영기획실 실장, 상무",
+      "aliases": [
+        "이 상무"
+      ],
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "정현수",
+      "category": "character",
+      "description": "기획1팀 팀장",
+      "aliases": [
+        "정 팀장",
+        "현수"
+      ],
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "안소미",
+      "category": "character",
+      "description": "기획2팀 팀장",
+      "aliases": [
+        "안 팀장"
+      ],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "박민우",
+      "category": "character",
+      "description": "기획1팀 차장",
+      "aliases": [
+        "민우 차장"
+      ],
+      "scenes": [
+        1,
+        5
+      ]
+    },
+    {
+      "name": "조은별",
+      "category": "character",
+      "description": "기획1팀 대리",
+      "aliases": [
+        "은별 대리"
+      ],
+      "scenes": [
+        1,
+        2,
+        5
+      ]
+    },
+    {
+      "name": "한영식",
+      "category": "character",
+      "description": "한솔그룹 회장",
+      "aliases": [
+        "한 회장"
+      ],
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "류재현",
+      "category": "character",
+      "description": "한솔그룹 회장 비서실장",
+      "aliases": [
+        "비서실장"
+      ],
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "한솔그룹 경영기획실",
+      "category": "location",
+      "description": "김태리가 입사한 장소",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "핵심 프로젝트",
+      "category": "concept",
+      "description": "이번 분기 기획1팀이 맡은 프로젝트",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "회의실",
+      "category": "location",
+      "description": "이 상무가 회의를 소집한 장소",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "기획2팀 사무실",
+      "category": "location",
+      "description": "안소미 팀장이 있는 장소",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "커피",
+      "category": "item",
+      "description": "민우 차장이 태리에게 건넨 음료",
+      "aliases": [],
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "name": "한솔그룹",
+      "category": "concept",
+      "description": "김태리가 소속된 그룹",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "김태리",
+      "to": "한솔그룹 경영기획실",
+      "type": "위치",
+      "description": "김태리가 한솔그룹 경영기획실에 있음",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이동준",
+      "to": "한솔그룹",
+      "type": "소속",
+      "description": "경영기획실 실장",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "정현수",
+      "to": "한솔그룹",
+      "type": "소속",
+      "description": "기획1팀 팀장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "안소미",
+      "to": "한솔그룹",
+      "type": "소속",
+      "description": "기획2팀 팀장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박민우",
+      "to": "한솔그룹",
+      "type": "소속",
+      "description": "기획1팀 차장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "조은별",
+      "to": "한솔그룹",
+      "type": "소속",
+      "description": "기획1팀 대리",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "김태리",
+      "to": "정현수",
+      "type": "소속",
+      "description": "기획1팀 팀원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "박민우",
+      "to": "정현수",
+      "type": "소속",
+      "description": "기획1팀 팀원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "조은별",
+      "to": "정현수",
+      "type": "소속",
+      "description": "기획1팀 팀원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "정현수",
+      "to": "이동준",
+      "type": "소속",
+      "description": "경영기획실 팀장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "안소미",
+      "to": "이동준",
+      "type": "소속",
+      "description": "경영기획실 팀장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "류재현",
+      "to": "한영식",
+      "type": "소속",
+      "description": "비서실장",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "김태리",
+      "to": "회의실",
+      "type": "위치",
+      "description": "김태리가 회의실에 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "이동준",
+      "to": "회의실",
+      "type": "위치",
+      "description": "이동준이 회의실에 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "정현수",
+      "to": "회의실",
+      "type": "위치",
+      "description": "정현수가 회의실에 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "안소미",
+      "to": "정현수",
+      "type": "관련",
+      "description": "팀장 동료",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "안소미",
+      "to": "기획2팀 사무실",
+      "type": "위치",
+      "description": "안소미가 기획2팀 사무실에 있음",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "김태리",
+      "to": "한영식",
+      "type": "관련",
+      "description": "발표",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "김태리",
+      "to": "류재현",
+      "type": "관련",
+      "description": "발표",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "김태리",
+      "to": "커피",
+      "type": "소유",
+      "description": "커피를 받음",
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "박민우",
+      "to": "김태리",
+      "type": "동료",
+      "description": "기획1팀 동료",
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "조은별",
+      "to": "김태리",
+      "type": "동료",
+      "description": "기획1팀 동료",
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "한영식",
+      "to": "회의실",
+      "type": "위치",
+      "description": "한영식이 회의실에 있음",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "류재현",
+      "to": "회의실",
+      "type": "위치",
+      "description": "류재현이 회의실에 있음",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "김태리",
+      "to": "조은별",
+      "type": "동료",
+      "description": "기획1팀 동료",
+      "scenes": [
+        2
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "이동준 [character] (별칭: 이 상무)",
+      "merge": "이 상무",
+      "reason": "이동준의 별칭이 이 상무임"
+    },
+    {
+      "keep": "정현수 [character] (별칭: 정 팀장, 현수)",
+      "merge": "정 팀장",
+      "reason": "정현수의 별칭이 정 팀장임"
+    },
+    {
+      "keep": "정현수 [character] (별칭: 정 팀장, 현수)",
+      "merge": "현수",
+      "reason": "정현수의 별칭이 현수임"
+    },
+    {
+      "keep": "안소미 [character] (별칭: 안 팀장)",
+      "merge": "안 팀장",
+      "reason": "안소미의 별칭이 안 팀장임"
+    },
+    {
+      "keep": "박민우 [character] (별칭: 민우 차장)",
+      "merge": "민우 차장",
+      "reason": "박민우의 별칭이 민우 차장임"
+    },
+    {
+      "keep": "조은별 [character] (별칭: 은별 대리)",
+      "merge": "은별 대리",
+      "reason": "조은별의 별칭이 은별 대리임"
+    },
+    {
+      "keep": "한영식 [character] (별칭: 한 회장)",
+      "merge": "한 회장",
+      "reason": "한영식의 별칭이 한 회장임"
+    },
+    {
+      "keep": "류재현 [character] (별칭: 비서실장)",
+      "merge": "비서실장",
+      "reason": "류재현의 별칭이 비서실장임"
+    },
+    {
+      "keep": "한솔그룹 경영기획실 [location]",
+      "merge": "한솔그룹",
+      "reason": "한솔그룹 경영기획실은 한솔그룹의 하위 개념임"
+    }
+  ],
+  "summary": {
+    "entityCount": 14,
+    "characterCount": 8,
+    "locationCount": 3,
+    "itemCount": 1,
+    "conceptCount": 2,
+    "relationshipCount": 25,
+    "sceneCount": 5,
+    "chapterCount": 3
+  }
+}

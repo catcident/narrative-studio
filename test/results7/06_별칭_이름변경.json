@@ -1,0 +1,316 @@
+{
+  "_test": {
+    "file": "06_별칭_이름변경",
+    "timestamp": "2026-02-08T04:05:00.913Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 검은 여우"
+    },
+    {
+      "id": 2,
+      "title": "2화: 이름"
+    },
+    {
+      "id": 3,
+      "title": "3화: 진짜 이름"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "숲",
+      "time": null,
+      "summary": "검은 털을 가진 여우 까미는 숲에서 혼자 지낸다. 어느 날 하얀 토끼가 이사 와서 까미에게 말을 걸고 '까미'라는 이름을 지어준다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "떡갈나무 아래",
+      "time": null,
+      "summary": "하얀 토끼 하양이는 매일 까미를 찾아와 이야기를 나눈다. 까미는 하양이에게 '하양이'라는 이름을 지어주고, 둘은 친구가 된다. 숲의 동물들은 까미와 하양이가 친구가 된 것을 놀라워한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": null,
+      "time": "어느 달밤",
+      "summary": "야무라는 하양이에게 자신의 진짜 이름이 야무라라고 말한다. 하양이는 야무라를 불러주고, 야무라는 웃는다. 부엉이 어른은 야무라가 은빛 여우의 이름이라고 말한다.",
+      "time_marker": "어느 달밤",
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "까미",
+      "category": "character",
+      "description": "검은 털을 가진 여우. 처음에는 다른 동물들과 어울리지 않았지만, 하양이와 친구가 되면서 숲의 동물들과 어울리기 시작한다. 까미의 진짜 이름. 까미를 키워준 할머니가 지어준 이름이다.",
+      "aliases": [
+        "검은 여우",
+        "야무라"
+      ],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "숲",
+      "category": "location",
+      "description": "까미와 하양이가 사는 곳",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "하양이",
+      "category": "character",
+      "description": "하얀 털에 붉은 눈을 가진 토끼. 남쪽 들판에서 이사 왔다. 밝고 긍정적인 성격으로 까미에게 먼저 다가가 친구가 된다.",
+      "aliases": [
+        "토끼",
+        "달토끼"
+      ],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "떡갈나무 아래",
+      "category": "location",
+      "description": "까미가 주로 잠을 자는 장소. 까미와 하양이가 이야기를 나누는 장소.",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "남쪽 들판",
+      "category": "location",
+      "description": "하양이가 원래 살던 곳",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "부엉이 어른",
+      "category": "character",
+      "description": "숲의 동물들을 지켜보는 현명한 존재",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "큰수달",
+      "category": "character",
+      "description": "수달 형제 중 형",
+      "aliases": [
+        "수달 형제"
+      ],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "작은수달",
+      "category": "character",
+      "description": "수달 형제 중 동생",
+      "aliases": [
+        "수달 형제"
+      ],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "할머니",
+      "category": "character",
+      "description": "야무라를 키워준 사람",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "은빛 여우",
+      "category": "concept",
+      "description": "전설 속의 존재. 야무라의 이름과 관련이 있다.",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "까미",
+      "to": "하양이",
+      "type": "친구",
+      "description": "숲에서 만난 친구",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "까미",
+      "to": "숲",
+      "type": "위치",
+      "description": "숲에 살고 있음",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "하양이",
+      "to": "숲",
+      "type": "위치",
+      "description": "숲으로 이사 옴",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "하양이",
+      "to": "남쪽 들판",
+      "type": "위치",
+      "description": "원래 살던 곳",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "까미",
+      "to": "떡갈나무 아래",
+      "type": "위치",
+      "description": "주로 잠을 자는 장소",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "하양이",
+      "to": "떡갈나무 아래",
+      "type": "위치",
+      "description": "까미를 만나러 옴",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "부엉이 어른",
+      "to": "숲",
+      "type": "위치",
+      "description": "숲에 살고 있음",
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "큰수달",
+      "to": "숲",
+      "type": "위치",
+      "description": "숲에 살고 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "작은수달",
+      "to": "숲",
+      "type": "위치",
+      "description": "숲에 살고 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "큰수달",
+      "to": "작은수달",
+      "type": "가족",
+      "description": "형제",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "야무라",
+      "to": "할머니",
+      "type": "가족",
+      "description": "손주-할머니",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "야무라",
+      "to": "은빛 여우",
+      "type": "관련",
+      "description": "이름이 은빛 여우의 이름임",
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "까미",
+      "merge": "검은 여우",
+      "reason": "까미의 별칭"
+    },
+    {
+      "keep": "까미",
+      "merge": "야무라",
+      "reason": "까미의 진짜 이름"
+    },
+    {
+      "keep": "하양이",
+      "merge": "토끼",
+      "reason": "하양이의 종족"
+    },
+    {
+      "keep": "하양이",
+      "merge": "달토끼",
+      "reason": "하양이의 별칭"
+    },
+    {
+      "keep": "큰수달",
+      "merge": "수달 형제",
+      "reason": "큰수달의 별칭"
+    },
+    {
+      "keep": "작은수달",
+      "merge": "수달 형제",
+      "reason": "작은수달의 별칭"
+    }
+  ],
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 6,
+    "locationCount": 3,
+    "itemCount": 0,
+    "conceptCount": 1,
+    "relationshipCount": 12,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

@@ -1,0 +1,356 @@
+{
+  "_test": {
+    "file": "16_판타지_마법체계",
+    "timestamp": "2026-02-08T04:07:25.668Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 아카데미"
+    },
+    {
+      "id": 2,
+      "title": "2화: 라이벌"
+    },
+    {
+      "id": 3,
+      "title": "3화: 동맹"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "아르테미스 아카데미",
+      "time": null,
+      "summary": "아르테미스 아카데미 입학식에서 학장이 마법은 의지로 결정된다고 말한다. 루카는 이그니스 교수에게, 엘리아는 세레나 교수에게 지도를 받는다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "아르테미스 아카데미",
+      "time": null,
+      "summary": "루카와 엘리아는 서로를 의식하며 실기 시험에서 경쟁한다. 빅토르가 루카에게 결투를 신청하고 암흑 마법을 사용하다가 이그니스 교수에게 제지당한다. 카이젤 공작이 학교에 압력을 넣는다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "아르테미스 아카데미",
+      "time": null,
+      "summary": "루카는 엘리아에게 빅토르를 막기 위해 힘을 합칠 것을 제안한다. 세레나 교수는 두 사람에게 아르카나의 서를 건네고, 루카와 엘리아는 마나 융합술을 수련하기 시작한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "아르테미스 아카데미",
+      "category": "location",
+      "description": "대륙 최고의 마법 학교",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "루카",
+      "category": "character",
+      "description": "평민 출신 신입생",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "엘리아 공주",
+      "category": "character",
+      "description": "왕족 출신 신입생",
+      "aliases": [
+        "엘리아"
+      ],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "마그누스",
+      "category": "character",
+      "description": "아르테미스 아카데미 학장",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "이그니스 교수",
+      "category": "character",
+      "description": "화염 마법의 대가, 루카 담당 교수",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "세레나 교수",
+      "category": "character",
+      "description": "치유 마법 전문가, 엘리아 담당 교수",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "빅토르",
+      "category": "character",
+      "description": "귀족 출신 학생, 카이젤 공작의 아들",
+      "aliases": [],
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "카이젤 공작",
+      "category": "character",
+      "description": "왕국의 재상, 빅토르의 아버지",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "암흑 마법",
+      "category": "concept",
+      "description": "금지된 마법",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "아르카나의 서",
+      "category": "item",
+      "description": "대륙에 단 하나뿐인 마법서",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "마나 융합술",
+      "category": "concept",
+      "description": "두 사람의 마법을 하나로 합치는 기술",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "루카",
+      "to": "아르테미스 아카데미",
+      "type": "소속",
+      "description": "학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "엘리아 공주",
+      "to": "아르테미스 아카데미",
+      "type": "소속",
+      "description": "학생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "마그누스",
+      "to": "아르테미스 아카데미",
+      "type": "소속",
+      "description": "학장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "이그니스 교수",
+      "to": "아르테미스 아카데미",
+      "type": "소속",
+      "description": "교수",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "세레나 교수",
+      "to": "아르테미스 아카데미",
+      "type": "소속",
+      "description": "교수",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "루카",
+      "to": "이그니스 교수",
+      "type": "소속",
+      "description": "스승-제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "엘리아 공주",
+      "to": "세레나 교수",
+      "type": "소속",
+      "description": "스승-제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "루카",
+      "to": "엘리아 공주",
+      "type": "적대",
+      "description": "라이벌",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "빅토르",
+      "to": "루카",
+      "type": "적대",
+      "description": "결투 신청",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "빅토르",
+      "to": "카이젤 공작",
+      "type": "가족",
+      "description": "아버지-아들",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "빅토르",
+      "to": "아르테미스 아카데미",
+      "type": "소속",
+      "description": "학생",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "루카",
+      "to": "엘리아 공주",
+      "type": "동맹",
+      "description": "빅토르를 막기 위한 협력",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "루카",
+      "to": "아르테미스 아카데미",
+      "type": "위치",
+      "description": "아카데미에 위치",
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "from": "엘리아 공주",
+      "to": "아르테미스 아카데미",
+      "type": "위치",
+      "description": "아카데미에 위치",
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "from": "마그누스",
+      "to": "아르테미스 아카데미",
+      "type": "위치",
+      "description": "아카데미에 위치",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "이그니스 교수",
+      "to": "아르테미스 아카데미",
+      "type": "위치",
+      "description": "아카데미에 위치",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "세레나 교수",
+      "to": "아르테미스 아카데미",
+      "type": "위치",
+      "description": "아카데미에 위치",
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "from": "빅토르",
+      "to": "아르테미스 아카데미",
+      "type": "위치",
+      "description": "아카데미에 위치",
+      "scenes": [
+        2,
+        3
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "엘리아 공주",
+      "merge": "엘리아",
+      "reason": "엘리아 공주는 엘리아의 별칭임"
+    }
+  ],
+  "summary": {
+    "entityCount": 11,
+    "characterCount": 7,
+    "locationCount": 1,
+    "itemCount": 1,
+    "conceptCount": 2,
+    "relationshipCount": 18,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

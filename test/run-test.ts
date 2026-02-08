@@ -2,17 +2,20 @@
  * 지식그래프 추출 파이프라인 테스트 스크립트
  *
  * 사용법:
- *   cd web && npx tsx ../test/run-test.ts [파일번호|all] [--outdir results2]
+ *   cd web && npx tsx ../test/run-test.ts [파일번호|all] [--outdir results7]
  *
  * 예시:
  *   npx tsx ../test/run-test.ts 08
- *   npx tsx ../test/run-test.ts all --outdir results2
+ *   npx tsx ../test/run-test.ts all --outdir results7
  *
  * OpenRouter API 키를 web/.env.local에서 읽습니다.
+ * merger.ts의 공식 mergeExtractions 함수를 사용합니다.
  */
 
 import fs from 'fs';
 import path from 'path';
+import { mergeExtractions } from '../web/src/services/extraction/merger';
+import type { ChunkExtractedData, MergedExtraction } from '../web/src/services/extraction/types';
 
 // ─── 설정 ───
 const MODEL = 'google/gemini-2.0-flash-001';
@@ -70,7 +73,6 @@ async function callLLM(prompt: string, model: string = MODEL): Promise<string> {
 // ─── JSON 파싱 ───
 function tryFixJson(raw: string): string {
   let s = raw.trim();
-  // markdown code block 제거
   const jsonStart = s.indexOf('{');
   const arrayStart = s.indexOf('[');
   const start = jsonStart >= 0 && arrayStart >= 0
@@ -84,12 +86,8 @@ function tryFixJson(raw: string): string {
 }
 
 // ─── 타입 ───
-interface Entity { name: string; category: string; description: string; aliases: string[]; scenes: number[] }
-interface Relationship { from: string; to: string; type: string; description: string; scenes: number[] }
-interface Scene { id: number; chapter: number; location: string; time?: string; summary: string; time_marker?: string | null }
-interface Chapter { id: number; title: string }
-interface ChunkData { chapters: Chapter[]; scenes: Scene[]; entities: Entity[]; relationships: Relationship[] }
 interface KnownEntity { name: string; description: string; category: string; aliases: string[] }
+interface MergeSuggestion { keep: string; merge: string; reason: string }
 
 // ─── 청크 분할 ───
 function splitIntoChunks(text: string, maxSize: number): string[] {
@@ -109,7 +107,7 @@ function splitIntoChunks(text: string, maxSize: number): string[] {
 }
 
 // ─── 추출 ───
-async function extractChunk(chunkText: string, chunkNum: number, knownEntities: KnownEntity[], userPrompt: string): Promise<ChunkData> {
+async function extractChunk(chunkText: string, chunkNum: number, knownEntities: KnownEntity[], userPrompt: string): Promise<ChunkExtractedData> {
   let previousText = '';
   if (knownEntities.length > 0) {
     const byCategory: Record<string, KnownEntity[]> = {};
@@ -144,64 +142,76 @@ async function extractChunk(chunkText: string, chunkNum: number, knownEntities: 
   }
 }
 
-// ─── 병합 ───
-function mergeExtractions(extractions: ChunkData[]) {
-  const entities: Entity[] = [];
-  const relationships: Relationship[] = [];
-  const scenes: Scene[] = [];
-  const chapters: Chapter[] = [];
-  const nameMap: Record<string, number> = {};
-  let sceneOffset = 0;
-
-  for (const ext of extractions) {
-    for (const ch of (ext.chapters || [])) {
-      if (!chapters.find(c => c.title === ch.title)) chapters.push(ch);
-    }
-    const localToGlobal: Record<number, number> = {};
-    for (const s of (ext.scenes || [])) {
-      const gid = sceneOffset + s.id;
-      localToGlobal[s.id] = gid;
-      scenes.push({ ...s, id: gid });
-    }
-    sceneOffset += (ext.scenes || []).length || 1;
-
-    for (const e of (ext.entities || [])) {
-      const norm = e.name.trim().toLowerCase();
-      const gs = (e.scenes || []).map(s => localToGlobal[s] || s);
-      if (nameMap[norm] !== undefined) {
-        const ex = entities[nameMap[norm]];
-        if (e.description && !ex.description?.includes(e.description)) ex.description = (ex.description + ' ' + e.description).trim();
-        ex.scenes = [...new Set([...ex.scenes, ...gs])];
-        ex.aliases = [...new Set([...(ex.aliases || []), ...(e.aliases || [])])];
-      } else {
-        nameMap[norm] = entities.length;
-        entities.push({ ...e, scenes: gs });
-        for (const a of (e.aliases || [])) nameMap[a.trim().toLowerCase()] = entities.length - 1;
-      }
-    }
-
-    for (const r of (ext.relationships || [])) {
-      const gs = (r.scenes || []).map(s => localToGlobal[s] || s);
-      const key = `${r.from}-${r.type}-${r.to}`.toLowerCase();
-      const ex = relationships.find(er => `${er.from}-${er.type}-${er.to}`.toLowerCase() === key);
-      if (ex) { ex.scenes = [...new Set([...ex.scenes, ...gs])]; }
-      else { relationships.push({ ...r, scenes: gs }); }
-    }
-  }
-  return { entities, relationships, scenes, chapters };
-}
-
-// ─── LLM 병합 검토 ───
-async function reviewMerges(entities: Entity[], mergePrompt: string) {
+// ─── LLM 병합 검토 (직접 OpenRouter 호출) ───
+async function reviewMerges(merged: MergedExtraction, mergePrompt: string): Promise<MergeSuggestion[]> {
+  const { entities } = merged;
   if (entities.length <= 3) return [];
+
   const list = entities.map((e, i) => {
     const a = e.aliases?.length ? ` (별칭: ${e.aliases.join(', ')})` : '';
     return `${i + 1}. ${e.name} [${e.category}]${a}: ${(e.description || '').slice(0, 80)}`;
   }).join('\n');
+
   console.log('  LLM 병합 검토...');
   const raw = await callLLM(mergePrompt.replace('{{entityList}}', list));
-  try { const s = JSON.parse(tryFixJson(raw)); return Array.isArray(s) ? s : []; }
-  catch { return []; }
+  try {
+    const s = JSON.parse(tryFixJson(raw));
+    return Array.isArray(s) ? s : [];
+  } catch {
+    return [];
+  }
+}
+
+// ─── 병합 제안 적용 (공식 reviewEntityMerges 로직과 동일) ───
+function applyMergeSuggestions(merged: MergedExtraction, suggestions: MergeSuggestion[]): MergedExtraction {
+  if (suggestions.length === 0) return merged;
+
+  const newEntities = [...merged.entities];
+  const newRelationships = [...merged.relationships];
+
+  for (const suggestion of suggestions) {
+    const keepIdx = newEntities.findIndex(e => e.name === suggestion.keep);
+    let mergeIdx = newEntities.findIndex(e => e.name === suggestion.merge);
+
+    // 동일 이름 엔티티 병합 시 findIndex가 같은 인덱스를 반환하는 버그 방지
+    if (mergeIdx === keepIdx) {
+      mergeIdx = newEntities.findIndex((e, idx) => idx !== keepIdx && e.name === suggestion.merge);
+    }
+
+    if (keepIdx === -1 || mergeIdx === -1) {
+      console.log(`    병합 스킵 (이름 없음): "${suggestion.keep}" ← "${suggestion.merge}"`);
+      continue;
+    }
+
+    const keepEntity = newEntities[keepIdx];
+    const mergeEntity = newEntities[mergeIdx];
+
+    if (keepEntity.category !== mergeEntity.category) {
+      console.log(`    병합 스킵 (카테고리 다름): "${suggestion.keep}" (${keepEntity.category}) ← "${suggestion.merge}" (${mergeEntity.category})`);
+      continue;
+    }
+
+    console.log(`    병합: "${suggestion.keep}" ← "${suggestion.merge}" (${suggestion.reason})`);
+
+    keepEntity.aliases = [...new Set([...(keepEntity.aliases || []), mergeEntity.name, ...(mergeEntity.aliases || [])])];
+    if (mergeEntity.description && !keepEntity.description.includes(mergeEntity.description)) {
+      keepEntity.description = (keepEntity.description + ' ' + mergeEntity.description).trim();
+    }
+    keepEntity.scenes = [...new Set([...(keepEntity.scenes || []), ...(mergeEntity.scenes || [])])];
+
+    for (const rel of newRelationships) {
+      if (rel.from === suggestion.merge) rel.from = suggestion.keep;
+      if (rel.to === suggestion.merge) rel.to = suggestion.keep;
+    }
+
+    newEntities.splice(mergeIdx, 1);
+  }
+
+  return {
+    ...merged,
+    entities: newEntities,
+    relationships: newRelationships.filter(r => r.from !== r.to),
+  };
 }
 
 // ─── 테스트 실행 ───
@@ -215,7 +225,7 @@ async function runTest(testFile: string, prompts: ReturnType<typeof loadPrompts>
   const chunks = splitIntoChunks(text, CHUNK_SIZE);
   console.log(`  ${text.length}자, ${chunks.length}청크`);
 
-  const allExtracted: ChunkData[] = [];
+  const allExtracted: ChunkExtractedData[] = [];
   const known: KnownEntity[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
@@ -230,26 +240,13 @@ async function runTest(testFile: string, prompts: ReturnType<typeof loadPrompts>
     console.log(`    → 엔티티 ${(ext.entities || []).length}, 관계 ${(ext.relationships || []).length}`);
   }
 
-  console.log('  병합...');
-  const merged = mergeExtractions(allExtracted);
+  console.log('  병합 (공식 merger.ts)...');
+  let merged = mergeExtractions(allExtracted);
 
-  const mergeSuggestions = await reviewMerges(merged.entities, prompts.ENTITY_MERGE_REVIEW_PROMPT);
+  const mergeSuggestions = await reviewMerges(merged, prompts.ENTITY_MERGE_REVIEW_PROMPT);
   if (mergeSuggestions.length > 0) {
     console.log(`  병합 제안 ${mergeSuggestions.length}건:`);
-    for (const s of mergeSuggestions) {
-      console.log(`    "${s.keep}" ← "${s.merge}"`);
-      const ki = merged.entities.findIndex(e => e.name === s.keep);
-      const mi = merged.entities.findIndex(e => e.name === s.merge);
-      if (ki >= 0 && mi >= 0 && merged.entities[ki].category === merged.entities[mi].category) {
-        const k = merged.entities[ki], m = merged.entities[mi];
-        k.aliases = [...new Set([...(k.aliases || []), m.name, ...(m.aliases || [])])];
-        k.scenes = [...new Set([...k.scenes, ...m.scenes])];
-        if (m.description && !k.description.includes(m.description)) k.description = (k.description + ' ' + m.description).trim();
-        for (const r of merged.relationships) { if (r.from === s.merge) r.from = s.keep; if (r.to === s.merge) r.to = s.keep; }
-        merged.entities.splice(mi, 1);
-      }
-    }
-    merged.relationships = merged.relationships.filter(r => r.from !== r.to);
+    merged = applyMergeSuggestions(merged, mergeSuggestions);
   }
 
   const result = {

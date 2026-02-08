@@ -1,0 +1,372 @@
+{
+  "_test": {
+    "file": "12_로맨스_감정변화",
+    "timestamp": "2026-02-08T04:06:25.031Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 첫인상"
+    },
+    {
+      "id": 2,
+      "title": "2화: 오해"
+    },
+    {
+      "id": 3,
+      "title": "3화: 고백"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "마케팅팀",
+      "time": null,
+      "summary": "유나가 새 직장 첫날, 마케팅팀에 배정받고 강민재와 첫 만남을 가진다. 팀장 오세영이 유나를 소개하고 민재가 온보딩을 담당하게 된다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "회사",
+      "time": null,
+      "summary": "민재의 차가운 태도에 유나는 송지원에게 하소연한다. 야근 중 유나가 쓰러지고 민재가 유나를 병원에 데려간다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": "바닷가",
+      "time": null,
+      "summary": "회사 워크숍에서 민재와 유나는 같은 조가 되고, 민재는 유나에게 진심을 고백한다. 유나도 민재를 좋아한다고 답한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 4,
+      "chapter": 3,
+      "location": "회사",
+      "time": "월요일",
+      "summary": "월요일 출근 후 지원은 민재와 유나의 관계를 눈치채고 기뻐한다. 세영 팀장은 사내연애를 조심하라고 말한다.",
+      "time_marker": "월요일",
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "유나",
+      "category": "character",
+      "description": "새 직장 첫날을 맞은 마케팅팀 신입",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "강민재",
+      "category": "character",
+      "description": "마케팅팀 동료, 유나의 온보딩 담당",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "오세영",
+      "category": "character",
+      "description": "마케팅팀 팀장",
+      "aliases": [],
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "name": "송지원",
+      "category": "character",
+      "description": "마케팅팀 동료",
+      "aliases": [],
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "마케팅팀",
+      "category": "location",
+      "description": "유나, 민재, 지원, 세영이 소속된 팀",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "회사",
+      "category": "location",
+      "description": "유나, 민재, 지원이 근무하는 장소",
+      "aliases": [],
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "병원",
+      "category": "location",
+      "description": "유나가 쓰러져서 간 곳",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "바닷가",
+      "category": "location",
+      "description": "민재와 유나가 데이트한 장소",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "회사 워크숍",
+      "category": "concept",
+      "description": "민재와 유나가 같은 조가 된 계기",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "유나",
+      "to": "강민재",
+      "type": "동료",
+      "description": "마케팅팀 동료",
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "유나",
+      "type": "연인",
+      "description": "서로 좋아함",
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "from": "유나",
+      "to": "송지원",
+      "type": "친구",
+      "description": "팀 동료, 고민 상담",
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "from": "오세영",
+      "to": "유나",
+      "type": "동료",
+      "description": "팀장 - 팀원",
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "from": "오세영",
+      "to": "강민재",
+      "type": "동료",
+      "description": "팀장 - 팀원",
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "from": "송지원",
+      "to": "유나",
+      "type": "친구",
+      "description": "팀 동료",
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "from": "유나",
+      "to": "마케팅팀",
+      "type": "소속",
+      "description": "팀원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "마케팅팀",
+      "type": "소속",
+      "description": "팀원",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "오세영",
+      "to": "마케팅팀",
+      "type": "소속",
+      "description": "팀장",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "송지원",
+      "to": "마케팅팀",
+      "type": "소속",
+      "description": "팀원",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "유나",
+      "to": "병원",
+      "type": "위치",
+      "description": "쓰러져서 감",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "병원",
+      "type": "위치",
+      "description": "유나를 데려감",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "유나",
+      "to": "바닷가",
+      "type": "위치",
+      "description": "데이트",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "바닷가",
+      "type": "위치",
+      "description": "데이트",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "유나",
+      "to": "회사",
+      "type": "위치",
+      "description": "근무",
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "회사",
+      "type": "위치",
+      "description": "근무",
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "from": "송지원",
+      "to": "회사",
+      "type": "위치",
+      "description": "근무",
+      "scenes": [
+        2,
+        4
+      ]
+    },
+    {
+      "from": "오세영",
+      "to": "회사",
+      "type": "위치",
+      "description": "근무",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "유나",
+      "type": "동료",
+      "description": "마케팅팀 동료",
+      "scenes": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "from": "강민재",
+      "to": "송지원",
+      "type": "동료",
+      "description": "마케팅팀 동료",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "송지원",
+      "to": "강민재",
+      "type": "동료",
+      "description": "마케팅팀 동료",
+      "scenes": [
+        4
+      ]
+    }
+  ],
+  "mergeSuggestions": [],
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 4,
+    "locationCount": 4,
+    "itemCount": 0,
+    "conceptCount": 1,
+    "relationshipCount": 21,
+    "sceneCount": 4,
+    "chapterCount": 3
+  }
+}

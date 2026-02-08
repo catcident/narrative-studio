@@ -1,0 +1,528 @@
+{
+  "_test": {
+    "file": "09_무협_세대_소속",
+    "timestamp": "2026-02-08T04:05:53.570Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 화산파"
+    },
+    {
+      "id": 2,
+      "title": "2화: 청명이들"
+    },
+    {
+      "id": 3,
+      "title": "3화: 대련"
+    },
+    {
+      "id": 4,
+      "title": "4화: 귀환"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "화산",
+      "time": null,
+      "summary": "화산파는 중원 오대세가 중 하나이며, 장일현이 장문인이다. 2대 제자와 3대 제자가 활동 중이다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "산 아래 마을",
+      "time": null,
+      "summary": "청명이들이 산 아래 마을로 내려간다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 2,
+      "location": "취선루",
+      "time": null,
+      "summary": "청명이들이 취선루에서 흑풍채 무인들과 시비가 붙는다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 4,
+      "chapter": 3,
+      "location": "취선루",
+      "time": null,
+      "summary": "청명이 흑풍채 무인들과 싸우던 중 남궁서린이 나타난다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 5,
+      "chapter": 4,
+      "location": "화산",
+      "time": null,
+      "summary": "청명이들이 화산으로 돌아와 유이설과 백청능에게 흑풍채와의 충돌에 대해 보고한다. 장일현은 남궁세가와의 합동 수련을 제안한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "화산파",
+      "category": "concept",
+      "description": "중원 오대세가 중 하나인 정파 무림 문파",
+      "aliases": [],
+      "scenes": [
+        1,
+        3,
+        5
+      ]
+    },
+    {
+      "name": "장일현",
+      "category": "character",
+      "description": "매화검존, 화산파 장문인",
+      "aliases": [],
+      "scenes": [
+        1,
+        5
+      ]
+    },
+    {
+      "name": "장로회",
+      "category": "concept",
+      "description": "화산파의 의사결정 기구",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "임도경",
+      "category": "character",
+      "description": "청풍검, 장로회 수석장로",
+      "aliases": [],
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "name": "유이설",
+      "category": "character",
+      "description": "매화이십사수를 완성한 천재, 장일현의 직제자, 청명의 스승, 조걸의 스승",
+      "aliases": [],
+      "scenes": [
+        1,
+        3,
+        5
+      ]
+    },
+    {
+      "name": "백청능",
+      "category": "character",
+      "description": "내공이 깊은 장일현의 직제자, 윤종의 스승",
+      "aliases": [],
+      "scenes": [
+        1,
+        5
+      ]
+    },
+    {
+      "name": "청명",
+      "category": "character",
+      "description": "유이설의 수제자",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "윤종",
+      "category": "character",
+      "description": "백청능의 수제자",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "조걸",
+      "category": "character",
+      "description": "유이설의 제자, 청명의 사제",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "청명이들",
+      "category": "character",
+      "description": "청명, 윤종, 조걸을 함께 부르는 명칭",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "왕대풍",
+      "category": "character",
+      "description": "취선루 주인",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "취선루",
+      "category": "location",
+      "description": "마을의 주점",
+      "aliases": [],
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "흑풍채",
+      "category": "concept",
+      "description": "남궁세가를 적대하는 사파 무리",
+      "aliases": [],
+      "scenes": [
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "마진",
+      "category": "character",
+      "description": "흑풍채 두목",
+      "aliases": [],
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "남궁세가",
+      "category": "concept",
+      "description": "정파 세가",
+      "aliases": [],
+      "scenes": [
+        3,
+        5
+      ]
+    },
+    {
+      "name": "남궁서린",
+      "category": "character",
+      "description": "남궁세가 소가주의 딸이자 가주 남궁천의 손녀",
+      "aliases": [],
+      "scenes": [
+        4,
+        5
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "화산파",
+      "to": "장일현",
+      "type": "소속",
+      "description": "장문인",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "화산파",
+      "to": "장로회",
+      "type": "포함",
+      "description": "화산파의 의사결정 기구",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "장로회",
+      "to": "임도경",
+      "type": "소속",
+      "description": "수석장로",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "장일현",
+      "to": "유이설",
+      "type": "소속",
+      "description": "직제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "장일현",
+      "to": "백청능",
+      "type": "소속",
+      "description": "직제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "유이설",
+      "to": "청명",
+      "type": "소속",
+      "description": "수제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "백청능",
+      "to": "윤종",
+      "type": "소속",
+      "description": "수제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "유이설",
+      "to": "조걸",
+      "type": "소속",
+      "description": "제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "청명",
+      "to": "윤종",
+      "type": "친구",
+      "description": "같은 세대 제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "청명",
+      "to": "조걸",
+      "type": "친구",
+      "description": "같은 세대 제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤종",
+      "to": "조걸",
+      "type": "친구",
+      "description": "같은 세대 제자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "청명이들",
+      "to": "청명",
+      "type": "포함",
+      "description": null,
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "청명이들",
+      "to": "윤종",
+      "type": "포함",
+      "description": null,
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "청명이들",
+      "to": "조걸",
+      "type": "포함",
+      "description": null,
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "왕대풍",
+      "to": "취선루",
+      "type": "소속",
+      "description": "주인",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "청명",
+      "to": "취선루",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "윤종",
+      "to": "취선루",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "조걸",
+      "to": "취선루",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "마진",
+      "to": "흑풍채",
+      "type": "소속",
+      "description": "두목",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "흑풍채",
+      "to": "남궁세가",
+      "type": "적대",
+      "description": "적대 관계",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "남궁서린",
+      "to": "남궁세가",
+      "type": "소속",
+      "description": "소가주의 딸, 가주의 손녀",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "남궁서린",
+      "to": "취선루",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "청명",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "윤종",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "조걸",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "유이설",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "백청능",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "장일현",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    },
+    {
+      "from": "임도경",
+      "to": "화산",
+      "type": "위치",
+      "description": null,
+      "scenes": [
+        5
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "장일현",
+      "merge": "매화검존",
+      "reason": "매화검존은 장일현의 별칭/호칭"
+    }
+  ],
+  "summary": {
+    "entityCount": 16,
+    "characterCount": 11,
+    "locationCount": 1,
+    "itemCount": 0,
+    "conceptCount": 4,
+    "relationshipCount": 29,
+    "sceneCount": 5,
+    "chapterCount": 4
+  }
+}

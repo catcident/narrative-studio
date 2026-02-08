@@ -1,0 +1,280 @@
+{
+  "_test": {
+    "file": "01_기본추출",
+    "timestamp": "2026-02-08T04:03:43.834Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 골목의 고양이"
+    },
+    {
+      "id": 2,
+      "title": "2화: 비 오는 날"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "어두운 골목",
+      "time": null,
+      "summary": "민수가 골목에서 검은 고양이 까망이를 만나 밥을 주고, 수진과 함께 까망이를 지켜본다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "골목",
+      "time": null,
+      "summary": "비 오는 날, 민수가 골목에서 까망이와 잿빛이를 발견하고 수진에게 연락해 함께 돌본다.",
+      "time_marker": "다음 날",
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "까망이",
+      "category": "character",
+      "description": "어두운 골목에 사는 검은 고양이",
+      "aliases": [
+        "거기 고양이"
+      ],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "민수",
+      "category": "character",
+      "description": "학교에서 돌아오는 길에 골목을 지나가는 소년",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "수진",
+      "category": "character",
+      "description": "민수의 같은 반 친구",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "어두운 골목",
+      "category": "location",
+      "description": "까망이가 매일 나타나는 장소",
+      "aliases": [
+        "골목"
+      ],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "참치캔",
+      "category": "item",
+      "description": "민수가 까망이에게 주는 음식",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "잿빛이",
+      "category": "character",
+      "description": "까망이의 새끼 고양이",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "쓰레기통",
+      "category": "item",
+      "description": "까망이와 잿빛이가 웅크리고 있던 장소",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "담요",
+      "category": "item",
+      "description": "수진이가 가져온 고양이 가족을 위한 물건",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "우유",
+      "category": "item",
+      "description": "수진이가 가져온 고양이 가족을 위한 음식",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "까망이",
+      "to": "민수",
+      "type": "관련",
+      "description": "민수가 밥을 주는 고양이",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "민수",
+      "to": "어두운 골목",
+      "type": "위치",
+      "description": "민수가 학교에서 돌아오는 길에 지나가는 장소",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "수진",
+      "to": "민수",
+      "type": "친구",
+      "description": "같은 반 친구",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "수진",
+      "to": "어두운 골목",
+      "type": "위치",
+      "description": "수진이 민수를 만나러 온 장소",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "까망이",
+      "to": "어두운 골목",
+      "type": "위치",
+      "description": "까망이가 사는 장소",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "까망이",
+      "to": "잿빛이",
+      "type": "가족",
+      "description": "어미 고양이 - 새끼 고양이",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "잿빛이",
+      "to": "어두운 골목",
+      "type": "위치",
+      "description": "까망이와 함께 있는 장소",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "민수",
+      "to": "잿빛이",
+      "type": "관련",
+      "description": "돌봐주는 관계",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "수진",
+      "to": "잿빛이",
+      "type": "관련",
+      "description": "돌봐주는 관계",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "쓰레기통",
+      "to": "어두운 골목",
+      "type": "포함",
+      "description": "골목에 위치",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "까망이",
+      "to": "쓰레기통",
+      "type": "위치",
+      "description": "쓰레기통 옆에 웅크리고 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "잿빛이",
+      "to": "쓰레기통",
+      "type": "위치",
+      "description": "쓰레기통 옆에 웅크리고 있음",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "담요",
+      "to": "민수",
+      "type": "소유",
+      "description": "수진이 가져옴",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "우유",
+      "to": "민수",
+      "type": "소유",
+      "description": "수진이 가져옴",
+      "scenes": [
+        2
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "까망이",
+      "merge": "거기 고양이",
+      "reason": "까망이와 거기 고양이는 같은 고양이를 지칭하는 별칭 관계임"
+    },
+    {
+      "keep": "어두운 골목",
+      "merge": "골목",
+      "reason": "어두운 골목과 골목은 같은 장소를 지칭하는 별칭 관계임"
+    }
+  ],
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 4,
+    "locationCount": 1,
+    "itemCount": 4,
+    "conceptCount": 0,
+    "relationshipCount": 14,
+    "sceneCount": 2,
+    "chapterCount": 2
+  }
+}

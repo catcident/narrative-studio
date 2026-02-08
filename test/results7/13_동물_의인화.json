@@ -1,0 +1,381 @@
+{
+  "_test": {
+    "file": "13_동물_의인화",
+    "timestamp": "2026-02-08T04:06:38.999Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 숲의 왕"
+    },
+    {
+      "id": 2,
+      "title": "2화: 배신"
+    },
+    {
+      "id": 3,
+      "title": "3화: 귀환"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "사바나 초원",
+      "time": null,
+      "summary": "사자 무파사는 사바나 초원의 왕이고, 아들 심바가 있다. 심바는 아버지에게 하이에나의 땅에 대해 질문한다. 무파사의 동생 스카는 왕좌를 시기한다. 라피키는 심바의 탄생을 축복하고, 자주가 심바를 돌본다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 2,
+      "location": "사바나",
+      "time": null,
+      "summary": "스카는 셴지와 손을 잡고 무파사를 없애기로 한다. 스카는 심바를 협곡으로 유인하고 누 떼를 몰아 무파사를 절벽에서 밀어 죽인다. 스카는 심바에게 책임을 뒤집어씌워 도망치게 만든다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 3,
+      "location": null,
+      "time": null,
+      "summary": "도망친 심바는 티몬과 품바를 만나 함께 자란다. 날라가 심바를 찾아와 스카가 사바나를 망치고 있다고 알린다. 라피키는 심바에게 아버지의 정신이 살아있다고 말하고, 심바는 돌아가기로 결심한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "무파사",
+      "category": "character",
+      "description": "사바나 초원의 왕, 사자",
+      "aliases": [],
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "심바",
+      "category": "character",
+      "description": "무파사의 아들, 사자",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "하이에나",
+      "category": "character",
+      "description": "무파사가 가지 말라고 한 땅에 사는 존재",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "스카",
+      "category": "character",
+      "description": "무파사의 동생, 왕좌를 시기함",
+      "aliases": [],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "라피키",
+      "category": "character",
+      "description": "현명한 원숭이, 심바의 탄생을 축복",
+      "aliases": [],
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "자주",
+      "category": "character",
+      "description": "무파사의 충신, 코뿔새, 심바를 돌봄",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "셴지",
+      "category": "character",
+      "description": "하이에나 무리의 우두머리",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "협곡",
+      "category": "location",
+      "description": "스카가 심바를 유인한 장소",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "누 떼",
+      "category": "character",
+      "description": "스카가 무파사를 죽이기 위해 이용한 동물 무리",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "티몬",
+      "category": "character",
+      "description": "미어캣",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "품바",
+      "category": "character",
+      "description": "멧돼지",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "날라",
+      "category": "character",
+      "description": "심바의 소꿉친구",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "사바나 초원",
+      "category": "location",
+      "description": "무파사가 다스리는 곳 스카가 망치고 있는 곳",
+      "aliases": [
+        "사바나"
+      ],
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "하이에나의 땅",
+      "category": "location",
+      "description": "무파사가 심바에게 가지 말라고 한 곳",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "무파사",
+      "to": "심바",
+      "type": "가족",
+      "description": "아버지-아들",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "무파사",
+      "to": "스카",
+      "type": "가족",
+      "description": "형제",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "스카",
+      "to": "셴지",
+      "type": "동료",
+      "description": "협력 관계",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "심바",
+      "to": "티몬",
+      "type": "친구",
+      "description": "함께 자람",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "심바",
+      "to": "품바",
+      "type": "친구",
+      "description": "함께 자람",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "심바",
+      "to": "날라",
+      "type": "친구",
+      "description": "소꿉친구",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "무파사",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "왕",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "심바",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "왕자",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "스카",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "무파사의 동생",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "심바",
+      "to": "협곡",
+      "type": "위치",
+      "description": "스카에 의해 유인됨",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "스카",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "사바나를 망침",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "날라",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "심바를 찾아옴",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "무파사",
+      "to": "스카",
+      "type": "적대",
+      "description": "스카가 무파사를 시기함",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "스카",
+      "to": "심바",
+      "type": "적대",
+      "description": "심바에게 죄를 뒤집어씌움",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "셴지",
+      "to": "하이에나의 땅",
+      "type": "위치",
+      "description": "하이에나 무리의 우두머리",
+      "scenes": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "하이에나",
+      "to": "하이에나의 땅",
+      "type": "위치",
+      "description": "하이에나들이 사는 곳",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "라피키",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "심바를 찾음",
+      "scenes": [
+        1,
+        3
+      ]
+    },
+    {
+      "from": "자주",
+      "to": "사바나 초원",
+      "type": "위치",
+      "description": "심바를 돌봄",
+      "scenes": [
+        1
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "사바나 초원",
+      "merge": "사바나",
+      "reason": "사바나 초원은 사바나를 지칭하는 더 구체적인 표현"
+    },
+    {
+      "keep": "하이에나의 땅",
+      "merge": "하이에나",
+      "reason": "하이에나의 땅은 하이에나가 사는 곳을 의미함"
+    }
+  ],
+  "summary": {
+    "entityCount": 14,
+    "characterCount": 11,
+    "locationCount": 3,
+    "itemCount": 0,
+    "conceptCount": 0,
+    "relationshipCount": 18,
+    "sceneCount": 3,
+    "chapterCount": 3
+  }
+}

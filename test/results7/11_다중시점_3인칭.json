@@ -1,0 +1,326 @@
+{
+  "_test": {
+    "file": "11_다중시점_3인칭",
+    "timestamp": "2026-02-08T04:06:12.455Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "title": "1화: 형사"
+    },
+    {
+      "id": 2,
+      "title": "2화: 피해자"
+    },
+    {
+      "id": 3,
+      "title": "3화: 용의자"
+    }
+  ],
+  "scenes": [
+    {
+      "id": 1,
+      "chapter": 1,
+      "location": "사건 현장",
+      "time": null,
+      "summary": "박준호 형사가 사건 현장을 조사하고, 윤서진 형사가 목격자를 찾아온다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 2,
+      "chapter": 1,
+      "location": "근처 편의점",
+      "time": "밤 11시쯤",
+      "summary": "최우진이 키 큰 남자가 뛰어가는 것을 목격한다.",
+      "time_marker": "밤 11시쯤",
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 3,
+      "chapter": 2,
+      "location": "경찰서",
+      "time": null,
+      "summary": "강하영이 신예은과 정태민 교수의 다툼에 대해 진술한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    },
+    {
+      "id": 4,
+      "chapter": 3,
+      "location": "정태민 교수 연구실",
+      "time": null,
+      "summary": "박준호와 윤서진이 정태민 교수를 심문한다.",
+      "time_marker": null,
+      "chunkNum": 1,
+      "sourceFileIndex": 0
+    }
+  ],
+  "entities": [
+    {
+      "name": "박준호",
+      "category": "character",
+      "description": "형사",
+      "aliases": [],
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "name": "신예은",
+      "category": "character",
+      "description": "피해자, 대학원생, 정태민 교수의 연구실에서 일함",
+      "aliases": [],
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "윤서진",
+      "category": "character",
+      "description": "후배 형사",
+      "aliases": [],
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "name": "최우진",
+      "category": "character",
+      "description": "편의점 알바생, 목격자",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "강하영",
+      "category": "character",
+      "description": "신예은의 룸메이트",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "정태민",
+      "category": "character",
+      "description": "지도교수",
+      "aliases": [],
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "한종수",
+      "category": "character",
+      "description": "야간 경비원",
+      "aliases": [],
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "name": "사건 현장",
+      "category": "location",
+      "description": "살인 사건이 발생한 장소",
+      "aliases": [],
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "name": "근처 편의점",
+      "category": "location",
+      "description": "사건 현장 근처의 편의점",
+      "aliases": [],
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "name": "경찰서",
+      "category": "location",
+      "description": "경찰서",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "name": "정태민 교수 연구실",
+      "category": "location",
+      "description": "정태민 교수의 연구실",
+      "aliases": [],
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "name": "연구 데이터",
+      "category": "concept",
+      "description": "신예은과 정태민 교수가 다툰 원인",
+      "aliases": [],
+      "scenes": [
+        3
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "박준호",
+      "to": "사건 현장",
+      "type": "위치",
+      "description": "사건 현장 조사",
+      "scenes": [
+        1
+      ]
+    },
+    {
+      "from": "윤서진",
+      "to": "박준호",
+      "type": "동료",
+      "description": "형사",
+      "scenes": [
+        1,
+        4
+      ]
+    },
+    {
+      "from": "최우진",
+      "to": "근처 편의점",
+      "type": "위치",
+      "description": "편의점 알바",
+      "scenes": [
+        2
+      ]
+    },
+    {
+      "from": "강하영",
+      "to": "신예은",
+      "type": "친구",
+      "description": "룸메이트",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "신예은",
+      "to": "정태민",
+      "type": "소속",
+      "description": "제자",
+      "scenes": [
+        3,
+        4
+      ]
+    },
+    {
+      "from": "강하영",
+      "to": "경찰서",
+      "type": "위치",
+      "description": "진술",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "정태민",
+      "to": "정태민 교수 연구실",
+      "type": "위치",
+      "description": "연구실",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "윤서진",
+      "to": "정태민",
+      "type": "관련",
+      "description": "심문",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "박준호",
+      "to": "정태민",
+      "type": "관련",
+      "description": "심문",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "한종수",
+      "to": "정태민",
+      "type": "관련",
+      "description": "알리바이 증인",
+      "scenes": [
+        4
+      ]
+    },
+    {
+      "from": "신예은",
+      "to": "연구 데이터",
+      "type": "관련",
+      "description": "다툼의 원인",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "박준호",
+      "to": "경찰서",
+      "type": "위치",
+      "description": "사건 조사",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "윤서진",
+      "to": "경찰서",
+      "type": "위치",
+      "description": "사건 조사",
+      "scenes": [
+        3
+      ]
+    },
+    {
+      "from": "박준호",
+      "to": "윤서진",
+      "type": "동료",
+      "description": "형사",
+      "scenes": [
+        1,
+        4
+      ]
+    }
+  ],
+  "mergeSuggestions": [
+    {
+      "keep": "정태민 교수 연구실 [location]",
+      "merge": "정태민 [character]: 지도교수",
+      "reason": "정태민 교수의 연구실은 정태민 교수의 소유 공간이므로 장소 정보에 인물 정보가 포함되어 있다고 판단, 장소 정보로 병합"
+    }
+  ],
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 7,
+    "locationCount": 4,
+    "itemCount": 0,
+    "conceptCount": 1,
+    "relationshipCount": 14,
+    "sceneCount": 4,
+    "chapterCount": 3
+  }
+}
