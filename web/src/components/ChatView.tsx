@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare, AlertTriangle, Key } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useStore, useModels, useBillingSubscription, useCreditBalance, useByokEnabled, useAuthEnabled } from '../store';
+import { useStore, useModels, useBillingSubscription, useByokEnabled, useAuthEnabled } from '../store';
 import { sendChatMessage, estimateChatCost, generateMessageId, type ChatMessage } from '../services/chat';
 import { ensureSufficientBalance, holdCredits, finalizeHold } from '../services/billing';
 import { hasApiKey } from '../services/extraction';
@@ -132,8 +132,8 @@ export function ChatView() {
   const setChatMentionedEntities = useStore((s) => s.setChatMentionedEntities);
   const models = useModels();
   const subscription = useBillingSubscription();
-  const creditBalance = useCreditBalance();
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
+  const loadSubscription = useStore((s) => s.loadSubscription);
   const authEnabled = useAuthEnabled();
   const byokEnabled = useByokEnabled();
   const isUsingPersonalKey = byokEnabled && hasApiKey();
@@ -379,6 +379,7 @@ export function ChatView() {
       }
     } finally {
       setIsLoading(false);
+      loadSubscription();
     }
   };
 

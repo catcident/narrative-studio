@@ -402,10 +402,6 @@ export function chunkUsageToSettleChunks(chunks: ChunkUsage[]) {
   }));
 }
 
-/**
- * hold된 세션을 정산(settle) 또는 해제(release).
- * 처리된 청크가 있으면 settle, 없으면 release.
- */
 /** settle/release 결과 */
 export interface FinalizeHoldResult {
   actualCredits: number | null;  // settle 시 실제 차감 크레딧, release 시 null
@@ -499,13 +495,9 @@ export function estimateValidationCost(
   // 검증 프롬프트: ~15,000자 컨텍스트 → ~10K tokens input, ~200 tokens output
   const inputTokensPerCall = Math.ceil(15000 / CHARS_PER_TOKEN);
   const outputTokensPerCall = 200;
+  const costPerCall = tokenCostUsd(inputTokensPerCall, outputTokensPerCall, costs.inputCost, costs.outputCost);
 
-  const chunks: { costUsd: number; model: string }[] = [];
-  for (let i = 0; i < callCount; i++) {
-    chunks.push({
-      costUsd: tokenCostUsd(inputTokensPerCall, outputTokensPerCall, costs.inputCost, costs.outputCost),
-      model: validationModel,
-    });
-  }
+  // 동일 모델 N회 호출 → 단일 비용 * N으로 단순화
+  const chunks = Array.from({ length: callCount }, () => ({ costUsd: costPerCall, model: validationModel }));
   return calculateMixedSessionCredits(chunks, dynamicModels);
 }

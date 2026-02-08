@@ -165,6 +165,7 @@ extractKnowledgeGraph({ onChunkBilling })
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
 - [ ] `useStore.getState()` — 비동기 콜백 내부에서 stale closure 방지
 - [ ] UI 크레딧 표시는 `calculateSessionCreditsFromChunks()` 사용 — `calculateCreditsFromChunks()`는 레거시
+- [ ] billing finally 블록에 `loadSubscription()` 필수 — 모든 billing 진입점에서 구독 상태 갱신
 - [ ] (extraction 전용) `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
 - [ ] (extraction 전용) `syncPartialAnalysis(setPartialAnalysis)` — 완료/실패 후 반드시 호출 (success + error 양쪽)
 

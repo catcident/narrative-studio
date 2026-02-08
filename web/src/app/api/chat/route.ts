@@ -16,10 +16,24 @@ import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
+interface ChatRequestBody {
+  messages: Array<{ role: string; content?: string }>;
+  apiKey?: string;
+  model?: string;
+  stream?: boolean;
+}
+
 export async function POST(request: NextRequest) {
   console.log('[chat] POST 요청 수신');
   try {
-    const { messages, apiKey: userApiKey, model: userModel, stream: userStream } = await request.json();
+    let body: ChatRequestBody;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { messages, apiKey: userApiKey, model: userModel, stream: userStream } = body;
 
     const apiKey = userApiKey || ENV_API_KEY;
     const model = userModel || DEFAULT_MODEL;
@@ -76,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 프롬프트 크기 계산 (billing용)
-    const totalPromptChars = (messages as Array<{ content?: string }>).reduce(
+    const totalPromptChars = messages.reduce(
       (sum: number, m) => sum + (m.content?.length || 0), 0,
     );
 

@@ -489,10 +489,6 @@ function normalizeAllRelationTypes(extracted: MergedExtraction): MergedExtractio
 
 // --- 후처리: 누락된 관계 추론 ---
 
-function normalizeOwnerName(name: string): string {
-  return name.trim();
-}
-
 function hasRelationship(relationships: MergedRelationship[], from: string, to: string): boolean {
   const normFrom = from.toLowerCase();
   const normTo = to.toLowerCase();
@@ -535,7 +531,7 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
 
     // attributes.owner가 있으면 관계 생성 (owner가 실제 캐릭터인 경우만)
     if (attrOwner) {
-      const ownerName = normalizeOwnerName(attrOwner);
+      const ownerName = attrOwner.trim();
       const ownerIsKnown = characterNames.some(cn => cn === ownerName || cn.includes(ownerName) || ownerName.includes(cn));
       if (ownerIsKnown &&
           !hasRelationship(relationships, ownerName, entity.name) &&
@@ -558,7 +554,7 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
       for (const pattern of locationPatterns) {
         const match = desc.match(pattern);
         if (match) {
-          const personName = normalizeOwnerName(match[1].trim());
+          const personName = match[1].trim();
           const personIsKnown = characterNames.some(cn => cn === personName || cn.includes(personName) || personName.includes(cn));
           if (personIsKnown &&
               !hasRelationship(relationships, personName, entity.name) &&
@@ -585,7 +581,7 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
     for (const pattern of ownerPatterns) {
       const match = desc.match(pattern);
       if (match) {
-        const ownerName = normalizeOwnerName(match[1].trim());
+        const ownerName = match[1].trim();
         const ownerIsKnown = characterNames.some(cn => cn === ownerName || cn.includes(ownerName) || ownerName.includes(cn));
         if (ownerIsKnown &&
             !hasRelationship(relationships, ownerName, entity.name) &&

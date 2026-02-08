@@ -115,11 +115,6 @@ export interface TokenBilling {
   completion_tokens: number;
 }
 
-export interface DeductResult {
-  balance_after: number;
-  amount_deducted: number;
-}
-
 /** usage 필드가 있으면 그대로 사용, 없으면 텍스트 길이에서 토큰 추정 */
 export function resolveTokenBilling(
   data: Record<string, unknown>,
