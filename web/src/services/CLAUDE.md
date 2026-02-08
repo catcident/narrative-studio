@@ -153,7 +153,7 @@ extractKnowledgeGraph({ onChunkBilling })
 
 새로운 분석 경로를 추가할 때 체크리스트:
 - [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 UI 표시
-- [ ] `ensureSufficientBalance(subscription)` 분석 시작 전 호출
+- [ ] `ensureSufficientBalance(subscription, authEnabled)` 분석 시작 전 호출 — 프로덕션에서 subscription 미로딩 시 에러
 - [ ] `holdCredits()` → 분석 → `settleCredits()` / `releaseCredits()` 세션 패턴 준수
 - [ ] 402 응답 명시 처리 (selector, extractor 모두) — generic error에 흡수 금지
 - [ ] `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
@@ -241,7 +241,7 @@ calculateCreditsFromChunks(chunks)      // 혼합 모델 청크별 크레딧 합
 
 // 잔액 확인
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
-ensureSufficientBalance(subscription)  // subscription 있으면 잔액 확인, 없으면 통과
+ensureSufficientBalance(subscription, authEnabled?)  // 잔액 확인 + 프로덕션 안전 체크
 
 // 세션 관리
 holdCredits(estimatedAmount)            // 분석 전 크레딧 선점

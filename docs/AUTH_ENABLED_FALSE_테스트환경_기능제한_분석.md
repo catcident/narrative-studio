@@ -118,8 +118,11 @@ export const useByokEnabled = () =>
 
 ### A. Hold/Settle 가드에 `subscription` null 체크 추가 (6곳)
 
-`if (!isUsingPersonalKey)` → `if (!isUsingPersonalKey && subscription)` 변경.
-`subscription === null`이면 billing 불가이므로 hold/settle 전체를 스킵하고 extraction만 진행.
+hold 가드를 2단계로 분리:
+1. `ensureSufficientBalance(subscription, authEnabled)` — 프로덕션 안전 체크
+   - `subscription=null + authEnabled=true` → 에러 throw (프로덕션 보호)
+   - `subscription=null + authEnabled=false` → 통과 (Railway 데모)
+2. `if (subscription) { holdCredits... }` — billing 활성 시에만 hold
 
 | 파일 | 함수 |
 |------|------|
