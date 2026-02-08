@@ -2,7 +2,7 @@
  * 파일 업로드 컴포넌트
  */
 
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis, useAuthEnabled } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
@@ -64,7 +64,6 @@ function buildSourceFiles(fileInfos: FileInfo[]): NovelKnowledgeGraph['metadata'
 
 export function FileUpload() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
-  const currentDataId = useStore((s) => s.currentDataId);
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
   const setLoading = useStore((s) => s.setLoading);
   const setError = useStore((s) => s.setError);
@@ -125,13 +124,13 @@ export function FileUpload() {
     : false;
 
   // 플랜에 따른 모델 필터링 (available !== false인 모델만)
-  const availableModels = (() => {
+  const availableModels = useMemo(() => {
     const active = allModels.filter((m) => m.available !== false);
     if (subscription?.features?.models && subscription.features.models !== 'all') {
       return active.filter((m) => (subscription.features.models as string[]).includes(m.id));
     }
     return active;
-  })();
+  }, [allModels, subscription?.features?.models]);
 
   // 프로그레스 상태 일괄 초기화 헬퍼
   const resetProgressState = useCallback((checkSaved: boolean = false) => {
@@ -191,6 +190,7 @@ export function FileUpload() {
       } catch (err: unknown) {
         console.error('[extraction] error:', err);
         setError(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
+        syncPartialAnalysis(setPartialAnalysis);
         resetProgressState(true);
       } finally {
         setLocalLoading(false);
@@ -198,7 +198,7 @@ export function FileUpload() {
         loadSubscription();
       }
     },
-    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState, loadSubscription],
+    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState, loadSubscription, setPartialAnalysis],
   );
 
   // ==================== 초기화 ====================

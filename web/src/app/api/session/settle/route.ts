@@ -6,12 +6,6 @@ import { proxyToCatcident } from '@/services/billingProxy';
 import { tokenCostUsd, getModelCosts, calculateMixedSessionCredits } from '@/lib/modelCosts';
 import { getCachedModels } from '@/lib/modelCache';
 
-interface ChunkUsage {
-  model: string;
-  prompt_tokens: number;
-  completion_tokens: number;
-}
-
 export async function POST(request: NextRequest) {
   try {
     if (!AUTH_ENABLED) {
@@ -61,10 +55,10 @@ export async function POST(request: NextRequest) {
 
     // 서버가 금액 재계산 — 클라이언트 값 무시
     const dynamicModels = await getCachedModels();
-    const validatedChunks = chunks as ChunkUsage[];
     const chunkCostData: { costUsd: number; model: string }[] = [];
 
-    for (const chunk of validatedChunks) {
+    for (const raw of chunks as unknown[]) {
+      const chunk = raw as Record<string, unknown>;
       if (typeof chunk.model !== 'string' || typeof chunk.prompt_tokens !== 'number' || typeof chunk.completion_tokens !== 'number') {
         return NextResponse.json({ error: 'Invalid chunk format: each chunk needs model, prompt_tokens, completion_tokens' }, { status: 400 });
       }

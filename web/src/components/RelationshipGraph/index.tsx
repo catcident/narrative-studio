@@ -22,7 +22,7 @@ import { getCharacters, getEntitiesByCategory } from '../../services/knowledgeGr
 import { Eye, EyeOff, Filter, PanelLeftOpen, PanelLeftClose, Image, FileText, Crown, FileDown } from 'lucide-react';
 import { exportGraphAsPng, exportGraphAsSvg, captureGraphAsPngDataUrl } from '../../services/graphExport';
 import { EntitySelector } from '../EntitySelector';
-import { CATEGORY_COLORS, RELATION_COLORS, RELATION_LABELS, SENTIMENT_STROKE_STYLES, CHARACTER_COLORS } from '../../constants';
+import { CATEGORY_COLORS, RELATION_COLORS, RELATION_LABELS, SENTIMENT_STROKE_STYLES } from '../../constants';
 import {
   nodeTypes,
   SceneInfoPopup,
@@ -30,8 +30,6 @@ import {
 } from './GraphNodes';
 import type {
   GraphViewMode,
-  EntityWithOpacity,
-  EdgeWithOpacity,
   Props,
 } from './GraphNodes';
 
@@ -325,41 +323,33 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       const locationRadius = charRadius + 60;
       const otherRadius = locationRadius + 50;
 
-      const allPositions: { id: string; x: number; y: number; size: number; layer: number }[] = [];
+      const defaultPos = { x: centerX, y: centerY };
+      const posMap = new Map<string, { x: number; y: number }>();
 
       // 인물 레이어
       relatedChars.forEach((entity, i) => {
         const angle = (2 * Math.PI * i) / Math.max(relatedChars.length, 1) - Math.PI / 2;
-        allPositions.push({
-          id: entity.id,
+        posMap.set(entity.id, {
           x: centerX + charRadius * Math.cos(angle),
           y: centerY + charRadius * Math.sin(angle),
-          size: 50,
-          layer: 1,
         });
       });
 
       // 장소 레이어
       locations.forEach((entity, i) => {
         const angle = (2 * Math.PI * i) / Math.max(locations.length, 1) + Math.PI / 6;
-        allPositions.push({
-          id: entity.id,
+        posMap.set(entity.id, {
           x: centerX + locationRadius * Math.cos(angle),
           y: centerY + locationRadius * Math.sin(angle),
-          size: 56,
-          layer: 2,
         });
       });
 
       // 기타 레이어
       others.forEach((entity, i) => {
         const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
-        allPositions.push({
-          id: entity.id,
+        posMap.set(entity.id, {
           x: centerX + otherRadius * Math.cos(angle),
           y: centerY + otherRadius * Math.sin(angle),
-          size: 28,
-          layer: 3,
         });
       });
 
@@ -400,7 +390,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       });
 
       relatedChars.forEach((entity) => {
-        const pos = allPositions.find(p => p.id === entity.id)!;
+        const pos = posMap.get(entity.id) ?? defaultPos;
         const isPast = entity.isPastScene;
         nodes.push({
           id: entity.id,
@@ -426,7 +416,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       });
 
       locations.forEach((entity) => {
-        const pos = allPositions.find(p => p.id === entity.id)!;
+        const pos = posMap.get(entity.id) ?? defaultPos;
         const isPast = entity.isPastScene;
         nodes.push({
           id: entity.id,
@@ -451,7 +441,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       });
 
       others.forEach((entity) => {
-        const pos = allPositions.find(p => p.id === entity.id)!;
+        const pos = posMap.get(entity.id) ?? defaultPos;
         const isPast = entity.isPastScene;
         nodes.push({
           id: entity.id,
@@ -470,44 +460,36 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
     const otherRadius = locationRadius + 50;
 
     // 초기 위치 설정
-    const allPositions: { id: string; x: number; y: number; size: number; layer: number }[] = [];
+    const defaultPos = { x: centerX, y: centerY };
+    const posMap = new Map<string, { x: number; y: number }>();
 
     chars.forEach((entity, i) => {
       const angle = (2 * Math.PI * i) / chars.length - Math.PI / 2;
-      allPositions.push({
-        id: entity.id,
+      posMap.set(entity.id, {
         x: centerX + charRadius * Math.cos(angle),
         y: centerY + charRadius * Math.sin(angle),
-        size: 50,
-        layer: 1,
       });
     });
 
     locations.forEach((entity, i) => {
       const angle = (2 * Math.PI * i) / locations.length + Math.PI / 6;
-      allPositions.push({
-        id: entity.id,
+      posMap.set(entity.id, {
         x: centerX + locationRadius * Math.cos(angle),
         y: centerY + locationRadius * Math.sin(angle),
-        size: 56,
-        layer: 2,
       });
     });
 
     others.forEach((entity, i) => {
       const angle = (2 * Math.PI * i) / Math.max(others.length, 1) + Math.PI / 4;
-      allPositions.push({
-        id: entity.id,
+      posMap.set(entity.id, {
         x: centerX + otherRadius * Math.cos(angle),
         y: centerY + otherRadius * Math.sin(angle),
-        size: 28,
-        layer: 3,
       });
     });
 
     // 캐릭터 노드
     const charNodes: Node[] = chars.map((entity) => {
-      const pos = allPositions.find(p => p.id === entity.id)!;
+      const pos = posMap.get(entity.id) ?? defaultPos;
       const isPast = entity.isPastScene;
       return {
         id: entity.id,
@@ -536,7 +518,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
 
     // 장소 노드
     const locationNodes: Node[] = locations.map((entity) => {
-      const pos = allPositions.find(p => p.id === entity.id)!;
+      const pos = posMap.get(entity.id) ?? defaultPos;
       const isPast = entity.isPastScene;
       return {
         id: entity.id,
@@ -565,7 +547,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
 
     // 기타 노드
     const otherNodes: Node[] = others.map((entity) => {
-      const pos = allPositions.find(p => p.id === entity.id)!;
+      const pos = posMap.get(entity.id) ?? defaultPos;
       const isPast = entity.isPastScene;
       return {
         id: entity.id,
@@ -595,7 +577,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       const color = RELATION_COLORS[edge.type] || '#9ca3af';
       const dashArray = SENTIMENT_STROKE_STYLES[edge.sentiment || 'neutral'].strokeDasharray;
       const relationLabel = RELATION_LABELS[edge.type] || edge.type;
-      const isPast = (edge as EdgeWithOpacity).isPastScene;
+      const isPast = edge.isPastScene;
 
       for (let i = 0; i < edge.entities.length; i++) {
         for (let j = i + 1; j < edge.entities.length; j++) {
@@ -699,8 +681,6 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
   const handlePaneClick = useCallback(() => {
     setSelectedEdge(null);
   }, []);
-
-  const getCharColor = (index: number) => CHARACTER_COLORS[index % CHARACTER_COLORS.length];
 
   return (
     <div className="w-full h-full bg-gray-50 rounded-xl overflow-hidden relative flex">

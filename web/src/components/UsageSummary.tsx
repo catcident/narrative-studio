@@ -47,17 +47,18 @@ export function UsageSummary() {
         {/* 내용 */}
         <div className="p-5 space-y-3">
           <div className="space-y-3">
-            {isUsingPersonalKey ? (
+            {isUsingPersonalKey && (
               <div className="flex items-center gap-1.5 text-sm text-purple-700">
                 <Key aria-hidden="true" className="w-4 h-4" />
                 <span>크레딧 차감 없음 — 개인 API 키 사용</span>
               </div>
-            ) : creditsUsed > 0 ? (
+            )}
+            {!isUsingPersonalKey && creditsUsed > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">사용 크레딧</span>
                 <span className="text-base font-bold text-blue-600">{creditsUsed.toLocaleString()} 크레딧</span>
               </div>
-            ) : null}
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">총 청크</span>
               <span className="font-medium text-gray-800">{totalChunks}개</span>
