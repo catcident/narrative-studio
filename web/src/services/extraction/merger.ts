@@ -5,10 +5,12 @@
 import type {
   NovelKnowledgeGraph, Entity, HyperEdge,
   EntityCategory, RelationType, Chapter, SceneSnapshot, SourceFile,
+  LoreEntry, Lorebook, LoreCategory,
 } from '../../types';
 import type {
   ChunkExtractedData, MergedExtraction, MergedEntity, MergedRelationship,
   MergedScene, MergedChapter, MergedTimelinePoint, ChunkBilling,
+  RawLoreEntry,
 } from './types';
 import { getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_MERGE_REVIEW_PROMPT } from './prompts';
@@ -671,6 +673,74 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
   };
 }
 
+// --- 로어북 병합 ---
+
+const VALID_LORE_CATEGORIES = new Set<string>([
+  'appearance', 'outfit', 'personality', 'ability', 'background', 'motivation',
+  'relationship_detail', 'quote', 'world_setting', 'location_detail',
+  'organization_detail', 'item_detail', 'event',
+]);
+
+/**
+ * 청크별 raw 로어 엔트리를 병합하고 글로벌 장면 ID로 매핑
+ * entityNameMapping: 엔티티 병합(reviewEntityMerges) 후 "old name" → "keep name" 매핑
+ */
+export function mergeLoreEntries(
+  allExtractedLore: RawLoreEntry[][],
+  chunkSourceFileIndices: number[],
+  sceneIdMapping: Record<number, string>,
+  entityNameMapping: Record<string, string>,
+  fileNames?: string[],
+  sourceFileIds?: string[],
+): LoreEntry[] {
+  const entries: LoreEntry[] = [];
+  const seen = new Set<string>();  // 중복 제거: "entityName|category|sceneId|contentPrefix"
+  let counter = 0;
+
+  for (let chunkIdx = 0; chunkIdx < allExtractedLore.length; chunkIdx++) {
+    const chunkLore = allExtractedLore[chunkIdx];
+    if (!chunkLore?.length) continue;
+
+    // 이 청크의 파일 인덱스 → sourceFileId
+    const fileIndex = chunkSourceFileIndices[chunkIdx] ?? 0;
+    const fileId = sourceFileIds?.[fileIndex] || undefined;
+
+    for (const raw of chunkLore) {
+      if (!raw.entity_name || !raw.content) continue;
+
+      // 카테고리 검증
+      const category = VALID_LORE_CATEGORIES.has(raw.category)
+        ? raw.category as LoreCategory
+        : 'event';
+
+      // 엔티티 이름: 병합 매핑 적용
+      const entityName = entityNameMapping[raw.entity_name] || raw.entity_name;
+
+      // 장면 ID: 로컬 → 글로벌 매핑
+      const sceneId = sceneIdMapping[raw.scene] || `S${String(raw.scene).padStart(4, '0')}`;
+
+      // 중복 제거 키: 같은 (엔티티, 카테고리, 장면, content 앞 30자)
+      const dedupKey = `${entityName}|${category}|${sceneId}|${raw.content.slice(0, 30)}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+
+      counter++;
+      entries.push({
+        id: `LR${String(counter).padStart(4, '0')}`,
+        entityName,
+        category,
+        content: raw.content,
+        quote: raw.quote || undefined,
+        sceneId,
+        sourceFileId: fileId,
+      });
+    }
+  }
+
+  console.log(`[lorebook] 병합 완료: ${entries.length}개 로어 엔트리`);
+  return entries;
+}
+
 // --- 지식 그래프 구축 ---
 
 // 두 엔티티 간 기존 관계가 존재하는지 확인
@@ -907,7 +977,7 @@ function buildSnapshots(
   return snapshots;
 }
 
-export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
+export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph, loreEntries?: LoreEntry[]): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
   // 기존 그래프의 엔티티/관계를 유지 (새 파일 추가 시 기존 데이터 보존)
@@ -1212,6 +1282,52 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   // 기존 타임라인과 병합
   const mergedTimeline = existingGraph ? [...(existingGraph.timeline || []), ...timeline] : timeline;
 
+  // 로어북 구성: 기존 lorebook + 새 lore entries
+  let lorebook: Lorebook | undefined = undefined;
+  const existingLorebook = existingGraph?.lorebook;
+  if (loreEntries?.length || existingLorebook) {
+    const allEntries: Record<string, LoreEntry> = {};
+
+    // 기존 로어북 복사
+    if (existingLorebook) {
+      Object.entries(existingLorebook.entries).forEach(([id, entry]) => {
+        allEntries[id] = entry;
+      });
+    }
+
+    // 새 로어 엔트리의 sourceFileId 매핑 (fileNameToId 사용)
+    if (loreEntries?.length) {
+      // 기존 LR 번호 최대값 구하기 (ID 충돌 방지)
+      let maxLoreNum = 0;
+      for (const id of Object.keys(allEntries)) {
+        const numMatch = id.match(/LR0*(\d+)/);
+        if (numMatch) maxLoreNum = Math.max(maxLoreNum, parseInt(numMatch[1], 10));
+      }
+
+      for (const entry of loreEntries) {
+        maxLoreNum++;
+        const newId = `LR${String(maxLoreNum).padStart(4, '0')}`;
+
+        // sourceFileId가 없으면 sceneId로 역추적
+        let resolvedFileId = entry.sourceFileId;
+        if (!resolvedFileId && entry.sceneId) {
+          const snapshot = snapshots[entry.sceneId];
+          if (snapshot?.sourceFileId) {
+            resolvedFileId = snapshot.sourceFileId;
+          }
+        }
+
+        allEntries[newId] = {
+          ...entry,
+          id: newId,
+          sourceFileId: resolvedFileId,
+        };
+      }
+    }
+
+    lorebook = { entries: allEntries };
+  }
+
   return {
     metadata: {
       ...(existingGraph?.metadata || {}),
@@ -1227,6 +1343,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
     chapters,
     timeline: mergedTimeline,
     snapshots,
+    lorebook,
     stats: {
       totalEntities: Object.keys(entities).length,
       totalEdges: Object.keys(hyperedges).length,

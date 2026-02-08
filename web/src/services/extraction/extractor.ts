@@ -2,9 +2,41 @@
  * 지식 그래프 추출 서비스 — LLM 청크 추출
  */
 
-import type { KnownEntity, ChunkExtractionResult, ChunkExtractedData } from './types';
+import type { KnownEntity, ChunkExtractionResult, ChunkExtractedData, LoreExtractionResult, RawLoreEntry } from './types';
 import { CATEGORY_NAMES, EMPTY_CHUNK_DATA, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout, trimKnownEntities } from './types';
-import { USER_PROMPT } from './prompts';
+import { USER_PROMPT, LOREBOOK_EXTRACTION_PROMPT } from './prompts';
+
+// 이전 엔티티 정보를 프롬프트용 텍스트로 변환 (extractFromChunk, extractLorebook 공용)
+function buildPreviousEntitiesText(knownEntities: KnownEntity[]): string {
+  const limitedEntities = trimKnownEntities(knownEntities);
+  if (limitedEntities.length === 0) return '';
+
+  const byCategory: Record<string, KnownEntity[]> = {};
+  for (const e of limitedEntities) {
+    if (!byCategory[e.category]) byCategory[e.category] = [];
+    byCategory[e.category].push(e);
+  }
+
+  let text = `## 이전 청크에서 발견된 엔티티들 (동일한 것이면 같은 이름 사용!)
+⚠️ 중요: 아래 목록에 있는 엔티티가 이번 청크에 다시 등장하면 반드시 같은 이름을 사용하세요!
+
+`;
+
+  for (const [category, entities] of Object.entries(byCategory)) {
+    const categoryName = CATEGORY_NAMES[category] || category;
+    const limitedCategoryEntities = entities.slice(-15);
+    text += `### ${categoryName} (${category})
+${limitedCategoryEntities.map(e => {
+  const aliasText = e.aliases?.length ? ` (별칭: ${e.aliases.slice(0, 3).join(', ')})` : '';
+  const shortDesc = (e.description || '').slice(0, 50);
+  return `- ${e.name}${aliasText}: ${shortDesc}`;
+}).join('\n')}
+
+`;
+  }
+
+  return text;
+}
 
 export async function extractFromChunk(
   chunkText: string,
@@ -14,37 +46,7 @@ export async function extractFromChunk(
   apiKeyOverride?: string,
 ): Promise<ChunkExtractionResult> {
   // 이전에 발견된 엔티티 정보를 프롬프트에 추가 (카테고리별로 구분)
-  let previousEntitiesText = '';
-  const limitedEntities = trimKnownEntities(knownEntities);
-
-  if (limitedEntities.length > 0) {
-    // 카테고리별로 그룹화
-    const byCategory: Record<string, KnownEntity[]> = {};
-    for (const e of limitedEntities) {
-      if (!byCategory[e.category]) {
-        byCategory[e.category] = [];
-      }
-      byCategory[e.category].push(e);
-    }
-
-    previousEntitiesText = `## 이전 청크에서 발견된 엔티티들 (동일한 것이면 같은 이름 사용!)
-⚠️ 중요: 아래 목록에 있는 엔티티가 이번 청크에 다시 등장하면 반드시 같은 이름을 사용하세요!
-
-`;
-
-    for (const [category, entities] of Object.entries(byCategory)) {
-      const categoryName = CATEGORY_NAMES[category] || category;
-      const limitedCategoryEntities = entities.slice(-15); // 카테고리별 15개까지만
-      previousEntitiesText += `### ${categoryName} (${category})
-${limitedCategoryEntities.map(e => {
-  const aliasText = e.aliases?.length ? ` (별칭: ${e.aliases.slice(0, 3).join(', ')})` : '';
-  const shortDesc = (e.description || '').slice(0, 50);
-  return `- ${e.name}${aliasText}: ${shortDesc}`;
-}).join('\n')}
-
-`;
-    }
-  }
+  const previousEntitiesText = buildPreviousEntitiesText(knownEntities);
 
   const prompt = USER_PROMPT
     .replace('{{chunkNum}}', String(chunkNum))
@@ -208,4 +210,66 @@ export function tryFixJson(content: string): unknown {
       return null;
     }
   }
+}
+
+// --- LLM B: 로어북 추출 ---
+
+export async function extractLorebook(
+  chunkText: string,
+  chunkNum: number,
+  knownEntities: KnownEntity[] = [],
+  model?: string,
+  apiKeyOverride?: string,
+): Promise<LoreExtractionResult> {
+  const previousEntitiesText = buildPreviousEntitiesText(knownEntities);
+
+  const prompt = LOREBOOK_EXTRACTION_PROMPT
+    .replace('{{chunkNum}}', String(chunkNum))
+    .replace('{{text}}', chunkText)
+    .replace('{{previousEntities}}', previousEntitiesText);
+
+  const userApiKey = apiKeyOverride !== undefined ? apiKeyOverride : getApiKey();
+  const response = await fetchWithClientTimeout('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model }),
+  }, 150000);
+
+  if (!response.ok) {
+    if (response.status === 402) {
+      return { data: [], billing: { prompt_tokens: 0, completion_tokens: 0, model: model || '', insufficient_balance: true } };
+    }
+    const err = await response.text();
+    console.error('[lorebook] API 응답 에러:', err);
+    throw new Error(`API 오류: ${response.status} - ${err.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    console.warn('[lorebook] LLM 응답 비어있음');
+    return { data: [], billing: data._billing ? { ...data._billing, model } : null };
+  }
+
+  let parsed: { lore_entries?: RawLoreEntry[] };
+  try {
+    const jsonContent = stripMarkdownCodeBlock(content);
+    parsed = JSON.parse(jsonContent);
+  } catch {
+    const fixedContent = tryFixJson(content);
+    if (fixedContent && typeof fixedContent === 'object') {
+      parsed = fixedContent as { lore_entries?: RawLoreEntry[] };
+    } else {
+      console.warn('[lorebook] JSON 파싱 실패, 이 청크 건너뜀');
+      return { data: [], billing: data._billing ? { ...data._billing, model } : null };
+    }
+  }
+
+  const entries = Array.isArray(parsed.lore_entries) ? parsed.lore_entries : [];
+  return {
+    data: entries,
+    billing: data._billing ? { ...data._billing, model } : null,
+  };
 }
