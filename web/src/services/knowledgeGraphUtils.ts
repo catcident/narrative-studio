@@ -428,6 +428,7 @@ export function buildEditFileGraph(
   graph: NovelKnowledgeGraph,
   originalFileIndex: number,
   fileName: string,
+  savedValidationByFileName?: Record<string, FileValidationResult>,
 ): NovelKnowledgeGraph {
   const updatedFiles = graph.metadata.sourceFiles || [];
   const newFileIndex = updatedFiles.findIndex(f => f.fileName === fileName);
@@ -479,18 +480,18 @@ export function buildEditFileGraph(
   };
   const reordered = reorderScenes(graphWithRemappedFiles, renumbered.sourceFiles);
 
-  // 검증 결과: 수정된 파일만 리셋, 나머지는 유지
+  // 검증 결과: 수정된 파일만 리셋, 나머지는 파일명 기반으로 원본에서 복원
   const newValidation: Record<string, FileValidationResult> = {};
-  renumbered.sourceFiles.forEach((f) => {
-    if (f.fileName === fileName) return; // 수정된 파일은 검증 리셋
-    const oldFile = updatedFiles.find(uf => uf.fileName === f.fileName);
-    if (oldFile && graph.validationResults?.[oldFile.id]) {
-      newValidation[f.id] = {
-        ...graph.validationResults[oldFile.id],
-        fileId: f.id,
-      };
-    }
-  });
+  if (savedValidationByFileName) {
+    // 삭제 전에 저장해둔 파일명 → 검증결과 맵에서 복원
+    renumbered.sourceFiles.forEach((f) => {
+      if (f.fileName === fileName) return; // 수정된 파일은 검증 리셋
+      const origResult = savedValidationByFileName[f.fileName];
+      if (origResult) {
+        newValidation[f.id] = { ...origResult, fileId: f.id };
+      }
+    });
+  }
 
   return {
     ...graph,
