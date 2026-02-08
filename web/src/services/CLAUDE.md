@@ -140,13 +140,13 @@ extractKnowledgeGraph({ onChunkBilling })
   → /api/analyze (청크 N)   ──→  OpenRouter 호출
                               ← { _billing: { model, prompt_tokens, completion_tokens } }
 
-[성공] settleCredits(sessionId, actualUsage)
+[성공] settleCredits(holdToken, actualUsage)
                             POST /api/session/settle
                               ──→  실제 사용량 정산 (hold 해제 + 차감)
                               ← { balance_after }
                               → CreditBadge 잔액 갱신
 
-[실패] releaseCredits(sessionId)
+[실패] releaseCredits(holdToken)
                             POST /api/session/release
                               ──→  hold 해제 (크레딧 복원)
 ```
@@ -155,11 +155,13 @@ extractKnowledgeGraph({ onChunkBilling })
 - [ ] `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)` — 3번째 파라미터로 예상 비용 전달
 - [ ] `holdCredits()` → 작업 → `finalizeHold()` 세션 패턴 준수
 - [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 (잔액 갱신 없음)
-- [ ] `_billing` 응답에서 `model: string` 필수 확인 — `ChunkBilling` 타입 준수
-- [ ] `finalizeHold` 성공/실패 양쪽에서 호출 — try-catch에서 chunks.length === 0이면 release
+- [ ] `_billing` 응답에서 `model: string` + `byok` 필수 확인 — `ChunkBilling` 타입 준수
+- [ ] `finalizeHold` 성공/실패 양쪽에서 호출 — `holdToken`과 `chunkUsages`는 try 블록 밖에서 선언 (catch에서 접근 필요)
+- [ ] `/api/chat` 호출 시 `idempotency_key: crypto.randomUUID()` 포함
 - [ ] 402 응답 명시 처리 — generic error에 흡수 금지
 - [ ] `subscription === null` 가드 — hold/settle/release 호출 전 체크 → null이면 billing 전체 스킵
 - [ ] `isUsingPersonalKey` BYOK 가드 — 개인 키 사용 시 billing 전체 스킵
+- [ ] API 키 접근은 `getApiKey()` / `hasApiKey()` 유틸리티 사용 — `localStorage.getItem` 직접 접근 금지
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
 - [ ] `useStore.getState()` — 비동기 콜백 내부에서 stale closure 방지
 - [ ] UI 크레딧 표시는 `calculateSessionCreditsFromChunks()` 사용 — `calculateCreditsFromChunks()`는 레거시

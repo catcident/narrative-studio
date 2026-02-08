@@ -14,7 +14,7 @@ import type {
   SceneSnapshot,
 } from '../types';
 import { DEFAULT_MODEL } from '../types';
-import type { ChunkBilling } from './extraction/types';
+import type { ChunkBilling, ChunkBillingCallback } from './extraction/types';
 
 // ==================== 상수 ====================
 
@@ -30,7 +30,7 @@ interface ValidationContext {
   apiKey?: string;  // 옵셔널 - 서버에서 환경변수 사용 가능
   model?: string;
   onProgress?: (fileId: string, status: ValidationStatus) => void;
-  onChunkBilling?: (chunkIndex: number, billing: ChunkBilling) => void;
+  onChunkBilling?: ChunkBillingCallback;
 }
 
 interface FileGraphData {
@@ -300,6 +300,7 @@ ${currentContext}
         model,
         ...(apiKey && { apiKey }),
         stream: false,
+        idempotency_key: crypto.randomUUID(),
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
@@ -317,7 +318,7 @@ ${currentContext}
     // _billing 파싱 (Phase 4: 검증 과금 추적)
     const rawBilling = data._billing;
     const billing: ChunkBilling | null = rawBilling
-      ? { prompt_tokens: rawBilling.prompt_tokens || 0, completion_tokens: rawBilling.completion_tokens || 0, model: rawBilling.model || model }
+      ? { prompt_tokens: rawBilling.prompt_tokens || 0, completion_tokens: rawBilling.completion_tokens || 0, model: rawBilling.model || model, byok: rawBilling.byok }
       : null;
 
     console.log(`[validation] 청크 ${chunkIndex} LLM 응답:`, content);

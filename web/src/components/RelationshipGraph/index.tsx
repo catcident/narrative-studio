@@ -30,8 +30,6 @@ import {
 } from './GraphNodes';
 import type {
   GraphViewMode,
-  EntityWithOpacity,
-  EdgeWithOpacity,
   Props,
 } from './GraphNodes';
 
@@ -595,7 +593,7 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
       const color = RELATION_COLORS[edge.type] || '#9ca3af';
       const dashArray = SENTIMENT_STROKE_STYLES[edge.sentiment || 'neutral'].strokeDasharray;
       const relationLabel = RELATION_LABELS[edge.type] || edge.type;
-      const isPast = (edge as EdgeWithOpacity).isPastScene;
+      const isPast = edge.isPastScene;
 
       for (let i = 0; i < edge.entities.length; i++) {
         for (let j = i + 1; j < edge.entities.length; j++) {

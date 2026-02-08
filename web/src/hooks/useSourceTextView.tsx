@@ -6,7 +6,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useStore, useIsValidating, useValidatingFileId, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile } from '../services/validation';
-import { hasApiKey } from '../services/extraction';
+import { hasApiKey, getApiKey } from '../services/extraction';
 import { ensureSufficientBalance, holdCredits, finalizeHold, estimateValidationCost } from '../services/billing';
 import { useAddFileAnalysis } from './useAddFileAnalysis';
 import {
@@ -175,12 +175,14 @@ export function useSourceTextView() {
     setIsValidating(true);
     setValidatingFileId(fileId);
 
+    let holdToken: string | null = null;
+    const chunkUsages: ChunkUsage[] = [];
+
     try {
       const isUsingPersonalKey = byokEnabled && hasApiKey();
       const validationModel = knowledgeGraph.metadata.model;
 
       // 단일 파일 검증: LLM 호출 1회 (첫 파일은 자동 통과 — validateFile 내부 처리)
-      let holdToken: string | null = null;
       if (!isUsingPersonalKey) {
         const estimatedCredits = estimateValidationCost(2, validationModel, allModels); // 최소 1회 호출
         await ensureSufficientBalance(subscription, authEnabled, estimatedCredits);
@@ -197,11 +199,8 @@ export function useSourceTextView() {
         }
       }
 
-      // billing 수집
-      const chunkUsages: ChunkUsage[] = [];
-
       const result = await validateFile(knowledgeGraph, fileId, {
-        apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
+        apiKey: getApiKey() || undefined,
         model: validationModel,
         onChunkBilling: (chunkIndex, billing) => {
           chunkUsages.push({
@@ -226,6 +225,9 @@ export function useSourceTextView() {
       return result;
     } catch (err: unknown) {
       console.error('[validation] 검증 실패:', err);
+      if (holdToken) {
+        await finalizeHold(holdToken, chunkUsages, `파일 검증 실패: ${fileId}`, updateCreditBalance);
+      }
     } finally {
       setIsValidating(false);
       setValidatingFileId(null);
@@ -291,7 +293,7 @@ export function useSourceTextView() {
           setIsValidating(true);
 
           const result = await validateFile(knowledgeGraph, file.id, {
-            apiKey: localStorage.getItem('OPENROUTER_API_KEY') || undefined,
+            apiKey: getApiKey() || undefined,
             model: validationModel,
             onChunkBilling: (chunkIndex, billing) => {
               allChunkUsages.push({

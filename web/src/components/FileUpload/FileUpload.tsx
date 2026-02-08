@@ -191,6 +191,7 @@ export function FileUpload() {
       } catch (err: unknown) {
         console.error('[extraction] error:', err);
         setError(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
+        syncPartialAnalysis(setPartialAnalysis);
         resetProgressState(true);
       } finally {
         setLocalLoading(false);
@@ -198,7 +199,7 @@ export function FileUpload() {
         loadSubscription();
       }
     },
-    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState, loadSubscription],
+    [setLoading, setError, resetCurrentUsage, setShowUsageSummary, resetProgressState, loadSubscription, setPartialAnalysis],
   );
 
   // ==================== 초기화 ====================

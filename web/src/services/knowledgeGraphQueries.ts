@@ -14,15 +14,15 @@ function toArray<T>(input: Record<string, T> | T[]): T[] {
 // ─── 엔티티 필터 ───
 
 /** 카테고리별 엔티티 필터링 */
-export function getEntitiesByCategory(
-  entities: Record<string, Entity> | Entity[],
+export function getEntitiesByCategory<T extends Entity>(
+  entities: Record<string, T> | T[],
   category: EntityCategory,
-): Entity[] {
+): T[] {
   return toArray(entities).filter(e => e.category === category);
 }
 
 /** 캐릭터 엔티티만 반환 */
-export function getCharacters(entities: Record<string, Entity> | Entity[]): Entity[] {
+export function getCharacters<T extends Entity>(entities: Record<string, T> | T[]): T[] {
   return getEntitiesByCategory(entities, 'character');
 }
 
