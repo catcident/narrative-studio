@@ -254,9 +254,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
         });
         nameMap[normalizedName] = idx;
         for (const alias of (entity.aliases || [])) {
-          if (!isAmbiguousName(alias)) {
-            nameMap[normalizeName(alias)] = idx;
-          }
+          nameMap[normalizeName(alias)] = idx;
         }
       }
     }
