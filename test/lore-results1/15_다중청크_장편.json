@@ -1,0 +1,259 @@
+{
+  "_test": {
+    "file": "15_다중청크_장편",
+    "timestamp": "2026-02-08T15:49:21.432Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "윤기태",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "박순덕",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "녹원리",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "김판석",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "윤용준",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "최서연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "윤하나",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "이정자",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "이민규",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "손태호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "뒷산",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "정자나무",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "경로당",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "멧돼지",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "절벽",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 25,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 11,
+    "mergedLoreCount": 11,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "윤기태",
+      "category": "personality",
+      "content": "매일 아침 마을 입구 정자나무 아래에서 바둑을 둔다.",
+      "quote": "기태야, 서울 간 아들은 잘 있냐?",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤기태",
+      "category": "relationship_detail",
+      "content": "아들 윤용준이 서울에서 변호사로 일하는 것을 알고 있다.",
+      "quote": "응. 용준이는 바빠서 못 온다더라.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박순덕",
+      "category": "relationship_detail",
+      "content": "손녀 윤하나가 이번 방학에 오는 것을 알고 기뻐한다.",
+      "quote": "정자야, 우리 하나가 이번 방학에 온다더라.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤용준",
+      "category": "background",
+      "content": "서울에서 변호사로 일한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최서연",
+      "category": "background",
+      "content": "초등학교 교사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤하나",
+      "category": "relationship_detail",
+      "content": "박순덕의 요리를 좋아한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이민규",
+      "category": "relationship_detail",
+      "content": "윤하나와 금방 친해졌다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "손태호",
+      "category": "background",
+      "content": "녹원리의 이장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "손태호",
+      "category": "personality",
+      "content": "아이들에게 뒷산 너머에 가지 말라고 경고한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "윤용준",
+      "category": "motivation",
+      "content": "딸 윤하나가 산에서 내려오지 않았다는 소식을 듣고 걱정한다.",
+      "quote": "용준아, 하나가 산에서 안 내려와!",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "이정자",
+      "category": "motivation",
+      "content": "손자 이민규를 걱정하며 운다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "summary": {
+    "entityCount": 15,
+    "characterCount": 10,
+    "loreEntryCount": 11,
+    "byEntity": {
+      "윤기태": 2,
+      "박순덕": 1,
+      "윤용준": 2,
+      "최서연": 1,
+      "윤하나": 1,
+      "이민규": 1,
+      "손태호": 2,
+      "이정자": 1
+    },
+    "byCategory": {
+      "personality": 2,
+      "relationship_detail": 4,
+      "background": 3,
+      "motivation": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

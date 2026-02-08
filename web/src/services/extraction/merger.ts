@@ -859,7 +859,7 @@ export function mergeLoreEntries(
       let isDuplicate = false;
       for (const existing of entries) {
         if (`${existing.entityName}|${existing.category}` !== groupKey) continue;
-        if (contentSimilarity(raw.content, existing.content) >= 0.7) {
+        if (contentSimilarity(raw.content, existing.content) >= 0.85) {
           // 더 긴(구체적인) 내용을 유지, 짧은 것 스킵
           if (raw.content.length > existing.content.length) {
             existing.content = raw.content;

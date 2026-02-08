@@ -1,0 +1,269 @@
+{
+  "_test": {
+    "file": "02_시점변경_1인칭",
+    "timestamp": "2026-02-08T15:48:40.980Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "한서준",
+        "category": "character",
+        "aliases": [
+          "서준"
+        ],
+        "scenes": [
+          1,
+          2,
+          3,
+          7
+        ]
+      },
+      {
+        "name": "알람 시계",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "블루문 카페",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "김 사장",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "아메리카노",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2,
+          6
+        ]
+      },
+      {
+        "name": "박재민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "이수아",
+        "category": "character",
+        "aliases": [
+          "수아"
+        ],
+        "scenes": [
+          4,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "캔버스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "물감",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          4,
+          7
+        ]
+      },
+      {
+        "name": "진아",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          5,
+          7
+        ]
+      },
+      {
+        "name": "붓",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          5
+        ]
+      },
+      {
+        "name": "캔버스 가방",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          7
+        ]
+      },
+      {
+        "name": "물감이 묻은 앞치마",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          7
+        ]
+      }
+    ],
+    "relationships": 11,
+    "scenes": 7,
+    "mergeSuggestions": [
+      {
+        "keep": "한서준",
+        "merge": "서준",
+        "reason": "한서준의 별칭이 서준임"
+      },
+      {
+        "keep": "이수아",
+        "merge": "수아",
+        "reason": "이수아의 별칭이 수아임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 21,
+    "mergedLoreCount": 13,
+    "deduped": 8
+  },
+  "entityNameMapping": {
+    "서준": "한서준",
+    "수아": "이수아"
+  },
+  "loreEntries": [
+    {
+      "entityName": "한서준",
+      "category": "appearance",
+      "content": "서른두 살이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한서준",
+      "category": "background",
+      "content": "평범한 회사원이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한서준",
+      "category": "relationship_detail",
+      "content": "박재민은 회사 동료이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한서준",
+      "category": "relationship_detail",
+      "content": "김 사장은 단골 카페 주인이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한서준",
+      "category": "personality",
+      "content": "퇴근 후 블루문 카페에 들르는 습관이 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 사장",
+      "category": "relationship_detail",
+      "content": "한서준의 단골 카페 주인이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박재민",
+      "category": "relationship_detail",
+      "content": "한서준의 회사 동료이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이수아",
+      "category": "appearance",
+      "content": "스물여덟 살이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수아",
+      "category": "background",
+      "content": "화가를 꿈꾸는 미대 졸업생이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수아",
+      "category": "outfit",
+      "content": "캔버스 가방을 메고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "이수아",
+      "category": "outfit",
+      "content": "물감이 묻은 앞치마를 입고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "진아",
+      "category": "relationship_detail",
+      "content": "이수아의 룸메이트이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "진아",
+      "category": "background",
+      "content": "미대 출신이지만 지금은 디자인 회사에 다닌다.",
+      "quote": null,
+      "sceneId": "S0002"
+    }
+  ],
+  "summary": {
+    "entityCount": 13,
+    "characterCount": 5,
+    "loreEntryCount": 13,
+    "byEntity": {
+      "한서준": 5,
+      "김 사장": 1,
+      "박재민": 1,
+      "이수아": 4,
+      "진아": 2
+    },
+    "byCategory": {
+      "appearance": 2,
+      "background": 3,
+      "relationship_detail": 5,
+      "personality": 1,
+      "outfit": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}
