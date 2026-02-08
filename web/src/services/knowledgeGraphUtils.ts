@@ -306,27 +306,11 @@ export function deleteFileFromGraph(
     }
   });
 
-  // 5. edge scenes에서 삭제된 장면 제거 + 빈 엣지 삭제
-  const newHyperedges: typeof graph.hyperedges = {};
-  Object.entries(graph.hyperedges).forEach(([edgeId, edge]) => {
-    const filteredScenes = edge.scenes?.filter(sid => !scenesToDelete.has(sid)) || [];
-    if (filteredScenes.length > 0) {
-      newHyperedges[edgeId] = { ...edge, scenes: filteredScenes };
-    }
-  });
-
-  // 6. 관계 있는 엔티티 수집
-  const entitiesWithRelations = new Set<string>();
-  Object.values(newHyperedges).forEach(edge => {
-    edge.entities.forEach(id => entitiesWithRelations.add(id));
-  });
-
-  // 7. 고아 엔티티 삭제 + description 재구성
+  // 5. 장면이 없는 엔티티 삭제 + description 재구성
   const finalEntities: typeof graph.entities = {};
   Object.entries(newEntities).forEach(([entityId, entity]) => {
-    const hasRelations = entitiesWithRelations.has(entityId);
     const hasScenes = entity.scenes && entity.scenes.length > 0;
-    if (hasRelations || hasScenes) {
+    if (hasScenes) {
       const remainingSceneSummaries = (entity.scenes || [])
         .map(sid => newSnapshots[sid]?.summary)
         .filter(Boolean);
@@ -336,6 +320,17 @@ export function deleteFileFromGraph(
           ? remainingSceneSummaries.join(' ')
           : `${entity.name} (${entity.category})`,
       };
+    }
+  });
+
+  // 6. edge scenes에서 삭제된 장면 제거 + 빈 엣지/고아 엣지 삭제
+  const survivingEntityIds = new Set(Object.keys(finalEntities));
+  const newHyperedges: typeof graph.hyperedges = {};
+  Object.entries(graph.hyperedges).forEach(([edgeId, edge]) => {
+    const filteredScenes = edge.scenes?.filter(sid => !scenesToDelete.has(sid)) || [];
+    // 장면이 남아있고, 연결된 엔티티가 모두 살아있는 엣지만 유지
+    if (filteredScenes.length > 0 && edge.entities.every(id => survivingEntityIds.has(id))) {
+      newHyperedges[edgeId] = { ...edge, scenes: filteredScenes };
     }
   });
 
