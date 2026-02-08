@@ -680,9 +680,18 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
 
 const VALID_LORE_CATEGORIES = new Set<string>([
   'appearance', 'outfit', 'personality', 'ability', 'background', 'motivation',
-  'relationship_detail', 'quote', 'world_setting', 'location_detail',
-  'organization_detail', 'item_detail', 'event',
+  'relationship_detail', 'lore',
 ]);
+
+// 이전 카테고리 → 새 카테고리 매핑 (하위 호환)
+const LEGACY_CATEGORY_MAP: Record<string, string> = {
+  'quote': 'personality',           // 대사 → 성격/말투에 통합
+  'world_setting': 'lore',
+  'location_detail': 'lore',
+  'organization_detail': 'lore',
+  'item_detail': 'lore',
+  'event': 'lore',
+};
 
 // LLM이 카테고리명을 이름으로 잘못 쓰는 패턴 (항상 필터)
 const CATEGORY_AS_NAME = new Set([
@@ -747,10 +756,11 @@ export function mergeLoreEntries(
     for (const raw of chunkLore) {
       if (!raw.entity_name || !raw.content) continue;
 
-      // 카테고리 검증
-      const category = VALID_LORE_CATEGORIES.has(raw.category)
-        ? raw.category as LoreCategory
-        : 'event';
+      // 카테고리 검증 (레거시 카테고리 자동 변환)
+      const mappedCategory = LEGACY_CATEGORY_MAP[raw.category] || raw.category;
+      const category = VALID_LORE_CATEGORIES.has(mappedCategory)
+        ? mappedCategory as LoreCategory
+        : 'lore';
 
       // 1. 이름 정리: 괄호/별칭 제거
       let entityName = cleanEntityName(raw.entity_name);

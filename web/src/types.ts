@@ -214,12 +214,7 @@ export type LoreCategory =
   | 'background'           // 배경/출신/과거
   | 'motivation'           // 목표/동기
   | 'relationship_detail'  // 관계 상세 ("A를 형이라 부른다")
-  | 'quote'                // 중요 대사
-  | 'world_setting'        // 세계관 설정 (규칙, 체계, 제도)
-  | 'location_detail'      // 장소 상세 설명
-  | 'organization_detail'  // 조직/세력 상세
-  | 'item_detail'          // 중요 아이템 상세
-  | 'event';               // 중요 사건/변화
+  | 'lore';                // 세계관/설정 (규칙, 체계, 장소 묘사 등)
 
 /** 로어북 개별 기록 (1개 = 1개 사실, 1개 장면) */
 export interface LoreEntry {

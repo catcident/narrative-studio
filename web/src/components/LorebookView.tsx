@@ -5,8 +5,8 @@
 import { useState, useMemo } from 'react';
 import {
   BookOpen, User, Globe, Search, Quote, Eye, Shirt, Brain, Swords,
-  History, Target, Users, MapPin, Building, Package, Zap,
-  MessageSquareQuote, X, Cat, Box,
+  History, Target, Users, X, Cat, Box,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useStore } from '../store';
 import type { LoreEntry, LoreCategory, EntityCategory } from '../types';
@@ -22,33 +22,26 @@ interface CategoryConfig {
 }
 
 const CATEGORY_CONFIG: Record<LoreCategory, CategoryConfig> = {
-  appearance:           { label: '외모',   icon: Eye,                color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' },
-  outfit:               { label: '복장',   icon: Shirt,              color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
-  personality:          { label: '성격',   icon: Brain,              color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
-  ability:              { label: '능력',   icon: Swords,             color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  background:           { label: '배경',   icon: History,            color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
-  motivation:           { label: '동기',   icon: Target,             color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' },
-  relationship_detail:  { label: '관계',   icon: Users,              color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-  quote:                { label: '대사',   icon: MessageSquareQuote, color: '#a21caf', bg: '#fdf4ff', border: '#f0abfc' },
-  world_setting:        { label: '세계관', icon: Globe,              color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
-  location_detail:      { label: '장소',   icon: MapPin,             color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-  organization_detail:  { label: '조직',   icon: Building,           color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  item_detail:          { label: '아이템', icon: Package,            color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  event:                { label: '사건',   icon: Zap,                color: '#be123c', bg: '#fff1f2', border: '#fecdd3' },
+  appearance:           { label: '외모',   icon: Eye,    color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' },
+  outfit:               { label: '복장',   icon: Shirt,  color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
+  personality:          { label: '성격',   icon: Brain,  color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+  ability:              { label: '능력',   icon: Swords, color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  background:           { label: '배경',   icon: History, color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
+  motivation:           { label: '동기',   icon: Target, color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' },
+  relationship_detail:  { label: '관계',   icon: Users,  color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  lore:                 { label: '설정',   icon: Globe,  color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
 };
 
 const CHARACTER_CATEGORIES: LoreCategory[] = [
   'appearance', 'outfit', 'personality', 'ability', 'background',
-  'motivation', 'relationship_detail', 'quote',
+  'motivation', 'relationship_detail',
 ];
 
-const WORLD_CATEGORIES: LoreCategory[] = [
-  'world_setting', 'location_detail', 'organization_detail', 'item_detail', 'event',
-];
+const WORLD_CATEGORIES: LoreCategory[] = ['lore'];
 
 // ─── 타입 탭 ───
 
-type EntityTab = 'all' | 'character' | 'world' | 'location' | 'item' | 'event';
+type EntityTab = 'all' | 'character' | 'world';
 
 interface TabConfig {
   id: EntityTab;
@@ -61,21 +54,13 @@ interface TabConfig {
 const TABS: TabConfig[] = [
   { id: 'all', label: '전체', icon: BookOpen, loreCategories: [...CHARACTER_CATEGORIES, ...WORLD_CATEGORIES] },
   { id: 'character', label: '인물', icon: User, loreCategories: CHARACTER_CATEGORIES, entityCategories: ['character', 'creature'] },
-  { id: 'world', label: '세계관', icon: Globe, loreCategories: ['world_setting', 'organization_detail'] },
-  { id: 'location', label: '장소', icon: MapPin, loreCategories: ['location_detail'], entityCategories: ['location'] },
-  { id: 'item', label: '아이템', icon: Package, loreCategories: ['item_detail'], entityCategories: ['item'] },
-  { id: 'event', label: '사건', icon: Zap, loreCategories: ['event'], entityCategories: ['event'] },
+  { id: 'world', label: '설정', icon: Globe, loreCategories: WORLD_CATEGORIES },
 ];
 
 function getEntityIcon(category?: EntityCategory) {
   switch (category) {
     case 'character': return User;
     case 'creature': return Cat;
-    case 'location': return MapPin;
-    case 'organization': return Building;
-    case 'item': return Package;
-    case 'event': return Zap;
-    case 'concept': return Globe;
     default: return Box;
   }
 }
@@ -95,35 +80,10 @@ function getCardTheme(category?: EntityCategory): {
       border: '#f59e0b', iconBg: '#fffbeb', iconColor: '#d97706',
       accent: '#f59e0b', glow: 'rgba(245,158,11,0.15)',
     };
-    case 'location': return {
-      gradient: 'from-emerald-500 to-teal-600',
-      border: '#10b981', iconBg: '#ecfdf5', iconColor: '#059669',
-      accent: '#10b981', glow: 'rgba(16,185,129,0.15)',
-    };
-    case 'organization': return {
-      gradient: 'from-purple-500 to-violet-600',
-      border: '#8b5cf6', iconBg: '#f5f3ff', iconColor: '#7c3aed',
-      accent: '#8b5cf6', glow: 'rgba(139,92,246,0.15)',
-    };
-    case 'item': return {
-      gradient: 'from-yellow-500 to-amber-600',
-      border: '#eab308', iconBg: '#fefce8', iconColor: '#ca8a04',
-      accent: '#eab308', glow: 'rgba(234,179,8,0.15)',
-    };
-    case 'event': return {
-      gradient: 'from-rose-500 to-pink-600',
-      border: '#f43f5e', iconBg: '#fff1f2', iconColor: '#e11d48',
-      accent: '#f43f5e', glow: 'rgba(244,63,94,0.15)',
-    };
-    case 'concept': return {
+    default: return {
       gradient: 'from-cyan-500 to-sky-600',
       border: '#06b6d4', iconBg: '#ecfeff', iconColor: '#0891b2',
       accent: '#06b6d4', glow: 'rgba(6,182,212,0.15)',
-    };
-    default: return {
-      gradient: 'from-gray-500 to-slate-600',
-      border: '#94a3b8', iconBg: '#f8fafc', iconColor: '#64748b',
-      accent: '#94a3b8', glow: 'rgba(148,163,184,0.15)',
     };
   }
 }
@@ -175,7 +135,7 @@ export function LorebookView() {
   };
 
   const tabCounts = useMemo(() => {
-    const counts: Record<EntityTab, number> = { all: 0, character: 0, world: 0, location: 0, item: 0, event: 0 };
+    const counts: Record<EntityTab, number> = { all: 0, character: 0, world: 0 };
     for (const tab of TABS) {
       const names = new Set<string>();
       for (const entry of entries) {
@@ -242,7 +202,7 @@ export function LorebookView() {
         <div className="text-center">
           <BookOpen className="w-12 h-12 mx-auto mb-2 text-gray-300" />
           <p className="text-sm text-gray-500 font-medium">로어북 데이터가 없습니다</p>
-          <p className="text-xs mt-1 text-gray-400">소설을 분석하면 인물 프로필, 세계관, 대사 등이 추출됩니다</p>
+          <p className="text-xs mt-1 text-gray-400">소설을 분석하면 인물 프로필이 추출됩니다</p>
         </div>
       </div>
     );
@@ -436,7 +396,7 @@ function PokemonCard({
   );
 }
 
-// ─── 상세 패널 (오른쪽) ───
+// ─── 상세 패널 (오른쪽) — 카테고리별 접기/펼치기 ───
 
 function DetailPanel({
   card,
@@ -451,6 +411,16 @@ function DetailPanel({
 }) {
   const EntityIcon = getEntityIcon(kgCategory);
   const theme = getCardTheme(kgCategory);
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (cat: string) => {
+    setCollapsedCats(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
 
   // 카테고리별 그룹핑
   const byCategory: Record<string, LoreEntry[]> = {};
@@ -489,12 +459,14 @@ function DetailPanel({
         </button>
       </div>
 
-      {/* 카테고리별 내용 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* 카테고리별 내용 — 접기/펼치기 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {orderedCats.map(cat => {
           const config = CATEGORY_CONFIG[cat];
           const Icon = config.icon;
           const catEntries = byCategory[cat];
+          const isCollapsed = collapsedCats.has(cat);
+          const ChevronIcon = isCollapsed ? ChevronRight : ChevronDown;
 
           return (
             <div
@@ -502,11 +474,13 @@ function DetailPanel({
               className="rounded-lg overflow-hidden"
               style={{ border: `1.5px solid ${config.border}` }}
             >
-              {/* 카테고리 헤더 */}
-              <div
-                className="flex items-center gap-2 px-3 py-2"
+              {/* 카테고리 헤더 — 클릭으로 접기/펼치기 */}
+              <button
+                onClick={() => toggleCategory(cat)}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:brightness-95 transition-all cursor-pointer"
                 style={{ backgroundColor: config.bg }}
               >
+                <ChevronIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: config.color }} />
                 <Icon className="w-3.5 h-3.5" style={{ color: config.color }} />
                 <span className="text-xs font-bold" style={{ color: config.color }}>
                   {config.label}
@@ -517,30 +491,32 @@ function DetailPanel({
                 >
                   {catEntries.length}
                 </span>
-              </div>
+              </button>
 
-              {/* 엔트리 목록 */}
-              <div className="bg-white divide-y divide-gray-100">
-                {catEntries.map(entry => (
-                  <div key={entry.id} className="px-3 py-3">
-                    <p className="text-[13px] text-gray-800 leading-relaxed">{entry.content}</p>
-                    {entry.quote && (
-                      <div
-                        className="mt-2 px-3 py-2 rounded-md"
-                        style={{ backgroundColor: '#faf5ff', borderLeft: `3px solid ${config.color}40` }}
-                      >
-                        <p className="text-xs text-purple-700 italic leading-relaxed flex items-start gap-1.5">
-                          <Quote className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
-                          {entry.quote}
-                        </p>
-                      </div>
-                    )}
-                    <span className="text-[10px] text-gray-400 font-medium mt-1.5 block">
-                      장면 {sceneOrderMap[entry.sceneId] ?? entry.sceneId}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {/* 엔트리 목록 — 접혀있으면 숨김 */}
+              {!isCollapsed && (
+                <div className="bg-white divide-y divide-gray-100">
+                  {catEntries.map(entry => (
+                    <div key={entry.id} className="px-3 py-3">
+                      <p className="text-[13px] text-gray-800 leading-relaxed">{entry.content}</p>
+                      {entry.quote && (
+                        <div
+                          className="mt-2 px-3 py-2 rounded-md"
+                          style={{ backgroundColor: '#faf5ff', borderLeft: `3px solid ${config.color}40` }}
+                        >
+                          <p className="text-xs text-purple-700 italic leading-relaxed flex items-start gap-1.5">
+                            <Quote className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
+                            {entry.quote}
+                          </p>
+                        </div>
+                      )}
+                      <span className="text-[10px] text-gray-400 font-medium mt-1.5 block">
+                        장면 {sceneOrderMap[entry.sceneId] ?? entry.sceneId}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
