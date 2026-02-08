@@ -808,10 +808,10 @@ function inferCoOccurrenceEdges(
       if (commonScenes.length === 0) continue;
       if (hasEdgeBetween(hyperedges, char1.id, char2.id)) continue;
 
-      // 2개 이상의 공통 장면이 있어야 동시등장 관계 생성 (노이즈 방지)
-      // 단, 전체 장면이 적은 경우(3개 이하) 1개도 허용
+      // 공통 장면이 1개뿐이면 전체 장면이 충분히 많을 때만 스킵 (노이즈 방지)
+      // 장면이 적은 경우(6개 이하) 1개도 허용 — 처음 만나는 장면도 의미 있음
       const totalScenes = new Set([...char1.scenes, ...char2.scenes]).size;
-      if (commonScenes.length < 2 && totalScenes > 3) {
+      if (commonScenes.length < 2 && totalScenes > 6) {
         console.log(`[extraction] 캐릭터 관계 스킵 (공통 장면 1개, 전체 ${totalScenes}개): ${char1.name} ↔ ${char2.name}`);
         continue;
       }
