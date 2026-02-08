@@ -236,7 +236,7 @@ export const ENTITY_MERGE_REVIEW_PROMPT = `다음은 소설에서 추출된 엔�
 ⚠️ JSON만 반환. 설명 없이.`;
 
 // 로어북 추출용 프롬프트 (LLM B — 인물 프로필 + 세계관 설정)
-export const LOREBOOK_EXTRACTION_PROMPT = `소설 텍스트 청크 {{chunkNum}} — 인물 프로필 추출
+export const LOREBOOK_EXTRACTION_PROMPT = `소설 텍스트 청크 {{chunkNum}} — 인물 프로필 및 세계관 설정 추출
 
 {{text}}
 
@@ -272,8 +272,10 @@ export const LOREBOOK_EXTRACTION_PROMPT = `소설 텍스트 청크 {{chunkNum}} 
 - **motivation**: 목표/동기/두려움
 - **relationship_detail**: 다른 인물과의 관계 ("A를 신뢰한다", "B를 그리워한다")
 
-### 세계관/설정 (entity_name = 세계/장소/아이템 이름)
-- **lore**: 세계 규칙, 법칙, 능력 체계만. 장소/아이템 자체는 뽑지 마세요.
+### 세계관/설정 (entity_name = 체계/장소/아이템/조직 이름)
+- **lore**: 세계 규칙, 법칙, 능력 체계, 기술 사양, 조직 구조, 중요 아이템/장소 속성
+  - 예: "마나는 1~9등급, 1등급이 최고", "돔 기온 항상 22도", "은 나침반의 두 번째 바늘은 비밀 장소를 가리킴"
+  - entity_name은 해당 체계/장소/아이템 이름 (예: "아스트라 마법 아카데미", "은 나침반", "청풍검파")
 
 ## 규칙
 
@@ -286,6 +288,8 @@ export const LOREBOOK_EXTRACTION_PROMPT = `소설 텍스트 청크 {{chunkNum}} 
 3. **텍스트에 명시된 정보만**. 추측 금지.
 
 4. **1인칭 화자도 추출 대상.**
+
+4-1. **세계관/설정도 반드시 추출**: 마법 체계, 기술 사양, 무공 체계, 조직 구조, 아이템 특성, 장소 역사 등 세계 규칙이 나오면 lore 카테고리로 추출하세요.
 
 5. **중복 금지**: 이 청크 안에서 같은 인물의 같은 카테고리에 비슷한 내용을 여러 번 쓰지 마세요.
    - BAD: appearance에 "털이 곤두서 있다"를 장면 6과 12에 각각 기록
