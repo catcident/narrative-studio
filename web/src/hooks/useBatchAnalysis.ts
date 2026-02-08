@@ -40,14 +40,16 @@ export function useBatchAnalysis() {
         // 매 항목마다 최신 상태 사용 (stale closure 방지)
         const freshState = useStore.getState();
         const freshSubscription = freshState.subscription;
+        // NOTE: store 셀렉터(useByokEnabled)의 authEnabled===false permissive fallback 미적용.
+        // freshSubscription===null이면 billing 가드에서 이미 스킵되므로 현재 기능적 영향 없음.
         const freshByokEnabled = freshSubscription?.features?.byok ?? false;
         const freshModels = freshState.models;
 
         const isUsingPersonalKey = freshByokEnabled && hasApiKey();
         let holdToken: string | null = null;
 
-        // 잔액 확인 + hold
-        if (!isUsingPersonalKey) {
+        // 잔액 확인 + hold (billing 활성 시)
+        if (!isUsingPersonalKey && freshSubscription) {
           await ensureSufficientBalance(freshSubscription);
 
           const estimate = estimateUsageLocally(item.charCount, item.model, freshModels);

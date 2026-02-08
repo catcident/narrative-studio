@@ -98,6 +98,8 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 **AUTH_ENABLED=false 배포** (Railway 등):
 - billing API 프록시에 OAuth 토큰 없이 요청 → billing 기능 비활성화됨
 - 공개 데모에서는 billing 없이 무료 사용 가능 (의도된 동작)
+- 클라이언트 셀렉터 permissive fallback: `useByokEnabled`→true, `useExportFormats`→전체, `useCanBatchAnalysis`→true
+- Hold/settle 스킵: `subscription === null`이면 hold/settle 전체 생략, extraction만 진행 (`holdToken`이 null로 유지)
 
 **채팅 과금 흐름 (스트리밍 + 3회 호출)**:
 

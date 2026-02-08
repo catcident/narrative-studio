@@ -45,7 +45,7 @@ export function useAddFileAnalysis() {
       const model = graphToUse.metadata.model || DEFAULT_MODEL;
       let holdToken: string | null = null;
 
-      if (!isUsingPersonalKey) {
+      if (!isUsingPersonalKey && subscription) {
         await ensureSufficientBalance(subscription);
 
         const estimate = estimateUsageLocally(text.length, model, allModels);

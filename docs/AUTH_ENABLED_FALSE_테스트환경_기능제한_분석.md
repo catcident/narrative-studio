@@ -111,3 +111,28 @@ export const useByokEnabled = () =>
 - 배치 분석: `authEnabled === false`이면 `canBatchAnalysis = true`
 
 또는 `subscription`이 `null`이고 `authEnabled === false`일 때 가상의 "전체 권한" subscription 객체를 주입하는 방법도 가능하다.
+
+---
+
+## 수정 완료 (2026-02-08)
+
+### A. Hold/Settle 가드에 `subscription` null 체크 추가 (6곳)
+
+`if (!isUsingPersonalKey)` → `if (!isUsingPersonalKey && subscription)` 변경.
+`subscription === null`이면 billing 불가이므로 hold/settle 전체를 스킵하고 extraction만 진행.
+
+| 파일 | 함수 |
+|------|------|
+| `components/FileUpload/FileUpload.tsx` | handleFiles, handleResume, handleRegister |
+| `hooks/useAddFileAnalysis.ts` | execute |
+| `hooks/useBatchAnalysis.ts` | startProcessing |
+| `hooks/useResumeAnalysis.ts` | resume |
+
+### B. 셀렉터 permissive fallback (store.ts)
+
+- `useByokEnabled()`: `authEnabled === false` → `true`
+- `useExportFormats()`: `authEnabled === false` → `['png', 'svg', 'pdf']`
+
+### C. 배치 분석 활성화 (FileUpload.tsx)
+
+- `canBatchAnalysis`: `authEnabled === false` → `true`

@@ -158,6 +158,7 @@ extractKnowledgeGraph({ onChunkBilling })
 - [ ] 402 응답 명시 처리 (selector, extractor 모두) — generic error에 흡수 금지
 - [ ] `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
+- [ ] hold/settle/release 호출 전 `&& subscription` 가드 — `subscription === null`이면 billing 전체 스킵
 - [ ] `syncPartialAnalysis(setPartialAnalysis)` — extraction 완료/실패 후 반드시 호출 (success + error 양쪽)
 
 ### 파일 추가 분석

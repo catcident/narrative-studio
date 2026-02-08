@@ -52,7 +52,7 @@ export function useResumeAnalysis() {
 
       // 남은 청크에 대해서만 hold
       let holdToken: string | null = null;
-      if (!isUsingPersonalKey) {
+      if (!isUsingPersonalKey && subscription) {
         await ensureSufficientBalance(subscription);
 
         const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;

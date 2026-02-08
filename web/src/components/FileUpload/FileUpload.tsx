@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { useStore, useBillingSubscription, useModels, useByokEnabled } from '../../store';
+import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
 import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../../services/billing';
@@ -79,6 +79,7 @@ export function FileUpload() {
   const subscription = useBillingSubscription();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
+  const canBatchAnalysis = useCanBatchAnalysis();
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -110,7 +111,7 @@ export function FileUpload() {
 
   // Pro+ 사용자만 개별 분석 가능 (PDF 내보내기 권한을 Pro+ 프록시로 사용)
   // 향후 백엔드에 별도 allow_batch_analysis 플래그 추가 시 교체 필요
-  const canBatchAnalysis = (subscription?.features?.export_formats?.includes('pdf')) ?? false;
+  // canBatchAnalysis는 store.ts의 useCanBatchAnalysis 셀렉터에서 가져옴
 
   // 기존 지식그래프가 있으면 해당 모델로 고정
   const lockedModel = knowledgeGraph?.metadata?.model;
@@ -333,11 +334,11 @@ export function FileUpload() {
         throw new Error('파일 내용이 비어있습니다.');
       }
 
-      // 세션 hold: BYOK가 아닌 경우 예상 크레딧 선차감
+      // 세션 hold: BYOK가 아닌 경우 + billing 활성 시 예상 크레딧 선차감
       const isUsingPersonalKey = byokEnabled && hasApiKey();
       let holdToken: string | null = null;
 
-      if (!isUsingPersonalKey) {
+      if (!isUsingPersonalKey && subscription) {
         await ensureSufficientBalance(subscription);
 
         const estimate = estimateUsageLocally(combinedText.length, currentModel, allModels);
@@ -446,9 +447,9 @@ export function FileUpload() {
       // 만료 모델이면 현재 선택된 모델로 override
       const resumeModel = invalidSavedModel ? currentModel : (savedProgress.model || currentModel);
 
-      // 남은 청크에 대해서만 hold
+      // 남은 청크에 대해서만 hold (billing 활성 시)
       let holdToken: string | null = null;
-      if (!isUsingPersonalKey) {
+      if (!isUsingPersonalKey && subscription) {
         await ensureSufficientBalance(subscription);
 
         const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
@@ -593,11 +594,11 @@ export function FileUpload() {
         throw new Error('내용이 비어있습니다.');
       }
 
-      // 세션 hold: BYOK가 아닌 경우 예상 크레딧 선차감
+      // 세션 hold: BYOK가 아닌 경우 + billing 활성 시 예상 크레딧 선차감
       const isUsingPersonalKey = byokEnabled && hasApiKey();
       let holdToken: string | null = null;
 
-      if (!isUsingPersonalKey) {
+      if (!isUsingPersonalKey && subscription) {
         await ensureSufficientBalance(subscription);
 
         const estimate = estimateUsageLocally(text.length, currentModel, allModels);
