@@ -271,6 +271,13 @@ export function useSourceTextView() {
 
     setIsSavingEdit(true);
     try {
+      // 0. 삭제 전 검증 결과를 파일명 기반으로 보존 (삭제→재추가로 ID가 바뀌므로)
+      const savedValidationByFileName: Record<string, NonNullable<typeof knowledgeGraph.validationResults>[string]> = {};
+      for (const f of currentFiles) {
+        const result = knowledgeGraph.validationResults?.[f.id];
+        if (result) savedValidationByFileName[f.fileName] = result;
+      }
+
       // 1. 해당 파일 삭제
       await handleDeleteFile(fileId, file.fileName);
 
@@ -287,7 +294,7 @@ export function useSourceTextView() {
       const updatedDataId = state.currentDataId;
 
       if (updatedGraph && updatedDataId) {
-        const finalGraph = buildEditFileGraph(updatedGraph, fileIndex, file.fileName);
+        const finalGraph = buildEditFileGraph(updatedGraph, fileIndex, file.fileName, savedValidationByFileName);
         await updateKnowledgeGraph(updatedDataId, finalGraph);
         setKnowledgeGraph(finalGraph, undefined, updatedDataId);
       }
