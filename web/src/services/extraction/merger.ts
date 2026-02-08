@@ -723,13 +723,18 @@ export function mergeLoreEntries(
 
   for (let chunkIdx = 0; chunkIdx < allExtractedLore.length; chunkIdx++) {
     const chunkLore = allExtractedLore[chunkIdx];
-    if (!chunkLore?.length) continue;
+    if (!chunkLore?.length) {
+      console.log(`[lorebook] 청크 ${chunkIdx + 1}: 로어 엔트리 없음 (건너뜀)`);
+      continue;
+    }
 
-    // 디버그: 이 청크에서 LLM B가 사용한 장면 번호 분포
+    // 이 청크에서 LLM B가 사용한 장면 번호 분포
     const sceneNums = chunkLore.map(e => e.scene);
-    const uniqueScenes = [...new Set(sceneNums)].sort((a, b) => a - b);
+    const uniqueLoreScenes = [...new Set(sceneNums)].sort((a, b) => a - b);
+    const maxLoreSceneInChunk = uniqueLoreScenes[uniqueLoreScenes.length - 1] || 1;
     const chunkMapping = chunkSceneMappings[chunkIdx] || {};
-    console.log(`[lorebook] 청크 ${chunkIdx + 1}: LLM B 장면번호=${uniqueScenes.join(',')}, 매핑 키=${Object.keys(chunkMapping).join(',')}, 매핑 값=${Object.values(chunkMapping).join(',')}`);
+    const mappingKeys = Object.keys(chunkMapping).map(Number).sort((a, b) => a - b);
+    console.log(`[lorebook] 청크 ${chunkIdx + 1}: LLM B 장면번호=[${uniqueLoreScenes.join(',')}] (${chunkLore.length}개 엔트리), LLM A 매핑 키=[${mappingKeys.join(',')}] → 값=[${mappingKeys.map(k => chunkMapping[k]).join(',')}]`);
 
     // 이 청크의 파일 인덱스 → sourceFileId
     const fileIndex = chunkSourceFileIndices[chunkIdx] ?? 0;
@@ -779,20 +784,26 @@ export function mergeLoreEntries(
 
       // 장면 ID: 청크별 로컬 → S-format 매핑
       // LLM B의 장면 번호는 청크 로컬이므로, LLM A의 같은 청크 매핑으로 근사
-      const chunkMapping = chunkSceneMappings[chunkIdx] || {};
-      let sceneId = chunkMapping[raw.scene];
+      const mapping = chunkSceneMappings[chunkIdx] || {};
+      let sceneId = mapping[raw.scene];
       if (!sceneId) {
-        // LLM B가 LLM A와 다른 장면 수를 뽑은 경우: 가장 가까운 장면에 매핑
-        const availableScenes = Object.keys(chunkMapping).map(Number).sort((a, b) => a - b);
+        // LLM B가 LLM A와 다른 장면 번호를 쓴 경우: 비례 매핑
+        const availableScenes = Object.keys(mapping).map(Number).sort((a, b) => a - b);
         if (availableScenes.length > 0) {
-          // 비례 매핑: LLM B의 장면 번호를 LLM A의 장면 범위에 대응
-          const maxLoreScene = raw.scene;
-          const maxLlmAScene = availableScenes[availableScenes.length - 1];
-          const mappedIdx = Math.min(
-            Math.round((maxLoreScene - 1) / Math.max(maxLoreScene, 1) * availableScenes.length),
-            availableScenes.length - 1
-          );
-          sceneId = chunkMapping[availableScenes[Math.max(0, mappedIdx)]];
+          // LLM B의 장면 번호 범위(1~maxLoreScene)를 LLM A의 장면 범위에 비례 대응
+          // 예: LLM B scene 2/3 → LLM A 5개 장면 → idx=Math.round((2-1)/(3-1)*(5-1))=2 → 3번째 장면
+          const loreSceneCount = Math.max(maxLoreSceneInChunk, raw.scene);
+          let mappedIdx: number;
+          if (loreSceneCount <= 1) {
+            mappedIdx = 0;
+          } else {
+            mappedIdx = Math.min(
+              Math.round((raw.scene - 1) / (loreSceneCount - 1) * (availableScenes.length - 1)),
+              availableScenes.length - 1
+            );
+          }
+          sceneId = mapping[availableScenes[Math.max(0, mappedIdx)]];
+          console.log(`[lorebook] 비례 매핑: 청크${chunkIdx + 1} LLM-B scene ${raw.scene}/${loreSceneCount} → idx ${mappedIdx}/${availableScenes.length} → ${sceneId} (entity: ${entityName})`);
         }
         if (!sceneId) sceneId = `S${String(raw.scene).padStart(4, '0')}`;
       }
@@ -818,7 +829,13 @@ export function mergeLoreEntries(
   if (skippedInvalid > 0) {
     console.log(`[lorebook] 무효한 엔티티 이름 ${skippedInvalid}개 건너뜀`);
   }
-  console.log(`[lorebook] 병합 완료: ${entries.length}개 로어 엔트리`);
+  // 장면 분포 요약
+  const sceneDistrib: Record<string, number> = {};
+  for (const e of entries) {
+    sceneDistrib[e.sceneId] = (sceneDistrib[e.sceneId] || 0) + 1;
+  }
+  const sceneKeys = Object.keys(sceneDistrib).sort();
+  console.log(`[lorebook] 병합 완료: ${entries.length}개 로어 엔트리, 장면 분포: ${sceneKeys.map(s => `${s}=${sceneDistrib[s]}`).join(', ')}`);
   return entries;
 }
 

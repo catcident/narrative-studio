@@ -243,7 +243,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       const [extractionResult, lorebookResult] = await Promise.all([
         extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey),
         extractLorebook(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey).catch(err => {
-          console.warn(`[lorebook] 청크 ${i + 1} 로어북 추출 실패 (무시):`, err instanceof Error ? err.message : err);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[lorebook] 청크 ${i + 1} 로어북 추출 실패:`, errMsg);
           return { data: [] as RawLoreEntry[], billing: null };
         }),
       ]);
@@ -261,14 +262,22 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         }
 
         // 로어북 결과 축적
-        if (lorebookResult.data?.length) {
+        const loreCount = lorebookResult.data?.length || 0;
+        if (loreCount > 0) {
           allExtractedLore.push(lorebookResult.data);
+          const loreScenes = [...new Set(lorebookResult.data.map(e => e.scene))].sort((a, b) => a - b);
+          console.log(`[lorebook] 청크 ${i + 1}: ${loreCount}개 로어 엔트리, 장면번호=[${loreScenes.join(',')}]`);
         } else {
           allExtractedLore.push([]);  // 빈 배열이라도 인덱스 맞추기
+          console.log(`[lorebook] 청크 ${i + 1}: 로어 엔트리 없음`);
         }
 
         allExtracted.push(extracted);
         failedChunkCount = 0; // 성공 시 연속 실패 카운터 초기화
+
+        // LLM A 장면 정보 로그
+        const llmASceneIds = (extracted.scenes || []).map(s => s.id);
+        console.log(`[extraction] 청크 ${i + 1}: LLM A 장면 id=[${llmASceneIds.join(',')}] (${llmASceneIds.length}개)`);
 
         // 이 청크에서 발견된 모든 엔티티를 다음 청크를 위해 저장
         const newEntities: string[] = [];
@@ -427,7 +436,11 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   const knownEntityNames = validated.entities.map(e => e.name);
 
   // 디버그: 장면 매핑 상태 확인
+  console.log(`[lorebook] 장면 매핑 배열 길이: offsets=${chunkSceneOffsets.length}, SFormat=${chunkLocalToSFormat.length}, lore=${allExtractedLore.length}`);
   console.log(`[lorebook] 청크별 장면 매핑 수: ${chunkLocalToSFormat.map((m, i) => `청크${i + 1}=${Object.keys(m).length}개`).join(', ')}`);
+  for (let ci = 0; ci < chunkLocalToSFormat.length; ci++) {
+    console.log(`[lorebook] 청크${ci + 1} 매핑:`, JSON.stringify(chunkLocalToSFormat[ci]));
+  }
   if (chunkLocalToSFormat.length > 0) {
     const first = chunkLocalToSFormat[0];
     console.log(`[lorebook] 청크1 매핑 예시:`, JSON.stringify(first));
