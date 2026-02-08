@@ -72,6 +72,7 @@ function isAmbiguousName(name: string): boolean {
 
 // 이름 → ID 매핑에 정확/소문자/정규화 3가지 키를 등록
 function registerNameMapping(nameToId: Record<string, string>, name: string, id: string): void {
+  if (isAmbiguousName(name)) return;
   nameToId[name] = id;
   nameToId[name.toLowerCase()] = id;
   nameToId[normalizeName(name)] = id;
