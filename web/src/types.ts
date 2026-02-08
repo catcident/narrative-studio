@@ -287,7 +287,7 @@ export interface PartialAnalysisInfo {
 
 // ==================== UI ====================
 
-export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
+export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'lorebook' | 'source' | 'chat';
 
 // ==================== Billing ====================
 
