@@ -1,12 +1,12 @@
 /**
- * 로어북 뷰어 — 엔티티별 카드, 상단 탭으로 타입 필터
+ * 로어북 뷰어 — 왼쪽 카드 그리드 + 오른쪽 상세 패널
  */
 
 import { useState, useMemo } from 'react';
 import {
   BookOpen, User, Globe, Search, Quote, Eye, Shirt, Brain, Swords,
   History, Target, Users, MapPin, Building, Package, Zap,
-  MessageSquareQuote, X, ChevronDown, ChevronRight, Cat, Box,
+  MessageSquareQuote, X, Cat, Box,
 } from 'lucide-react';
 import { useStore } from '../store';
 import type { LoreEntry, LoreCategory, EntityCategory } from '../types';
@@ -54,9 +54,7 @@ interface TabConfig {
   id: EntityTab;
   label: string;
   icon: typeof User;
-  /** 이 탭에서 보여줄 로어 카테고리 */
   loreCategories: LoreCategory[];
-  /** 이 탭에 매칭되는 KG 엔티티 카테고리 */
   entityCategories?: EntityCategory[];
 }
 
@@ -82,7 +80,6 @@ function getEntityIcon(category?: EntityCategory) {
   }
 }
 
-/** 엔티티 카테고리에 따른 색상 */
 function getEntityColor(category?: EntityCategory): { text: string; bg: string; border: string } {
   switch (category) {
     case 'character': return { text: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
@@ -96,11 +93,17 @@ function getEntityColor(category?: EntityCategory): { text: string; bg: string; 
   }
 }
 
+interface EntityCardData {
+  name: string;
+  entries: LoreEntry[];
+  count: number;
+}
+
 export function LorebookView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const [activeTab, setActiveTab] = useState<EntityTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
 
   const entries = useMemo(() => {
     if (!knowledgeGraph?.lorebook) return [];
@@ -126,33 +129,16 @@ export function LorebookView() {
     return map;
   }, [knowledgeGraph]);
 
-  /**
-   * 엔티티가 현재 탭에 해당하는지 판별
-   * - 'all' 탭: 모든 엔트리 포함
-   * - 다른 탭: KG 엔티티 카테고리 우선 확인, 없으면 로어 카테고리로 판별
-   */
   const matchesTab = (entityName: string, entry: LoreEntry, tab: TabConfig): boolean => {
     if (tab.id === 'all') return true;
-
     const kgCat = entityCategoryMap[entityName];
-
-    // KG에서 엔티티 카테고리를 알고 있는 경우
     if (kgCat) {
-      if (tab.entityCategories?.includes(kgCat)) {
-        // 이 탭의 엔티티 타입에 매칭 → 해당 탭의 로어 카테고리 엔트리만 표시
-        return tab.loreCategories.includes(entry.category);
-      }
-      // 다른 탭의 엔티티 타입 → 이 탭에 표시 안 함
-      // 단, 세계관 탭은 엔티티 카테고리 필터 없이 로어 카테고리만으로 판별
+      if (tab.entityCategories?.includes(kgCat)) return tab.loreCategories.includes(entry.category);
       if (tab.entityCategories) return false;
     }
-
-    // KG에 없는 엔티티이거나 entityCategories 필터 없는 탭(세계관)
-    // → 로어 카테고리로만 판별
     return tab.loreCategories.includes(entry.category);
   };
 
-  // 탭별 카운트
   const tabCounts = useMemo(() => {
     const counts: Record<EntityTab, number> = { all: 0, character: 0, world: 0, location: 0, item: 0, event: 0 };
     for (const tab of TABS) {
@@ -166,7 +152,6 @@ export function LorebookView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, entityCategoryMap]);
 
-  // 현재 탭 + 검색 필터 적용된 엔티티 카드 데이터
   const tabConfig = TABS.find(t => t.id === activeTab)!;
 
   const entityCards = useMemo(() => {
@@ -177,7 +162,7 @@ export function LorebookView() {
       entityMap[entry.entityName].push(entry);
     }
 
-    let cards = Object.entries(entityMap)
+    let cards: EntityCardData[] = Object.entries(entityMap)
       .map(([name, ents]) => ({ name, entries: ents, count: ents.length }))
       .sort((a, b) => b.count - a.count);
 
@@ -193,12 +178,16 @@ export function LorebookView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, activeTab, tabConfig, entityCategoryMap, searchQuery]);
 
-  const toggleCard = (name: string) => {
-    setExpandedCards(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
+  // 선택된 엔티티의 카드 데이터
+  const selectedCard = useMemo(() => {
+    if (!selectedEntity) return null;
+    return entityCards.find(c => c.name === selectedEntity) || null;
+  }, [selectedEntity, entityCards]);
+
+  // 탭 전환 시 선택 초기화
+  const handleTabChange = (tabId: EntityTab) => {
+    setActiveTab(tabId);
+    setSelectedEntity(null);
   };
 
   // ─── 빈 상태 ───
@@ -229,214 +218,276 @@ export function LorebookView() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* ─── 헤더: 탭 + 검색 ─── */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-3">
-          {/* 탭 */}
-          <div className="flex items-center gap-1">
-            {TABS.filter(tab => tab.id === 'all' || tabCounts[tab.id] > 0).map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => { setActiveTab(tab.id); setExpandedCards(new Set()); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {tab.label}
-                  <span className={`text-[10px] px-1 py-0.5 rounded-full min-w-[18px] text-center ${
-                    isActive ? 'bg-blue-500 text-blue-100' : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {tabCounts[tab.id]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          {TABS.filter(tab => tab.id === 'all' || tabCounts[tab.id] > 0).map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+                <span className={`text-[10px] px-1 rounded-full min-w-[16px] text-center ${
+                  isActive ? 'bg-blue-500 text-blue-100' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {tabCounts[tab.id]}
+                </span>
+              </button>
+            );
+          })}
 
-          {/* 구분선 */}
-          <div className="h-6 w-px bg-gray-200" />
+          <div className="h-5 w-px bg-gray-200 mx-1" />
 
-          {/* 검색 */}
-          <div className="relative w-52">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <div className="relative w-44">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               type="text"
-              placeholder="이름 또는 내용 검색..."
+              placeholder="검색..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-white"
+              className="w-full pl-7 pr-6 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
               >
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
-
-          <span className="text-[11px] text-gray-400 ml-auto font-medium">{entityCards.length}개 항목</span>
         </div>
       </div>
 
-      {/* ─── 카드 그리드 ─── */}
-      <div className="flex-1 overflow-auto">
-        {entityCards.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <Search className="w-6 h-6 mx-auto mb-2 opacity-40" />
-            <p className="text-xs">검색 결과가 없습니다</p>
-          </div>
-        ) : (
-          <div className="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {entityCards.map(card => {
-              const isExpanded = expandedCards.has(card.name);
-              const kgCat = entityCategoryMap[card.name];
-              const EntityIcon = getEntityIcon(kgCat);
-              const entityColor = getEntityColor(kgCat);
-
-              // 카테고리별 그룹핑
-              const byCategory: Record<string, LoreEntry[]> = {};
-              for (const entry of card.entries) {
-                if (!byCategory[entry.category]) byCategory[entry.category] = [];
-                byCategory[entry.category].push(entry);
-              }
-              // 장면 순서 정렬
-              for (const cat of Object.keys(byCategory)) {
-                byCategory[cat].sort((a, b) => (sceneOrderMap[a.sceneId] ?? 0) - (sceneOrderMap[b.sceneId] ?? 0));
-              }
-              const isChar = kgCat === 'character' || kgCat === 'creature' || (!kgCat && card.entries.some(e => CHARACTER_CATEGORIES.includes(e.category)));
-              const orderedCats = (isChar ? CHARACTER_CATEGORIES : WORLD_CATEGORIES)
-                .filter(cat => byCategory[cat]?.length);
-
-              // 접힌 상태: 카테고리 요약 뱃지
-              const categoryBadges = orderedCats.map(cat => ({
-                cat,
-                config: CATEGORY_CONFIG[cat],
-                count: byCategory[cat].length,
-              }));
-
-              return (
-                <div
+      {/* ─── 메인: 왼쪽 카드 그리드 + 오른쪽 상세 ─── */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 왼쪽: 카드 그리드 */}
+        <div className={`overflow-y-auto p-3 ${selectedCard ? 'w-1/2 border-r border-gray-200' : 'w-full'}`}>
+          {entityCards.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <Search className="w-6 h-6 mx-auto mb-2 opacity-40" />
+              <p className="text-xs">검색 결과가 없습니다</p>
+            </div>
+          ) : (
+            <div className={`grid gap-2.5 ${
+              selectedCard
+                ? 'grid-cols-2 xl:grid-cols-3'
+                : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+            }`}>
+              {entityCards.map(card => (
+                <EntityCard
                   key={card.name}
-                  className={`rounded-xl border-2 shadow-sm transition-all ${
-                    isExpanded
-                      ? 'shadow-md border-blue-200 bg-white'
-                      : 'border-gray-200 bg-white hover:shadow-md hover:border-gray-300'
-                  }`}
-                >
-                  {/* ── 카드 헤더 ── */}
-                  <button
-                    onClick={() => toggleCard(card.name)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: entityColor.bg, border: `1px solid ${entityColor.border}` }}
-                    >
-                      <EntityIcon className="w-4 h-4" style={{ color: entityColor.text }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold text-gray-900 block truncate">{card.name}</span>
-                      {/* 접힌 상태: 카테고리 뱃지 인라인 */}
-                      {!isExpanded && categoryBadges.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {categoryBadges.map(({ cat, config, count }) => (
-                            <span
-                              key={cat}
-                              className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                              style={{ backgroundColor: config.bg, color: config.color, border: `1px solid ${config.border}` }}
-                            >
-                              {config.label} {count}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {card.count}
-                      </span>
-                      {isExpanded
-                        ? <ChevronDown className="w-4 h-4 text-blue-500" />
-                        : <ChevronRight className="w-4 h-4 text-gray-400" />
-                      }
-                    </div>
-                  </button>
-
-                  {/* ── 펼친 상태: 카테고리별 세부 정보 ── */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 space-y-3">
-                      {orderedCats.map(cat => {
-                        const config = CATEGORY_CONFIG[cat];
-                        const Icon = config.icon;
-                        const catEntries = byCategory[cat];
-
-                        return (
-                          <div
-                            key={cat}
-                            className="rounded-lg overflow-hidden"
-                            style={{ border: `1px solid ${config.border}` }}
-                          >
-                            {/* 카테고리 헤더 */}
-                            <div
-                              className="flex items-center gap-2 px-3 py-2"
-                              style={{ backgroundColor: config.bg }}
-                            >
-                              <Icon className="w-3.5 h-3.5" style={{ color: config.color }} />
-                              <span className="text-xs font-bold" style={{ color: config.color }}>
-                                {config.label}
-                              </span>
-                              <span
-                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                                style={{ backgroundColor: config.color + '18', color: config.color }}
-                              >
-                                {catEntries.length}
-                              </span>
-                            </div>
-
-                            {/* 엔트리 목록 */}
-                            <div className="bg-white">
-                              {catEntries.map((entry, idx) => (
-                                <div
-                                  key={entry.id}
-                                  className={`px-3 py-2.5 ${idx !== catEntries.length - 1 ? 'border-b border-gray-100' : ''}`}
-                                >
-                                  <p className="text-[13px] text-gray-800 leading-relaxed">{entry.content}</p>
-                                  {entry.quote && (
-                                    <div
-                                      className="mt-1.5 px-2.5 py-1.5 rounded-md"
-                                      style={{ backgroundColor: '#faf5ff', borderLeft: '3px solid #c084fc' }}
-                                    >
-                                      <p className="text-xs text-purple-700 italic leading-relaxed flex items-start gap-1.5">
-                                        <Quote className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
-                                        {entry.quote}
-                                      </p>
-                                    </div>
-                                  )}
-                                  <div className="mt-1 flex items-center gap-1.5">
-                                    <span className="text-[10px] text-gray-400 font-medium">
-                                      장면 {sceneOrderMap[entry.sceneId] ?? '?'}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  card={card}
+                  isSelected={selectedEntity === card.name}
+                  kgCategory={entityCategoryMap[card.name]}
+                  onClick={() => setSelectedEntity(
+                    selectedEntity === card.name ? null : card.name
                   )}
-                </div>
-              );
-            })}
-          </div>
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 오른쪽: 상세 패널 */}
+        {selectedCard && (
+          <DetailPanel
+            card={selectedCard}
+            kgCategory={entityCategoryMap[selectedCard.name]}
+            sceneOrderMap={sceneOrderMap}
+            onClose={() => setSelectedEntity(null)}
+          />
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── 엔티티 카드 (컴팩트) ───
+
+function EntityCard({
+  card,
+  isSelected,
+  kgCategory,
+  onClick,
+}: {
+  card: EntityCardData;
+  isSelected: boolean;
+  kgCategory?: EntityCategory;
+  onClick: () => void;
+}) {
+  const EntityIcon = getEntityIcon(kgCategory);
+  const color = getEntityColor(kgCategory);
+
+  // 보유 카테고리 수
+  const uniqueCats = new Set(card.entries.map(e => e.category));
+
+  return (
+    <button
+      onClick={onClick}
+      className={`text-left rounded-lg border-2 p-3 transition-all hover:shadow-md ${
+        isSelected
+          ? 'border-blue-400 bg-blue-50 shadow-md ring-1 ring-blue-200'
+          : 'border-gray-200 bg-white hover:border-gray-300'
+      }`}
+    >
+      {/* 아이콘 + 이름 */}
+      <div className="flex items-center gap-2 mb-2">
+        <div
+          className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: color.bg, border: `1px solid ${color.border}` }}
+        >
+          <EntityIcon className="w-3.5 h-3.5" style={{ color: color.text }} />
+        </div>
+        <span className="text-xs font-bold text-gray-900 truncate leading-tight">{card.name}</span>
+      </div>
+
+      {/* 카테고리 뱃지들 */}
+      <div className="flex flex-wrap gap-1">
+        {Array.from(uniqueCats).slice(0, 4).map(cat => {
+          const config = CATEGORY_CONFIG[cat as LoreCategory];
+          if (!config) return null;
+          return (
+            <span
+              key={cat}
+              className="text-[9px] px-1 py-0.5 rounded font-medium leading-none"
+              style={{ backgroundColor: config.bg, color: config.color }}
+            >
+              {config.label}
+            </span>
+          );
+        })}
+        {uniqueCats.size > 4 && (
+          <span className="text-[9px] px-1 py-0.5 rounded font-medium bg-gray-100 text-gray-500">
+            +{uniqueCats.size - 4}
+          </span>
+        )}
+      </div>
+
+      {/* 건수 */}
+      <div className="mt-2 text-[10px] text-gray-400 font-medium">
+        {card.count}개 항목
+      </div>
+    </button>
+  );
+}
+
+// ─── 상세 패널 (오른쪽) ───
+
+function DetailPanel({
+  card,
+  kgCategory,
+  sceneOrderMap,
+  onClose,
+}: {
+  card: EntityCardData;
+  kgCategory?: EntityCategory;
+  sceneOrderMap: Record<string, number>;
+  onClose: () => void;
+}) {
+  const EntityIcon = getEntityIcon(kgCategory);
+  const color = getEntityColor(kgCategory);
+
+  // 카테고리별 그룹핑
+  const byCategory: Record<string, LoreEntry[]> = {};
+  for (const entry of card.entries) {
+    if (!byCategory[entry.category]) byCategory[entry.category] = [];
+    byCategory[entry.category].push(entry);
+  }
+  for (const cat of Object.keys(byCategory)) {
+    byCategory[cat].sort((a, b) => (sceneOrderMap[a.sceneId] ?? 0) - (sceneOrderMap[b.sceneId] ?? 0));
+  }
+
+  const isChar = kgCategory === 'character' || kgCategory === 'creature' ||
+    (!kgCategory && card.entries.some(e => CHARACTER_CATEGORIES.includes(e.category)));
+  const orderedCats = (isChar ? CHARACTER_CATEGORIES : WORLD_CATEGORIES)
+    .filter(cat => byCategory[cat]?.length);
+
+  return (
+    <div className="w-1/2 h-full flex flex-col bg-white">
+      {/* 헤더 */}
+      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 flex items-center gap-3">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: color.bg, border: `1px solid ${color.border}` }}
+        >
+          <EntityIcon className="w-4 h-4" style={{ color: color.text }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold text-gray-900 truncate">{card.name}</h2>
+          <p className="text-[11px] text-gray-400">{card.count}개 항목</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 카테고리별 내용 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {orderedCats.map(cat => {
+          const config = CATEGORY_CONFIG[cat];
+          const Icon = config.icon;
+          const catEntries = byCategory[cat];
+
+          return (
+            <div
+              key={cat}
+              className="rounded-lg overflow-hidden"
+              style={{ border: `1px solid ${config.border}` }}
+            >
+              {/* 카테고리 헤더 */}
+              <div
+                className="flex items-center gap-2 px-3 py-2"
+                style={{ backgroundColor: config.bg }}
+              >
+                <Icon className="w-3.5 h-3.5" style={{ color: config.color }} />
+                <span className="text-xs font-bold" style={{ color: config.color }}>
+                  {config.label}
+                </span>
+                <span
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                  style={{ backgroundColor: config.color + '18', color: config.color }}
+                >
+                  {catEntries.length}
+                </span>
+              </div>
+
+              {/* 엔트리 목록 */}
+              <div className="bg-white divide-y divide-gray-100">
+                {catEntries.map(entry => (
+                  <div key={entry.id} className="px-3 py-2.5">
+                    <p className="text-[13px] text-gray-800 leading-relaxed">{entry.content}</p>
+                    {entry.quote && (
+                      <div
+                        className="mt-1.5 px-2.5 py-1.5 rounded-md"
+                        style={{ backgroundColor: '#faf5ff', borderLeft: '3px solid #c084fc' }}
+                      >
+                        <p className="text-xs text-purple-700 italic leading-relaxed flex items-start gap-1.5">
+                          <Quote className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
+                          {entry.quote}
+                        </p>
+                      </div>
+                    )}
+                    <span className="text-[10px] text-gray-400 font-medium mt-1 block">
+                      장면 {sceneOrderMap[entry.sceneId] ?? '?'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
