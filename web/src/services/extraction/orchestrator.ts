@@ -409,6 +409,30 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     }
   }
 
+  // 1인칭 대명사 → 화자 엔티티 자동 매핑
+  // LLM B가 "나"로 추출한 엔트리를 실제 화자 캐릭터에 연결
+  // 조건: character 엔티티 중 aliases에 "나" 등 대명사가 있는 것을 찾아 매핑
+  const NARRATOR_PRONOUNS = ['나', '저', '우리', '화자', '주인공'];
+  const characterEntities = reviewed.entities.filter(e => e.category === 'character' || e.category === 'creature');
+  for (const pronoun of NARRATOR_PRONOUNS) {
+    if (entityNameMapping[pronoun]) continue; // 이미 매핑됨
+    // aliases에 대명사가 포함된 캐릭터 찾기
+    const narrator = characterEntities.find(e =>
+      e.aliases?.some(a => a === pronoun || a.toLowerCase() === pronoun)
+    );
+    if (narrator) {
+      entityNameMapping[pronoun] = narrator.name;
+      console.log(`[lorebook] 대명사 매핑: "${pronoun}" → "${narrator.name}" (aliases에서 발견)`);
+    }
+  }
+  // 대명사 매핑이 하나도 없고 character가 정확히 1명이면 → 그 캐릭터가 화자일 가능성 높음
+  if (!NARRATOR_PRONOUNS.some(p => entityNameMapping[p]) && characterEntities.length === 1) {
+    for (const pronoun of NARRATOR_PRONOUNS) {
+      entityNameMapping[pronoun] = characterEntities[0].name;
+    }
+    console.log(`[lorebook] 대명사 매핑 (단일 캐릭터): 모든 대명사 → "${characterEntities[0].name}"`);
+  }
+
   // 장면 ID 매핑: 글로벌 번호 → S-format (buildKnowledgeGraph와 동일)
   // 이것은 글로벌 scene.id → "S0001" 형식
   const globalSceneIdMapping: Record<number, string> = {};
