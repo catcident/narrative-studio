@@ -28,8 +28,8 @@ fail-safe: cascade 실패해도 primary delete 성공 응답 유지.
 **파일**: `web/src/app/api/knowledge-graphs/route.ts`
 
 billing 서비스 미응답 또는 익명 사용자일 때 기본 제한:
-- `DEFAULT_MAX_SAVED_GRAPHS = 5` (그래프 수)
-- `DEFAULT_MAX_VERSIONS = 10` (버전 히스토리 수, FIFO)
+- `DEFAULT_MAX_SAVED_GRAPHS = 3` (그래프 수)
+- `DEFAULT_MAX_VERSIONS = 3` (버전 히스토리 수, FIFO)
 
 유료 사용자는 플랜 features에서 값을 받으므로 영향 없음.
 
@@ -70,8 +70,8 @@ billing 서비스 미응답 또는 익명 사용자일 때 기본 제한:
 **파일**: `web/src/lib/versionHistory.ts`
 
 플랜에서 `-1`(무제한) 설정 시에도 절대 상한 적용:
-- `HARD_LIMIT_SAVED_GRAPHS = 2000`
-- `HARD_LIMIT_VERSIONS = 1000`
+- `HARD_LIMIT_SAVED_GRAPHS = 300`
+- `HARD_LIMIT_VERSIONS = 50`
 
 `resolveMaxVersions()`, `resolveMaxSavedGraphs()` 헬퍼로 캡 적용.
 
@@ -138,14 +138,34 @@ docker system df -v | grep mongodb_data
 
 ## 4. 저장량 추정 (조치 완료 후)
 
-### 사용자당 최대 저장량 (현재, text 제거 적용 후)
+### 플랜별 스토리지 제한 (2026-02-09 조정)
+
+| 플랜 | 그래프 수 | 버전 수 |
+|------|----------|---------|
+| Free | 3 | 3 |
+| Basic | 10 | 10 |
+| Pro | 30 | 20 |
+| Business | 100 | 30 |
+| Internal | -1 (HARD_LIMIT 300) | -1 (HARD_LIMIT 50) |
+
+### 사용자당 최대 저장량 (Free 플랜 기준)
 
 | 항목 | 계산 | 크기 |
 |------|------|------|
 | novels | 20개 x 5MB | ~100MB |
-| knowledgeGraphs | 5개 x (5MB텍스트 + 1MB분석) | ~30MB |
-| knowledgeGraphVersions (text 제거됨) | 5그래프 x 10버전 x ~0.2MB | ~10MB |
-| embeddings | 5그래프 x ~2MB | ~10MB |
-| **합계** | | **~150MB** |
+| knowledgeGraphs | 3개 x (5MB텍스트 + 1MB분석) | ~18MB |
+| knowledgeGraphVersions (text 제거됨) | 3그래프 x 3버전 x ~0.2MB | ~1.8MB |
+| embeddings | 3그래프 x ~2MB | ~6MB |
+| **합계** | | **~126MB** |
 
-> 47GB 디스크 기준 약 300명 수용 가능 (OS + Docker 이미지 제외 시 ~200명)
+### 플랜별 heavy-use 최대 저장량 추정
+
+| 플랜 | 최대 저장량 |
+|------|-----------|
+| Free | ~93MB |
+| Basic | ~360MB |
+| Pro | ~1.3GB |
+| Business | ~5.1GB |
+| Internal (HARD_LIMIT) | ~22GB |
+
+> 47GB 디스크 기준 Free 사용자 약 500명, Pro 사용자 약 35명 수용 가능

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       graphId,
       userId,
       chunkIndex: chunk.index,
-      content: chunk.content, // 전체 내용 저장 (검색 결과로 반환)
+      content: chunk.content.slice(0, 500), // 검색 프리뷰용 500자 (저장량 절감)
       sourceFile: chunk.sourceFile || null,
       chapterTitle: chunk.chapterTitle || null,
       embedding: allEmbeddings[idx],

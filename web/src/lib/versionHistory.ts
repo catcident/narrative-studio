@@ -2,12 +2,12 @@ import type { Db } from 'mongodb';
 import { proxyToCatcident } from '@/services/billingProxy';
 
 // ── 절대 상한 (플랜 설정과 무관한 하드 리밋) ──
-const HARD_LIMIT_SAVED_GRAPHS = 2000;
-const HARD_LIMIT_VERSIONS = 1000;
+const HARD_LIMIT_SAVED_GRAPHS = 300;
+const HARD_LIMIT_VERSIONS = 50;
 
 // ── 폴백 기본값 (billing 서비스 장애/anonymous 시) ──
-export const DEFAULT_MAX_SAVED_GRAPHS = 5;
-export const DEFAULT_MAX_VERSIONS = 10;
+export const DEFAULT_MAX_SAVED_GRAPHS = 3;
+export const DEFAULT_MAX_VERSIONS = 3;
 
 // ── 상한 적용 헬퍼 ──
 
