@@ -4,6 +4,8 @@
  *
  * 과금 흐름 (세션 hold/settle/release):
  *   holdCredits(예상) → /api/analyze (토큰 정보만) → settleCredits(실제) / releaseCredits(취소)
+ *
+ * 크레딧 추정: creditsPerChunk/creditsPerChat 기반 (서버가 사전 계산한 값 사용)
  */
 
 import type {
@@ -13,15 +15,10 @@ import type {
   ChunkUsage,
   ModelInfo,
 } from '../types';
-import { DEFAULT_MODEL } from '../types';
+import { DEFAULT_MODEL, FALLBACK_MODELS, DEFAULT_CREDITS_PER_CHUNK, DEFAULT_CREDITS_PER_CHAT } from '../types';
 import type { ChunkBillingCallback } from './extraction/types';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
-  SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
-  MERGER_REVIEW_PROMPT_CHARS, MERGER_REVIEW_OUTPUT_TOKENS, MERGER_REVIEW_MODEL,
-  EMBEDDING_INPUT_COST, AVG_ENTITY_TOKENS, AVG_CHUNK_EMBED_TOKENS,
-  getModelCosts, tokenCostUsd, costUsdToCredits,
-  calculateSessionCredits, calculateChunkCostUsd, calculateMixedSessionCredits,
 } from '@/lib/modelCosts';
 
 const BASE = '/api/billing';
@@ -271,7 +268,6 @@ export interface UsageEstimate {
   estimated_credits: number;
   estimated_input_tokens: number;
   estimated_output_tokens: number;
-  estimated_cost_usd: number;
   chunks: number;
 }
 
@@ -279,19 +275,20 @@ const ZERO_ESTIMATE: UsageEstimate = {
   estimated_credits: 0,
   estimated_input_tokens: 0,
   estimated_output_tokens: 0,
-  estimated_cost_usd: 0,
   chunks: 0,
 };
+
+/** 모델 정보 조회 (dynamicModels 우선, FALLBACK_MODELS 폴백) */
+export function findModel(model: string, dynamicModels?: ModelInfo[]): ModelInfo | undefined {
+  return dynamicModels?.find(m => m.id === model)
+    ?? FALLBACK_MODELS.find(m => m.id === model);
+}
 
 /**
  * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
  *
- * 세션 수준 크레딧 계산: 전체 세션 비용을 합산한 뒤 calculateSessionCredits() 1회 호출.
- * (기존: 청크별 costUsdToCredits 호출 → 올림 N회 → 과다 추정)
- * - extractor: 매 청크 1회 호출
- * - selector: 청크 2부터 1회 호출 (엔티티 선별)
- * - merger review: 3청크 이상일 때 1회 호출 (엔티티 병합 검토)
- * - embedding: 엔티티 + 청크 임베딩 (투명성 목적, 크레딧 영향 미미)
+ * creditsPerChunk 기반 추정 (USD 계산 없이 단순 곱셈).
+ * 토큰 추정은 showTokenDetails UI용으로 유지.
  */
 export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
   if (charCount <= 0) return ZERO_ESTIMATE;
@@ -299,69 +296,19 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
   const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
   const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
 
-  const extractorCosts = getModelCosts(model, dynamicModels);
-  const selectorCosts = getModelCosts(SELECTOR_MODEL, dynamicModels);
+  const modelInfo = findModel(model, dynamicModels);
+  const estimated_credits = Math.max(1, (modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK) * chunks);
 
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let totalCostUsd = 0;
-
-  for (let i = 0; i < chunks; i++) {
-    const chunkChars = Math.min(CHUNK_SIZE, charCount - i * effectiveChunk);
-    const extInputTokens = Math.ceil(chunkChars / CHARS_PER_TOKEN);
-    const extOutputTokens = Math.ceil(extInputTokens * OUTPUT_RATIO);
-    const extCostUsd = tokenCostUsd(extInputTokens, extOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
-
-    totalInputTokens += extInputTokens;
-    totalOutputTokens += extOutputTokens;
-    totalCostUsd += extCostUsd;
-
-    if (i >= 1) {
-      const selInputTokens = Math.ceil(SELECTOR_PROMPT_CHARS / CHARS_PER_TOKEN);
-      const selOutputTokens = SELECTOR_OUTPUT_TOKENS;
-      const selCostUsd = tokenCostUsd(selInputTokens, selOutputTokens, selectorCosts.inputCost, selectorCosts.outputCost);
-
-      totalInputTokens += selInputTokens;
-      totalOutputTokens += selOutputTokens;
-      totalCostUsd += selCostUsd;
-    }
-  }
-
-  // merger review: 3청크 이상일 때 1회 호출 (엔티티 병합 검토)
-  if (chunks >= 3) {
-    const mergerCosts = getModelCosts(MERGER_REVIEW_MODEL, dynamicModels);
-    const mergerInputTokens = Math.ceil(MERGER_REVIEW_PROMPT_CHARS / CHARS_PER_TOKEN);
-    totalCostUsd += tokenCostUsd(mergerInputTokens, MERGER_REVIEW_OUTPUT_TOKENS, mergerCosts.inputCost, mergerCosts.outputCost);
-    totalInputTokens += mergerInputTokens;
-    totalOutputTokens += MERGER_REVIEW_OUTPUT_TOKENS;
-  }
-
-  // embedding: 엔티티 + 청크 임베딩 (투명성 목적, 크레딧 영향 미미 — 대부분 0-1cr)
-  const estimatedEntities = Math.ceil(chunks * 3); // ~3 엔티티/청크 경험치
-  const embedTokens = estimatedEntities * AVG_ENTITY_TOKENS + chunks * AVG_CHUNK_EMBED_TOKENS;
-  totalCostUsd += (embedTokens / 1_000_000) * EMBEDDING_INPUT_COST;
-
-  // 세션 수준 크레딧 계산 (올림 1회)
-  const chunkCostUsd = calculateChunkCostUsd(model, dynamicModels);
-  const estimated_credits = calculateSessionCredits(totalCostUsd, chunkCostUsd);
+  // 토큰 추정 (showTokenDetails용)
+  const inputTokensPerChunk = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
+  const outputTokensPerChunk = Math.ceil(inputTokensPerChunk * OUTPUT_RATIO);
 
   return {
     estimated_credits,
-    estimated_input_tokens: totalInputTokens,
-    estimated_output_tokens: totalOutputTokens,
-    estimated_cost_usd: totalCostUsd,
+    estimated_input_tokens: chunks * inputTokensPerChunk,
+    estimated_output_tokens: chunks * outputTokensPerChunk,
     chunks,
   };
-}
-
-/**
- * 실제 토큰 사용량에서 크레딧 역산 (UsageSummary용)
- */
-export function calculateCreditsFromTokens(promptTokens: number, completionTokens: number, model: string, dynamicModels?: ModelInfo[]): number {
-  if (promptTokens <= 0 && completionTokens <= 0) return 0;
-
-  const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
-  return costUsdToCredits(tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost), model, dynamicModels);
 }
 
 // ==================== 잔액 사전 확인 ====================
@@ -426,7 +373,9 @@ export function createBillingCallback(
 // ==================== 세션 정산 헬퍼 ====================
 
 /** ChunkUsage[] → settle API에 전달할 형태로 변환 */
-export function chunkUsageToSettleChunks(chunks: ChunkUsage[]) {
+export function chunkUsageToSettleChunks(
+  chunks: ChunkUsage[],
+): Array<{ model: string; prompt_tokens: number; completion_tokens: number }> {
   return chunks.map(c => ({
     model: c.model,
     prompt_tokens: c.promptTokens,
@@ -476,29 +425,27 @@ export function getBalanceAlertLevel(
   return 'none';
 }
 
-/** 혼합 모델 대응: 청크별 개별 크레딧 계산 후 합산 (레거시 — 청크별 올림으로 과다 추정) */
-export function calculateCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
-  if (chunks.length === 0) return 0;
-  return chunks.reduce((sum, chunk) =>
-    sum + calculateCreditsFromTokens(chunk.promptTokens, chunk.completionTokens, chunk.model, dynamicModels),
-  0);
-}
-
 /**
- * 세션 수준 크레딧 계산 (서버 settle 로직 미러링).
- * 각 청크의 실제 토큰 사용량에서 모델별 USD 비용 산출 → calculateMixedSessionCredits로 1회 올림.
- * calculateCreditsFromChunks보다 정확 (서버 정산액과 일치).
+ * 세션 수준 크레딧 계산 (creditsPerChunk 기반 비례 근사).
+ * 실제 토큰 사용량을 typical chunk 토큰과 비교하여 비례 산출.
+ *
+ * 정확도 참고: 실제 정산은 서버 settle이 수행. 이 함수는 UI 표시용 근사치.
  */
 export function calculateSessionCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
   if (chunks.length === 0) return 0;
-  const chunkCostData = chunks.map(chunk => {
-    const { inputCost, outputCost } = getModelCosts(chunk.model, dynamicModels);
-    return {
-      costUsd: tokenCostUsd(chunk.promptTokens, chunk.completionTokens, inputCost, outputCost),
-      model: chunk.model,
-    };
-  });
-  return calculateMixedSessionCredits(chunkCostData, dynamicModels);
+
+  const inputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
+  const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
+  const TYPICAL_CHUNK_TOKENS = inputTokens + outputTokens;
+
+  let total = 0;
+  for (const chunk of chunks) {
+    const modelInfo = findModel(chunk.model, dynamicModels);
+    const cpc = modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK;
+    const chunkTokens = chunk.promptTokens + chunk.completionTokens;
+    total += cpc * (chunkTokens / TYPICAL_CHUNK_TOKENS);
+  }
+  return Math.max(1, Math.ceil(total));
 }
 
 // ==================== 검증 비용 추정 ====================
@@ -506,12 +453,6 @@ export function calculateSessionCreditsFromChunks(chunks: ChunkUsage[], dynamicM
 /**
  * 검증 비용 추정 (파일 수 기반).
  * 첫 파일은 자동 통과 → 실제 LLM 호출은 (fileCount - 1)회.
- * 각 호출은 DEFAULT_MODEL 사용 (validation.ts의 기본 모델).
- *
- * @param fileCount  sourceFiles 수
- * @param model      사용 모델 (기본 DEFAULT_MODEL)
- * @param dynamicModels  동적 모델 목록
- * @returns 예상 크레딧
  */
 export function estimateValidationCost(
   fileCount: number,
@@ -521,15 +462,7 @@ export function estimateValidationCost(
   const callCount = Math.max(0, fileCount - 1); // 첫 파일 자동 통과
   if (callCount === 0) return 0;
 
-  const validationModel = model || DEFAULT_MODEL;
-  const costs = getModelCosts(validationModel, dynamicModels);
-
-  // 검증 프롬프트: ~15,000자 컨텍스트 → ~10K tokens input, ~200 tokens output
-  const inputTokensPerCall = Math.ceil(15000 / CHARS_PER_TOKEN);
-  const outputTokensPerCall = 200;
-  const costPerCall = tokenCostUsd(inputTokensPerCall, outputTokensPerCall, costs.inputCost, costs.outputCost);
-
-  // 동일 모델 N회 호출 → 단일 비용 * N으로 단순화
-  const chunks = Array.from({ length: callCount }, () => ({ costUsd: costPerCall, model: validationModel }));
-  return calculateMixedSessionCredits(chunks, dynamicModels);
+  const validationModel = model ?? DEFAULT_MODEL;
+  const modelInfo = findModel(validationModel, dynamicModels);
+  return Math.max(1, Math.ceil((modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK) * callCount));
 }

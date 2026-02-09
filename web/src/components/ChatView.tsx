@@ -525,7 +525,7 @@ export function ChatView() {
                       >
                         <div>
                           <div className="text-sm font-medium">{model.name}</div>
-                          <div className="text-xs text-gray-500">{model.description}</div>
+                          <div className="text-xs text-gray-500">{model.description} · ~{model.creditsPerChat} cr/대화</div>
                         </div>
                         {model.id === selectedModel && (
                           <span className="text-blue-500 text-xs">선택됨</span>

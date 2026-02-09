@@ -75,7 +75,7 @@ relationType = '관련';  // '위치', '소유'
 | `anthropic/claude-3.5-sonnet` | 최고 품질 |
 | `openai/gpt-4o` | 고품질 |
 
-> 전체 모델 목록은 `types.ts`의 `AVAILABLE_MODELS` 참조 (단일 진실 공급원)
+> 전체 모델 목록은 `types.ts`의 `FALLBACK_MODELS` 참조 (클라이언트 폴백). 서버 USD 단가는 `lib/serverCosts.ts`의 `SERVER_MODEL_COSTS`
 
 ### 프롬프트 엔지니어링 포인트
 
@@ -242,13 +242,13 @@ getUsageHistory(page)       // 거래 내역 (페이지네이션)
 getPlans()                  // 요금제 목록
 getCreditPackages()         // 크레딧 상품 목록
 
-// 로컬 순수 함수 (API 호출 없음)
-estimateUsageLocally(charCount, model)  // 로컬 예상 비용 계산 (extractor+selector+merger+embedding 포함)
-calculateCreditsFromTokens(prompt, completion, model)  // 단일 모델 토큰→크레딧
-calculateCreditsFromChunks(chunks)      // 레거시: 청크별 올림 합산 (과다 추정)
-calculateSessionCreditsFromChunks(chunks)  // 세션 수준: 서버 settle 미러링 (1회 올림, 정확)
-estimateValidationCost(fileCount, model?)  // 검증 비용 추정 (첫 파일 자동 통과)
-estimateChatCost(messages, contextChars, model)  // 채팅 비용 추정 (4회 호출 포함)
+// 모델 조회 공유 헬퍼 (chat.ts에서도 import하여 사용)
+findModel(model, dynamicModels?)  // dynamicModels → FALLBACK_MODELS 폴백
+
+// 로컬 순수 함수 (API 호출 없음, creditsPerChunk/creditsPerChat 기반 근사)
+estimateUsageLocally(charCount, model, dynamicModels?)  // creditsPerChunk × 청크 수
+calculateSessionCreditsFromChunks(chunks, dynamicModels?)  // creditsPerChunk 비례 근사 (UI 표시용)
+estimateValidationCost(fileCount, model?, dynamicModels?)  // creditsPerChunk × 호출 수
 
 // 잔액 확인
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
@@ -267,11 +267,11 @@ chunkUsageToSettleChunks(chunks)  // ChunkUsage[] → settle API 형태 변환
 createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onChunkBilling 콜백 (토큰 사용량 누적만)
 ```
 
-### 로컬 추정 함수 동기화
+### 로컬 추정 함수
 
-`estimateUsageLocally()`와 `calculateCreditsFromTokens()`는 `lib/modelCosts.ts` 공유 모듈의 상수를 사용.
-상수 변경 시 `lib/modelCosts.ts`만 수정하면 billing.ts와 서버 라우트 모두 반영됨.
-모델 단가는 `AVAILABLE_MODELS` (types.ts)가 단일 진실 공급원.
+`estimateUsageLocally()`, `estimateValidationCost()`, `calculateSessionCreditsFromChunks()`는 `creditsPerChunk` 기반 근사치.
+실제 정산은 서버 settle (`lib/serverCosts.ts`)이 USD 기반으로 수행.
+모델 크레딧 정보는 `FALLBACK_MODELS` (types.ts) + 서버 `/api/models` 동적 갱신.
 
 ### 중요 규칙
 
@@ -281,7 +281,7 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onCh
 - **예상 비용 전달**: `ensureSufficientBalance`의 3번째 파라미터 `estimatedCredits`로 예상 비용 > 잔액 시 사전 차단
 - **토큰 누적**: `onChunkBilling` 콜백은 토큰 사용량 누적만 수행 — 잔액 갱신은 settle 시에만
 - **settle 시 잔액 갱신**: `settleCredits()` 응답의 `balance_after`로 CreditBadge 갱신
-- **크레딧 표시**: UI 표시용 크레딧은 `calculateSessionCreditsFromChunks()` 사용 (서버 settle 미러링). `calculateCreditsFromChunks()`는 레거시 (과다 추정)
+- **크레딧 표시**: UI 표시용 크레딧은 `calculateSessionCreditsFromChunks()` 사용 (`creditsPerChunk` 기반 근사치). 실제 정산은 서버 settle
 - **`finalizeHold` 반환값**: `FinalizeHoldResult.actualCredits` — settle 시 실제 차감 크레딧, release 시 null
 
 ### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
@@ -327,6 +327,16 @@ if (!balanceCheck.sufficient) throw new Error(balanceCheck.error);
 
 지식 그래프와 원본 텍스트를 기반으로 소설에 대해 대화하는 채팅 서비스.
 
+### LLM 응답 파싱 헬퍼
+
+```typescript
+extractLlmContent(data)          // OpenRouter 응답에서 content 문자열 추출
+parseJsonFromLlmContent(content) // content에서 JSON 객체 추출 (실패 시 null)
+```
+
+3개 비스트리밍 LLM 호출(analyzeQuery, selectData, decideConnected)에서 공통 사용.
+새 LLM 호출 추가 시 이 헬퍼를 사용하여 중복 방지.
+
 ### 호출 구조 (1 메시지 = 최대 4 LLM 호출)
 
 ```
@@ -364,10 +374,11 @@ lineBuffer = splitLines.pop() || '';  // 마지막 불완전 행 보관
 ### 비용 사전 추정
 
 ```typescript
+// chat.ts에 위치
 estimateChatCost(messages, contextChars, model, dynamicModels?) → number  // 크레딧 단위
 ```
 
-①②④ Flash 고정 추정 + ③ 사용자 모델 기반 추정 → `calculateMixedSessionCredits`로 세션 수준 올림.
+`creditsPerChat` 기반 근사 + 대화 이력/컨텍스트 길이 스케일링.
 `ChatView.tsx`에서 `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)`으로 전송 전 차단.
 
 ---

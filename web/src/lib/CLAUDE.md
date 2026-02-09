@@ -241,43 +241,51 @@ if (limited) {
 
 ---
 
-## modelCosts.ts — 모델 비용 공유 모듈
+## modelCosts.ts — 공유 상수 모듈
 
-모델 비용 상수 및 크레딧 계산 유틸리티. 클라이언트(billing.ts)와 서버(/api/analyze, /api/chat) 양쪽에서 사용.
-
-- 단일 진실 공급원: `AVAILABLE_MODELS` (types.ts) — 모델 비용 동기화 불일치 방지
+클라이언트와 서버 양쪽에서 사용하는 토큰/청크 상수만 포함. USD 비용 계산은 `serverCosts.ts`로 이동됨.
 
 ```typescript
-// 상수
-USD_TO_KRW, KRW_PER_CREDIT, CHARS_PER_TOKEN,
-CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
-DEFAULT_INPUT_COST, DEFAULT_OUTPUT_COST
-
-// 연속 마크업 함수 (단일 MARGIN 상수 대체)
-continuousMarkup(costUsd) → number  // 10x→5x 로그 보간 (소액일수록 마크업 높음)
-
-// 공유 헬퍼 (수식 중복 제거)
-tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost) → number
-costUsdToCredits(costUsd) → number  // 내부적으로 continuousMarkup() 사용
-
-// 모델 비용 조회 (AVAILABLE_MODELS에서)
-getModelCosts(model) → { inputCost, outputCost }
-
-// 서버 공유 타입/함수 (analyze, chat 라우트 공용)
-interface TokenBilling { prompt_tokens: number; completion_tokens: number; }
-resolveTokenBilling(data, promptLength, logPrefix) → TokenBilling | null  // logPrefix 필수!
+// 공유 상수
+CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
+SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
+MERGER_REVIEW_PROMPT_CHARS, MERGER_REVIEW_OUTPUT_TOKENS, MERGER_REVIEW_MODEL
 ```
-
-**⚠️ `resolveTokenBilling` 호출 규칙**: `logPrefix`에 기본값 없음. 호출부에서 반드시 명시적으로 전달 (예: `'[analyze]'`, `'[chat]'`).
-
-**⚠️ 마크업 함수 설명**:
-- 기존 단일 `MARGIN=3.0` → 연속 마크업 함수로 교체 (10x→5x 로그 보간)
-- 소액 요청(저렴한 모델)일수록 마크업이 높고, 고액 요청일수록 마크업 감소
-- `costUsdToCredits(costUsd)` 내부에서 자동 적용됨
 
 **⚠️ 상수 변경 시 주의사항**:
 - `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값.
-- 새 모델 추가 시 `types.ts`의 `AVAILABLE_MODELS`에 `inputCost`/`outputCost` 추가 — 이것이 단일 진실 공급원.
+- 새 모델 추가 시 `types.ts`의 `FALLBACK_MODELS`에 `creditsPerChunk`/`creditsPerChat` 추가, `serverCosts.ts`의 `SERVER_MODEL_COSTS`에 USD 단가 추가.
+
+---
+
+## serverCosts.ts — 서버 전용 비용 계산 모듈
+
+`import 'server-only'` — 클라이언트 번들에 포함 불가. USD 기반 정확한 크레딧 계산.
+
+```typescript
+// 서버 전용 타입
+interface ServerModelInfo extends ModelInfo { inputCost: number; outputCost: number; }
+interface TokenBilling { prompt_tokens: number; completion_tokens: number; }
+
+// USD 비용 계산
+getModelCosts(model, dynamicModels?) → { inputCost, outputCost }
+tokenCostUsd(promptTokens, completionTokens, inputCost, outputCost) → number
+calculateChunkCostUsd(model, dynamicModels?) → number
+costUsdToCredits(costUsd, model, dynamicModels?) → number
+
+// 세션 크레딧 계산 (settle 라우트에서 사용)
+calculateMixedSessionCredits(chunks, dynamicModels?) → number
+calculateSessionCredits(totalSessionCostUsd, chunkCostUsd) → number
+
+// 모델별 크레딧 사전 계산 (modelCache에서 사용)
+computeCreditsPerChunk(model, dynamicModels?) → number
+computeCreditsPerChat(model, dynamicModels?) → number
+
+// API 라우트 공용
+resolveTokenBilling(data, promptLength, logPrefix) → TokenBilling | null
+```
+
+**⚠️ `resolveTokenBilling` 호출 규칙**: `logPrefix`에 기본값 없음. 호출부에서 반드시 명시적으로 전달 (예: `'[analyze]'`, `'[chat]'`).
 
 ---
 

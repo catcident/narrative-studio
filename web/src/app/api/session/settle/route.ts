@@ -3,8 +3,8 @@ import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { updateBalanceCache } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
-import { tokenCostUsd, getModelCosts, calculateMixedSessionCredits } from '@/lib/modelCosts';
-import { getCachedModels } from '@/lib/modelCache';
+import { tokenCostUsd, getModelCosts, calculateMixedSessionCredits } from '@/lib/serverCosts';
+import { getCachedServerModels } from '@/lib/modelCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 서버가 금액 재계산 — 클라이언트 값 무시
-    const dynamicModels = await getCachedModels();
+    const dynamicModels = await getCachedServerModels();
     const chunkCostData: { costUsd: number; model: string }[] = [];
 
     for (const raw of chunks as unknown[]) {

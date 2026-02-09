@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, BillingSubscription, CurrentUsage, ChunkUsage, ViewMode, FileValidationResult, PartialAnalysisInfo, QueueItem } from './types';
-import { AVAILABLE_MODELS } from './types';
+import { FALLBACK_MODELS } from './types';
 import { getSubscription } from './services/billing';
 import type { ByokMode } from './services/extraction';
 import { getByokMode, setByokMode as persistByokMode } from './services/extraction';
@@ -122,7 +122,7 @@ export const useStore = create<AppState>((set, get) => ({
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
-  models: AVAILABLE_MODELS,
+  models: FALLBACK_MODELS,
   modelsLoaded: false,
   loadModels: async () => {
     try {

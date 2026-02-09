@@ -120,17 +120,22 @@ export interface Chapter {
 export interface ModelInfo {
   id: string;
   name: string;
-  inputCost: number;  // per 1M tokens, USD
-  outputCost: number; // per 1M tokens, USD
+  creditsPerChunk: number;  // 분석 청크당 예상 크레딧 (서버 계산)
+  creditsPerChat: number;   // 채팅 1회당 기본 크레딧 (서버 계산)
   description: string;
   available?: boolean;          // OpenRouter에서 현재 사용 가능 여부
   coreModel?: boolean;          // 핵심 모델 여부 (요금제별 접근 제어용)
 }
 
+/** 모델 조회 실패 시 폴백 크레딧 값 */
+export const DEFAULT_CREDITS_PER_CHUNK = 2;
+export const DEFAULT_CREDITS_PER_CHAT = 3;
+
 /** 큐레이션 메타데이터: 소설 분석에 적합한 모델만 선별 + 한국어 설명 + 정렬 순서 */
 export interface CuratedModelMeta {
   description: string;
   sortOrder: number;
+  coreModel: boolean;
 }
 
 /**
@@ -139,34 +144,35 @@ export interface CuratedModelMeta {
  * 동적 모델 로딩 시 이 목록에 있는 모델만 표시됨.
  */
 export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
-  'anthropic/claude-sonnet-4': { description: '최고 품질', sortOrder: 10 },
-  'anthropic/claude-3.5-sonnet': { description: '최고 품질', sortOrder: 11 },
-  'openai/gpt-4o': { description: '고품질', sortOrder: 20 },
-  'openai/gpt-4o-mini': { description: '추천', sortOrder: 25 },
-  'anthropic/claude-3-haiku': { description: '균형', sortOrder: 30 },
-  'google/gemini-2.0-flash-001': { description: '경제적', sortOrder: 40 },
-  'google/gemini-2.5-flash': { description: '경제적', sortOrder: 41 },
-  'deepseek/deepseek-chat': { description: '가성비', sortOrder: 50 },
-  'qwen/qwen-2.5-72b-instruct': { description: '준수한 성능', sortOrder: 60 },
-  'google/gemini-2.5-flash-lite': { description: '가장 저렴', sortOrder: 70 },
+  'anthropic/claude-sonnet-4': { description: '최고 품질', sortOrder: 10, coreModel: true },
+  'anthropic/claude-3.5-sonnet': { description: '최고 품질', sortOrder: 11, coreModel: false },
+  'openai/gpt-4o': { description: '고품질', sortOrder: 20, coreModel: true },
+  'openai/gpt-4o-mini': { description: '추천', sortOrder: 25, coreModel: true },
+  'anthropic/claude-3-haiku': { description: '균형', sortOrder: 30, coreModel: true },
+  'google/gemini-2.0-flash-001': { description: '경제적', sortOrder: 40, coreModel: true },
+  'google/gemini-2.5-flash': { description: '경제적', sortOrder: 41, coreModel: false },
+  'deepseek/deepseek-chat': { description: '가성비', sortOrder: 50, coreModel: false },
+  'qwen/qwen-2.5-72b-instruct': { description: '준수한 성능', sortOrder: 60, coreModel: false },
+  'google/gemini-2.5-flash-lite': { description: '가장 저렴', sortOrder: 70, coreModel: false },
 };
 
 /**
  * 정적 폴백 모델 목록 (API 불가 시 사용).
  * 동적 로딩 성공 시 이 목록은 사용되지 않음.
+ * creditsPerChunk/creditsPerChat 값은 서버 수식으로 사전 계산된 근사값.
  */
-export const AVAILABLE_MODELS: ModelInfo[] = [
+export const FALLBACK_MODELS: ModelInfo[] = [
   // 핵심 5종
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', inputCost: 0.10, outputCost: 0.40, description: '경제적', coreModel: true },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', inputCost: 0.15, outputCost: 0.60, description: '추천', coreModel: true },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', inputCost: 0.25, outputCost: 1.25, description: '균형', coreModel: true },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', inputCost: 2.50, outputCost: 10.00, description: '고품질', coreModel: true },
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', inputCost: 3.00, outputCost: 15.00, description: '최고 품질', coreModel: true },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', creditsPerChunk: 2, creditsPerChat: 4, description: '경제적', coreModel: true },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', creditsPerChunk: 3, creditsPerChat: 6, description: '추천', coreModel: true },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', creditsPerChunk: 4, creditsPerChat: 8, description: '균형', coreModel: true },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', creditsPerChunk: 20, creditsPerChat: 49, description: '고품질', coreModel: true },
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', creditsPerChunk: 25, creditsPerChat: 61, description: '최고 품질', coreModel: true },
   // 선택 4종
-  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', inputCost: 0.075, outputCost: 0.30, description: '가장 저렴', coreModel: false },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', inputCost: 0.14, outputCost: 0.28, description: '가성비', coreModel: false },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', inputCost: 0.12, outputCost: 0.39, description: '준수한 성능', coreModel: false },
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', inputCost: 0.15, outputCost: 0.60, description: '경제적', coreModel: false },
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', creditsPerChunk: 2, creditsPerChat: 4, description: '가장 저렴', coreModel: false },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', creditsPerChunk: 2, creditsPerChat: 5, description: '가성비', coreModel: false },
+  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', creditsPerChunk: 2, creditsPerChat: 5, description: '준수한 성능', coreModel: false },
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 3, creditsPerChat: 6, description: '경제적', coreModel: false },
 ];
 
 export const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';

@@ -231,7 +231,7 @@ export function AnalysisPanel({
               <optgroup label="핵심 모델">
                 {availableModels.filter(m => m.coreModel !== false).map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                    {model.name} - {model.description} (~{model.creditsPerChunk} 크레딧/청크)
                   </option>
                 ))}
               </optgroup>
@@ -240,7 +240,7 @@ export function AnalysisPanel({
                 <optgroup label="추가 모델">
                   {availableModels.filter(m => m.coreModel === false).map((model) => (
                     <option key={model.id} value={model.id}>
-                      {model.name} - {model.description} (${model.inputCost}/${model.outputCost} per 1M)
+                      {model.name} - {model.description} (~{model.creditsPerChunk} 크레딧/청크)
                     </option>
                   ))}
                 </optgroup>
@@ -262,7 +262,7 @@ export function AnalysisPanel({
             )}
             {!lockedModel && (
               <p className="text-xs text-gray-500 mt-1">
-                비용: Input/Output (1M 토큰당 USD). 고품질 모델은 더 정확하지만 비용이 높습니다.
+                비용은 크레딧/청크 단위입니다. 고품질 모델은 더 정확하지만 비용이 높습니다.
               </p>
             )}
           </div>

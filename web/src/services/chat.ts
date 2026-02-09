@@ -3,11 +3,12 @@
  * 지식 그래프와 원본 텍스트를 기반으로 질문에 답변
  */
 
-import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo } from '../types';
-import { DEFAULT_MODEL } from '../types';
+import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo, ChunkUsage } from '../types';
+import { DEFAULT_MODEL, DEFAULT_CREDITS_PER_CHAT } from '../types';
 import { searchSimilarEntities, searchSimilarChunks, type ChunkSearchResult } from './embedding';
-import { getModelCosts, tokenCostUsd, CHARS_PER_TOKEN, calculateMixedSessionCredits } from '@/lib/modelCosts';
+import { CHUNK_SIZE } from '@/lib/modelCosts';
 import { getApiKey } from './extraction/types';
+import { findModel } from './billing';
 
 // ==================== Billing 타입 ====================
 
@@ -31,11 +32,27 @@ export interface ChatResult {
   content: string;
   billing: ChatMessageBilling | null;
   /** settle에 사용할 청크별 토큰 사용량 (hold/settle 패턴용) */
-  chunkUsages: import('../types').ChunkUsage[];
+  chunkUsages: ChunkUsage[];
 }
 
 /** 대화 이력 토큰 제한 (약 30K tokens) */
 const MAX_HISTORY_CHARS = 45000;
+
+/** LLM 응답에서 content 텍스트 추출 */
+function extractLlmContent(data: Record<string, unknown>): string {
+  return (data.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content ?? '';
+}
+
+/** LLM 응답 content에서 JSON 객체 추출 (실패 시 null) */
+function parseJsonFromLlmContent(content: string): Record<string, unknown> | null {
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * LLM 의도 분석 결과 타입
@@ -100,15 +117,14 @@ async function analyzeQueryWithLLM(
 
     const data = await response.json();
     const callBilling: CallBilling | null = data._billing ?? null;
-    const content = data.choices?.[0]?.message?.content || '';
+    const content = extractLlmContent(data);
+    const parsed = parseJsonFromLlmContent(content);
 
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
+    if (parsed) {
       const result: LLMQueryAnalysis = {
-        keywords: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 5) : [],
+        keywords: Array.isArray(parsed.keywords) ? (parsed.keywords as string[]).slice(0, 5) : [],
         wantsCategoryList: !!parsed.wantsCategoryList,
-        targetCategory: parsed.targetCategory || null,
+        targetCategory: (parsed.targetCategory as string) ?? null,
       };
       console.log('[analyzeQuery] LLM 분석 결과:', result);
       return { analysis: result, billing: callBilling };
@@ -232,14 +248,13 @@ ${chunkList || '(없음)'}`
 
     const data = await response.json();
     const callBilling: CallBilling | null = data._billing ?? null;
-    const content = data.choices?.[0]?.message?.content || '';
+    const content = extractLlmContent(data);
+    const parsed = parseJsonFromLlmContent(content);
 
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
+    if (parsed) {
       const result: SelectionResult = {
-        selectedEntityIds: Array.isArray(parsed.entityIds) ? parsed.entityIds.slice(0, 15) : [],
-        selectedChunkIndices: Array.isArray(parsed.chunkIndices) ? parsed.chunkIndices.slice(0, 3) : [],
+        selectedEntityIds: Array.isArray(parsed.entityIds) ? (parsed.entityIds as string[]).slice(0, 15) : [],
+        selectedChunkIndices: Array.isArray(parsed.chunkIndices) ? (parsed.chunkIndices as number[]).slice(0, 3) : [],
       };
       console.log('[selectData] LLM 선별 결과:', result);
       return { selection: result, billing: callBilling };
@@ -356,14 +371,13 @@ ${connectedList}
 
     const data = await response.json();
     const callBilling: CallBilling | null = data._billing ?? null;
-    const content = data.choices?.[0]?.message?.content || '';
+    const content = extractLlmContent(data);
+    const parsed = parseJsonFromLlmContent(content);
 
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
+    if (parsed) {
       const result: ConnectedNodeDecision = {
         needsConnectedNodes: !!parsed.needsConnectedNodes,
-        selectedNodeIds: Array.isArray(parsed.selectedNodeIds) ? parsed.selectedNodeIds : [],
+        selectedNodeIds: Array.isArray(parsed.selectedNodeIds) ? parsed.selectedNodeIds as string[] : [],
       };
       console.log('[decideConnected] LLM 판단:', result);
       return { decision: result, billing: callBilling };
@@ -1302,12 +1316,12 @@ export async function sendChatMessage(
   }
 
   /** billing 합산 + ChunkUsage 변환 헬퍼 */
-  const aggregateBilling = (): { billing: ChatMessageBilling | null; chunkUsages: import('../types').ChunkUsage[] } => {
+  const aggregateBilling = (): { billing: ChatMessageBilling | null; chunkUsages: ChunkUsage[] } => {
     if (billings.length === 0) return { billing: null, chunkUsages: [] };
     let totalPrompt = 0;
     let totalCompletion = 0;
     let isByok = false;
-    const chunkUsages: import('../types').ChunkUsage[] = [];
+    const chunkUsages: ChunkUsage[] = [];
     for (let i = 0; i < billings.length; i++) {
       const b = billings[i];
       totalPrompt += b.prompt_tokens;
@@ -1400,14 +1414,14 @@ export async function sendChatMessage(
     billings.push(data._billing);
   }
   const { billing: finalBilling, chunkUsages: finalChunkUsages } = aggregateBilling();
-  return { content: data.choices?.[0]?.message?.content || '', billing: finalBilling, chunkUsages: finalChunkUsages };
+  return { content: extractLlmContent(data), billing: finalBilling, chunkUsages: finalChunkUsages };
 }
 
 /**
  * 채팅 메시지 전송 비용 사전 추정 (크레딧 단위)
  *
  * 호출 구조: ①의도분석(Flash) + ②데이터선별(Flash, 조건부) + ③최종답변(사용자 모델) + ④연결노드판단(Flash, 조건부)
- * 세션 패턴: USD 합산 → 1회 올림 (서버 settle과 일치).
+ * creditsPerChat 기반 근사 + 대화 이력/컨텍스트 길이 스케일링.
  */
 export function estimateChatCost(
   messages: ChatMessage[],
@@ -1415,21 +1429,10 @@ export function estimateChatCost(
   model: string,
   dynamicModels?: ModelInfo[],
 ): number {
-  const flashCosts = getModelCosts(DEFAULT_MODEL, dynamicModels);
+  const modelInfo = findModel(model, dynamicModels);
+  const baseCredits = modelInfo?.creditsPerChat ?? DEFAULT_CREDITS_PER_CHAT;
 
-  // ① 의도분석 (Flash)
-  const call1InputTokens = Math.ceil(800 / CHARS_PER_TOKEN);
-  const call1OutputTokens = Math.ceil(100 / CHARS_PER_TOKEN);
-
-  // ② 데이터선별 (Flash)
-  const call2InputTokens = Math.ceil(3000 / CHARS_PER_TOKEN);
-  const call2OutputTokens = Math.ceil(200 / CHARS_PER_TOKEN);
-
-  // ④ 연결노드판단 (Flash)
-  const call4InputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);
-  const call4OutputTokens = Math.ceil(100 / CHARS_PER_TOKEN);
-
-  // ③ 최종 답변 (사용자 모델): 시스템 프롬프트 + 컨텍스트 + 이력 + max_tokens
+  // 대화 이력 길이에 따른 스케일링
   let historyChars = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
     historyChars += messages[i].content.length;
@@ -1438,20 +1441,8 @@ export function estimateChatCost(
       break;
     }
   }
-  const totalInputChars = contextChars + historyChars;
-  const call3InputTokens = Math.ceil(totalInputChars / CHARS_PER_TOKEN);
-  const call3OutputTokens = Math.ceil(2000 / CHARS_PER_TOKEN);
-  const modelCosts = getModelCosts(model, dynamicModels);
-
-  // USD 비용 개별 계산 → calculateMixedSessionCredits로 합산 후 1회 올림
-  const chunks = [
-    { costUsd: tokenCostUsd(call1InputTokens, call1OutputTokens, flashCosts.inputCost, flashCosts.outputCost), model: DEFAULT_MODEL },
-    { costUsd: tokenCostUsd(call2InputTokens, call2OutputTokens, flashCosts.inputCost, flashCosts.outputCost), model: DEFAULT_MODEL },
-    { costUsd: tokenCostUsd(call3InputTokens, call3OutputTokens, modelCosts.inputCost, modelCosts.outputCost), model },
-    { costUsd: tokenCostUsd(call4InputTokens, call4OutputTokens, flashCosts.inputCost, flashCosts.outputCost), model: DEFAULT_MODEL },
-  ];
-
-  return calculateMixedSessionCredits(chunks, dynamicModels);
+  const contextScale = Math.max(1, (contextChars + historyChars) / CHUNK_SIZE);
+  return Math.max(1, Math.ceil(baseCredits * contextScale));
 }
 
 /**

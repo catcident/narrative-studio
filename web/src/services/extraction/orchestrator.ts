@@ -3,7 +3,7 @@
  */
 
 import type { NovelKnowledgeGraph, PartialAnalysisInfo } from '../../types';
-import { DEFAULT_MODEL, AVAILABLE_MODELS } from '../../types';
+import { DEFAULT_MODEL, FALLBACK_MODELS } from '../../types';
 import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions, RawLoreEntry } from './types';
 import { EMPTY_CHUNK_DATA, getEffectiveApiKey, getByokMode } from './types';
 import { splitIntoSmartChunksWithSource } from './chunker';
@@ -112,8 +112,8 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
 
-  // 모델 유효성 검증: availableModelIds 우선, 없으면 AVAILABLE_MODELS 정적 폴백
-  const validModelIds = availableModelIds ?? AVAILABLE_MODELS.map((m) => m.id);
+  // 모델 유효성 검증: availableModelIds 우선, 없으면 FALLBACK_MODELS 정적 폴백
+  const validModelIds = availableModelIds ?? FALLBACK_MODELS.map((m) => m.id);
   const candidateModel = resumeFrom?.model || model || DEFAULT_MODEL;
   const isValidModel = validModelIds.includes(candidateModel);
 
@@ -262,7 +262,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         }
 
         // 로어북 결과 축적
-        const loreCount = lorebookResult.data?.length || 0;
+        const loreCount = lorebookResult.data?.length ?? 0;
         if (loreCount > 0) {
           allExtractedLore.push(lorebookResult.data);
           const loreScenes = [...new Set(lorebookResult.data.map(e => e.scene))].sort((a, b) => a - b);

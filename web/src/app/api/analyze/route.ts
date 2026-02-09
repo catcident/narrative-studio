@@ -3,7 +3,7 @@ import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
 import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { resolveTokenBilling } from '@/lib/modelCosts';
+import { resolveTokenBilling } from '@/lib/serverCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';

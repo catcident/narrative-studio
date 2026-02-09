@@ -8,10 +8,8 @@ import { DEFAULT_MODEL } from '@/types';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
 import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
-import {
-  CHARS_PER_TOKEN,
-  resolveTokenBilling,
-} from '@/lib/modelCosts';
+import { CHARS_PER_TOKEN } from '@/lib/modelCosts';
+import { resolveTokenBilling } from '@/lib/serverCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
