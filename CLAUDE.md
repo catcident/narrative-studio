@@ -5,14 +5,10 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 ## 빠른 참조
 
 ```bash
-# 개발 서버 (web 디렉토리에서)
-cd web && npm run dev
-
-# 프로덕션 빌드
-cd web && npm run build && npm run start
-
-# Docker 빌드 및 실행
-cd web && docker build -t storygraph . && docker run -p 3000:3000 storygraph
+# 개발/프로덕션 모두 Docker Compose 기반 (Caddy 리버스 프록시)
+cd web && docker compose up --build -d        # 빌드 + 실행
+cd web && docker compose logs -f storygraph   # 로그 확인
+cd web && docker compose restart storygraph   # 재시작
 ```
 
 ## 프로젝트 구조
@@ -105,12 +101,14 @@ Character-Relationship-Chart/
 
 ## 배포
 
-### Railway (테스트)
-- `main` 브랜치 자동 배포
-- `AUTH_ENABLED=false` (공개 데모)
+테스트/프로덕션 모두 동일한 Docker Compose + Caddy 리버스 프록시 구조.
 
-### Oracle Cloud (프로덕션)
-- Docker + Caddy 리버스 프록시
+### 테스트 환경 (LAN)
+- Docker Compose + Caddy (`tls internal`)
+- `storygraph.catcident.lan` 도메인
+
+### 프로덕션 환경 (Oracle Cloud)
+- Docker Compose + Caddy (자동 HTTPS)
 - `AUTH_ENABLED=true` (회원 전용)
 - `storygraph.catcident.com` 도메인
 

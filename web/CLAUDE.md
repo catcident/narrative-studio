@@ -5,15 +5,11 @@ Next.js 기반 웹 애플리케이션 - 소설 인물 관계도 시각화
 ## 빠른 참조
 
 ```bash
-# 개발 서버
-npm run dev
-
-# 프로덕션 빌드 및 실행
-npm run build && npm run start
-
-# Docker
-docker build -t storygraph .
-docker run -p 3000:3000 --env-file .env storygraph
+# 개발/프로덕션 모두 Docker Compose 기반 (Caddy 리버스 프록시)
+docker compose up --build -d        # 빌드 + 실행
+docker compose logs -f storygraph   # 로그 확인
+docker compose restart storygraph   # 재시작
+docker compose down                 # 중지
 ```
 
 ## 앱 구조
@@ -187,7 +183,9 @@ CATCIDENT_API_URL=http://catcident-backend-api-1:8000
 # AUTH_ENABLED=false  ← Railway 퍼블릭 데모에서만 명시적 비활성화
 ```
 
-## Docker 배포 주의사항
+## Docker 배포 (테스트/프로덕션 동일 구조)
+
+모든 환경이 Docker Compose + Caddy 리버스 프록시로 운영됨. 베어 `npm` 명령이나 `docker run` 직접 실행 없음.
 
 ### Compose 환경 변수
 - `${VAR}` 치환은 `.env`만 읽음 (`.env.local` 미참조)

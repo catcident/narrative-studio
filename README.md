@@ -59,15 +59,14 @@ cp .env.example .env
 VITE_GEMINI_API_KEY=your_api_key_here
 ```
 
-### 실행
+### 실행 (Docker Compose 기반)
 
 ```bash
-# 개발 서버
-npm run dev
-
-# 프로덕션 빌드
-npm run build
-npm run preview
+# 모든 환경이 Docker Compose + Caddy 리버스 프록시로 운영됨
+cd web
+docker compose up --build -d        # 빌드 + 실행
+docker compose logs -f storygraph   # 로그 확인
+docker compose restart storygraph   # 재시작
 ```
 
 ## 사용 방법

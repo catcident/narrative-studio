@@ -7,11 +7,12 @@
 ### H1. Django 마이그레이션 실행
 
 catcident-backend에서 payment 앱의 DB 마이그레이션 생성 및 적용.
+모든 환경이 Docker 컨테이너로 운영되므로 `docker compose` 경유 필수.
 
 ```bash
 cd /path/to/catcident-backend
-python manage.py makemigrations payment
-python manage.py migrate
+docker compose run --rm api python manage.py makemigrations payment
+docker compose run --rm api python manage.py migrate
 ```
 
 ### H2. TossPayments 환경 변수 설정
@@ -66,7 +67,7 @@ Django Admin (`cms.catcident.com`)에서:
 
 1. **Docker 빌드 확인**
    ```bash
-   cd web && docker build -t storygraph .
+   cd web && docker compose build storygraph
    ```
 2. **프로덕션 환경 변수 설정** (서버에서)
    - `NEXT_PUBLIC_SENTRY_DSN` 프로덕션 DSN
