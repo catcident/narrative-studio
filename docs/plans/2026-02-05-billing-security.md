@@ -520,8 +520,8 @@ class CreditHoldAdmin(admin.ModelAdmin):
 
 ```bash
 cd /Users/idencosmos/Projects/catcident-backend
-python manage.py makemigrations billing
-python manage.py migrate billing
+docker compose run --rm api python manage.py makemigrations billing
+docker compose run --rm api python manage.py migrate billing
 ```
 
 **Step 4: 커밋**
@@ -1874,12 +1874,11 @@ cd web && npm run build
 ```bash
 # Backend 테스트
 cd /Users/idencosmos/Projects/catcident-backend
-python manage.py test apps.business.billing
+docker compose run --rm api python manage.py test apps.business.billing
 
 # Frontend 타입 체크 + 빌드
 cd /Users/idencosmos/Projects/narrative-studio/web
-npx tsc --noEmit 2>&1 | grep -v "src/main.tsx"
-npm run build
+docker compose build storygraph
 ```
 
 수동 테스트:

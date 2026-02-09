@@ -77,7 +77,7 @@ export default function LoginPage(): React.ReactElement {
               <Network className="w-8 h-8 text-white" aria-hidden="true" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              인물 관계도
+              스토리그래프
             </h1>
             <p className="text-gray-500 mt-2 text-sm">
               AI가 소설을 분석하여 인물 관계를 시각화합니다
@@ -94,7 +94,7 @@ export default function LoginPage(): React.ReactElement {
           </ul>
 
           <button
-            onClick={() => signIn('catcident', { callbackUrl: '/' })}
+            onClick={() => signIn('catcident', { callbackUrl: '/app' })}
             className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

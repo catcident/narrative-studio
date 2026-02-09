@@ -3,10 +3,10 @@
  * 탭: 플랜 비교 | 크레딧 구매 | 사용 내역 | API 키
  */
 
-import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Gift } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
-import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
+import { getPlans, getCreditPackages, buildPlanFeatureStrings, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
 import type { ByokMode } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
@@ -106,17 +106,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
     setKeyError(null);
   };
 
-  const maskedKey = (() => {
+  const maskedKey = useMemo(() => {
     if (!hasLocalKey) return null;
     const key = getApiKey();
     if (!key) return null;
     if (key.length <= 10) return '••••••••••';
     return `${key.slice(0, 6)}...${key.slice(-4)}`;
-  })();
+  }, [hasLocalKey]);
 
   const planIcon = (code: string) => {
     switch (code) {
-      case 'business': return <Crown aria-hidden="true" className="w-5 h-5" />;
+      case 'business':
       case 'pro': return <Crown aria-hidden="true" className="w-5 h-5" />;
       case 'basic': return <Zap aria-hidden="true" className="w-5 h-5" />;
       default: return <Star aria-hidden="true" className="w-5 h-5" />;
@@ -131,6 +131,15 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
       default: return 'border-gray-300 bg-gray-50';
     }
   };
+
+  const billingBaseUrl = 'https://catcident.com/ko/billing';
+  const returnUrlParam = useMemo(() => encodeURIComponent(window.location.origin + '/app'), []);
+
+  function getPlanCardStyle(code: string, isCurrent: boolean, isPopular: boolean): string {
+    if (isCurrent) return planColor(code) + ' ring-2 ring-blue-500';
+    if (isPopular) return 'border-purple-400 shadow-lg shadow-purple-100 bg-purple-50/30';
+    return 'border-gray-200';
+  }
 
   const getDisplayPrice = (monthlyPrice: number): { price: number; original?: number } => {
     if (billingPeriod === 'annual' && monthlyPrice > 0) {
@@ -174,6 +183,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
         {/* 본문 */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* 테스트 모드 배너 */}
+          <div role="status" className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+            <Info aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">현재 결제 시스템은 테스트 모드로 운영 중입니다</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                실제 결제가 이루어지지 않습니다. 정식 오픈 시 안내드리겠습니다.
+              </p>
+            </div>
+          </div>
+
           {loading ? (
             <div className="text-center text-gray-400 py-12">로딩 중...</div>
           ) : loadError ? (
@@ -224,9 +244,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   return (
                     <div
                       key={plan.id}
-                      className={`border-2 rounded-xl p-4 flex flex-col relative ${
-                        isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-400 shadow-lg shadow-purple-100 bg-purple-50/30' : 'border-gray-200'
-                      }`}
+                      className={`border-2 rounded-xl p-4 flex flex-col relative ${getPlanCardStyle(plan.code, isCurrent, isPopular)}`}
                     >
                       {isPopular && !isCurrent && (
                         <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs px-3 py-0.5 bg-purple-600 text-white rounded-full whitespace-nowrap">
@@ -272,51 +290,25 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                       </div>
 
                       <div className="space-y-2 text-sm flex-1">
-                        {plan.features.models === 'all' ? (
-                          <div className="flex items-center gap-2 text-gray-600">
+                        {buildPlanFeatureStrings(plan.features).map((feature) => (
+                          <div key={feature} className="flex items-center gap-2 text-gray-600">
                             <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>모든 AI 모델 사용 가능</span>
+                            <span>{feature}</span>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>{(plan.features.models as string[]).length}개 모델 사용 가능</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>최대 {plan.features.max_file_size_mb}MB 파일</span>
-                        </div>
-                        {plan.features.max_saved_graphs !== undefined && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs.toLocaleString()}개`}</span>
-                          </div>
-                        )}
-                        {plan.features.max_chats_per_analysis !== undefined && plan.features.max_chats_per_analysis !== -1 && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>분석당 채팅 {plan.features.max_chats_per_analysis}회</span>
-                          </div>
-                        )}
-                        {plan.features.byok && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>BYOK (개인 API 키 사용)</span>
-                          </div>
-                        )}
-                        {plan.features.can_purchase_credits && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>추가 크레딧 구매 가능</span>
-                          </div>
-                        )}
+                        ))}
                       </div>
 
-                      {!isCurrent && (
-                        <p className="mt-4 text-center text-xs text-gray-400">
-                          결제 연동 준비 중
-                        </p>
+                      {!isCurrent && plan.price_krw > 0 && (
+                        <button
+                          onClick={() => window.open(
+                            `${billingBaseUrl}/subscribe/?plan=${plan.code}&return_url=${returnUrlParam}`,
+                            '_blank',
+                            'noopener'
+                          )}
+                          className="mt-4 w-full py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                          {subscription?.plan === 'free' ? '구독 시작' : '플랜 변경'}
+                        </button>
                       )}
                     </div>
                   );
@@ -336,10 +328,8 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                 <div className="text-center text-gray-400 py-12">준비된 상품이 없습니다.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {packages.map(pkg => {
-                    const firstPurchaseBonus = Math.round(pkg.credits * 0.5);
-                    return (
-                      <div key={pkg.id} className="border border-gray-200 rounded-xl p-5">
+                  {packages.map(pkg => (
+                      <div key={pkg.id} className="border border-gray-200 rounded-xl p-5 flex flex-col">
                         <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
                         <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
                           {pkg.credits.toLocaleString()} 크레딧
@@ -349,40 +339,25 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                             +{pkg.bonus_pct}% 보너스
                           </div>
                         )}
-                        {/* C3: 첫 구매 보너스 크레딧 표시 */}
-                        <div className="text-xs text-amber-600 font-medium mb-1">
-                          첫 구매 시 +{firstPurchaseBonus.toLocaleString()} 보너스
-                        </div>
                         <div className="text-sm text-gray-500 mb-1">
                           {pkg.price_krw.toLocaleString()}원
                           <span className="text-xs text-gray-400 ml-1">
                             ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
                           </span>
                         </div>
-                        <div className="text-xs text-gray-400 mb-4">만료 없음</div>
+                        <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
                         <button
-                          disabled
-                          className="w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
+                          onClick={() => window.open(
+                            `${billingBaseUrl}/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
+                            '_blank',
+                            'noopener'
+                          )}
+                          className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                         >
-                          준비 중
+                          구매하기
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* C3: 첫 구매 보너스 안내 */}
-              {subscription?.features.can_purchase_credits && (
-                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-                  <Gift aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">첫 패키지 구매 시 +50% 보너스!</p>
-                    <p className="text-xs text-amber-600 mt-1">
-                      첫 번째 크레딧 패키지 구매 시 기본 크레딧의 50%가 추가 지급됩니다.
-                      결제 시스템 준비 중입니다.
-                    </p>
-                  </div>
+                  ))}
                 </div>
               )}
 

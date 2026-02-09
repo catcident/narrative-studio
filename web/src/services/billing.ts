@@ -175,6 +175,38 @@ export async function getPlans(): Promise<BillingListResult<ServicePlan>> {
   return billingFetchList<ServicePlan>('/plans');
 }
 
+/** 플랜 features → UI 표시용 문자열 배열 (SubscriptionPage, PricingSection 공용) */
+export function buildPlanFeatureStrings(f: PlanFeatures): string[] {
+  const out: string[] = [];
+
+  if (f.models === 'all') {
+    out.push('모든 AI 모델 사용');
+  } else if (Array.isArray(f.models)) {
+    out.push(`${f.models.length}개 AI 모델 사용`);
+  }
+
+  out.push(`최대 ${f.max_file_size_mb}MB 파일`);
+
+  if (f.max_saved_graphs !== undefined) {
+    out.push(f.max_saved_graphs === -1 ? '관계도 무제한 저장' : `관계도 ${f.max_saved_graphs.toLocaleString()}개 저장`);
+  }
+
+  if (f.max_chats_per_analysis !== undefined && f.max_chats_per_analysis !== -1) {
+    out.push(`분석당 채팅 ${f.max_chats_per_analysis}회`);
+  } else if (f.max_chats_per_analysis === -1) {
+    out.push('채팅 횟수 무제한');
+  }
+
+  if (f.export_formats && f.export_formats.length > 0) {
+    out.push(`${f.export_formats.map(s => s.toUpperCase()).join(', ')} 내보내기`);
+  }
+
+  if (f.can_purchase_credits) out.push('추가 크레딧 구매 가능');
+  if (f.byok) out.push('개인 API 키 사용 (BYOK)');
+
+  return out;
+}
+
 export interface CreditPackage {
   id: number;
   service_code: string;

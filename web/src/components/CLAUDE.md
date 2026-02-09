@@ -221,6 +221,29 @@ NextAuth.js SessionProvider 래퍼
 - [ ] 정보/상태 배너: `role="status"` 추가 (`bg-*-50 border rounded-lg` 스타일 배너)
 - [ ] 반응형 숨김: `hidden md:block` 금지 → `sr-only md:not-sr-only` 사용 (스크린 리더 접근성 보존)
 - [ ] 플랜 코드별 분기: switch/helper 함수 사용 (중첩 삼항 금지, `getPlanBadgeColor()` 패턴)
+- [ ] 카드 그리드 버튼 정렬: 가변 콘텐츠 카드 → `flex flex-col` + 콘텐츠 영역 `flex-1` (높이 불일치 방지)
+- [ ] className 조건부 분기: 헬퍼 함수 추출 (`getGridLayoutClass()`, `getPlanCardStyle()` 패턴)
+- [ ] 동일 데이터 다중 페이지 렌더링: 공유 유틸리티 사용 (`buildPlanFeatureStrings()` — 문구 불일치 방지)
+
+### 카드 레이아웃 패턴
+
+**규칙**: 카드 그리드에서 콘텐츠 길이가 가변적일 때 (기능 목록, 보너스 텍스트 등) 반드시 flex 레이아웃으로 버튼/CTA 위치를 하단 고정
+
+```tsx
+// ✅ 가변 콘텐츠 카드 — 버튼 하단 정렬
+<div className="border rounded-xl p-5 flex flex-col">
+  <h3>제목</h3>
+  <div className="flex-1">가변 길이 콘텐츠</div>
+  <button className="mt-auto">CTA 버튼</button>
+</div>
+
+// ❌ flex 없는 카드 — 콘텐츠 길이에 따라 버튼 위치 불일치
+<div className="border rounded-xl p-5">
+  <h3>제목</h3>
+  <div>가변 길이 콘텐츠</div>
+  <button>CTA 버튼</button>
+</div>
+```
 
 ### 반응형 숨김과 접근성
 
