@@ -109,25 +109,42 @@ export function PricingSection() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    fetch('/api/billing/plans')
+    fetch('/api/billing/plans', { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load plans');
         return res.json();
       })
       .then((data: unknown) => {
         if (!cancelled && Array.isArray(data)) {
-          setPlans(data as Plan[]);
+          const validPlans = data.filter(
+            (item): item is Plan =>
+              typeof item === 'object' &&
+              item !== null &&
+              typeof (item as Record<string, unknown>).code === 'string' &&
+              typeof (item as Record<string, unknown>).name === 'string' &&
+              typeof (item as Record<string, unknown>).price_monthly === 'number' &&
+              typeof (item as Record<string, unknown>).credits_monthly === 'number',
+          );
+          setPlans(validPlans);
         }
       })
       .catch((err: unknown) => {
-        console.error('[landing] plans load error:', err);
+        if (!controller.signal.aborted) {
+          console.error('[landing] plans load error:', err);
+        }
       })
       .finally(() => {
+        clearTimeout(timeoutId);
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, []);
 
   return (

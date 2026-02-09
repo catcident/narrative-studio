@@ -12,14 +12,14 @@ export function LandingHeader() {
           <span className="text-lg font-bold text-gray-900 tracking-tight">스토리그래프</span>
         </Link>
 
-        <nav className="flex items-center gap-1">
-          <a href="#features" className="hidden md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
+        <nav aria-label="메인 네비게이션" className="flex items-center gap-1">
+          <a href="#features" className="sr-only md:not-sr-only md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
             기능
           </a>
-          <a href="#how-it-works" className="hidden md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
+          <a href="#how-it-works" className="sr-only md:not-sr-only md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
             사용 방법
           </a>
-          <a href="#pricing" className="hidden md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
+          <a href="#pricing" className="sr-only md:not-sr-only md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
             요금제
           </a>
           <div className="w-px h-6 bg-gray-200 mx-2" aria-hidden="true" />
