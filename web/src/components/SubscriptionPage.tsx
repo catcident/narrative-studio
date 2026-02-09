@@ -313,10 +313,20 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         )}
                       </div>
 
-                      {!isCurrent && (
-                        <p className="mt-4 text-center text-xs text-gray-400">
-                          결제 연동 준비 중
-                        </p>
+                      {!isCurrent && plan.price_krw > 0 && (
+                        <button
+                          onClick={() => {
+                            const returnUrl = encodeURIComponent(window.location.origin + '/app');
+                            window.open(
+                              `https://catcident.com/ko/billing/subscribe/?plan=${plan.code}&return_url=${returnUrl}`,
+                              '_blank',
+                              'noopener'
+                            );
+                          }}
+                          className="mt-4 w-full py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                          {subscription?.plan === 'free' ? '구독 시작' : '플랜 변경'}
+                        </button>
                       )}
                     </div>
                   );
@@ -361,10 +371,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         </div>
                         <div className="text-xs text-gray-400 mb-4">만료 없음</div>
                         <button
-                          disabled
-                          className="w-full py-2 px-4 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
+                          onClick={() => {
+                            const returnUrl = encodeURIComponent(window.location.origin + '/app');
+                            window.open(
+                              `https://catcident.com/ko/billing/checkout/?package=${pkg.id}&return_url=${returnUrl}`,
+                              '_blank',
+                              'noopener'
+                            );
+                          }}
+                          className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                         >
-                          준비 중
+                          구매하기
                         </button>
                       </div>
                     );

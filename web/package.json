@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.38.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@xyflow/react": "^12.10.0",
     "force-graph": "^1.51.1",

@@ -13,6 +13,7 @@
 | [05-결제시스템-TossPayments.md](05-결제시스템-TossPayments.md) | TossPayments 연동 아키텍처, API, 코드 예시 |
 | [06-런칭-체크리스트.md](06-런칭-체크리스트.md) | 런칭 전 필수 항목 및 실행 로드맵 |
 | [07-SaaS-리서치.md](07-SaaS-리서치.md) | 업계 사례 분석 (Vercel, GitHub, Atlassian, 뤼튼 등) |
+| [USER_ACTIONS.md](USER_ACTIONS.md) | 사용자 직접 작업 목록 (환경 변수, 마이그레이션, 법적 문서 등) |
 
 ## 핵심 결정 사항 요약
 

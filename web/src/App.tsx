@@ -1,5 +1,5 @@
 /**
- * 인물 관계도 데모 앱 (개선된 버전)
+ * 스토리그래프 앱
  * 장면/시점별 관계도 + 상세 정보 + 데이터 관리
  */
 
@@ -29,6 +29,7 @@ import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeG
 import { loadProgress, syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
 import { useResumeAnalysis } from './hooks/useResumeAnalysis';
+import { Footer } from './components/Footer';
 import type { NovelKnowledgeGraph, ViewMode } from './types';
 
 const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
@@ -65,7 +66,7 @@ function App() {
   const { addFile, isAdding: isAddingFile, progress: addProgress } = useAddFileAnalysis();
   const { resume, clearSavedProgress, isResuming, progress: resumeProgress } = useResumeAnalysis();
 
-  // 로그인 시 구독 정보 로드 + 탭 복귀 시 자동 갱신
+  // 로그인 시 구독 정보 로드 + 탭 복귀/포커스 시 자동 갱신
   useEffect(() => {
     loadSubscription();
     const handleVisibilityChange = () => {
@@ -73,8 +74,15 @@ function App() {
         loadSubscription();
       }
     };
+    const handleFocus = () => {
+      loadSubscription();
+    };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [loadSubscription]);
 
   // 마운트 시 부분 분석 상태 동기화 (타이틀 매칭)
@@ -172,7 +180,10 @@ function App() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
               <Network aria-hidden="true" className="w-8 h-8 text-blue-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800">인물 관계도</h1>
+            <h1 className="text-3xl font-bold text-gray-800">스토리그래프</h1>
+            <a href="https://catcident.com" target="_blank" rel="noopener" className="text-xs text-gray-400 hover:text-gray-500 transition-colors">
+              by 고양이의 만행
+            </a>
             <p className="text-gray-500 mt-2">
               소설을 업로드하면 AI가 자동으로 인물 관계를 분석합니다
             </p>
@@ -189,6 +200,8 @@ function App() {
         <div className="w-full" style={{ maxWidth: 'calc(36rem * 2)' }}>
           <SavedDataGrid onLoad={handleLoadKnowledgeGraph} onShowSubscription={() => setShowSubscriptionPage(true)} />
         </div>
+
+        <Footer />
 
         {/* 모달 (업로드 화면에서도 접근 가능) */}
         {showSubscriptionPage && (
@@ -324,7 +337,10 @@ function App() {
           <div className="flex items-center gap-4 min-w-0">
             <div className="flex items-center gap-2 shrink-0">
               <Network aria-hidden="true" className="w-6 h-6 text-blue-600" />
-              <h1 className="font-bold text-gray-800 whitespace-nowrap sr-only md:not-sr-only">인물 관계도</h1>
+              <h1 className="font-bold text-gray-800 whitespace-nowrap sr-only md:not-sr-only">스토리그래프</h1>
+              <a href="https://catcident.com" target="_blank" rel="noopener" className="text-xs text-gray-400 hover:text-gray-500 transition-colors sr-only md:not-sr-only">
+                by 고양이의 만행
+              </a>
             </div>
             <span className="hidden lg:inline text-sm text-gray-500 truncate max-w-[200px]">
               {knowledgeGraph.metadata.title}
