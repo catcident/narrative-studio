@@ -106,7 +106,7 @@ function PlanCard({ plan }: { plan: BackendPlan }) {
             : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
         }`}
       >
-        {isPaid ? '시작하기' : '무료로 시작'}
+        무료로 시작하기
       </Link>
     </div>
   );
