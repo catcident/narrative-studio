@@ -1,0 +1,306 @@
+{
+  "_test": {
+    "file": "L07_관계디테일_테스트",
+    "timestamp": "2026-02-09T00:10:18.316Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "준서",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "준호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "박성태",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "민재",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "집",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "중학교",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "병원",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "라면",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "계란",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "사진첩",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "불고기",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "과일 바구니",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 15,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 15,
+    "mergedLoreCount": 15,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "준서",
+      "category": "personality",
+      "content": "준서는 조용하고 신중한 성격이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "준호",
+      "category": "personality",
+      "content": "준호는 시끄럽고 충동적인 성격이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박성태",
+      "category": "background",
+      "content": "박성태는 택시 기사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박성태",
+      "category": "motivation",
+      "content": "박성태는 아이들과 보내는 시간이 부족하다는 죄책감에 시달린다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "준서",
+      "category": "relationship_detail",
+      "content": "준서는 엄마가 돌아가신 후 형 노릇을 하려고 애쓴다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "준서",
+      "category": "relationship_detail",
+      "content": "준서는 엄마를 그리워하며 엄마의 사진첩을 가끔 꺼내본다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "준호",
+      "category": "relationship_detail",
+      "content": "준호는 엄마를 그리워하지만 엄마 이야기를 꺼내는 사람에게 화를 낸다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민재",
+      "category": "personality",
+      "content": "민재는 예의 바른 모범생이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "민재",
+      "category": "background",
+      "content": "민재의 부모는 둘 다 교사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "준호",
+      "category": "relationship_detail",
+      "content": "준호는 민재를 이해할 수 없어 짜증을 낸다.",
+      "quote": "관심 끄세요, 반장님.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "민재",
+      "category": "relationship_detail",
+      "content": "민재는 준서를 조심스럽게 대한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "준서",
+      "category": "relationship_detail",
+      "content": "준서는 호의를 받는 것을 불편해하고 동정받는 것 같다고 느낀다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박성태",
+      "category": "appearance",
+      "content": "박성태의 손은 수십 년 핸들을 잡아 굳은살이 가득하다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "준호",
+      "category": "motivation",
+      "content": "준호는 형만 고생하는 것이 싫어 아르바이트를 하고 싶어한다.",
+      "quote": "형만 고생하는 거 싫어. 나도 뭐라도 하고 싶다고.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "준호",
+      "category": "relationship_detail",
+      "content": "준호는 겉으로는 반항적이지만 가족을 향한 마음은 형 못지않다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 93,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (personality, background, motivation, relationship_detail, appearance)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 8개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "15/15 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "15개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 4,
+    "loreEntryCount": 15,
+    "byEntity": {
+      "준서": 4,
+      "준호": 5,
+      "박성태": 3,
+      "민재": 3
+    },
+    "byCategory": {
+      "personality": 3,
+      "background": 2,
+      "motivation": 2,
+      "relationship_detail": 7,
+      "appearance": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

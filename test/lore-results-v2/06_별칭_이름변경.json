@@ -1,0 +1,266 @@
+{
+  "_test": {
+    "file": "06_별칭_이름변경",
+    "timestamp": "2026-02-09T00:10:16.302Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "검은 여우",
+        "category": "character",
+        "aliases": [
+          "까미",
+          "야무라"
+        ],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "숲",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "토끼",
+        "category": "character",
+        "aliases": [
+          "달토끼",
+          "하양이"
+        ],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "떡갈나무 아래",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "남쪽 들판",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "부엉이 어른",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "큰수달",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "작은수달",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "할머니",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "은빛 여우",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 11,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "검은 여우",
+        "merge": "야무라",
+        "reason": "검은 여우의 별칭이 야무라임"
+      },
+      {
+        "keep": "토끼",
+        "merge": "달토끼",
+        "reason": "토끼의 별칭이 달토끼임"
+      },
+      {
+        "keep": "토끼",
+        "merge": "하양이",
+        "reason": "토끼의 별칭이 하양이임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 8,
+    "mergedLoreCount": 8,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "까미": "검은 여우",
+    "야무라": "검은 여우",
+    "달토끼": "토끼",
+    "하양이": "토끼"
+  },
+  "loreEntries": [
+    {
+      "entityName": "검은 여우",
+      "category": "appearance",
+      "content": "검은 털을 가졌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "검은 여우",
+      "category": "personality",
+      "content": "다른 동물들과 어울리지 않는다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "토끼",
+      "category": "appearance",
+      "content": "하얀 털에 붉은 눈을 가졌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "토끼",
+      "category": "background",
+      "content": "원래 남쪽 들판에서 살았다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "토끼",
+      "category": "personality",
+      "content": "적극적이고 사교성이 좋다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "검은 여우",
+      "category": "background",
+      "content": "옛날에 할머니가 야무라를 키워줬다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "부엉이 어른",
+      "category": "lore",
+      "content": "은빛 여우의 전설이 존재한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "검은 여우",
+      "category": "ability",
+      "content": "달빛 아래서 검은 털이 은빛으로 빛난다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 84,
+    "max": 100,
+    "grade": "B+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 10,
+        "max": 20,
+        "detail": "3/6 커버 (누락: 큰수달, 작은수달, 할머니)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (appearance, personality, background, ability)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 1개, 비인물 엔티티 4개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "8/8 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 7,
+        "max": 10,
+        "detail": "8개 (최소 12개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 10,
+    "characterCount": 6,
+    "loreEntryCount": 8,
+    "byEntity": {
+      "검은 여우": 4,
+      "토끼": 3,
+      "부엉이 어른": 1
+    },
+    "byCategory": {
+      "appearance": 2,
+      "personality": 2,
+      "background": 2,
+      "lore": 1,
+      "ability": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

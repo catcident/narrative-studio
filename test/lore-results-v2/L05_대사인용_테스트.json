@@ -1,0 +1,231 @@
+{
+  "_test": {
+    "file": "L05_대사인용_테스트",
+    "timestamp": "2026-02-09T00:09:52.098Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "강민호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "윤정",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "한준혁",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "박서영",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "최태호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "법정",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "CCTV 영상",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 10,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "윤정 [character]",
+        "merge": "'철벽 검사' [character]",
+        "reason": "윤정 검사의 별칭"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 9,
+    "mergedLoreCount": 9,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "강민호",
+      "category": "background",
+      "content": "유명한 사업가이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강민호",
+      "category": "motivation",
+      "content": "횡령 혐의를 벗어나고자 한다.",
+      "quote": "저는 단 한 푼도 횡령한 적 없습니다.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤정",
+      "category": "background",
+      "content": "5년 차 검사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤정",
+      "category": "personality",
+      "content": "지금까지 패소한 적 없는 '철벽 검사'로 불린다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한준혁",
+      "category": "background",
+      "content": "강민호의 변호사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한준혁",
+      "category": "personality",
+      "content": "정의감이 강하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박서영",
+      "category": "background",
+      "content": "회사 경리 팀장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "최태호",
+      "category": "background",
+      "content": "강민호의 회사 부사장이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "강민호",
+      "category": "relationship_detail",
+      "content": "최태호를 20년 동지라고 생각했다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 92,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "5/5 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (background, motivation, personality, relationship_detail)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 2개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "9/9 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 9,
+        "max": 10,
+        "detail": "9개 (최소 10개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 7,
+    "characterCount": 5,
+    "loreEntryCount": 9,
+    "byEntity": {
+      "강민호": 3,
+      "윤정": 2,
+      "한준혁": 2,
+      "박서영": 1,
+      "최태호": 1
+    },
+    "byCategory": {
+      "background": 5,
+      "motivation": 1,
+      "personality": 2,
+      "relationship_detail": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

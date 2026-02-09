@@ -1,0 +1,375 @@
+{
+  "_test": {
+    "file": "L09_조직세력_테스트",
+    "timestamp": "2026-02-09T00:10:50.417Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "장혁수",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          4
+        ]
+      },
+      {
+        "name": "블랙독",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "이나은",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "김수아",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "오재현",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "신성그룹",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "오정택",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "윤태",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "미드나이트 가든",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "서클",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "독사",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "검은 양복의 경비원",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "대용량 파일",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 18,
+    "scenes": 4,
+    "mergeSuggestions": [
+      {
+        "keep": "오재현",
+        "merge": "신성그룹 부회장",
+        "reason": "오재현은 신성그룹 부회장 직함을 가짐"
+      },
+      {
+        "keep": "오정택",
+        "merge": "신성그룹 회장",
+        "reason": "오정택은 신성그룹 회장 직함을 가짐"
+      },
+      {
+        "keep": "장혁수",
+        "merge": "블랙독의 대표",
+        "reason": "장혁수는 블랙독의 대표 직함을 가짐"
+      },
+      {
+        "keep": "장혁수",
+        "merge": "혁수",
+        "reason": "지칭하는 대상이 동일 인물"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 22,
+    "mergedLoreCount": 19,
+    "deduped": 3
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "장혁수",
+      "category": "background",
+      "content": "장혁수는 3년 전 경찰에서 퇴직했다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "장혁수",
+      "category": "personality",
+      "content": "장혁수는 해결률 95%를 자랑하는 사설 탐정 사무소 블랙독의 대표이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이나은",
+      "category": "ability",
+      "content": "이나은은 컴퓨터 포렌식 전문가이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이나은",
+      "category": "background",
+      "content": "이나은은 경찰 사이버수사대 출신이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김수아",
+      "category": "relationship_detail",
+      "content": "김수아는 재벌 2세 오재현의 아내이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "오재현",
+      "category": "background",
+      "content": "오재현은 신성그룹 부회장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "신성그룹",
+      "category": "lore",
+      "content": "신성그룹은 국내 5대 재벌 중 하나이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "신성그룹",
+      "category": "lore",
+      "content": "신성그룹은 건설과 IT 분야에서 강세를 보이고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "오정택",
+      "category": "relationship_detail",
+      "content": "오정택은 오재현의 아버지이자 신성그룹 회장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "오정택",
+      "category": "personality",
+      "content": "오정택은 냉혹한 경영 스타일로 유명하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤태",
+      "category": "ability",
+      "content": "윤태는 추적과 잠입에 능하다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "윤태",
+      "category": "background",
+      "content": "윤태는 전직 군 특수부대 출신이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "미드나이트 가든",
+      "category": "lore",
+      "content": "미드나이트 가든은 겉으로는 고급 칵테일 바이지만, 실제로는 지하 도박장 '서클'의 입구이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서클",
+      "category": "lore",
+      "content": "서클은 서울 지하 범죄 조직 중 하나이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "독사",
+      "category": "lore",
+      "content": "독사는 서클의 리더이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서클",
+      "category": "lore",
+      "content": "서클은 불법 도박, 사채, 정보 브로커 세 가지 사업을 운영한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오재현",
+      "category": "motivation",
+      "content": "오재현은 최근 3개월간 서클에 15억을 잃었다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "장혁수",
+      "category": "relationship_detail",
+      "content": "독사는 장혁수의 경찰 시절 정보원이었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "장혁수",
+      "category": "background",
+      "content": "장혁수는 독사와 관련된 사건 때문에 경찰을 그만두었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 98,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 18,
+        "max": 20,
+        "detail": "7/8 커버 (누락: 검은 양복의 경비원)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (background, personality, ability, relationship_detail, motivation)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 6개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "19/19 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "19개 (최소 16개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 13,
+    "characterCount": 8,
+    "loreEntryCount": 19,
+    "byEntity": {
+      "장혁수": 4,
+      "이나은": 2,
+      "김수아": 1,
+      "오재현": 2,
+      "신성그룹": 2,
+      "오정택": 2,
+      "윤태": 2,
+      "미드나이트 가든": 1,
+      "서클": 2,
+      "독사": 1
+    },
+    "byCategory": {
+      "background": 5,
+      "personality": 2,
+      "ability": 2,
+      "relationship_detail": 3,
+      "lore": 6,
+      "motivation": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

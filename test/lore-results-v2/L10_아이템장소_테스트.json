@@ -1,0 +1,418 @@
+{
+  "_test": {
+    "file": "L10_아이템장소_테스트",
+    "timestamp": "2026-02-09T00:11:05.305Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "수민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "할아버지",
+        "category": "character",
+        "aliases": [
+          "강태수"
+        ],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "상자",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "가죽 지도",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "용의 둥지",
+        "category": "location",
+        "aliases": [
+          "가가도"
+        ],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "은 나침반",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "일기장",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "해담리",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "해신목",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "파도소리",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "오복순 할머니",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "최달호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "동굴",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "청동 항아리",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "해담리 비사",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "비밀 해군 기지",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 20,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "할아버지",
+        "merge": "강태수",
+        "reason": "할아버지의 별칭이 강태수임"
+      },
+      {
+        "keep": "용의 둥지",
+        "merge": "가가도",
+        "reason": "용의 둥지의 별칭이 가가도임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 23,
+    "mergedLoreCount": 23,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "강태수": "할아버지",
+    "가가도": "용의 둥지"
+  },
+  "loreEntries": [
+    {
+      "entityName": "수민",
+      "category": "motivation",
+      "content": "할아버지가 남긴 유언의 의미를 찾으려 한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "할아버지",
+      "category": "background",
+      "content": "수민의 할아버지이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "용의 둥지",
+      "category": "lore",
+      "content": "현재 존재하지 않는 섬의 이름이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "은 나침반",
+      "category": "lore",
+      "content": "바늘이 두 개이며, 하나는 북쪽, 다른 하나는 알 수 없는 방향을 가리킨다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "해담리",
+      "category": "lore",
+      "content": "남해안의 인구 300명의 작은 항구 마을이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "해신목",
+      "category": "lore",
+      "content": "해담리 마을 뒤쪽에 있는 500년 된 팽나무로, 매년 정월에 풍어제를 지낸다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오복순",
+      "category": "appearance",
+      "content": "70대의 노인이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오복순",
+      "category": "personality",
+      "content": "쾌활한 성격이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오복순",
+      "category": "relationship_detail",
+      "content": "강태수를 알고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오복순",
+      "category": "background",
+      "content": "해담리 민박집 '파도소리'의 주인이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오복순",
+      "category": "personality",
+      "content": "해담리 토박이들만 아는 거야.",
+      "quote": "이거... 어디서 났어? 이 지도는",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오복순",
+      "category": "personality",
+      "content": "세상에, 태수가 네 할아버지야?",
+      "quote": "태수? 강태수?",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "할아버지",
+      "category": "background",
+      "content": "50년 전 해담리에서 유명한 해녀 집안의 장남이었다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "할아버지",
+      "category": "background",
+      "content": "어느 날 갑자기 마을을 떠나 다시는 돌아오지 않았다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "용의 둥지",
+      "category": "lore",
+      "content": "해담리에서 배를 타고 2시간 거리에 있는 무인도이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "용의 둥지",
+      "category": "lore",
+      "content": "험한 암초로 둘러싸여 있어 접근이 어렵다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "최달호",
+      "category": "background",
+      "content": "30년간 이 해역을 누빈 베테랑 어부이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "최달호",
+      "category": "personality",
+      "content": "여기가 그 섬이야. 용의 둥지라고도 하는데, 가까이 가면 안 된다고 어르신들이 말했어.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "해담리",
+      "category": "lore",
+      "content": "조선 시대 비밀 해군 기지였다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "해신목",
+      "category": "lore",
+      "content": "해담리 기지의 표식이었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "할아버지",
+      "category": "motivation",
+      "content": "해담리의 비밀을 외부에 알리려다 마을에서 쫓겨났다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "은 나침반",
+      "category": "lore",
+      "content": "강태수가 직접 만든 것이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "은 나침반",
+      "category": "lore",
+      "content": "두 번째 바늘은 해담리의 비밀을 가리키도록 설계되었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 92,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 15,
+        "max": 20,
+        "detail": "3/4 커버 (누락: 오복순 할머니)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (motivation, background, appearance, personality, relationship_detail)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 10개, 비인물 엔티티 12개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 7,
+        "max": 10,
+        "detail": "17/23 연결 (미연결: 오복순)"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "23개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 16,
+    "characterCount": 4,
+    "loreEntryCount": 23,
+    "byEntity": {
+      "수민": 1,
+      "할아버지": 4,
+      "용의 둥지": 3,
+      "은 나침반": 3,
+      "해담리": 2,
+      "해신목": 2,
+      "오복순": 6,
+      "최달호": 2
+    },
+    "byCategory": {
+      "motivation": 2,
+      "background": 5,
+      "lore": 10,
+      "appearance": 1,
+      "personality": 4,
+      "relationship_detail": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

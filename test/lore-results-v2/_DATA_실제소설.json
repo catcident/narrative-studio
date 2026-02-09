@@ -1,0 +1,1069 @@
+{
+  "_test": {
+    "file": "_DATA_실제소설",
+    "timestamp": "2026-02-09T00:08:28.207Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 7
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "콘크리트",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          5,
+          7
+        ]
+      },
+      {
+        "name": "철",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "음식물",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "골판지 상자",
+        "category": "item",
+        "aliases": [
+          "박스",
+          "새 박스",
+          "큰 박스",
+          "골판지 상자"
+        ],
+        "scenes": [
+          1,
+          5,
+          6,
+          8,
+          9,
+          10,
+          13,
+          14,
+          21
+        ]
+      },
+      {
+        "name": "하늘",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          14
+        ]
+      },
+      {
+        "name": "골목",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          13
+        ]
+      },
+      {
+        "name": "인간",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          5,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      {
+        "name": "쓰레기통",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          6,
+          8
+        ]
+      },
+      {
+        "name": "생선 냄새",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "담장",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "이끼",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "새",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          7,
+          8,
+          9,
+          17
+        ]
+      },
+      {
+        "name": "생선 뼈",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "얼룩 고양이",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "물웅덩이",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          5,
+          8
+        ]
+      },
+      {
+        "name": "배수구",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          5
+        ]
+      },
+      {
+        "name": "기름 자국",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          5
+        ]
+      },
+      {
+        "name": "그늘",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "바람",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          5,
+          7,
+          8,
+          9,
+          10,
+          11,
+          17
+        ]
+      },
+      {
+        "name": "풀 냄새",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "name": "검은 고양이",
+        "category": "character",
+        "aliases": [
+          "검"
+        ],
+        "scenes": [
+          6,
+          8,
+          11,
+          21
+        ]
+      },
+      {
+        "name": "생선 머리",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          8
+        ]
+      },
+      {
+        "name": "닭뼈",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          8
+        ]
+      },
+      {
+        "name": "골목 끝",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          8,
+          9
+        ]
+      },
+      {
+        "name": "풀밭",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21
+        ]
+      },
+      {
+        "name": "나무",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          11,
+          14,
+          15,
+          17,
+          19
+        ]
+      },
+      {
+        "name": "회색 고양이",
+        "category": "character",
+        "aliases": [
+          "거꿀"
+        ],
+        "scenes": [
+          12,
+          13,
+          14,
+          15,
+          17,
+          18,
+          19,
+          20,
+          21
+        ]
+      },
+      {
+        "name": "나",
+        "category": "character",
+        "aliases": [
+          "고양이"
+        ],
+        "scenes": [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      },
+      {
+        "name": "비",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          14,
+          15,
+          18
+        ]
+      },
+      {
+        "name": "쥐",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          15,
+          16,
+          19,
+          20
+        ]
+      },
+      {
+        "name": "개울",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          20,
+          21
+        ]
+      },
+      {
+        "name": "물고기",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          20,
+          21
+        ]
+      }
+    ],
+    "relationships": 39,
+    "scenes": 21,
+    "mergeSuggestions": [
+      {
+        "keep": "골판지 상자",
+        "merge": "박스",
+        "reason": "골판지 상자와 박스는 같은 대상을 지칭하는 별칭 관계"
+      },
+      {
+        "keep": "검은 고양이",
+        "merge": "검",
+        "reason": "검은 고양이와 검은 같은 고양이를 지칭하는 별칭 관계"
+      },
+      {
+        "keep": "회색 고양이",
+        "merge": "거꿀",
+        "reason": "회색 고양이와 거꿀은 같은 고양이를 지칭하는 별칭 관계"
+      },
+      {
+        "keep": "나",
+        "merge": "고양이",
+        "reason": "골목에서 온 고양이(나)는 목록에 있는 '골목에서 살아가는 고양이'와 동일 개체로 추정됨"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 83,
+    "mergedLoreCount": 81,
+    "deduped": 2
+  },
+  "entityNameMapping": {
+    "박스": "골판지 상자",
+    "고양이": "나",
+    "새 박스": "골판지 상자",
+    "큰 박스": "골판지 상자",
+    "검": "검은 고양이",
+    "거꿀": "회색 고양이"
+  },
+  "loreEntries": [
+    {
+      "entityName": "나",
+      "category": "appearance",
+      "content": "색을 구분할 수 없다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "후각이 뛰어나 냄새로 주변 환경을 파악한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "청각이 예민하여 작은 소리도 잘 듣는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "나",
+      "category": "background",
+      "content": "골목에서 생활하며 쓰레기통을 뒤져 먹을 것을 찾는다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "싸움을 피하는 것을 선호한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "배가 고프면 무엇이든 먹는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "appearance",
+      "content": "검은색과 주황색이 섞인 털을 가졌다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "appearance",
+      "content": "노란색 눈을 가졌다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "personality",
+      "content": "자신이 영역이라고 생각하는 곳에 다른 고양이가 오는 것을 경계한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "relationship_detail",
+      "content": "골목 근처를 자신의 영역으로 생각한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "personality",
+      "content": "불만족스러운 감정을 쉽게 드러낸다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "ability",
+      "content": "몸집에 비해 움직임이 조용하다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "ability",
+      "content": "담장을 한 번에 뛰어오를 수 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "personality",
+      "content": "경계심이 강하다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "motivation",
+      "content": "자신의 영역을 지키려고 한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "appearance",
+      "content": "나보다 조금 크다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "personality",
+      "content": "낮고 짧은 목소리를 낸다.",
+      "quote": "뭐야.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "얼룩 고양이",
+      "category": "personality",
+      "content": "경계하는 톤으로 말한다.",
+      "quote": "여기 내 쪽이야.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "나",
+      "category": "appearance",
+      "content": "골판지 상자에서 잠을 잔다.",
+      "quote": null,
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "멍하니 앉아 생각을 많이 하는 편이다.",
+      "quote": null,
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "현재의 삶에 만족하지 못하고, 자신의 자리에 대한 소속감을 느끼지 못한다.",
+      "quote": null,
+      "sceneId": "S0007"
+    },
+    {
+      "entityName": "나",
+      "category": "motivation",
+      "content": "저녁에 쓰레기통에서 먹을 것을 찾는 것을 목표로 한다.",
+      "quote": null,
+      "sceneId": "S0007"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "appearance",
+      "content": "털이 짧고 검은 고양이다.",
+      "quote": null,
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "appearance",
+      "content": "눈이 노란색이다.",
+      "quote": null,
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "personality",
+      "content": "나보다 움직임이 빠르다.",
+      "quote": null,
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "personality",
+      "content": "현실적이고 단순한 성격이다.",
+      "quote": null,
+      "sceneId": "S0007"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "personality",
+      "content": "핀잔조의 말투를 사용한다.",
+      "quote": "또 생각이야?",
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "personality",
+      "content": "항상 맞는 말만 한다.",
+      "quote": null,
+      "sceneId": "S0006"
+    },
+    {
+      "entityName": "나",
+      "category": "background",
+      "content": "쓰레기통을 뒤지며 먹을 것을 찾는 고양이.",
+      "quote": null,
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "나",
+      "category": "motivation",
+      "content": "배고픔을 해결하고 안전한 잠자리를 찾는 것이 목표다.",
+      "quote": null,
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "personality",
+      "content": "쓰레기통 근처에서 '나'와 마주치는 것을 개의치 않아한다.",
+      "quote": "*왔네.*",
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "검은 고양이",
+      "category": "lore",
+      "content": "골목 고양이들 사이에는 큰 박스에 들어가면 다른 곳으로 간다는 소문이 있다.",
+      "quote": "*들어가면 다른 곳으로 간다고.*",
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "소문에 대해 믿지 않으면서도 궁금해한다.",
+      "quote": null,
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "후각이 예민하여 평소에 맡던 냄새와 다른 냄새를 구별할 수 있다.",
+      "quote": null,
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "나",
+      "category": "appearance",
+      "content": "담장 밑 웅덩이에서 물을 마실 수 있다.",
+      "quote": null,
+      "sceneId": "S0008"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "박스 안에서 풀 냄새, 흙 냄새, 넓은 곳에서 나는 냄새를 맡는다.",
+      "quote": null,
+      "sceneId": "S0009"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "박스 안에서 골목 소리가 멀어지는 것을 느낀다.",
+      "quote": null,
+      "sceneId": "S0009"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "박스 안에서 이상하게 편안함을 느낀다.",
+      "quote": null,
+      "sceneId": "S0009"
+    },
+    {
+      "entityName": "나",
+      "category": "background",
+      "content": "골목에서 쓰레기통을 뒤지며 생활했다.",
+      "quote": null,
+      "sceneId": "S0010"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "후각으로 주변 환경을 파악할 수 있다.",
+      "quote": null,
+      "sceneId": "S0010"
+    },
+    {
+      "entityName": "나",
+      "category": "motivation",
+      "content": "원래 살던 골목으로 돌아가고 싶어한다.",
+      "quote": null,
+      "sceneId": "S0010"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "문제가 생기면 가만히 있지 않고 해결하려 한다.",
+      "quote": null,
+      "sceneId": "S0010"
+    },
+    {
+      "entityName": "나",
+      "category": "relationship_detail",
+      "content": "검이 지금 무엇을 하고 있을지 궁금해한다.",
+      "quote": null,
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "사냥을 오랫동안 하지 않았다.",
+      "quote": null,
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "나",
+      "category": "appearance",
+      "content": "회색 털을 가졌고, 나보다 조금 작다.",
+      "quote": null,
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "나",
+      "category": "appearance",
+      "content": "짧은 털을 가졌고, 눈 색깔은 연한 색이다.",
+      "quote": null,
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "낯선 고양이가 다가와도 경계하지 않고 편안하게 앉아있는다.",
+      "quote": null,
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "표정을 읽기 어렵다.",
+      "quote": null,
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "말을 할 수 있다.",
+      "quote": "어디서 왔어?",
+      "sceneId": "S0011"
+    },
+    {
+      "entityName": "골판지 상자",
+      "category": "lore",
+      "content": "박스를 통해 다른 장소로 이동할 수 있다.",
+      "quote": null,
+      "sceneId": "S0010"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "appearance",
+      "content": "회색 털을 가졌으며, 털 색깔이 풀밭 색과 비슷해서 움직이지 않으면 잘 안 보인다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "appearance",
+      "content": "눈 색깔은 연한 색이며, 빛에 따라 노란색으로도 보이고 초록색으로도 보인다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "personality",
+      "content": "낯선 고양이('나')에게 경계심을 보이지 않고 편안하게 대한다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "ability",
+      "content": "냄새를 맡아 '나'가 박스에서 왔다는 것을 알아챈다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "background",
+      "content": "'여기'에서 태어났다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "박스에서 나오는 고양이가 드물게 '여기'에 온다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "'여기'에는 다른 이름이 없다.",
+      "quote": "여기는 여기야.",
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "나",
+      "category": "background",
+      "content": "골목에서 왔다.",
+      "quote": "골목에서.",
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "낯선 환경에 긴장하고 경계한다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "나",
+      "category": "motivation",
+      "content": "원래 있던 곳(골목)으로 돌아가고 싶어한다.",
+      "quote": null,
+      "sceneId": "S0013"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "맛을 통해 물이 진짜 물임을 구별할 수 있다.",
+      "quote": null,
+      "sceneId": "S0014"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "죽은 쥐의 신선도를 냄새로 구별할 수 있다.",
+      "quote": null,
+      "sceneId": "S0015"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "먹을 수 있을 때 먹어두는 것이 좋다고 생각한다.",
+      "quote": null,
+      "sceneId": "S0015"
+    },
+    {
+      "entityName": "나",
+      "category": "background",
+      "content": "골목에서 쥐를 잡아먹으며 생활했다.",
+      "quote": null,
+      "sceneId": "S0015"
+    },
+    {
+      "entityName": "나",
+      "category": "motivation",
+      "content": "이 세계를 파악하고자 한다.",
+      "quote": null,
+      "sceneId": "S0015"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "appearance",
+      "content": "회색 고양이이다.",
+      "quote": null,
+      "sceneId": "S0015"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "personality",
+      "content": "걸음걸이가 어색하다.",
+      "quote": null,
+      "sceneId": "S0016"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "personality",
+      "content": "다른 세계에서 온 존재에게 익숙해지면 괜찮다고 말한다.",
+      "quote": null,
+      "sceneId": "S0016"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "이 세계에서는 젖으면 비가 온다.",
+      "quote": "*여기는 원래 그래.*",
+      "sceneId": "S0016"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "relationship_detail",
+      "content": "박스에서 온 다른 세계의 존재들을 알고 있다.",
+      "quote": "*가끔 오잖아. 너처럼. 박스에서. 처음에는 다 이상해해. 근데 금방 익숙해져.*",
+      "sceneId": "S0016"
+    },
+    {
+      "entityName": "나",
+      "category": "background",
+      "content": "나는 다른 세계에서 왔다.",
+      "quote": null,
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "나는 새로운 환경에 적응하려고 노력하지만, 이전 세계의 방식과 달라 혼란스러워한다.",
+      "quote": null,
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "appearance",
+      "content": "거꿀은 회색이다.",
+      "quote": null,
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "personality",
+      "content": "거꿀은 단순하게 생각하며 현재의 세계에 적응하는 것을 중요하게 여긴다.",
+      "quote": "복잡하게 생각하면 머리만 아파.",
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "이 세계에서는 결과가 원인보다 먼저 일어난다.",
+      "quote": null,
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "ability",
+      "content": "거꿀은 발이 먼저 움직이고 방향이 정해지는 특이한 걸음걸이를 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "나는 생각에 잠기면 눈이 멀어지는 듯한 느낌을 받는다.",
+      "quote": null,
+      "sceneId": "S0020"
+    },
+    {
+      "entityName": "나",
+      "category": "ability",
+      "content": "나는 배가 부르면 먹이를 잡을 것이라는 것을 안다.",
+      "quote": null,
+      "sceneId": "S0019"
+    },
+    {
+      "entityName": "나",
+      "category": "personality",
+      "content": "나는 검과 비슷한 생각을 한다.",
+      "quote": null,
+      "sceneId": "S0020"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "이 세계에서는 배가 부르면 먹을 것을 먹게 된다.",
+      "quote": null,
+      "sceneId": "S0020"
+    },
+    {
+      "entityName": "회색 고양이",
+      "category": "lore",
+      "content": "이 세계에서는 물고기를 잡으려면 물고기가 먼저 잡힌 상태가 되어야 한다.",
+      "quote": null,
+      "sceneId": "S0019"
+    }
+  ],
+  "scoring": {
+    "total": 91,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 11,
+        "max": 20,
+        "detail": "4/7 커버 (누락: 인간, 새, 쥐)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "6종 사용 (appearance, ability, background, personality, relationship_detail, motivation)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 8개, 비인물 엔티티 25개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "81/81 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "81개 (최소 14개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 32,
+    "characterCount": 7,
+    "loreEntryCount": 81,
+    "byEntity": {
+      "나": 42,
+      "얼룩 고양이": 12,
+      "검은 고양이": 8,
+      "골판지 상자": 1,
+      "회색 고양이": 18
+    },
+    "byCategory": {
+      "appearance": 14,
+      "ability": 16,
+      "background": 7,
+      "personality": 27,
+      "relationship_detail": 3,
+      "motivation": 6,
+      "lore": 8
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

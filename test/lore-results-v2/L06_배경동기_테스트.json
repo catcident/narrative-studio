@@ -1,0 +1,326 @@
+{
+  "_test": {
+    "file": "L06_배경동기_테스트",
+    "timestamp": "2026-02-09T00:10:07.318Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "정아",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "영호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "서울",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "대학병원 외과",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "영호의 과수원",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "가업",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "사과",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "PTSD",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "마을",
+        "category": "location",
+        "aliases": [
+          "마을 입구 편의점"
+        ],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "보건소",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "마을 이장",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "트라우마",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 15,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "마을",
+        "merge": "마을 입구 편의점",
+        "reason": "편의점은 마을의 특정 장소이므로 마을에 포함될 수 있음"
+      },
+      {
+        "keep": "영호의 과수원",
+        "merge": "가업",
+        "reason": "가업은 영호의 과수원 일을 의미하므로 같은 장소를 지칭함"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 16,
+    "mergedLoreCount": 16,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "마을 입구 편의점": "마을"
+  },
+  "loreEntries": [
+    {
+      "entityName": "정아",
+      "category": "background",
+      "content": "18살에 의대에 합격해 서울로 떠났다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정아",
+      "category": "background",
+      "content": "어머니가 돌아가신 후 고향에 올 이유가 없다고 생각했다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정아",
+      "category": "personality",
+      "content": "서울에서의 생활에 지쳐있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "영호",
+      "category": "background",
+      "content": "아버지가 돌아가신 후 가업인 과수원을 물려받아 15년째 사과 농사를 짓고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "영호",
+      "category": "personality",
+      "content": "정아를 보고 놀란다.",
+      "quote": "정아? 진짜 정아야?",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정아",
+      "category": "appearance",
+      "content": "눈에 피로가 가득하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정아",
+      "category": "background",
+      "content": "대학병원 외과에서 5년간 일했다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정아",
+      "category": "ability",
+      "content": "수술 중 환자를 잃은 후 손이 떨리기 시작했다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정아",
+      "category": "ability",
+      "content": "PTSD 진단을 받았다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정아",
+      "category": "motivation",
+      "content": "환자를 잃은 트라우마 때문에 의사 일을 그만두었다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정아",
+      "category": "personality",
+      "content": "힘든 과거를 겪었다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "영호",
+      "category": "background",
+      "content": "대학 진학을 포기하고 과수원을 물려받았다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "영호",
+      "category": "motivation",
+      "content": "가족을 위해 대학 진학을 포기하고 과수원을 물려받았다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "영호",
+      "category": "personality",
+      "content": "자신의 선택을 후회하지 않는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정아",
+      "category": "motivation",
+      "content": "고향에 돌아온 이유는 다시 시작하기 위해서이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "정아",
+      "category": "motivation",
+      "content": "작은 마을에서 한 명이라도 돕는 것으로 충분하다고 생각한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 86,
+    "max": 100,
+    "grade": "A",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 13,
+        "max": 20,
+        "detail": "2/3 커버 (누락: 마을 이장)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (background, personality, appearance, ability, motivation)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 9개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "16/16 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "16개 (최소 6개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 3,
+    "loreEntryCount": 16,
+    "byEntity": {
+      "정아": 11,
+      "영호": 5
+    },
+    "byCategory": {
+      "background": 5,
+      "personality": 4,
+      "appearance": 1,
+      "ability": 2,
+      "motivation": 4
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

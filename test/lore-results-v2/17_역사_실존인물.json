@@ -1,0 +1,352 @@
+{
+  "_test": {
+    "file": "17_역사_실존인물",
+    "timestamp": "2026-02-09T00:37:47.854Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "정조",
+        "category": "character",
+        "aliases": [
+          "주상"
+        ],
+        "scenes": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "name": "정약용",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "수원 화성",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "혜경궁 홍씨",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          4
+        ]
+      },
+      {
+        "name": "심환지",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "name": "장용영",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "서유방",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "다산 초당",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "황상",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          5
+        ]
+      },
+      {
+        "name": "순조",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "유배지",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "목민심서",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "노론",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      }
+    ],
+    "relationships": 17,
+    "scenes": 5,
+    "mergeSuggestions": [
+      {
+        "keep": "정조",
+        "merge": "주상",
+        "reason": "주상은 정조의 별칭 (왕을 칭하는 단어)"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 18,
+    "mergedLoreCount": 18,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "주상": "정조"
+  },
+  "loreEntries": [
+    {
+      "entityName": "정조",
+      "category": "background",
+      "content": "사도세자의 비극을 가슴에 품고 왕위에 올랐다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정조",
+      "category": "motivation",
+      "content": "개혁을 꿈꾼다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정약용",
+      "category": "relationship_detail",
+      "content": "정조가 가장 신뢰하는 신하이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정약용",
+      "category": "ability",
+      "content": "수원 화성의 설계를 맡았다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정조",
+      "category": "personality",
+      "content": "화성은 백성을 위한 새로운 도시가 되어야 한다고 말했다.",
+      "quote": "약용, 화성은 단순한 성이 아니다. 백성을 위한 새로운 도시가 되어야 한다.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정약용",
+      "category": "personality",
+      "content": "거중기를 활용하면 백성의 노역을 줄일 수 있다고 말했다.",
+      "quote": "전하, 거중기를 활용하면 백성의 노역을 줄일 수 있습니다.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "혜경궁 홍씨",
+      "category": "relationship_detail",
+      "content": "정조의 어머니이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "혜경궁 홍씨",
+      "category": "motivation",
+      "content": "정조의 개혁을 걱정한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "혜경궁 홍씨",
+      "category": "personality",
+      "content": "정조에게 너무 급하게 나가지 말라고 조언했다.",
+      "quote": "주상, 너무 급하게 나가면 안 됩니다. 노론의 눈이 무섭습니다.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "심환지",
+      "category": "relationship_detail",
+      "content": "노론의 영수이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "심환지",
+      "category": "motivation",
+      "content": "정조를 견제한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "심환지",
+      "category": "personality",
+      "content": "정조의 개혁은 조선의 근본을 흔드는 것이라고 말했다.",
+      "quote": "전하의 개혁은 조선의 근본을 흔드는 것입니다.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서유방",
+      "category": "relationship_detail",
+      "content": "장용영 대장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정조",
+      "category": "ability",
+      "content": "정약용에게 심환지의 배후를 조사하는 비밀 임무를 맡겼다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "황상",
+      "category": "relationship_detail",
+      "content": "정약용의 제자이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정약용",
+      "category": "motivation",
+      "content": "유배지에서 목민심서를 집필하여 정조의 뜻을 책으로 남기려 한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "정약용",
+      "category": "personality",
+      "content": "정조의 뜻을 책으로 남기겠다고 다짐했다.",
+      "quote": "전하의 뜻을 책으로 남기겠습니다.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "황상",
+      "category": "lore",
+      "content": "서울의 상황이 심각하며 심환지의 세력이 조정을 장악했다고 정약용에게 전했다.",
+      "quote": "스승님, 서울의 상황이 심각합니다. 심환지의 세력이 조정을 장악했습니다.",
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 94,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 17,
+        "max": 20,
+        "detail": "6/7 커버 (누락: 순조)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (background, motivation, relationship_detail, ability, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 1개, 비인물 엔티티 6개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "18/18 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "18개 (최소 14개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 13,
+    "characterCount": 7,
+    "loreEntryCount": 18,
+    "byEntity": {
+      "정조": 4,
+      "정약용": 5,
+      "혜경궁 홍씨": 3,
+      "심환지": 3,
+      "서유방": 1,
+      "황상": 2
+    },
+    "byCategory": {
+      "background": 1,
+      "motivation": 4,
+      "relationship_detail": 5,
+      "ability": 2,
+      "personality": 5,
+      "lore": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

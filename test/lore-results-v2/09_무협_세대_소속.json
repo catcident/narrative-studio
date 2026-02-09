@@ -1,0 +1,397 @@
+{
+  "_test": {
+    "file": "09_무협_세대_소속",
+    "timestamp": "2026-02-09T00:11:17.626Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "화산파",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "name": "장일현",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5
+        ]
+      },
+      {
+        "name": "장로회",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "임도경",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5
+        ]
+      },
+      {
+        "name": "유이설",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          4
+        ]
+      },
+      {
+        "name": "백청능",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          4
+        ]
+      },
+      {
+        "name": "청명",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "윤종",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "조걸",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "취선루",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "왕대풍",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "흑풍채",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "마진",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "남궁세가",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3,
+          5
+        ]
+      },
+      {
+        "name": "남궁서린",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "화산",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          5
+        ]
+      }
+    ],
+    "relationships": 29,
+    "scenes": 5,
+    "mergeSuggestions": [
+      {
+        "keep": "장일현",
+        "merge": "매화검존",
+        "reason": "매화검존은 장일현의 별칭/호칭"
+      },
+      {
+        "keep": "화산",
+        "merge": "화산파",
+        "reason": "화산은 화산파의 위치"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 18,
+    "mergedLoreCount": 18,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "화산파",
+      "category": "lore",
+      "content": "화산파는 중원 오대세가 중 하나이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "화산파",
+      "category": "lore",
+      "content": "화산파는 섬서성 화산에 자리 잡은 정파 무림 문파이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "장일현",
+      "category": "lore",
+      "content": "장일현은 화산파의 현 장문인이며, 매화검존이라 불린다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "임도경",
+      "category": "lore",
+      "content": "임도경은 화산파 장로회의 수석장로이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "유이설",
+      "category": "ability",
+      "content": "유이설은 매화이십사수를 완성한 천재이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "백청능",
+      "category": "ability",
+      "content": "백청능은 내공이 깊어 후배들의 존경을 받는다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "청명",
+      "category": "relationship_detail",
+      "content": "청명은 유이설의 수제자이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤종",
+      "category": "relationship_detail",
+      "content": "윤종은 백청능의 수제자이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "조걸",
+      "category": "relationship_detail",
+      "content": "조걸은 유이설의 제자이며, 청명의 사제이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "조걸",
+      "category": "personality",
+      "content": "조걸은 항상 배가 고프다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "왕대풍",
+      "category": "personality",
+      "content": "왕대풍은 손님을 반갑게 맞이한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "흑풍채",
+      "category": "lore",
+      "content": "흑풍채는 남궁세가를 적대하는 사파 무인들의 조직이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "마진",
+      "category": "outfit",
+      "content": "마진은 칼을 소지하고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "청명",
+      "category": "ability",
+      "content": "청명은 유이설에게 매화검법을 배웠다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "윤종",
+      "category": "ability",
+      "content": "윤종은 백청능에게 화산장법을 배웠다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "남궁서린",
+      "category": "background",
+      "content": "남궁서린은 남궁세가 소가주의 딸이자, 가주 남궁천의 손녀이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "남궁서린",
+      "category": "personality",
+      "content": "남궁서린은 흑풍채의 말썽에 한숨을 쉰다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "남궁세가",
+      "category": "lore",
+      "content": "남궁세가는 화산파와 교류하는 정파 세가이다.",
+      "quote": null,
+      "sceneId": "S0004"
+    }
+  ],
+  "scoring": {
+    "total": 99,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "10/10 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (ability, relationship_detail, personality, outfit, background)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 6개, 비인물 엔티티 6개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "18/18 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 9,
+        "max": 10,
+        "detail": "18개 (최소 20개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 16,
+    "characterCount": 10,
+    "loreEntryCount": 18,
+    "byEntity": {
+      "화산파": 2,
+      "장일현": 1,
+      "임도경": 1,
+      "유이설": 1,
+      "백청능": 1,
+      "청명": 2,
+      "윤종": 2,
+      "조걸": 2,
+      "왕대풍": 1,
+      "흑풍채": 1,
+      "마진": 1,
+      "남궁서린": 2,
+      "남궁세가": 1
+    },
+    "byCategory": {
+      "lore": 6,
+      "ability": 4,
+      "relationship_detail": 3,
+      "personality": 3,
+      "outfit": 1,
+      "background": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

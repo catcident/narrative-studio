@@ -1,0 +1,431 @@
+{
+  "_test": {
+    "file": "15_다중청크_장편",
+    "timestamp": "2026-02-09T00:37:22.724Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "윤기태",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5,
+          6
+        ]
+      },
+      {
+        "name": "박순덕",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5,
+          7
+        ]
+      },
+      {
+        "name": "녹원리",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          7
+        ]
+      },
+      {
+        "name": "김판석",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5,
+          6
+        ]
+      },
+      {
+        "name": "윤용준",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5,
+          7
+        ]
+      },
+      {
+        "name": "최서연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5,
+          7
+        ]
+      },
+      {
+        "name": "윤하나",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "이정자",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          5,
+          7
+        ]
+      },
+      {
+        "name": "이민규",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "마을 이장 손태호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          5
+        ]
+      },
+      {
+        "name": "뒷산",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "멧돼지",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "개울",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "절벽",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          6
+        ]
+      }
+    ],
+    "relationships": 25,
+    "scenes": 7,
+    "mergeSuggestions": [
+      {
+        "keep": "마을 이장 손태호",
+        "merge": "녹원리 이장",
+        "reason": "같은 사람을 지칭하는 것으로 보임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 37,
+    "mergedLoreCount": 26,
+    "deduped": 11
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "윤기태",
+      "category": "relationship_detail",
+      "content": "박순덕의 남편이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤기태",
+      "category": "relationship_detail",
+      "content": "윤용준의 아버지이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤기태",
+      "category": "personality",
+      "content": "매일 아침 마을 입구 정자나무 아래에서 바둑을 둔다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤기태",
+      "category": "relationship_detail",
+      "content": "김판석과 바둑을 두는 사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤기태",
+      "category": "relationship_detail",
+      "content": "윤하나의 할아버지이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박순덕",
+      "category": "relationship_detail",
+      "content": "윤기태의 아내이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박순덕",
+      "category": "relationship_detail",
+      "content": "윤용준의 어머니이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박순덕",
+      "category": "personality",
+      "content": "마을 경로당에서 이정자와 수다를 떤다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박순덕",
+      "category": "relationship_detail",
+      "content": "윤하나의 할머니이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "윤용준",
+      "category": "background",
+      "content": "서울에서 변호사로 일한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤용준",
+      "category": "relationship_detail",
+      "content": "최서연의 남편이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤용준",
+      "category": "relationship_detail",
+      "content": "윤하나의 아버지이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최서연",
+      "category": "background",
+      "content": "초등학교 교사이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최서연",
+      "category": "relationship_detail",
+      "content": "윤용준의 아내이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최서연",
+      "category": "relationship_detail",
+      "content": "윤하나의 어머니이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤하나",
+      "category": "relationship_detail",
+      "content": "윤용준과 최서연의 딸이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤하나",
+      "category": "relationship_detail",
+      "content": "윤기태와 박순덕의 손녀이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤하나",
+      "category": "relationship_detail",
+      "content": "이민규와 같은 나이이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김판석",
+      "category": "relationship_detail",
+      "content": "윤기태의 이웃이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김판석",
+      "category": "relationship_detail",
+      "content": "윤기태의 바둑 상대이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이정자",
+      "category": "personality",
+      "content": "마을 경로당에서 박순덕과 수다를 떤다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이정자",
+      "category": "relationship_detail",
+      "content": "이민규의 할머니이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이민규",
+      "category": "relationship_detail",
+      "content": "이정자의 손자이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이민규",
+      "category": "relationship_detail",
+      "content": "윤하나와 같은 나이이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "손태호",
+      "category": "background",
+      "content": "녹원리의 이장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "손태호",
+      "category": "lore",
+      "content": "뒷산 너머에 멧돼지가 나온다.",
+      "quote": null,
+      "sceneId": "S0002"
+    }
+  ],
+  "scoring": {
+    "total": 92,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 16,
+        "max": 20,
+        "detail": "8/10 커버 (누락: 마을 이장 손태호, 멧돼지)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (relationship_detail, personality, background)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 1개, 비인물 엔티티 4개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 9,
+        "max": 10,
+        "detail": "24/26 연결 (미연결: 손태호)"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "26개 (최소 20개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 14,
+    "characterCount": 10,
+    "loreEntryCount": 26,
+    "byEntity": {
+      "윤기태": 5,
+      "박순덕": 4,
+      "윤용준": 3,
+      "최서연": 3,
+      "윤하나": 3,
+      "김판석": 2,
+      "이정자": 2,
+      "이민규": 2,
+      "손태호": 2
+    },
+    "byCategory": {
+      "relationship_detail": 19,
+      "personality": 3,
+      "background": 3,
+      "lore": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

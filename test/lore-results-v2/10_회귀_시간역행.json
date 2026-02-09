@@ -1,0 +1,222 @@
+{
+  "_test": {
+    "file": "10_회귀_시간역행",
+    "timestamp": "2026-02-09T00:11:27.032Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "이서하",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "오진우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "김도하",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "차가운 바닥",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "교실",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "한지안",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "복도",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 10,
+    "scenes": 4,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 9,
+    "mergedLoreCount": 9,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "이서하",
+      "category": "background",
+      "content": "오진우에게 살해당했다.",
+      "quote": "미안해, 서하야.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "오진우",
+      "category": "relationship_detail",
+      "content": "이서하를 배신하고 살해했다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김도하",
+      "category": "relationship_detail",
+      "content": "오진우가 이서하를 살해하는 것을 목격하고 오진우를 질책했다.",
+      "quote": "진우! 왜... 왜 이런 짓을!",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이서하",
+      "category": "background",
+      "content": "1년 전 과거로 회귀했다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "김도하",
+      "category": "relationship_detail",
+      "content": "회귀 전, 이서하와 친구였다.",
+      "quote": "서하야, 괜찮아? 얼굴이 창백해.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오진우",
+      "category": "personality",
+      "content": "겉으로는 이서하에게 친근하게 대한다.",
+      "quote": "서하! 오늘 방과후에 같이 농구할래?",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한지안",
+      "category": "personality",
+      "content": "이서하의 눈에서 무언가를 느낀다.",
+      "quote": "넌 뭔가 다른 눈을 하고 있어.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "한지안",
+      "category": "background",
+      "content": "한지안 또한 회귀자이다.",
+      "quote": "나도 한 번 죽었거든.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "한지안",
+      "category": "relationship_detail",
+      "content": "오진우 뒤에 누군가가 있다고 경고한다.",
+      "quote": "오진우... 조심해. 그 사람 뒤에 누가 있어.",
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 93,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (background, relationship_detail, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 3개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "9/9 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "9개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 7,
+    "characterCount": 4,
+    "loreEntryCount": 9,
+    "byEntity": {
+      "이서하": 2,
+      "오진우": 2,
+      "김도하": 2,
+      "한지안": 3
+    },
+    "byCategory": {
+      "background": 3,
+      "relationship_detail": 4,
+      "personality": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

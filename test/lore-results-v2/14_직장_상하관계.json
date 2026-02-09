@@ -1,0 +1,410 @@
+{
+  "_test": {
+    "file": "14_직장_상하관계",
+    "timestamp": "2026-02-09T00:08:20.999Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "김태리",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "name": "한솔그룹",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "이동준",
+        "category": "character",
+        "aliases": [
+          "이 상무"
+        ],
+        "scenes": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "name": "정현수",
+        "category": "character",
+        "aliases": [
+          "정 팀장",
+          "현수"
+        ],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "안소미",
+        "category": "character",
+        "aliases": [
+          "안 팀장"
+        ],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "박민우",
+        "category": "character",
+        "aliases": [
+          "민우 차장"
+        ],
+        "scenes": [
+          1,
+          4
+        ]
+      },
+      {
+        "name": "조은별",
+        "category": "character",
+        "aliases": [
+          "은별 대리"
+        ],
+        "scenes": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "name": "한영식",
+        "category": "character",
+        "aliases": [
+          "한 회장"
+        ],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "류재현",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "기획1팀",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "name": "기획2팀",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "자료",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "커피",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "한솔그룹 경영기획실",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "기획2팀 사무실",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 16,
+    "scenes": 4,
+    "mergeSuggestions": [
+      {
+        "keep": "이동준",
+        "merge": "이 상무",
+        "reason": "이동준의 별칭이 이 상무임"
+      },
+      {
+        "keep": "정현수",
+        "merge": "정 팀장",
+        "reason": "정현수의 별칭이 정 팀장임"
+      },
+      {
+        "keep": "정현수",
+        "merge": "현수",
+        "reason": "정현수의 별칭이 현수임"
+      },
+      {
+        "keep": "안소미",
+        "merge": "안 팀장",
+        "reason": "안소미의 별칭이 안 팀장임"
+      },
+      {
+        "keep": "박민우",
+        "merge": "민우 차장",
+        "reason": "박민우의 별칭이 민우 차장임"
+      },
+      {
+        "keep": "조은별",
+        "merge": "은별 대리",
+        "reason": "조은별의 별칭이 은별 대리임"
+      },
+      {
+        "keep": "한영식",
+        "merge": "한 회장",
+        "reason": "한영식의 별칭이 한 회장임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 16,
+    "mergedLoreCount": 16,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "이 상무": "이동준",
+    "정 팀장": "정현수",
+    "현수": "정현수",
+    "안 팀장": "안소미",
+    "민우 차장": "박민우",
+    "은별 대리": "조은별",
+    "한 회장": "한영식"
+  },
+  "loreEntries": [
+    {
+      "entityName": "김태리",
+      "category": "background",
+      "content": "김태리는 한솔그룹 경영기획실 신입사원이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이동준",
+      "category": "lore",
+      "content": "이동준은 한솔그룹 경영기획실 실장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이동준",
+      "category": "lore",
+      "content": "이동준의 직책은 상무이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정현수",
+      "category": "lore",
+      "content": "정현수는 기획1팀 팀장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "안소미",
+      "category": "lore",
+      "content": "안소미는 기획2팀 팀장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정현수",
+      "category": "relationship_detail",
+      "content": "정현수는 김태리에게 팀 선배들을 소개한다.",
+      "quote": "우리 팀에는 선배 두 명이 있어. 차장 박민우와 대리 조은별. 뭐든 물어봐.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박민우",
+      "category": "personality",
+      "content": "박민우는 과묵하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박민우",
+      "category": "ability",
+      "content": "박민우는 실력이 좋다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "조은별",
+      "category": "personality",
+      "content": "조은별은 활발하고 친절하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한영식",
+      "category": "lore",
+      "content": "한영식은 한솔그룹 회장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "류재현",
+      "category": "lore",
+      "content": "류재현은 한영식 회장의 비서실장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "안소미",
+      "category": "relationship_detail",
+      "content": "안소미는 정현수를 걱정한다.",
+      "quote": "현수야, 신입한테 너무 무리시키지 마. 내가 우리 팀 인원 하나 빌려줄까?",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한영식",
+      "category": "personality",
+      "content": "한영식은 김태리의 발표에 만족한다.",
+      "quote": "좋군. 이 상무, 신입치고 대단하네.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "이동준",
+      "category": "relationship_detail",
+      "content": "이동준은 한영식에게 정현수의 공을 치켜세운다.",
+      "quote": "기획1팀 정현수 팀장이 잘 이끌었습니다.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박민우",
+      "category": "relationship_detail",
+      "content": "박민우는 김태리에게 수고했다며 커피를 건넨다.",
+      "quote": "고생했어. 회장님 앞에서 발표한 건 나도 아직 못 해봤는데.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "조은별",
+      "category": "relationship_detail",
+      "content": "조은별은 김태리를 칭찬한다.",
+      "quote": "우리 팀 에이스 탄생이다!",
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 100,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "8/8 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (background, relationship_detail, personality, ability)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 6개, 비인물 엔티티 7개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "16/16 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "16개 (최소 16개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 15,
+    "characterCount": 8,
+    "loreEntryCount": 16,
+    "byEntity": {
+      "김태리": 1,
+      "이동준": 3,
+      "정현수": 2,
+      "안소미": 2,
+      "박민우": 3,
+      "조은별": 2,
+      "한영식": 2,
+      "류재현": 1
+    },
+    "byCategory": {
+      "background": 1,
+      "lore": 6,
+      "relationship_detail": 5,
+      "personality": 3,
+      "ability": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

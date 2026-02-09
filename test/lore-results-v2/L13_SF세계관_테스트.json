@@ -1,0 +1,462 @@
+{
+  "_test": {
+    "file": "L13_SF세계관_테스트",
+    "timestamp": "2026-02-09T00:12:00.695Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "뉴 호라이즌",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "박소율",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "김한결",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "D구역",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "전수진",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "AT-500",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "장우석",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "중앙 관제실",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          4
+        ]
+      },
+      {
+        "name": "A구역 대기 필터",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "C-14 구획 산소 센서",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "메인 대기 순환 시스템",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "보조 시스템",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      }
+    ],
+    "relationships": 15,
+    "scenes": 4,
+    "mergeSuggestions": [
+      {
+        "keep": "뉴 호라이즌 [location]",
+        "merge": "화성 제3콜로니 [location]",
+        "reason": "뉴 호라이즌은 화성 제3콜로니를 지칭하는 이름임"
+      },
+      {
+        "keep": "메인 대기 순환 시스템 [concept]",
+        "merge": "돔 대기 순환 시스템 [concept]",
+        "reason": "박소율이 책임자인 돔 대기 순환 시스템은 뉴 호라이즌의 메인 대기 순환 시스템을 지칭하는 것으로 보임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 35,
+    "mergedLoreCount": 35,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "2287년 화성에 위치한 제3콜로니이며, 인구는 5만 명이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "돔은 이중 강화유리와 티타늄 합금으로 만들어졌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "내부에는 인공 대기 시스템이 작동하고 있으며, 기온은 항상 섭씨 22도로 유지된다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "appearance",
+      "content": "짧은 단발머리를 하고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "appearance",
+      "content": "왼쪽 귀 뒤에 통신 임플란트가 이식되어 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "outfit",
+      "content": "검은 유니폼에 오렌지색 헬멧을 쓰고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "ability",
+      "content": "돔 대기 순환 시스템의 책임자이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "ability",
+      "content": "메인 대기 순환 시스템의 코어 모듈 손상 원인을 분석했다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "비상 상황에도 눈빛이 흔들리지 않는다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "A구역 대기 필터 교체 완료. 이상 없음.",
+      "quote": "\"A구역 대기 필터 교체 완료. 이상 없음.\"",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "네, 바로 갈게요.",
+      "quote": "\"네, 바로 갈게요.\"",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "이상하다... 센서 고장이 아니야. 실제로 산소가 줄고 있어.",
+      "quote": "\"이상하다... 센서 고장이 아니야. 실제로 산소가 줄고 있어.\"",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "한결 팀장님, 비상 상황 같습니다.",
+      "quote": "\"한결 팀장님, 비상 상황 같습니다.\"",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "메인 대기 순환 시스템의 코어 모듈이 물리적으로 손상되어 있었습니다. 도구로 뜯어낸 흔적이요.",
+      "quote": "\"메인 대기 순환 시스템의 코어 모듈이 물리적으로 손상되어 있었습니다. 도구로 뜯어낸 흔적이요.\"",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박소율",
+      "category": "personality",
+      "content": "48시간 안에 산소 부족으로 전원 위험합니다.",
+      "quote": "\"48시간 안에 산소 부족으로 전원 위험합니다.\"",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김한결",
+      "category": "appearance",
+      "content": "키가 크고 마른 체형에 은테 안경을 쓰고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김한결",
+      "category": "appearance",
+      "content": "50대이지만 화성의 약한 중력 덕분에 지구 나이보다 젊어 보인다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김한결",
+      "category": "ability",
+      "content": "뉴 호라이즌의 행정 총괄이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김한결",
+      "category": "personality",
+      "content": "소율 씨, D구역 산소 농도가 0.2% 떨어졌어. 확인 좀 해줘.",
+      "quote": "\"소율 씨, D구역 산소 농도가 0.2% 떨어졌어. 확인 좀 해줘.\"",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김한결",
+      "category": "personality",
+      "content": "사고가 아니라 인위적이라는 거야?",
+      "quote": "\"사고가 아니라 인위적이라는 거야?\"",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김한결",
+      "category": "personality",
+      "content": "우석 씨는 범인 추적. 소율 씨는 메인 시스템 복구. 수진 씨는 산소 보충. 시간이 없다.",
+      "quote": "\"우석 씨는 범인 추적. 소율 씨는 메인 시스템 복구. 수진 씨는 산소 보충. 시간이 없다.\"",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "전수진",
+      "category": "ability",
+      "content": "지구에서 농학 박사를 땄다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "전수진",
+      "category": "motivation",
+      "content": "화성 토양에서 직접 작물을 키우는 것이 꿈이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "전수진",
+      "category": "personality",
+      "content": "소율 씨, 이쪽이에요. C-14 구획 산소 센서가 이상 수치를 보이고 있어요.",
+      "quote": "\"소율 씨, 이쪽이에요. C-14 구획 산소 센서가 이상 수치를 보이고 있어요.\"",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "전수진",
+      "category": "personality",
+      "content": "농업 돔 산소 발생량을 최대로 올릴게요. 식물의 광합성을 촉진하면 보조 시스템 부담을 줄일 수 있어요.",
+      "quote": "\"농업 돔 산소 발생량을 최대로 올릴게요. 식물의 광합성을 촉진하면 보조 시스템 부담을 줄일 수 있어요.\"",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "장우석",
+      "category": "appearance",
+      "content": "큰 체구에 짧은 삭발 머리를 하고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "장우석",
+      "category": "appearance",
+      "content": "왼쪽 뺨에 오래된 칼자국이 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "장우석",
+      "category": "background",
+      "content": "전직 우주군 중령이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "장우석",
+      "category": "ability",
+      "content": "콜로니 치안을 담당한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "대기 순환 시스템은 메인 시스템, 보조 시스템, 비상 시스템 세 겹의 백업이 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "AT-500",
+      "category": "lore",
+      "content": "휴대용 대기 분석기로, 콜로니 표준 장비이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "AT-500",
+      "category": "lore",
+      "content": "산소, 질소, 이산화탄소, 유해가스 농도를 실시간으로 측정한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "D구역은 농업 돔으로, 화성에서 자체 식량을 생산하기 위한 수경 재배 시설이 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "농업 돔의 재배 품목은 쌀, 감자, 토마토, 양상추 등 기본 작물이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "뉴 호라이즌",
+      "category": "lore",
+      "content": "농업 돔의 빛은 태양광 패널에서 수집한 에너지로 구동되는 인공 조명이 대신한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    }
+  ],
+  "scoring": {
+    "total": 97,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "6종 사용 (appearance, outfit, ability, personality, motivation, background)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 12,
+        "max": 15,
+        "detail": "⚠ 1건 중복"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 9개, 비인물 엔티티 8개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "35/35 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "35개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 4,
+    "loreEntryCount": 35,
+    "byEntity": {
+      "뉴 호라이즌": 7,
+      "박소율": 12,
+      "김한결": 6,
+      "전수진": 4,
+      "장우석": 4,
+      "AT-500": 2
+    },
+    "byCategory": {
+      "lore": 9,
+      "appearance": 6,
+      "outfit": 1,
+      "ability": 5,
+      "personality": 12,
+      "motivation": 1,
+      "background": 1
+    },
+    "duplicateCount": 1,
+    "pronounUnresolved": 0
+  }
+}

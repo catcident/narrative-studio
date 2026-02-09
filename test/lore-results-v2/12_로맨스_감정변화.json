@@ -1,0 +1,285 @@
+{
+  "_test": {
+    "file": "12_로맨스_감정변화",
+    "timestamp": "2026-02-09T00:37:06.886Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "유나",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "강민재",
+        "category": "character",
+        "aliases": [
+          "민재"
+        ],
+        "scenes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "오세영",
+        "category": "character",
+        "aliases": [
+          "세영 팀장"
+        ],
+        "scenes": [
+          1,
+          5
+        ]
+      },
+      {
+        "name": "송지원",
+        "category": "character",
+        "aliases": [
+          "지원"
+        ],
+        "scenes": [
+          2,
+          5
+        ]
+      },
+      {
+        "name": "마케팅팀",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "회사",
+        "category": "location",
+        "aliases": [
+          "새 직장"
+        ],
+        "scenes": [
+          2,
+          5,
+          1
+        ]
+      },
+      {
+        "name": "병원",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "회사 워크숍",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "바닷가",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      }
+    ],
+    "relationships": 23,
+    "scenes": 5,
+    "mergeSuggestions": [
+      {
+        "keep": "강민재",
+        "merge": "민재",
+        "reason": "강민재의 별칭이 민재임"
+      },
+      {
+        "keep": "오세영",
+        "merge": "세영 팀장",
+        "reason": "오세영의 별칭이 세영 팀장임"
+      },
+      {
+        "keep": "송지원",
+        "merge": "지원",
+        "reason": "송지원의 별칭이 지원임"
+      },
+      {
+        "keep": "회사",
+        "merge": "새 직장",
+        "reason": "유나가 처음 출근한 직장은 회사임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 10,
+    "mergedLoreCount": 10,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "새 직장": "회사",
+    "민재": "강민재",
+    "세영 팀장": "오세영",
+    "지원": "송지원"
+  },
+  "loreEntries": [
+    {
+      "entityName": "유나",
+      "category": "background",
+      "content": "새 직장 마케팅팀에 배정되었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강민재",
+      "category": "personality",
+      "content": "무뚝뚝한 성격이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "오세영",
+      "category": "background",
+      "content": "마케팅팀 팀장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강민재",
+      "category": "personality",
+      "content": "유나에게 차갑게 대한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "송지원",
+      "category": "relationship_detail",
+      "content": "유나는 송지원에게 민재에 대해 하소연한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강민재",
+      "category": "relationship_detail",
+      "content": "유나가 쓰러졌을 때 유나를 병원에 데려갔다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강민재",
+      "category": "personality",
+      "content": "걱정하는 모습을 보인다.",
+      "quote": "왜 무리하는 거야. 바보같이.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강민재",
+      "category": "motivation",
+      "content": "유나에게 잘해주고 싶었지만 티가 날까 봐 일부러 차갑게 대했다.",
+      "quote": "나... 유나 씨한테 처음부터 잘해주고 싶었어. 근데 그러면 티 날까봐.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "유나",
+      "category": "relationship_detail",
+      "content": "강민재를 좋아한다.",
+      "quote": "나도 좋아해.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "오세영",
+      "category": "personality",
+      "content": "사내연애를 조심하라고 말하며 웃는다.",
+      "quote": "사내연애 조심해요, 두 분.",
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 93,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (background, personality, relationship_detail, motivation)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "10/10 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "10개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 4,
+    "loreEntryCount": 10,
+    "byEntity": {
+      "유나": 2,
+      "강민재": 5,
+      "오세영": 2,
+      "송지원": 1
+    },
+    "byCategory": {
+      "background": 2,
+      "personality": 4,
+      "relationship_detail": 3,
+      "motivation": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

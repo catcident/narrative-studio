@@ -1,0 +1,576 @@
+{
+  "_test": {
+    "file": "L12_의상변화_테스트",
+    "timestamp": "2026-02-09T00:11:43.945Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "한소희",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "최영준",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "박지유",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "오디션장",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "검은 크롭탑",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "하이웨스트 청바지",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "검은 터틀넥",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "회색 슬랙스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "고가의 은색 시계",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "흰 원피스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "분홍 카디건",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "데뷔 조",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "연습실",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "회색 맨투맨",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "검은 레깅스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "낡은 흰색 운동화",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "분홍 트레이닝복",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "보라색 후드티",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "흰 반바지",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "검은 가죽 재킷",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "찢어진 청바지",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "뮤직비디오",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "도시의 밤",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "스타일리스트",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "스팽글이 달린 은색 원피스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "블랙 하이힐",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "긴 은색 귀걸이",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "흰 블라우스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "검은 미니스커트",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "레드 부츠",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "큰 리본 머리핀",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "하트 모양 스티커",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "파란 데님 셔츠",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "촬영 현장",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 38,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "최영준",
+        "merge": "영준",
+        "reason": "소설 내에서 최영준을 영준이라고 칭하는 경우"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 29,
+    "mergedLoreCount": 28,
+    "deduped": 1
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "한소희",
+      "category": "appearance",
+      "content": "허리까지 오는 갈색 웨이브 머리를 하나로 묶었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한소희",
+      "category": "appearance",
+      "content": "화장을 거의 하지 않은 맨얼굴이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한소희",
+      "category": "outfit",
+      "content": "검은 크롭탑에 하이웨스트 청바지를 입고 있었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최영준",
+      "category": "appearance",
+      "content": "짧은 머리에 날카로운 눈매를 가졌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최영준",
+      "category": "outfit",
+      "content": "검은 터틀넥에 회색 슬랙스 차림이었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최영준",
+      "category": "outfit",
+      "content": "왼쪽 손목에 고가의 은색 시계를 차고 있었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "최영준",
+      "category": "personality",
+      "content": "춤에 감정이 실려야 한다고 생각한다.",
+      "quote": "동작은 좋은데 감정이 없어. 춤은 기술이 아니라 이야기야.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박지유",
+      "category": "appearance",
+      "content": "어깨 위로 내려오는 단발머리이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박지유",
+      "category": "appearance",
+      "content": "둥글둥글한 얼굴이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박지유",
+      "category": "outfit",
+      "content": "흰 원피스에 분홍 카디건을 입고 있었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한소희",
+      "category": "outfit",
+      "content": "회색 맨투맨에 검은 레깅스를 입는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한소희",
+      "category": "outfit",
+      "content": "낡은 흰색 운동화를 신는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한소희",
+      "category": "appearance",
+      "content": "머리는 항상 높은 포니테일로 묶는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한소희",
+      "category": "personality",
+      "content": "깔끔한 성격이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박지유",
+      "category": "outfit",
+      "content": "분홍 트레이닝복이나 보라색 후드티에 흰 반바지를 입는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박지유",
+      "category": "appearance",
+      "content": "머리를 양 갈래로 묶거나, 머리띠를 하거나, 그냥 풀거나 매번 다르게 한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박지유",
+      "category": "personality",
+      "content": "기분에 따라 옷을 입어야 춤도 잘 춘다고 생각한다.",
+      "quote": "많지. 기분 따라 입어야 춤도 잘 추지.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "최영준",
+      "category": "outfit",
+      "content": "검은 가죽 재킷에 찢어진 청바지를 입었다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "최영준",
+      "category": "outfit",
+      "content": "날씨와 관계없이 항상 검은색 계열의 옷을 입는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한소희",
+      "category": "outfit",
+      "content": "스팽글이 달린 은색 원피스를 입었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "한소희",
+      "category": "outfit",
+      "content": "블랙 하이힐을 신었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "한소희",
+      "category": "outfit",
+      "content": "긴 은색 귀걸이를 착용했다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "한소희",
+      "category": "appearance",
+      "content": "눈가에 글리터를 뿌리고 빨간 립스틱을 발랐다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박지유",
+      "category": "outfit",
+      "content": "흰 블라우스에 검은 미니스커트를 입었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박지유",
+      "category": "outfit",
+      "content": "레드 부츠를 신었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박지유",
+      "category": "appearance",
+      "content": "단발머리에 큰 리본 머리핀을 꽂았다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박지유",
+      "category": "appearance",
+      "content": "눈 아래에 하트 모양 스티커를 붙였다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "최영준",
+      "category": "outfit",
+      "content": "파란 데님 셔츠를 걸쳐 입고 있었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 88,
+    "max": 100,
+    "grade": "A",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 15,
+        "max": 20,
+        "detail": "3/4 커버 (누락: 스타일리스트)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (appearance, outfit, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 30개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "28/28 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "28개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 34,
+    "characterCount": 4,
+    "loreEntryCount": 28,
+    "byEntity": {
+      "한소희": 11,
+      "최영준": 7,
+      "박지유": 10
+    },
+    "byCategory": {
+      "appearance": 10,
+      "outfit": 15,
+      "personality": 3
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

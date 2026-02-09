@@ -1,0 +1,307 @@
+{
+  "_test": {
+    "file": "18_SF_우주배경",
+    "timestamp": "2026-02-09T00:38:05.380Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "나유리",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "크리스 웨인",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "오세진",
+        "category": "character",
+        "aliases": [
+          "세진"
+        ],
+        "scenes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "릴리 첸",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "아르테미스호",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "케플러-442b",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "안도윤",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "장해준",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "구조물",
+        "category": "location",
+        "aliases": [
+          "도시"
+        ],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "수학적 패턴",
+        "category": "concept",
+        "aliases": [
+          "신호"
+        ],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "자동화된 시스템",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      }
+    ],
+    "relationships": 25,
+    "scenes": 4,
+    "mergeSuggestions": [
+      {
+        "keep": "오세진",
+        "merge": "세진",
+        "reason": "오세진의 별칭이 세진임"
+      },
+      {
+        "keep": "구조물",
+        "merge": "도시",
+        "reason": "구조물의 별칭이 도시임"
+      },
+      {
+        "keep": "수학적 패턴",
+        "merge": "신호",
+        "reason": "수학적 패턴의 별칭이 신호임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 11,
+    "mergedLoreCount": 11,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "세진": "오세진",
+    "도시": "구조물",
+    "신호": "수학적 패턴"
+  },
+  "loreEntries": [
+    {
+      "entityName": "나유리",
+      "category": "background",
+      "content": "나유리는 인류 최초의 항성간 이민선 아르테미스호의 함장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "나유리",
+      "category": "personality",
+      "content": "나유리는 위기 상황에서도 계획대로 진행하는 결단력을 보인다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "크리스 웨인",
+      "category": "background",
+      "content": "크리스 웨인은 아르테미스호의 부함장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "크리스 웨인",
+      "category": "personality",
+      "content": "크리스 웨인은 위험을 감지하고 계획 변경을 주장한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "오세진",
+      "category": "background",
+      "content": "오세진은 테라포밍 기술을 가진 과학자이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "오세진",
+      "category": "ability",
+      "content": "오세진은 외계 신호를 분석할 수 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "릴리 첸",
+      "category": "background",
+      "content": "릴리 첸은 아르테미스호의 의무관이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "안도윤",
+      "category": "background",
+      "content": "안도윤은 아르테미스호의 통신관이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "장해준",
+      "category": "background",
+      "content": "장해준은 아르테미스호의 보안요원이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "케플러-442b",
+      "category": "lore",
+      "content": "케플러-442b는 아르테미스호의 목적지 행성이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아르테미스호",
+      "category": "lore",
+      "content": "아르테미스호는 인류 최초의 항성간 이민선이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    }
+  ],
+  "scoring": {
+    "total": 96,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "6/6 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (background, personality, ability)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 2개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "11/11 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 9,
+        "max": 10,
+        "detail": "11개 (최소 12개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 11,
+    "characterCount": 6,
+    "loreEntryCount": 11,
+    "byEntity": {
+      "나유리": 2,
+      "크리스 웨인": 2,
+      "오세진": 2,
+      "릴리 첸": 1,
+      "안도윤": 1,
+      "장해준": 1,
+      "케플러-442b": 1,
+      "아르테미스호": 1
+    },
+    "byCategory": {
+      "background": 6,
+      "personality": 2,
+      "ability": 1,
+      "lore": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

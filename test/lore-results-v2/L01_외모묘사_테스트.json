@@ -1,0 +1,362 @@
+{
+  "_test": {
+    "file": "L01_외모묘사_테스트",
+    "timestamp": "2026-02-09T00:09:04.136Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "은서",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "지훈",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "카페",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "반지",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "베이지색 긴 코트",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "은색 목걸이",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "지민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "노란 우산",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "김 교수",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "회색 모직 베레모",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "갈색 가죽 가방",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "갈색 코듀로이 재킷",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "만년필",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 16,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 22,
+    "mergedLoreCount": 22,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "은서",
+      "category": "appearance",
+      "content": "허리까지 내려오는 검은 긴 머리카락을 가졌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "은서",
+      "category": "appearance",
+      "content": "왼쪽 눈 밑에 작은 점이 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "은서",
+      "category": "appearance",
+      "content": "키가 170cm 정도로 여자치고는 큰 편이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "은서",
+      "category": "outfit",
+      "content": "흰색 블라우스에 검은색 하이웨스트 팬츠를 입고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "은서",
+      "category": "background",
+      "content": "일주일 전에 이 동네로 이사 왔다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "은서",
+      "category": "outfit",
+      "content": "베이지색 긴 코트를 입기 시작했다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "은서",
+      "category": "outfit",
+      "content": "반달 모양 펜던트가 달린 은색 목걸이를 항상 하고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "지훈",
+      "category": "appearance",
+      "content": "단발머리에 둥근 안경을 쓰고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "지훈",
+      "category": "outfit",
+      "content": "항상 카페 앞치마를 두르고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "지훈",
+      "category": "appearance",
+      "content": "오른쪽 귀에 작은 은색 귀걸이를 하고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "지민",
+      "category": "appearance",
+      "content": "키가 크고 운동선수 체격이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "지민",
+      "category": "appearance",
+      "content": "짧은 스포츠 머리를 하고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "지민",
+      "category": "appearance",
+      "content": "왼쪽 팔뚝에 해바라기 문신이 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "지민",
+      "category": "outfit",
+      "content": "검은 가죽 재킷을 즐겨 입는다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "지민",
+      "category": "relationship_detail",
+      "content": "지훈의 동생이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "appearance",
+      "content": "백발에 깊은 주름이 패인 얼굴을 가졌다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "appearance",
+      "content": "눈빛은 맑고 또렷하다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "outfit",
+      "content": "회색 모직 베레모를 쓰고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "outfit",
+      "content": "갈색 가죽 가방을 옆에 두고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "outfit",
+      "content": "같은 갈색 코듀로이 재킷을 입고 온다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "outfit",
+      "content": "재킷 왼쪽 주머니에는 항상 만년필이 꽂혀 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 교수",
+      "category": "personality",
+      "content": "매주 화요일에 카페에 온다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 93,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (appearance, outfit, background, relationship_detail, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 9개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "22/22 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "22개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 13,
+    "characterCount": 4,
+    "loreEntryCount": 22,
+    "byEntity": {
+      "은서": 7,
+      "지훈": 3,
+      "지민": 5,
+      "김 교수": 7
+    },
+    "byCategory": {
+      "appearance": 10,
+      "outfit": 9,
+      "background": 1,
+      "relationship_detail": 1,
+      "personality": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

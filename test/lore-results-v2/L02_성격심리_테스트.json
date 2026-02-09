@@ -1,0 +1,253 @@
+{
+  "_test": {
+    "file": "L02_성격심리_테스트",
+    "timestamp": "2026-02-09T00:09:12.875Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "현우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "소연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "태민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "교수님",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "팀 단체 채팅방",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 7,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 16,
+    "mergedLoreCount": 16,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "현우는 완벽주의자 성격이다.",
+      "quote": "다시 해.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "현우는 팀원들의 작업을 일일이 검토한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "소연은 갈등을 극도로 싫어한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "소연은 강한 책임감을 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "태민은 팀의 분위기 메이커이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "태민은 낙천적인 성격이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "현우",
+      "category": "motivation",
+      "content": "현우는 교수님에게 A를 받는 것을 목표로 한다.",
+      "quote": "농담이 아니야. 이거 교수님한테 A 받으려면 제대로 해야 해.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "현우는 자신에게 가혹하다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "소연은 비판을 개인적인 공격으로 받아들인다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "소연은 자존감이 낮은 편이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "태민은 남들의 감정을 떠안느라 자신의 감정을 돌보지 못한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "현우",
+      "category": "background",
+      "content": "현우는 어릴 때부터 아버지의 엄격한 교육 아래 자랐다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "현우",
+      "category": "personality",
+      "content": "현우는 감정 표현이 서툴다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "소연",
+      "category": "personality",
+      "content": "소연은 갈등이 해소되면 금방 마음을 푼다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "태민은 항상 남들을 웃게 해야 한다는 압박감을 느낀다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "태민",
+      "category": "personality",
+      "content": "태민의 밝은 웃음 뒤에는 깊은 외로움이 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 88,
+    "max": 100,
+    "grade": "A",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 15,
+        "max": 20,
+        "detail": "3/4 커버 (누락: 교수님)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (personality, motivation, background)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 1개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "16/16 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "16개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 5,
+    "characterCount": 4,
+    "loreEntryCount": 16,
+    "byEntity": {
+      "현우": 6,
+      "소연": 5,
+      "태민": 5
+    },
+    "byCategory": {
+      "personality": 14,
+      "motivation": 1,
+      "background": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

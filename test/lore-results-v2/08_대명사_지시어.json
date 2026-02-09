@@ -1,0 +1,201 @@
+{
+  "_test": {
+    "file": "08_대명사_지시어",
+    "timestamp": "2026-02-09T00:11:01.089Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "재원",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "하윤",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "카페",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "서연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "민혁",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      }
+    ],
+    "relationships": 7,
+    "scenes": 3,
+    "mergeSuggestions": []
+  },
+  "llmB": {
+    "rawLoreCount": 11,
+    "mergedLoreCount": 8,
+    "deduped": 3
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "재원",
+      "category": "appearance",
+      "content": "키가 크고 검은 코트를 입고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "하윤",
+      "category": "background",
+      "content": "카페의 주인이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "하윤",
+      "category": "relationship_detail",
+      "content": "재원이 단골이 될지 궁금해한다.",
+      "quote": "단골이 되시려나 봐요.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "서연",
+      "category": "relationship_detail",
+      "content": "하윤의 동생이다.",
+      "quote": "언니, 나 왔어.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "민혁",
+      "category": "background",
+      "content": "재원의 고등학교 동창이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서연",
+      "category": "personality",
+      "content": "언니의 연애에 관심이 많고 장난기가 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "하윤",
+      "category": "personality",
+      "content": "재원에 대한 서연의 질문에 얼굴이 살짝 붉어진다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "재원",
+      "category": "motivation",
+      "content": "하윤에게 데이트를 신청하려 긴장한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 93,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "5종 사용 (appearance, background, relationship_detail, personality, motivation)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 1개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "8/8 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "8개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 5,
+    "characterCount": 4,
+    "loreEntryCount": 8,
+    "byEntity": {
+      "재원": 2,
+      "하윤": 3,
+      "서연": 2,
+      "민혁": 1
+    },
+    "byCategory": {
+      "appearance": 1,
+      "background": 2,
+      "relationship_detail": 2,
+      "personality": 2,
+      "motivation": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

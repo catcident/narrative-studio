@@ -1,0 +1,326 @@
+{
+  "_test": {
+    "file": "04_복잡한관계망",
+    "timestamp": "2026-02-09T00:09:47.720Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "은서",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "강순옥",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "일기장",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "강민호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "박지영",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "강민석",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "하늘",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "정우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "강순희",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "할머니 댁",
+        "category": "location",
+        "aliases": [
+          "할머니 댁 다락방"
+        ],
+        "scenes": [
+          2,
+          1
+        ]
+      },
+      {
+        "name": "카페",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "노트북",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "태블릿",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 21,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "강순옥",
+        "merge": "은서의 할머니",
+        "reason": "강순옥은 은서의 할머니임"
+      },
+      {
+        "keep": "할머니 댁",
+        "merge": "할머니 댁 다락방",
+        "reason": "다락방은 할머니 댁의 일부임"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 14,
+    "mergedLoreCount": 14,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "할머니 댁 다락방": "할머니 댁"
+  },
+  "loreEntries": [
+    {
+      "entityName": "강은서",
+      "category": "relationship_detail",
+      "content": "강순옥의 손녀이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강순옥",
+      "category": "background",
+      "content": "쌍둥이 자매 강순희가 있었지만 어린 시절 헤어졌다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강은서",
+      "category": "relationship_detail",
+      "content": "강민호의 딸이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강민호",
+      "category": "relationship_detail",
+      "content": "강순옥의 아들이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박지영",
+      "category": "relationship_detail",
+      "content": "강민호의 아내이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강민호",
+      "category": "background",
+      "content": "10년 전 갑자기 사라진 형 강민석이 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강민석",
+      "category": "background",
+      "content": "10년 전 갑자기 사라졌다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강은서",
+      "category": "motivation",
+      "content": "사라진 큰아버지 강민석을 찾고 싶어한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "하늘",
+      "category": "background",
+      "content": "은서의 소꿉친구이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "하늘",
+      "category": "ability",
+      "content": "사립탐정이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "하늘",
+      "category": "relationship_detail",
+      "content": "은서의 부탁을 들어주려 한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "하늘",
+      "category": "personality",
+      "content": "카페에서 일하는 것을 편하게 생각한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "정우",
+      "category": "relationship_detail",
+      "content": "하늘의 조수이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "강순희",
+      "category": "appearance",
+      "content": "강순옥과 놀랍도록 닮았다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 88,
+    "max": 100,
+    "grade": "A",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 18,
+        "max": 20,
+        "detail": "7/8 커버 (누락: 은서)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "6종 사용 (relationship_detail, background, motivation, ability, personality, appearance)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 3,
+        "max": 10,
+        "detail": "lore 0개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 8,
+        "max": 10,
+        "detail": "11/14 연결 (미연결: 강은서)"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 9,
+        "max": 10,
+        "detail": "14개 (최소 16개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 13,
+    "characterCount": 8,
+    "loreEntryCount": 14,
+    "byEntity": {
+      "강은서": 3,
+      "강순옥": 1,
+      "강민호": 2,
+      "박지영": 1,
+      "강민석": 1,
+      "하늘": 4,
+      "정우": 1,
+      "강순희": 1
+    },
+    "byCategory": {
+      "relationship_detail": 6,
+      "background": 4,
+      "motivation": 1,
+      "ability": 1,
+      "personality": 1,
+      "appearance": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

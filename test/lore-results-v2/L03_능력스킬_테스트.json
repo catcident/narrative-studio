@@ -1,0 +1,363 @@
+{
+  "_test": {
+    "file": "L03_능력스킬_테스트",
+    "timestamp": "2026-02-09T00:09:26.775Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "이수현",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "박하윤",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "그림자걸음",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "강도윤",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "절대방어",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "훈련장",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "그림자 속박",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "화염 골렘",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "빙창",
+        "category": "concept",
+        "aliases": [
+          "빙염"
+        ],
+        "scenes": [
+          3,
+          1,
+          2
+        ]
+      }
+    ],
+    "relationships": 12,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "이수현",
+        "merge": "빙염",
+        "reason": "이수현은 '빙염' 능력을 가진 캐릭터이므로, '빙염'은 이수현의 별칭 또는 능력 자체를 지칭하는 것으로 해석될 수 있음"
+      },
+      {
+        "keep": "박하윤",
+        "merge": "그림자걸음",
+        "reason": "박하윤은 '그림자걸음' 능력자이므로, '그림자걸음'은 박하윤의 능력 또는 별칭으로 해석될 수 있음"
+      },
+      {
+        "keep": "강도윤",
+        "merge": "절대방어",
+        "reason": "강도윤은 '절대방어' 능력자이므로, '절대방어'는 강도윤의 능력 또는 별칭으로 해석될 수 있음"
+      },
+      {
+        "keep": "빙창",
+        "merge": "빙염",
+        "reason": "빙창은 빙염의 응용 기술이므로, 빙염에 포함될 수 있음"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 30,
+    "mergedLoreCount": 23,
+    "deduped": 7
+  },
+  "entityNameMapping": {
+    "빙염": "빙창"
+  },
+  "loreEntries": [
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "빙염이라는 불꽃과 얼음을 동시에 다루는 이중 속성 능력을 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "빙염의 범위는 반경 20미터이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "빙염의 온도 조절 범위는 영하 40도에서 영상 800도까지이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이수현",
+      "category": "personality",
+      "content": "빙염을 쓸 때 집중력이 필요하다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이수현",
+      "category": "personality",
+      "content": "감정이 격해지면 빙염 능력이 폭주하는 약점이 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박하윤",
+      "category": "ability",
+      "content": "그림자걸음이라는 그림자 사이를 순간이동하는 능력을 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박하윤",
+      "category": "ability",
+      "content": "그림자걸음의 최대 이동 거리는 100미터이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박하윤",
+      "category": "ability",
+      "content": "그림자가 없는 완전한 빛 속에서는 그림자걸음을 사용할 수 없다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박하윤",
+      "category": "ability",
+      "content": "그림자 속박이라는 대상의 그림자를 붙잡아 3초간 움직임을 봉쇄하는 파생 기술을 갖고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "박하윤",
+      "category": "ability",
+      "content": "그림자걸음은 적의 내부로도 이동이 가능하다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "박하윤",
+      "category": "relationship_detail",
+      "content": "이수현과 같은 팀이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강도윤",
+      "category": "ability",
+      "content": "절대방어의 능력자이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강도윤",
+      "category": "ability",
+      "content": "몸 주변에 투명한 방어막을 생성할 수 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강도윤",
+      "category": "ability",
+      "content": "방어막은 총알도 막아내는 수준이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강도윤",
+      "category": "ability",
+      "content": "방어막의 지속 시간은 최대 3분이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강도윤",
+      "category": "ability",
+      "content": "방어막 유지 중에는 다른 행동이 제한된다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강도윤",
+      "category": "relationship_detail",
+      "content": "이수현과 박하윤의 팀장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "두 속성을 동시에 쓰면 체력 소모가 극심하다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "두 속성을 5분 이상 유지하면 기절할 수도 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "빙창은 빙염의 응용 기술로, 관통력이 뛰어나다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "화염 골렘",
+      "category": "lore",
+      "content": "높이 5미터의 몬스터이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "화염 골렘",
+      "category": "lore",
+      "content": "온몸이 용암으로 이루어져 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "이수현",
+      "category": "ability",
+      "content": "빙결은 화염 계열 적에게 특히 효과적이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 97,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (ability, personality, relationship_detail)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 2개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "23/23 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "23개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 4,
+    "loreEntryCount": 23,
+    "byEntity": {
+      "이수현": 9,
+      "박하윤": 6,
+      "강도윤": 6,
+      "화염 골렘": 2
+    },
+    "byCategory": {
+      "ability": 17,
+      "personality": 2,
+      "relationship_detail": 2,
+      "lore": 2
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

@@ -1,0 +1,302 @@
+{
+  "_test": {
+    "file": "02_시점변경_1인칭",
+    "timestamp": "2026-02-09T00:09:17.052Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "한서준",
+        "category": "character",
+        "aliases": [
+          "서준 씨",
+          "서준아"
+        ],
+        "scenes": [
+          1,
+          2,
+          3,
+          7
+        ]
+      },
+      {
+        "name": "블루문 카페",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "김 사장",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "박재민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "이수아",
+        "category": "character",
+        "aliases": [
+          "수아"
+        ],
+        "scenes": [
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "진아",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          5,
+          6
+        ]
+      },
+      {
+        "name": "아메리카노",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2,
+          6
+        ]
+      },
+      {
+        "name": "화실",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "캔버스",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          4,
+          7
+        ]
+      }
+    ],
+    "relationships": 10,
+    "scenes": 7,
+    "mergeSuggestions": [
+      {
+        "keep": "한서준",
+        "merge": "서준 씨",
+        "reason": "한서준의 별칭"
+      },
+      {
+        "keep": "한서준",
+        "merge": "서준아",
+        "reason": "한서준의 별칭"
+      },
+      {
+        "keep": "김 사장",
+        "merge": "블루문 카페 주인 아주머니",
+        "reason": "동일 인물"
+      },
+      {
+        "keep": "이수아",
+        "merge": "수아",
+        "reason": "이수아의 별칭"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 12,
+    "mergedLoreCount": 12,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "서준 씨": "한서준",
+    "서준아": "한서준",
+    "수아": "이수아"
+  },
+  "loreEntries": [
+    {
+      "entityName": "한서준",
+      "category": "background",
+      "content": "한서준은 평범한 회사원이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한서준",
+      "category": "appearance",
+      "content": "한서준은 서른두 살이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "블루문 카페",
+      "category": "lore",
+      "content": "블루문 카페는 김 사장이 운영하는 작은 가게이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "김 사장",
+      "category": "relationship_detail",
+      "content": "김 사장은 한서준에게 친절하게 대한다.",
+      "quote": "서준 씨, 오늘도 아메리카노?",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "박재민",
+      "category": "relationship_detail",
+      "content": "박재민은 한서준의 회사 동료이다.",
+      "quote": "서준아, 오늘 회의 준비했어?",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이수아",
+      "category": "background",
+      "content": "이수아는 화가를 꿈꾸는 미대 졸업생이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수아",
+      "category": "appearance",
+      "content": "이수아는 스물여덟 살이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "진아",
+      "category": "relationship_detail",
+      "content": "진아는 이수아의 룸메이트이다.",
+      "quote": "수아야, 밥 먹었어?",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "진아",
+      "category": "background",
+      "content": "진아는 이수아와 같은 미대 출신이지만 지금은 디자인 회사에 다닌다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수아",
+      "category": "motivation",
+      "content": "이수아는 어젯밤 꿈에서 본 푸른 달이 뜬 카페 풍경을 그리고 싶어한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이수아",
+      "category": "outfit",
+      "content": "이수아는 캔버스 가방을 메고 물감이 묻은 앞치마를 입고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "김 사장",
+      "category": "personality",
+      "content": "김 사장은 손님을 환한 미소로 맞아준다.",
+      "quote": "어서 오세요! 처음 오셨네요?",
+      "sceneId": "S0002"
+    }
+  ],
+  "scoring": {
+    "total": 97,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "5/5 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "6종 사용 (background, appearance, relationship_detail, motivation, outfit, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 1개, 비인물 엔티티 4개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "12/12 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "12개 (최소 10개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 9,
+    "characterCount": 5,
+    "loreEntryCount": 12,
+    "byEntity": {
+      "한서준": 2,
+      "블루문 카페": 1,
+      "김 사장": 2,
+      "박재민": 1,
+      "이수아": 4,
+      "진아": 2
+    },
+    "byCategory": {
+      "background": 3,
+      "appearance": 2,
+      "lore": 1,
+      "relationship_detail": 3,
+      "motivation": 1,
+      "outfit": 1,
+      "personality": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

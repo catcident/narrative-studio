@@ -1,0 +1,280 @@
+{
+  "_test": {
+    "file": "20_멀티장르_크로스오버",
+    "timestamp": "2026-02-09T00:38:30.816Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "한승우",
+        "category": "character",
+        "aliases": [
+          "블레이드"
+        ],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "엘도라도",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "정하린",
+        "category": "character",
+        "aliases": [
+          "루나"
+        ],
+        "scenes": [
+          2,
+          3,
+          1
+        ]
+      },
+      {
+        "name": "이도연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "강태준",
+        "category": "character",
+        "aliases": [
+          "아이언"
+        ],
+        "scenes": [
+          2,
+          3,
+          1
+        ]
+      },
+      {
+        "name": "학교",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "카페",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "아스트라",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      }
+    ],
+    "relationships": 22,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "한승우",
+        "merge": "블레이드",
+        "reason": "한승우의 게임 내 닉네임이 블레이드"
+      },
+      {
+        "keep": "정하린",
+        "merge": "루나",
+        "reason": "정하린의 엘도라도 게임 내 캐릭터 이름이 루나"
+      },
+      {
+        "keep": "강태준",
+        "merge": "아이언",
+        "reason": "강태준의 엘도라도 게임 내 캐릭터 이름이 아이언"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 12,
+    "mergedLoreCount": 12,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "루나": "정하린",
+    "아이언": "강태준",
+    "블레이드": "한승우"
+  },
+  "loreEntries": [
+    {
+      "entityName": "한승우",
+      "category": "ability",
+      "content": "VR 게임 '엘도라도'의 랭커이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한승우",
+      "category": "personality",
+      "content": "학교에서 조용한 학생이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정하린",
+      "category": "ability",
+      "content": "성적 1등이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정하린",
+      "category": "personality",
+      "content": "학생회장이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강태준",
+      "category": "relationship_detail",
+      "content": "한승우와 같은 반 친구이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강태준",
+      "category": "ability",
+      "content": "VR 게임 '엘도라도'를 한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정하린",
+      "category": "relationship_detail",
+      "content": "VR 게임 '엘도라도'에서 '루나'라는 닉네임으로 활동한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "강태준",
+      "category": "relationship_detail",
+      "content": "VR 게임 '엘도라도'에서 '아이언'이라는 닉네임으로 활동한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한승우",
+      "category": "relationship_detail",
+      "content": "VR 게임 '엘도라도'에서 '블레이드'라는 닉네임으로 활동한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "아스트라",
+      "category": "lore",
+      "content": "블레이드, 루나, 아이언이 속한 길드이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "정하린",
+      "category": "personality",
+      "content": "게임에서 블레이드에게 자주 다정하게 말했다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "이도연",
+      "category": "relationship_detail",
+      "content": "정하린의 친구이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    }
+  ],
+  "scoring": {
+    "total": 97,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 20,
+        "max": 20,
+        "detail": "4/4 전원 커버"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "3종 사용 (ability, personality, relationship_detail)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 7,
+        "max": 10,
+        "detail": "lore 1개, 비인물 엔티티 4개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "12/12 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "12개 (최소 8개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 8,
+    "characterCount": 4,
+    "loreEntryCount": 12,
+    "byEntity": {
+      "한승우": 3,
+      "정하린": 4,
+      "강태준": 3,
+      "아스트라": 1,
+      "이도연": 1
+    },
+    "byCategory": {
+      "ability": 3,
+      "personality": 3,
+      "relationship_detail": 5,
+      "lore": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

@@ -1,0 +1,432 @@
+{
+  "_test": {
+    "file": "L08_1인칭_로어_테스트",
+    "timestamp": "2026-02-09T00:10:33.169Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "한세진",
+        "category": "character",
+        "aliases": [
+          "실버",
+          "세진",
+          "나"
+        ],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "에테르나 사가",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "시작의 마을",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "모험자 길드 건물",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "레나",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "리엘",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "슬라임",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "마을 밖 초원",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "파이어볼",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "폭풍의 이빨",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "자연의 포옹",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "킹 슬라임",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "숲의 가호",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "고블린",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "에테르나 대륙",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      }
+    ],
+    "relationships": 13,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "한세진",
+        "merge": "실버",
+        "reason": "한세진이 에테르나 사가 속 실버로 각성했으므로 동일 인물"
+      },
+      {
+        "keep": "한세진",
+        "merge": "세진",
+        "reason": "한세진의 줄임말"
+      },
+      {
+        "keep": "에테르나 대륙",
+        "merge": "에테르나 사가",
+        "reason": "에테르나 사가는 게임 이름이자 대륙 이름으로 사용됨"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 25,
+    "mergedLoreCount": 25,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "실버": "한세진",
+    "세진": "한세진",
+    "나": "한세진"
+  },
+  "loreEntries": [
+    {
+      "entityName": "한세진",
+      "category": "background",
+      "content": "한세진은 서른두 살의 회사원이었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한세진",
+      "category": "motivation",
+      "content": "한세진은 원래 세계에서 즐겨 하던 게임 '에테르나 사가' 속으로 들어오게 되었다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "한세진",
+      "category": "appearance",
+      "content": "한세진은 에테르나 사가 속에서 170cm 정도의 키에 은색 머리카락을 가진 '실버'의 모습이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "시작의 마을",
+      "category": "lore",
+      "content": "시작의 마을은 에테르나 대륙 남부에 위치한 작은 마을로, 모든 모험자가 처음 발을 딛는 곳이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "시작의 마을",
+      "category": "lore",
+      "content": "시작의 마을 인구는 500명 정도이고, 마을 주변에는 약한 슬라임과 고블린이 출몰한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "레나",
+      "category": "appearance",
+      "content": "레나는 붉은 머리의 여전사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "레나",
+      "category": "outfit",
+      "content": "레나는 가죽 갑옷을 입고 등에 큰 양손검을 메고 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "레나",
+      "category": "appearance",
+      "content": "레나는 근육질 팔에 전사답게 여기저기 흉터가 있다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "레나",
+      "category": "personality",
+      "content": "레나는 솔직하고 활발한 성격이다.",
+      "quote": "혼자야? 파티 구해?",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "레나",
+      "category": "ability",
+      "content": "레나는 이 시점에서 레벨 15 정도의 중급 전사일 것이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한세진",
+      "category": "ability",
+      "content": "한세진은 마법사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "리엘",
+      "category": "appearance",
+      "content": "리엘은 녹색 로브를 입은 엘프이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "리엘",
+      "category": "appearance",
+      "content": "리엘은 길게 뾰족한 귀, 아몬드형 눈, 금발이 허리까지 내려온 외모를 가졌다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "리엘",
+      "category": "personality",
+      "content": "리엘은 과묵한 성격이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "리엘",
+      "category": "ability",
+      "content": "리엘은 힐러이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "리엘",
+      "category": "lore",
+      "content": "에테르나 사가에서 엘프는 숲의 종족으로, 수명이 인간의 5배에 달한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "리엘",
+      "category": "appearance",
+      "content": "리엘은 실제 나이가 150살이지만 외모는 20대 초반이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "슬라임",
+      "category": "lore",
+      "content": "슬라임은 에테르나 사가에서 가장 약한 몬스터로, 물 속성의 젤리 형태 생물이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "슬라임",
+      "category": "lore",
+      "content": "슬라임은 코어를 파괴하면 쓰러진다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "레나",
+      "category": "ability",
+      "content": "레나의 검술은 거칠지만 힘이 넘친다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "폭풍의 이빨",
+      "category": "lore",
+      "content": "양손검 '폭풍의 이빨'은 바람 속성 부여가 되어 있어 베는 궤적에 바람이 일어난다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "리엘",
+      "category": "ability",
+      "content": "엘프의 힐 마법은 인간의 것보다 효과가 30% 높다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "킹 슬라임",
+      "category": "lore",
+      "content": "킹 슬라임은 일반 슬라임의 10배 크기이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "킹 슬라임",
+      "category": "lore",
+      "content": "킹 슬라임은 체내에 코어가 3개 있어 동시에 파괴해야 한다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "숲의 가호",
+      "category": "lore",
+      "content": "'숲의 가호'는 공격력과 방어력을 20% 올려주는 엘프 전용 마법이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    }
+  ],
+  "scoring": {
+    "total": 97,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 17,
+        "max": 20,
+        "detail": "5/6 커버 (누락: 고블린)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "6종 사용 (background, motivation, appearance, outfit, personality, ability)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 9개, 비인물 엔티티 9개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "25/25 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "25개 (최소 12개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 15,
+    "characterCount": 6,
+    "loreEntryCount": 25,
+    "byEntity": {
+      "한세진": 4,
+      "시작의 마을": 2,
+      "레나": 6,
+      "리엘": 7,
+      "슬라임": 2,
+      "폭풍의 이빨": 1,
+      "킹 슬라임": 2,
+      "숲의 가호": 1
+    },
+    "byCategory": {
+      "background": 1,
+      "motivation": 1,
+      "appearance": 6,
+      "lore": 9,
+      "outfit": 1,
+      "personality": 2,
+      "ability": 5
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

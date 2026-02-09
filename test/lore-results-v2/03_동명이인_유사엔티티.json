@@ -1,0 +1,386 @@
+{
+  "_test": {
+    "file": "03_동명이인_유사엔티티",
+    "timestamp": "2026-02-09T00:09:31.927Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "철민",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "태현",
+        "category": "character",
+        "aliases": [
+          "전하"
+        ],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "의식용 검",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "윤호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "전투용 검",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "왕궁 정원",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "정원지기",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "북쪽 숲",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "연습용 검",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "낡은 검",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "서연",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "도현",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "해독약",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "활과 화살",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "마물",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "북쪽 산맥 기슭의 대장간",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1
+        ]
+      },
+      {
+        "name": "서연의 집",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "도현의 오두막",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 17,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "태현 [character]",
+        "merge": "전하 [character]",
+        "reason": "태현 왕자의 별칭이 전하임"
+      },
+      {
+        "keep": "서연 [character]",
+        "merge": "마녀 [character]",
+        "reason": "서연은 마녀라고 불리지만 실제로는 치유사임"
+      },
+      {
+        "keep": "서연의 집 [location]",
+        "merge": "서연이 사는 오두막 [location]",
+        "reason": "같은 장소를 지칭함"
+      },
+      {
+        "keep": "도현의 오두막 [location]",
+        "merge": "도현이 사는 곳 [location]",
+        "reason": "같은 장소를 지칭함"
+      },
+      {
+        "keep": "낡은 검 [item]",
+        "merge": "윤호가 새 검을 받기 전에 쓰던 검 [item]",
+        "reason": "같은 물건을 지칭함"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 15,
+    "mergedLoreCount": 15,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "전하": "태현"
+  },
+  "loreEntries": [
+    {
+      "entityName": "철민",
+      "category": "background",
+      "content": "철민은 북쪽 산맥 기슭에서 대장간을 운영하는 대장장이이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태현",
+      "category": "background",
+      "content": "태현은 왕자이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "태현",
+      "category": "outfit",
+      "content": "태현은 평소 연습용 검을 사용한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "윤호",
+      "category": "background",
+      "content": "윤호는 기사단장이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "윤호",
+      "category": "relationship_detail",
+      "content": "윤호는 태현을 진심으로 아낀다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "윤호",
+      "category": "relationship_detail",
+      "content": "윤호와 태현은 군신 관계이면서도 형제 같은 사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "윤호",
+      "category": "outfit",
+      "content": "윤호는 철민의 새 검을 받기 전 낡은 검을 사용한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "서연",
+      "category": "background",
+      "content": "서연은 숲속 오두막에 사는 마녀이자 약초를 다루는 치유사이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "서연",
+      "category": "ability",
+      "content": "서연은 숲의 동물들과 대화할 수 있는 능력을 가지고 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "도현",
+      "category": "background",
+      "content": "도현은 숲의 순찰자이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "도현",
+      "category": "relationship_detail",
+      "content": "도현은 서연의 집을 지켜주는 대신 서연이 만든 약초를 받는다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "의식용 검",
+      "category": "lore",
+      "content": "의식용 검은 금으로 장식되어 있고 보석이 박혀 있어 왕가의 위엄을 상징한다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "의식용 검",
+      "category": "lore",
+      "content": "의식용 검은 날이 무디다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "전투용 검",
+      "category": "lore",
+      "content": "전투용 검은 아무런 장식도 없는 검은 철검이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "전투용 검",
+      "category": "lore",
+      "content": "전투용 검은 날카로움이 바위도 갈라놓을 수 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    }
+  ],
+  "scoring": {
+    "total": 94,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 14,
+        "max": 20,
+        "detail": "5/7 커버 (누락: 정원지기, 마물)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 15,
+        "max": 15,
+        "detail": "4종 사용 (background, outfit, relationship_detail, ability)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 4개, 비인물 엔티티 11개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "15/15 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 10,
+        "max": 10,
+        "detail": "15개 (최소 14개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 18,
+    "characterCount": 7,
+    "loreEntryCount": 15,
+    "byEntity": {
+      "철민": 1,
+      "태현": 2,
+      "윤호": 4,
+      "서연": 2,
+      "도현": 2,
+      "의식용 검": 2,
+      "전투용 검": 2
+    },
+    "byCategory": {
+      "background": 5,
+      "outfit": 2,
+      "relationship_detail": 3,
+      "ability": 1,
+      "lore": 4
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

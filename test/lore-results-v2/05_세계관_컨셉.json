@@ -1,0 +1,309 @@
+{
+  "_test": {
+    "file": "05_세계관_컨셉",
+    "timestamp": "2026-02-09T00:10:05.027Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "균열",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "특수국",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          5
+        ]
+      },
+      {
+        "name": "강유진",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "한태우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "이소라",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "정시우",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          3,
+          4
+        ]
+      },
+      {
+        "name": "그림자개",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "관악산 입구",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          4
+        ]
+      },
+      {
+        "name": "윤재호",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          5
+        ]
+      },
+      {
+        "name": "민서",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          5
+        ]
+      },
+      {
+        "name": "특수국 서울 지부 건물",
+        "category": "location",
+        "aliases": [
+          "작전실"
+        ],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "서울",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          2,
+          3,
+          5
+        ]
+      }
+    ],
+    "relationships": 26,
+    "scenes": 5,
+    "mergeSuggestions": [
+      {
+        "keep": "특수국",
+        "merge": "특수국 서울 지부",
+        "reason": "특수국 서울 지부는 특수국의 하위 기관"
+      },
+      {
+        "keep": "특수국 서울 지부 건물",
+        "merge": "작전실",
+        "reason": "작전실은 특수국 서울 지부 건물 3층에 위치"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 12,
+    "mergedLoreCount": 12,
+    "deduped": 0
+  },
+  "entityNameMapping": {
+    "작전실": "특수국 서울 지부 건물"
+  },
+  "loreEntries": [
+    {
+      "entityName": "균열",
+      "category": "lore",
+      "content": "하늘에 금이 가듯 공간이 찢어지고, 그 틈으로 마물이 쏟아져 나오는 현상이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "균열",
+      "category": "lore",
+      "content": "약 50년 전부터 나타나기 시작했다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "특수국",
+      "category": "lore",
+      "content": "균열을 감시하고, 마물을 처치하는 공식 기관이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "강유진",
+      "category": "ability",
+      "content": "균열이 열리기 직전 그 기운을 감지할 수 있는 감지사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "강유진",
+      "category": "ability",
+      "content": "감지 능력 외에 추가 능력이 발현되었다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "한태우",
+      "category": "ability",
+      "content": "신체 능력을 극한까지 끌어올릴 수 있는 강화사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "한태우",
+      "category": "personality",
+      "content": "강유진에게 편하게 대하라고 말하며 친근하게 대한다.",
+      "quote": "앞으로 같은 팀이니까 편하게 해. 나는 태우라고 불러.",
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "이소라",
+      "category": "ability",
+      "content": "균열의 패턴을 분석하여 마물의 종류와 규모를 예측하는 해석사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정시우",
+      "category": "ability",
+      "content": "균열을 일시적으로 닫을 수 있는 봉인사이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "정시우",
+      "category": "personality",
+      "content": "성격이 다소 내성적이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "그림자개",
+      "category": "lore",
+      "content": "C등급 마물이며 무리로 움직이는 위험한 종이다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "윤재호",
+      "category": "personality",
+      "content": "균열과 관련된 변화를 감지하고 있다.",
+      "quote": null,
+      "sceneId": "S0004"
+    }
+  ],
+  "scoring": {
+    "total": 91,
+    "max": 100,
+    "grade": "A+",
+    "items": [
+      {
+        "name": "주인공/인물 커버리지",
+        "score": 17,
+        "max": 20,
+        "detail": "6/7 커버 (누락: 민서)"
+      },
+      {
+        "name": "카테고리 다양성",
+        "score": 10,
+        "max": 15,
+        "detail": "2종 사용 (ability, personality)"
+      },
+      {
+        "name": "중복 없음",
+        "score": 15,
+        "max": 15,
+        "detail": "✓ 중복 0건"
+      },
+      {
+        "name": "장면 매핑",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 매핑 성공"
+      },
+      {
+        "name": "세계관/lore",
+        "score": 10,
+        "max": 10,
+        "detail": "lore 4개, 비인물 엔티티 5개"
+      },
+      {
+        "name": "대명사 resolve",
+        "score": 10,
+        "max": 10,
+        "detail": "✓ 전체 resolve"
+      },
+      {
+        "name": "엔트리-엔티티 연결",
+        "score": 10,
+        "max": 10,
+        "detail": "12/12 전체 연결"
+      },
+      {
+        "name": "충분한 추출량",
+        "score": 9,
+        "max": 10,
+        "detail": "12개 (최소 14개 기대)"
+      }
+    ]
+  },
+  "summary": {
+    "entityCount": 12,
+    "characterCount": 7,
+    "loreEntryCount": 12,
+    "byEntity": {
+      "균열": 2,
+      "특수국": 1,
+      "강유진": 2,
+      "한태우": 2,
+      "이소라": 1,
+      "정시우": 2,
+      "그림자개": 1,
+      "윤재호": 1
+    },
+    "byCategory": {
+      "lore": 4,
+      "ability": 5,
+      "personality": 3
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}
