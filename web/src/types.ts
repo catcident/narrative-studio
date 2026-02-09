@@ -203,6 +203,35 @@ export interface SceneSnapshot {
   sourceFileId?: string;  // 원본 파일 ID (F0001 형식)
 }
 
+// ==================== Lorebook ====================
+
+/** 로어북 엔트리 카테고리 */
+export type LoreCategory =
+  | 'appearance'           // 외모 (머리, 체형, 흉터 등)
+  | 'outfit'               // 복장/장비 (옷, 무기, 소지품)
+  | 'personality'          // 성격/말투/습관
+  | 'ability'              // 능력/기술/직업스킬
+  | 'background'           // 배경/출신/과거
+  | 'motivation'           // 목표/동기
+  | 'relationship_detail'  // 관계 상세 ("A를 형이라 부른다")
+  | 'lore';                // 세계관/설정 (규칙, 체계, 장소 묘사 등)
+
+/** 로어북 개별 기록 (1개 = 1개 사실, 1개 장면) */
+export interface LoreEntry {
+  id: string;              // "LR0001"
+  entityName: string;      // KG 엔티티와 매칭용 이름
+  category: LoreCategory;
+  content: string;         // 기록 내용
+  quote?: string;          // 원문 대사/인용 (있으면)
+  sceneId: string;         // "S0003" — 단일 장면 연결
+  sourceFileId?: string;   // "F0002" — 파일 삭제 시 연동
+}
+
+/** 로어북 전체 */
+export interface Lorebook {
+  entries: Record<string, LoreEntry>;
+}
+
 export interface NovelKnowledgeGraph {
   metadata: {
     id?: string;  // 저장 후 할당되는 고유 ID
@@ -220,6 +249,7 @@ export interface NovelKnowledgeGraph {
   timeline: TimelinePoint[];
   snapshots: Record<string, SceneSnapshot>;
   validationResults?: Record<string, FileValidationResult>;  // 파일별 검증 결과
+  lorebook?: Lorebook;  // 로어북 (인물 프로필, 세계관 설정 등)
   stats: {
     totalEntities: number;
     totalEdges: number;
@@ -252,7 +282,7 @@ export interface PartialAnalysisInfo {
 
 // ==================== UI ====================
 
-export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'source' | 'chat';
+export type ViewMode = 'graph' | 'timeline' | 'chronicle' | 'world' | 'lorebook' | 'source' | 'chat';
 
 // ==================== Billing ====================
 

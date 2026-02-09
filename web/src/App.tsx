@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2, FileText, MessageCircle } from 'lucide-react';
+import { Network, Clock, User, RotateCcw, Database, Save, Globe, Plus, Loader2, FileText, MessageCircle, BookOpen } from 'lucide-react';
 import { useStore, usePartialAnalysis } from './store';
 import { FileUpload } from './components/FileUpload';
 import { PartialAnalysisBanner } from './components/PartialAnalysisBanner';
@@ -12,6 +12,7 @@ import { RelationshipGraph, GraphLegend } from './components/RelationshipGraph';
 import { TimelineView } from './components/TimelineView';
 import { CharacterChronicle } from './components/CharacterChronicle';
 import { WorldView } from './components/WorldView';
+import { LorebookView } from './components/LorebookView';
 import { SourceTextView } from './components/SourceTextView';
 import { ChatView } from './components/ChatView';
 import { DetailPanel } from './components/DetailPanel';
@@ -35,6 +36,7 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'timeline', label: '타임라인', icon: Clock },
   { mode: 'chronicle', label: '연대기', icon: User },
   { mode: 'world', label: '세계관', icon: Globe },
+  { mode: 'lorebook', label: '로어북', icon: BookOpen },
   { mode: 'source', label: '원본', icon: FileText },
   { mode: 'chat', label: '채팅', icon: MessageCircle },
 ];
@@ -482,6 +484,8 @@ function App() {
           {viewMode === 'chronicle' && <CharacterChronicle />}
 
           {viewMode === 'world' && <WorldView />}
+
+          {viewMode === 'lorebook' && <LorebookView />}
 
           {viewMode === 'source' && <SourceTextView />}
 

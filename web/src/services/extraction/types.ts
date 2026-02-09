@@ -43,6 +43,15 @@ export interface ChunkBilling {
   byok?: boolean;
 }
 
+/** LLM B가 청크에서 추출한 로어북 엔트리 (raw) */
+export interface RawLoreEntry {
+  entity_name: string;
+  category: string;
+  content: string;
+  quote?: string;
+  scene: number;  // 이 청크 내의 장면 번호 (localToGlobal 매핑 필요)
+}
+
 /** LLM이 단일 청크에서 추출한 데이터 */
 export interface ChunkExtractedData {
   chapters: Array<{ id: number | string; title?: string; summary?: string }>;
@@ -59,6 +68,7 @@ export interface ChunkExtractedData {
     sentiment?: string; strength?: number; quote?: string; subtype?: string;
     start_time?: string; bidirectional?: boolean; from_perspective?: string; to_perspective?: string;
   }>;
+  lore_entries?: RawLoreEntry[];
 }
 
 export const EMPTY_CHUNK_DATA: ChunkExtractedData = {
@@ -70,12 +80,19 @@ export interface ChunkExtractionResult {
   billing: ChunkBilling | null;
 }
 
+/** LLM B 로어북 추출 결과 */
+export interface LoreExtractionResult {
+  data: RawLoreEntry[];
+  billing: ChunkBilling | null;
+}
+
 // 중간 저장용 타입
 export interface ExtractionProgress {
   title: string;
   totalChunks: number;
   processedChunks: number;
   allExtracted: ChunkExtractedData[];
+  allExtractedLore?: RawLoreEntry[][];  // 청크별 로어북 결과 (이어하기용)
   knownEntities: KnownEntity[];
   chunks: string[];
   chunkSourceFileIndices?: number[];  // 각 청크가 어느 파일에서 왔는지
@@ -164,6 +181,8 @@ export interface MergedExtraction {
   scenes: MergedScene[];
   chapters: MergedChapter[];
   timeline?: MergedTimelinePoint[];
+  loreEntries?: RawLoreEntry[];  // 모든 청크의 로어 엔트리 (장면 ID 미매핑)
+  chunkSceneOffsets?: Array<Record<number, number>>;  // 청크별 로컬→글로벌 장면 매핑
 }
 
 /** buildAccumulatedGraph() 반환 — 경량 축적 그래프 (orchestrator/selector 내부 전용) */

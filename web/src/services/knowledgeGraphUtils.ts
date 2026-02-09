@@ -9,6 +9,8 @@ import type {
   SceneSnapshot,
   SourceFile,
   FileValidationResult,
+  LoreEntry,
+  Lorebook,
 } from '../types';
 
 // ─── 파일명 → 파일 ID 매핑 ───
@@ -92,6 +94,48 @@ export function updateSceneReferences(
     const newOrder = orderMapping[oldOrder];
     return newOrder !== undefined ? `장면 ${newOrder}` : match;
   });
+}
+
+// ─── 로어북 헬퍼 ───
+
+/**
+ * 삭제된 장면의 로어 엔트리 제거 + 파일 ID 재매핑
+ */
+function filterAndRemapLorebook(
+  lorebook: Lorebook | undefined,
+  scenesToDelete: Set<string>,
+  fileIdMapping?: Record<string, string>,
+): Lorebook | undefined {
+  if (!lorebook) return undefined;
+  const newEntries: Record<string, LoreEntry> = {};
+  Object.entries(lorebook.entries).forEach(([id, entry]) => {
+    if (scenesToDelete.has(entry.sceneId)) return;
+    const remappedFileId = entry.sourceFileId && fileIdMapping
+      ? fileIdMapping[entry.sourceFileId] || entry.sourceFileId
+      : entry.sourceFileId;
+    newEntries[id] = remappedFileId !== entry.sourceFileId
+      ? { ...entry, sourceFileId: remappedFileId }
+      : entry;
+  });
+  return { entries: newEntries };
+}
+
+/**
+ * 로어북 엔트리의 sourceFileId를 재매핑
+ */
+function remapLorebookFileIds(
+  lorebook: Lorebook | undefined,
+  fileIdMapping: Record<string, string>,
+): Lorebook | undefined {
+  if (!lorebook) return undefined;
+  const newEntries: Record<string, LoreEntry> = {};
+  Object.entries(lorebook.entries).forEach(([id, entry]) => {
+    const newFileId = entry.sourceFileId ? fileIdMapping[entry.sourceFileId] || entry.sourceFileId : entry.sourceFileId;
+    newEntries[id] = newFileId !== entry.sourceFileId
+      ? { ...entry, sourceFileId: newFileId }
+      : entry;
+  });
+  return { entries: newEntries };
 }
 
 // ─── 파일 ID 재번호화 ───
@@ -334,6 +378,10 @@ export function deleteFileFromGraph(
     }
   });
 
+  // 7. 로어북에서 삭제된 장면의 엔트리 제거
+  // (renumber 전에 먼저 장면 기반 필터링)
+  const filteredLorebook = filterAndRemapLorebook(graph.lorebook, scenesToDelete);
+
   // 8. 파일 제거 + ID 재번호화
   const remainingFiles = (graph.metadata.sourceFiles || []).filter(f => f.id !== fileId);
   const renumbered = renumberFileIds(
@@ -342,6 +390,9 @@ export function deleteFileFromGraph(
     graph.validationResults || {},
     fileId,
   );
+
+  // 로어북 파일 ID 재매핑
+  const remappedLorebook = remapLorebookFileIds(filteredLorebook, renumbered.fileIdMapping);
 
   return {
     ...graph,
@@ -354,6 +405,7 @@ export function deleteFileFromGraph(
     hyperedges: newHyperedges,
     snapshots: renumbered.snapshots,
     validationResults: renumbered.validationResults,
+    lorebook: remappedLorebook,
     stats: {
       ...graph.stats,
       totalEntities: Object.keys(finalEntities).length,
@@ -493,6 +545,9 @@ export function buildEditFileGraph(
     });
   }
 
+  // 로어북: 파일 ID 재매핑
+  const remappedLorebook = remapLorebookFileIds(graph.lorebook, renumbered.fileIdMapping);
+
   return {
     ...graph,
     metadata: {
@@ -502,5 +557,6 @@ export function buildEditFileGraph(
     },
     ...reordered,
     validationResults: newValidation,
+    lorebook: remappedLorebook,
   };
 }

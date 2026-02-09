@@ -1,0 +1,240 @@
+{
+  "_test": {
+    "file": "16_판타지_마법체계",
+    "timestamp": "2026-02-08T15:49:41.174Z",
+    "model": "google/gemini-2.0-flash-001",
+    "chunks": 1
+  },
+  "llmA": {
+    "entities": [
+      {
+        "name": "루카",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "엘리아 공주",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "아르테미스 아카데미",
+        "category": "location",
+        "aliases": [],
+        "scenes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "마그누스",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "이그니스 교수",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "세레나 교수",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          1,
+          3
+        ]
+      },
+      {
+        "name": "빅토르",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "카이젤 공작",
+        "category": "character",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "암흑 마법",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          2
+        ]
+      },
+      {
+        "name": "아르카나의 서",
+        "category": "item",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      },
+      {
+        "name": "마나 융합술",
+        "category": "concept",
+        "aliases": [],
+        "scenes": [
+          3
+        ]
+      }
+    ],
+    "relationships": 14,
+    "scenes": 3,
+    "mergeSuggestions": [
+      {
+        "keep": "아르테미스 아카데미",
+        "merge": "아르테미스 아카데미",
+        "reason": "동일한 장소를 지칭하는 이름"
+      }
+    ]
+  },
+  "llmB": {
+    "rawLoreCount": 13,
+    "mergedLoreCount": 13,
+    "deduped": 0
+  },
+  "entityNameMapping": {},
+  "loreEntries": [
+    {
+      "entityName": "루카",
+      "category": "background",
+      "content": "평민 출신이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "루카",
+      "category": "ability",
+      "content": "마나량은 적지만 제어력이 뛰어나다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "엘리아",
+      "category": "background",
+      "content": "왕족 출신이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "엘리아",
+      "category": "ability",
+      "content": "치유 마법에 천부적인 재능이 있다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "마그누스",
+      "category": "personality",
+      "content": "마법은 혈통이 아닌 의지로 결정된다고 생각한다.",
+      "quote": "마법은 혈통이 아니라 의지로 결정됩니다.",
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "이그니스",
+      "category": "ability",
+      "content": "화염 마법의 대가이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "세레나",
+      "category": "ability",
+      "content": "치유 마법 전문가이다.",
+      "quote": null,
+      "sceneId": "S0001"
+    },
+    {
+      "entityName": "빅토르",
+      "category": "background",
+      "content": "귀족 출신이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "빅토르",
+      "category": "background",
+      "content": "아버지는 왕국의 재상 카이젤 공작이다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "빅토르",
+      "category": "ability",
+      "content": "암흑 마법을 사용한다.",
+      "quote": null,
+      "sceneId": "S0002"
+    },
+    {
+      "entityName": "엘리아",
+      "category": "personality",
+      "content": "옳은 일을 하는 것이 중요하다고 생각한다.",
+      "quote": "그래. 왕족이든 평민이든, 옳은 일을 하는 게 중요하니까.",
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "아르카나의 서",
+      "category": "lore",
+      "content": "마나 융합술이 기록되어 있다.",
+      "quote": null,
+      "sceneId": "S0003"
+    },
+    {
+      "entityName": "이그니스",
+      "category": "personality",
+      "content": "암흑 마법 사용을 금지한다.",
+      "quote": "빅토르, 암흑 마법 사용은 퇴학 사유다.",
+      "sceneId": "S0002"
+    }
+  ],
+  "summary": {
+    "entityCount": 11,
+    "characterCount": 7,
+    "loreEntryCount": 13,
+    "byEntity": {
+      "루카": 2,
+      "엘리아": 3,
+      "마그누스": 1,
+      "이그니스": 2,
+      "세레나": 1,
+      "빅토르": 3,
+      "아르카나의 서": 1
+    },
+    "byCategory": {
+      "background": 4,
+      "ability": 5,
+      "personality": 3,
+      "lore": 1
+    },
+    "duplicateCount": 0,
+    "pronounUnresolved": 0
+  }
+}

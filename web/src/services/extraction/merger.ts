@@ -5,10 +5,12 @@
 import type {
   NovelKnowledgeGraph, Entity, HyperEdge,
   EntityCategory, RelationType, Chapter, SceneSnapshot, SourceFile,
+  LoreEntry, Lorebook, LoreCategory,
 } from '../../types';
 import type {
   ChunkExtractedData, MergedExtraction, MergedEntity, MergedRelationship,
   MergedScene, MergedChapter, MergedTimelinePoint, ChunkBilling,
+  RawLoreEntry,
 } from './types';
 import { getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_MERGE_REVIEW_PROMPT } from './prompts';
@@ -172,6 +174,8 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
   const chapters: MergedChapter[] = [];
   const chapterMap: Record<string, number> = {};
   const nameMap: Record<string, number> = {};
+  // 청크별 로컬→글로벌 장면 매핑 (로어북 병합용)
+  const chunkSceneOffsets: Array<Record<number, number>> = [];
 
   let globalSceneOffset = 0;
 
@@ -221,6 +225,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
         sourceFileIndex,
       });
     }
+    chunkSceneOffsets.push(localToGlobal);
     globalSceneOffset += chunkScenes.length || 1;
 
     // 엔티티 병합
@@ -277,7 +282,7 @@ export function mergeExtractions(extractions: ChunkExtractedData[], chunkSourceF
 
   console.log(`[extraction] 병합 완료: 최종 entities=${entities.length}, relationships=${relationships.length}, scenes=${scenes.length}, chapters=${chapters.length}`);
   console.log(`[extraction] 인물 목록: ${entities.filter(e => e.category === 'character').map(e => e.name).join(', ')}`);
-  return { entities, relationships, scenes, chapters };
+  return { entities, relationships, scenes, chapters, chunkSceneOffsets };
 }
 
 // --- LLM 병합 검토 ---
@@ -667,6 +672,240 @@ export function inferMissingRelationships(extracted: MergedExtraction): MergedEx
   };
 }
 
+// --- 로어북 병합 ---
+
+const VALID_LORE_CATEGORIES = new Set<string>([
+  'appearance', 'outfit', 'personality', 'ability', 'background', 'motivation',
+  'relationship_detail', 'lore',
+]);
+
+// 이전 카테고리 → 새 카테고리 매핑 (하위 호환)
+const LEGACY_CATEGORY_MAP: Record<string, string> = {
+  'quote': 'personality',           // 대사 → 성격/말투에 통합
+  'world_setting': 'lore',
+  'location_detail': 'lore',
+  'organization_detail': 'lore',
+  'item_detail': 'lore',
+  'event': 'lore',
+};
+
+// LLM이 카테고리명을 이름으로 잘못 쓰는 패턴 (항상 필터)
+const CATEGORY_AS_NAME = new Set([
+  'concept', 'character', 'location', 'item', 'creature', 'event', 'organization',
+]);
+
+// 무효한 엔티티 이름: 너무 일반적이거나 구체적이지 않은 단어
+const INVALID_ENTITY_NAMES = new Set([
+  '세계', '세상', '여기', '저기', '거기', '이곳', '저곳', '그곳',
+  '환경', '상황', '분위기', '사건', '장면', '시간', '공간',
+  '모두', '전부', '아무도', '누군가', '어떤', '무언가',
+]);
+
+// 대명사/지시어 (resolve 시도 후 실패할 때만 필터)
+const PRONOUN_NAMES = new Set([
+  '나', '그', '그녀', '그들', '화자', '주인공', '저', '우리',
+]);
+
+function cleanEntityName(name: string): string {
+  // 괄호 내용 제거: "고양이(나)" → "고양이", "서준(별칭: 나)" → "서준"
+  let cleaned = name.replace(/\s*\([^)]*\)\s*/g, '').trim();
+  // 대괄호 제거: "고양이[주인공]" → "고양이"
+  cleaned = cleaned.replace(/\s*\[[^\]]*\]\s*/g, '').trim();
+  return cleaned || name.trim();
+}
+
+/**
+ * 두 문자열의 유사도 계산 (0~1, 1=동일)
+ * 핵심 명사(한글 2자 이상 단어)의 겹침 비율로 판단
+ */
+function contentSimilarity(a: string, b: string): number {
+  const extractWords = (s: string) => {
+    const words = s.match(/[가-힣]{2,}|[a-zA-Z]{3,}/g) || [];
+    return new Set(words.map(w => w.toLowerCase()));
+  };
+  const wordsA = extractWords(a);
+  const wordsB = extractWords(b);
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let overlap = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) overlap++;
+  }
+  return overlap / Math.min(wordsA.size, wordsB.size);
+}
+
+/**
+ * 청크별 raw 로어 엔트리를 병합하고 글로벌 장면 ID로 매핑
+ * chunkSceneMappings: 청크별 로컬 장면 번호 → "S0001" 형식 매핑
+ * entityNameMapping: 엔티티 병합(reviewEntityMerges) 후 "old name" → "keep name" 매핑
+ * knownEntityNames: KG에 존재하는 엔티티 이름 목록 (이름 매칭용)
+ */
+export function mergeLoreEntries(
+  allExtractedLore: RawLoreEntry[][],
+  chunkSourceFileIndices: number[],
+  chunkSceneMappings: Array<Record<number, string>>,
+  entityNameMapping: Record<string, string>,
+  fileNames?: string[],
+  sourceFileIds?: string[],
+  knownEntityNames?: string[],
+): LoreEntry[] {
+  const entries: LoreEntry[] = [];
+  const seen = new Set<string>();  // 중복 제거: "entityName|category|sceneId|contentPrefix"
+  let counter = 0;
+  let skippedInvalid = 0;
+
+  // 알려진 엔티티 이름으로 퍼지 매칭을 위한 맵
+  const knownNamesLower = (knownEntityNames || []).map(n => ({ original: n, lower: n.toLowerCase() }));
+
+  for (let chunkIdx = 0; chunkIdx < allExtractedLore.length; chunkIdx++) {
+    const chunkLore = allExtractedLore[chunkIdx];
+    if (!chunkLore?.length) {
+      console.log(`[lorebook] 청크 ${chunkIdx + 1}: 로어 엔트리 없음 (건너뜀)`);
+      continue;
+    }
+
+    // 이 청크에서 LLM B가 사용한 장면 번호 분포
+    const sceneNums = chunkLore.map(e => e.scene);
+    const uniqueLoreScenes = [...new Set(sceneNums)].sort((a, b) => a - b);
+    const maxLoreSceneInChunk = uniqueLoreScenes[uniqueLoreScenes.length - 1] || 1;
+    const chunkMapping = chunkSceneMappings[chunkIdx] || {};
+    const mappingKeys = Object.keys(chunkMapping).map(Number).sort((a, b) => a - b);
+    console.log(`[lorebook] 청크 ${chunkIdx + 1}: LLM B 장면번호=[${uniqueLoreScenes.join(',')}] (${chunkLore.length}개 엔트리), LLM A 매핑 키=[${mappingKeys.join(',')}] → 값=[${mappingKeys.map(k => chunkMapping[k]).join(',')}]`);
+
+    // 이 청크의 파일 인덱스 → sourceFileId
+    const fileIndex = chunkSourceFileIndices[chunkIdx] ?? 0;
+    const fileId = sourceFileIds?.[fileIndex] || undefined;
+
+    for (const raw of chunkLore) {
+      if (!raw.entity_name || !raw.content) continue;
+
+      // 카테고리 검증 (레거시 카테고리 자동 변환)
+      const mappedCategory = LEGACY_CATEGORY_MAP[raw.category] || raw.category;
+      const category = VALID_LORE_CATEGORIES.has(mappedCategory)
+        ? mappedCategory as LoreCategory
+        : 'lore';
+
+      // 1. 이름 정리: 괄호/별칭 제거
+      let entityName = cleanEntityName(raw.entity_name);
+
+      // 2. 카테고리명 또는 무효한 이름인 경우 필터
+      if (CATEGORY_AS_NAME.has(entityName.toLowerCase()) || INVALID_ENTITY_NAMES.has(entityName.toLowerCase())) {
+        skippedInvalid++;
+        continue;
+      }
+
+      // 3. 병합 매핑 적용 (대명사 resolve 포함: "나" → "고양이" 등)
+      entityName = entityNameMapping[entityName] || entityNameMapping[raw.entity_name] || entityName;
+
+      // 4. 알려진 엔티티 이름으로 매칭 시도 (LLM이 약간 다르게 쓴 경우 보정)
+      if (knownNamesLower.length > 0) {
+        const nameLower = entityName.toLowerCase();
+        // 정확 매칭
+        const exact = knownNamesLower.find(k => k.lower === nameLower);
+        if (exact) {
+          entityName = exact.original;
+        } else {
+          // 부분 매칭 (80% 이상 길이 비율)
+          for (const known of knownNamesLower) {
+            const shorter = Math.min(nameLower.length, known.lower.length);
+            const longer = Math.max(nameLower.length, known.lower.length);
+            if (shorter >= 2 && shorter / longer >= 0.8) {
+              if (known.lower.includes(nameLower) || nameLower.includes(known.lower)) {
+                entityName = known.original;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // 5. 대명사가 resolve되지 못한 경우에만 필터링
+      // (entityNameMapping이나 knownEntity 매칭으로 실제 이름이 되었으면 통과)
+      // 단, LLM A가 "나"를 실제 엔티티로 뽑은 경우(knownEntityNames에 있음) → 필터 안 함
+      if (PRONOUN_NAMES.has(entityName.toLowerCase())) {
+        const isActualEntity = knownNamesLower.some(k => k.lower === entityName.toLowerCase());
+        if (!isActualEntity) {
+          skippedInvalid++;
+          continue;
+        }
+      }
+
+      // 장면 ID: 청크별 로컬 → S-format 매핑
+      // LLM B의 장면 번호는 청크 로컬이므로, LLM A의 같은 청크 매핑으로 근사
+      const mapping = chunkSceneMappings[chunkIdx] || {};
+      let sceneId = mapping[raw.scene];
+      if (!sceneId) {
+        // LLM B가 LLM A와 다른 장면 번호를 쓴 경우: 비례 매핑
+        const availableScenes = Object.keys(mapping).map(Number).sort((a, b) => a - b);
+        if (availableScenes.length > 0) {
+          // LLM B의 장면 번호 범위(1~maxLoreScene)를 LLM A의 장면 범위에 비례 대응
+          // 예: LLM B scene 2/3 → LLM A 5개 장면 → idx=Math.round((2-1)/(3-1)*(5-1))=2 → 3번째 장면
+          const loreSceneCount = Math.max(maxLoreSceneInChunk, raw.scene);
+          let mappedIdx: number;
+          if (loreSceneCount <= 1) {
+            mappedIdx = 0;
+          } else {
+            mappedIdx = Math.min(
+              Math.round((raw.scene - 1) / (loreSceneCount - 1) * (availableScenes.length - 1)),
+              availableScenes.length - 1
+            );
+          }
+          sceneId = mapping[availableScenes[Math.max(0, mappedIdx)]];
+          console.log(`[lorebook] 비례 매핑: 청크${chunkIdx + 1} LLM-B scene ${raw.scene}/${loreSceneCount} → idx ${mappedIdx}/${availableScenes.length} → ${sceneId} (entity: ${entityName})`);
+        }
+        if (!sceneId) sceneId = `S${String(raw.scene).padStart(4, '0')}`;
+      }
+
+      // 중복 제거: 같은 (엔티티, 카테고리)에서 내용이 유사하면 스킵
+      // 1단계: 정확히 같은 content prefix 중복
+      const dedupKey = `${entityName}|${category}|${raw.content.slice(0, 30)}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+
+      // 2단계: 같은 (엔티티, 카테고리)의 기존 엔트리와 의미 유사도 비교
+      const groupKey = `${entityName}|${category}`;
+      let isDuplicate = false;
+      for (const existing of entries) {
+        if (`${existing.entityName}|${existing.category}` !== groupKey) continue;
+        if (contentSimilarity(raw.content, existing.content) >= 0.85) {
+          // 더 긴(구체적인) 내용을 유지, 짧은 것 스킵
+          if (raw.content.length > existing.content.length) {
+            existing.content = raw.content;
+            if (raw.quote && (!existing.quote || raw.quote.length > existing.quote.length)) {
+              existing.quote = raw.quote;
+            }
+          }
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (isDuplicate) continue;
+
+      counter++;
+      entries.push({
+        id: `LR${String(counter).padStart(4, '0')}`,
+        entityName,
+        category,
+        content: raw.content,
+        quote: raw.quote || undefined,
+        sceneId,
+        sourceFileId: fileId,
+      });
+    }
+  }
+
+  if (skippedInvalid > 0) {
+    console.log(`[lorebook] 무효한 엔티티 이름 ${skippedInvalid}개 건너뜀`);
+  }
+  // 장면 분포 요약
+  const sceneDistrib: Record<string, number> = {};
+  for (const e of entries) {
+    sceneDistrib[e.sceneId] = (sceneDistrib[e.sceneId] || 0) + 1;
+  }
+  const sceneKeys = Object.keys(sceneDistrib).sort();
+  console.log(`[lorebook] 병합 완료: ${entries.length}개 로어 엔트리, 장면 분포: ${sceneKeys.map(s => `${s}=${sceneDistrib[s]}`).join(', ')}`);
+  return entries;
+}
+
 // --- 지식 그래프 구축 ---
 
 // 두 엔티티 간 기존 관계가 존재하는지 확인
@@ -903,7 +1142,7 @@ function buildSnapshots(
   return snapshots;
 }
 
-export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph): NovelKnowledgeGraph {
+export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, model?: string, fileNames?: string[], originalText?: string, existingGraph?: NovelKnowledgeGraph, loreEntries?: LoreEntry[]): NovelKnowledgeGraph {
   const now = new Date().toISOString();
 
   // 기존 그래프의 엔티티/관계를 유지 (새 파일 추가 시 기존 데이터 보존)
@@ -1208,6 +1447,52 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
   // 기존 타임라인과 병합
   const mergedTimeline = existingGraph ? [...(existingGraph.timeline || []), ...timeline] : timeline;
 
+  // 로어북 구성: 기존 lorebook + 새 lore entries
+  let lorebook: Lorebook | undefined = undefined;
+  const existingLorebook = existingGraph?.lorebook;
+  if (loreEntries?.length || existingLorebook) {
+    const allEntries: Record<string, LoreEntry> = {};
+
+    // 기존 로어북 복사
+    if (existingLorebook) {
+      Object.entries(existingLorebook.entries).forEach(([id, entry]) => {
+        allEntries[id] = entry;
+      });
+    }
+
+    // 새 로어 엔트리의 sourceFileId 매핑 (fileNameToId 사용)
+    if (loreEntries?.length) {
+      // 기존 LR 번호 최대값 구하기 (ID 충돌 방지)
+      let maxLoreNum = 0;
+      for (const id of Object.keys(allEntries)) {
+        const numMatch = id.match(/LR0*(\d+)/);
+        if (numMatch) maxLoreNum = Math.max(maxLoreNum, parseInt(numMatch[1], 10));
+      }
+
+      for (const entry of loreEntries) {
+        maxLoreNum++;
+        const newId = `LR${String(maxLoreNum).padStart(4, '0')}`;
+
+        // sourceFileId가 없으면 sceneId로 역추적
+        let resolvedFileId = entry.sourceFileId;
+        if (!resolvedFileId && entry.sceneId) {
+          const snapshot = snapshots[entry.sceneId];
+          if (snapshot?.sourceFileId) {
+            resolvedFileId = snapshot.sourceFileId;
+          }
+        }
+
+        allEntries[newId] = {
+          ...entry,
+          id: newId,
+          sourceFileId: resolvedFileId,
+        };
+      }
+    }
+
+    lorebook = { entries: allEntries };
+  }
+
   return {
     metadata: {
       ...(existingGraph?.metadata || {}),
@@ -1223,6 +1508,7 @@ export function buildKnowledgeGraph(extracted: MergedExtraction, title: string, 
     chapters,
     timeline: mergedTimeline,
     snapshots,
+    lorebook,
     stats: {
       totalEntities: Object.keys(entities).length,
       totalEdges: Object.keys(hyperedges).length,

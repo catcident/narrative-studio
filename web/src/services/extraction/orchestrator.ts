@@ -4,12 +4,12 @@
 
 import type { NovelKnowledgeGraph, PartialAnalysisInfo } from '../../types';
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from '../../types';
-import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions } from './types';
+import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions, RawLoreEntry } from './types';
 import { EMPTY_CHUNK_DATA, getEffectiveApiKey, getByokMode } from './types';
 import { splitIntoSmartChunksWithSource } from './chunker';
 import { selectRelevantEntities, filterEntitiesByNames, buildAccumulatedGraph } from './selector';
-import { extractFromChunk } from './extractor';
-import { mergeExtractions, reviewEntityMerges, inferMissingRelationships, buildKnowledgeGraph } from './merger';
+import { extractFromChunk, extractLorebook } from './extractor';
+import { mergeExtractions, reviewEntityMerges, inferMissingRelationships, buildKnowledgeGraph, mergeLoreEntries } from './merger';
 
 // localStorage 키
 const PROGRESS_KEY = 'novel-extraction-progress';
@@ -108,6 +108,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   let chunks: string[] = [];
   let chunkSourceFileIndices: number[] = [];  // 각 청크가 어느 파일에서 왔는지 추적
   let allExtracted: ChunkExtractedData[] = [];
+  let allExtractedLore: RawLoreEntry[][] = [];  // 청크별 로어북 결과
   let knownEntities: KnownEntity[] = [];
   let startChunk = 0;
 
@@ -134,6 +135,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     chunks = resumeFrom.chunks;
     chunkSourceFileIndices = resumeFrom.chunkSourceFileIndices || chunks.map(() => 0);
     allExtracted = resumeFrom.allExtracted;
+    allExtractedLore = resumeFrom.allExtractedLore || [];
     knownEntities = [...resumeFrom.knownEntities];
     startChunk = resumeFrom.processedChunks;
     console.log(`[extraction] 이어하기: ${startChunk}/${resumeFrom.totalChunks}부터 재개 (모델: ${useModel})`);
@@ -172,6 +174,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       totalChunks,
       processedChunks,
       allExtracted,
+      allExtractedLore,
       knownEntities,
       chunks,
       chunkSourceFileIndices,
@@ -235,15 +238,46 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       }
 
       console.log(`[extraction] 청크 ${i + 1}: 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
-      const { data: extracted, billing } = await extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey);
+
+      // LLM A (관계 추출) + LLM B (로어북 추출) 병렬 호출
+      const [extractionResult, lorebookResult] = await Promise.all([
+        extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey),
+        extractLorebook(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey).catch(err => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[lorebook] 청크 ${i + 1} 로어북 추출 실패:`, errMsg);
+          return { data: [] as RawLoreEntry[], billing: null };
+        }),
+      ]);
+
+      const extracted = extractionResult.data;
+      const billing = extractionResult.billing;
 
       if (extracted) {
         // billing 정보를 콜백으로 전달 (토큰 사용량 누적)
         if (billing && onChunkBilling) {
           onChunkBilling(i, billing);
         }
+        if (lorebookResult.billing && onChunkBilling) {
+          onChunkBilling(i, lorebookResult.billing);
+        }
+
+        // 로어북 결과 축적
+        const loreCount = lorebookResult.data?.length || 0;
+        if (loreCount > 0) {
+          allExtractedLore.push(lorebookResult.data);
+          const loreScenes = [...new Set(lorebookResult.data.map(e => e.scene))].sort((a, b) => a - b);
+          console.log(`[lorebook] 청크 ${i + 1}: ${loreCount}개 로어 엔트리, 장면번호=[${loreScenes.join(',')}]`);
+        } else {
+          allExtractedLore.push([]);  // 빈 배열이라도 인덱스 맞추기
+          console.log(`[lorebook] 청크 ${i + 1}: 로어 엔트리 없음`);
+        }
+
         allExtracted.push(extracted);
         failedChunkCount = 0; // 성공 시 연속 실패 카운터 초기화
+
+        // LLM A 장면 정보 로그
+        const llmASceneIds = (extracted.scenes || []).map(s => s.id);
+        console.log(`[extraction] 청크 ${i + 1}: LLM A 장면 id=[${llmASceneIds.join(',')}] (${llmASceneIds.length}개)`);
 
         // 이 청크에서 발견된 모든 엔티티를 다음 청크를 위해 저장
         const newEntities: string[] = [];
@@ -300,6 +334,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
         // 빈 결과로 추가 (장면 번호 유지를 위해)
         allExtracted.push(EMPTY_CHUNK_DATA);
+        allExtractedLore.push([]);  // 로어북도 빈 배열로 인덱스 맞추기
 
         // 진행상황 저장 (실패한 청크도 처리됨으로 표시)
         saveCurrentProgress(i + 1);
@@ -362,7 +397,92 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   // 이어하기인 경우 저장된 원본 텍스트/파일명 사용
   const finalText = resumeFrom?.originalText || text;
   const finalFileNames = resumeFrom?.fileNames || fileNames;
-  return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph);
+
+  // 로어북 병합: 엔티티 병합 결과를 반영하여 entityName 매핑
+  onProgress?.('로어북 정보 병합 중...');
+  const entityNameMapping: Record<string, string> = {};
+  for (const entity of reviewed.entities) {
+    for (const alias of (entity.aliases || [])) {
+      if (alias !== entity.name) {
+        entityNameMapping[alias] = entity.name;
+      }
+    }
+  }
+
+  // 1인칭 대명사 → 화자 엔티티 자동 매핑
+  // LLM B가 "나"로 추출한 엔트리를 실제 화자 캐릭터에 연결
+  // 조건: character 엔티티 중 aliases에 "나" 등 대명사가 있는 것을 찾아 매핑
+  const NARRATOR_PRONOUNS = ['나', '저', '우리', '화자', '주인공'];
+  const characterEntities = reviewed.entities.filter(e => e.category === 'character' || e.category === 'creature');
+  for (const pronoun of NARRATOR_PRONOUNS) {
+    if (entityNameMapping[pronoun]) continue; // 이미 매핑됨
+    // aliases에 대명사가 포함된 캐릭터 찾기
+    const narrator = characterEntities.find(e =>
+      e.aliases?.some(a => a === pronoun || a.toLowerCase() === pronoun)
+    );
+    if (narrator) {
+      entityNameMapping[pronoun] = narrator.name;
+      console.log(`[lorebook] 대명사 매핑: "${pronoun}" → "${narrator.name}" (aliases에서 발견)`);
+    }
+  }
+  // 대명사 매핑이 하나도 없고 character가 정확히 1명이면 → 그 캐릭터가 화자일 가능성 높음
+  if (!NARRATOR_PRONOUNS.some(p => entityNameMapping[p]) && characterEntities.length === 1) {
+    for (const pronoun of NARRATOR_PRONOUNS) {
+      entityNameMapping[pronoun] = characterEntities[0].name;
+    }
+    console.log(`[lorebook] 대명사 매핑 (단일 캐릭터): 모든 대명사 → "${characterEntities[0].name}"`);
+  }
+
+  // 장면 ID 매핑: 글로벌 번호 → S-format (buildKnowledgeGraph와 동일)
+  // 이것은 글로벌 scene.id → "S0001" 형식
+  const globalSceneIdMapping: Record<number, string> = {};
+  for (const scene of validated.scenes) {
+    globalSceneIdMapping[scene.id] = `S${String(scene.id).padStart(4, '0')}`;
+  }
+
+  // 로어북용: 청크별 로컬→글로벌→S-format 매핑 구축
+  // chunkSceneOffsets[chunkIdx] = { localSceneId → globalSceneId }
+  // globalSceneIdMapping = { globalSceneId → "S0001" }
+  // 합치면: chunkLocalToSFormat[chunkIdx] = { localSceneId → "S0001" }
+  const chunkSceneOffsets = merged.chunkSceneOffsets || [];
+  const chunkLocalToSFormat: Array<Record<number, string>> = [];
+  for (let ci = 0; ci < chunkSceneOffsets.length; ci++) {
+    const localToGlobal = chunkSceneOffsets[ci];
+    const localToS: Record<number, string> = {};
+    for (const [localStr, globalId] of Object.entries(localToGlobal)) {
+      const local = Number(localStr);
+      localToS[local] = globalSceneIdMapping[globalId] || `S${String(globalId).padStart(4, '0')}`;
+    }
+    chunkLocalToSFormat.push(localToS);
+  }
+
+  // 알려진 엔티티 이름 목록 (로어북 엔티티명 보정용)
+  const knownEntityNames = validated.entities.map(e => e.name);
+
+  // 디버그: 장면 매핑 상태 확인
+  console.log(`[lorebook] 장면 매핑 배열 길이: offsets=${chunkSceneOffsets.length}, SFormat=${chunkLocalToSFormat.length}, lore=${allExtractedLore.length}`);
+  console.log(`[lorebook] 청크별 장면 매핑 수: ${chunkLocalToSFormat.map((m, i) => `청크${i + 1}=${Object.keys(m).length}개`).join(', ')}`);
+  for (let ci = 0; ci < chunkLocalToSFormat.length; ci++) {
+    console.log(`[lorebook] 청크${ci + 1} 매핑:`, JSON.stringify(chunkLocalToSFormat[ci]));
+  }
+  if (chunkLocalToSFormat.length > 0) {
+    const first = chunkLocalToSFormat[0];
+    console.log(`[lorebook] 청크1 매핑 예시:`, JSON.stringify(first));
+  }
+  console.log(`[lorebook] 로어 청크 수: ${allExtractedLore.length}, 각 청크별 엔트리 수: ${allExtractedLore.map((l, i) => `청크${i + 1}=${l.length}`).join(', ')}`);
+
+  const mergedLore = mergeLoreEntries(
+    allExtractedLore,
+    chunkSourceFileIndices,
+    chunkLocalToSFormat,
+    entityNameMapping,
+    finalFileNames,
+    undefined,
+    knownEntityNames,
+  );
+  console.log(`[extraction] 로어북 병합: ${mergedLore.length}개 엔트리`);
+
+  return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph, mergedLore);
 }
 
 /**
