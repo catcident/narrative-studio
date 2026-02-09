@@ -664,31 +664,30 @@ def toss_webhook(request):
     return JsonResponse({"message": "OK"})
 
 
-def _verify_signature(payload, tx_time, sig_header):
-    secret = settings.TOSS_WEBHOOK_SECRET
-    message = f"{payload}:{tx_time}"
-    expected = hmac.new(secret.encode(), message.encode(), hashlib.sha256).digest()
-    for sig in sig_header.split(","):
-        sig = sig.strip()
-        if sig.startswith("v1:"):
-            decoded = base64.b64decode(sig[3:])
-            if hmac.compare_digest(expected, decoded):
-                return True
-    return False
-
-
 def _handle_payment_status(data):
+    """결제 승인 응답의 secret 필드와 비교하여 웹훅 검증"""
     payment_key = data.get("paymentKey")
+    webhook_secret = data.get("secret", "")
     new_status = data.get("status")
+
+    history = PaymentHistory.objects.filter(payment_key=payment_key).first()
+    if not history:
+        return
+
+    # secret 검증: 결제 승인 시 DB에 저장한 값과 비교
+    if history.webhook_secret:
+        if not webhook_secret or not hmac.compare_digest(history.webhook_secret, webhook_secret):
+            return  # 검증 실패 → 무시
+
     STATUS_MAP = {
         "DONE": "done", "CANCELED": "canceled",
         "PARTIAL_CANCELED": "canceled",
         "ABORTED": "failed", "EXPIRED": "failed",
     }
     if new_status in STATUS_MAP:
-        PaymentHistory.objects.filter(payment_key=payment_key).update(
-            status=STATUS_MAP[new_status], toss_response=data
-        )
+        history.status = STATUS_MAP[new_status]
+        history.toss_response = data
+        history.save(update_fields=["status", "toss_response", "updated_at"])
 
 
 def _handle_billing_key_status(data):
@@ -708,7 +707,7 @@ def _handle_billing_key_status(data):
 # settings.py
 TOSS_CLIENT_KEY = env("TOSS_CLIENT_KEY")         # test_ck_... (프론트엔드용)
 TOSS_SECRET_KEY = env("TOSS_SECRET_KEY")          # test_sk_... (서버 전용)
-TOSS_WEBHOOK_SECRET = env("TOSS_WEBHOOK_SECRET")  # 웹훅 HMAC 검증
+# 웹훅 검증: 결제 승인 응답의 secret 필드를 PaymentHistory에 저장하여 비교 (별도 키 불필요)
 ```
 
 ### narrative-studio (storygraph)

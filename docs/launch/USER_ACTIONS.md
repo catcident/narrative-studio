@@ -22,8 +22,10 @@ catcident-backend `.env.local`에 추가:
 ```bash
 TOSS_CLIENT_KEY=test_ck_...      # TossPayments 테스트 클라이언트 키
 TOSS_SECRET_KEY=test_sk_...      # TossPayments 테스트 시크릿 키
-TOSS_WEBHOOK_SECRET=whsec_...    # 웹훅 시크릿 (TossPayments 대시보드에서 발급)
 ```
+
+> **참고**: 대시보드의 "보안 키"는 지급대행 서비스용이므로 설정 불필요.
+> 웹훅 검증은 결제 승인 응답의 `secret` 필드를 DB에 저장하여 자동 처리됩니다.
 
 ### H3. Sentry DSN 설정
 
