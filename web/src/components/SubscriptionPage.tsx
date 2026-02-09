@@ -3,7 +3,7 @@
  * 탭: 플랜 비교 | 크레딧 구매 | 사용 내역 | API 키
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
@@ -106,13 +106,13 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
     setKeyError(null);
   };
 
-  const maskedKey = (() => {
+  const maskedKey = useMemo(() => {
     if (!hasLocalKey) return null;
     const key = getApiKey();
     if (!key) return null;
     if (key.length <= 10) return '••••••••••';
     return `${key.slice(0, 6)}...${key.slice(-4)}`;
-  })();
+  }, [hasLocalKey]);
 
   const planIcon = (code: string) => {
     switch (code) {
@@ -131,6 +131,15 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
       default: return 'border-gray-300 bg-gray-50';
     }
   };
+
+  const billingBaseUrl = 'https://catcident.com/ko/billing';
+  const returnUrlParam = useMemo(() => encodeURIComponent(window.location.origin + '/app'), []);
+
+  function getPlanCardStyle(code: string, isCurrent: boolean, isPopular: boolean): string {
+    if (isCurrent) return planColor(code) + ' ring-2 ring-blue-500';
+    if (isPopular) return 'border-purple-400 shadow-lg shadow-purple-100 bg-purple-50/30';
+    return 'border-gray-200';
+  }
 
   const getDisplayPrice = (monthlyPrice: number): { price: number; original?: number } => {
     if (billingPeriod === 'annual' && monthlyPrice > 0) {
@@ -235,9 +244,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   return (
                     <div
                       key={plan.id}
-                      className={`border-2 rounded-xl p-4 flex flex-col relative ${
-                        isCurrent ? planColor(plan.code) + ' ring-2 ring-blue-500' : isPopular ? 'border-purple-400 shadow-lg shadow-purple-100 bg-purple-50/30' : 'border-gray-200'
-                      }`}
+                      className={`border-2 rounded-xl p-4 flex flex-col relative ${getPlanCardStyle(plan.code, isCurrent, isPopular)}`}
                     >
                       {isPopular && !isCurrent && (
                         <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs px-3 py-0.5 bg-purple-600 text-white rounded-full whitespace-nowrap">
@@ -326,14 +333,11 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
                       {!isCurrent && plan.price_krw > 0 && (
                         <button
-                          onClick={() => {
-                            const returnUrl = encodeURIComponent(window.location.origin + '/app');
-                            window.open(
-                              `https://catcident.com/ko/billing/subscribe/?plan=${plan.code}&return_url=${returnUrl}`,
-                              '_blank',
-                              'noopener'
-                            );
-                          }}
+                          onClick={() => window.open(
+                            `${billingBaseUrl}/subscribe/?plan=${plan.code}&return_url=${returnUrlParam}`,
+                            '_blank',
+                            'noopener'
+                          )}
                           className="mt-4 w-full py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                         >
                           {subscription?.plan === 'free' ? '구독 시작' : '플랜 변경'}
@@ -376,14 +380,11 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         </div>
                         <div className="text-xs text-gray-400 mb-4">만료 없음</div>
                         <button
-                          onClick={() => {
-                            const returnUrl = encodeURIComponent(window.location.origin + '/app');
-                            window.open(
-                              `https://catcident.com/ko/billing/checkout/?package=${pkg.id}&return_url=${returnUrl}`,
-                              '_blank',
-                              'noopener'
-                            );
-                          }}
+                          onClick={() => window.open(
+                            `${billingBaseUrl}/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
+                            '_blank',
+                            'noopener'
+                          )}
                           className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                         >
                           구매하기

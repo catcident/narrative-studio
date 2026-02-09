@@ -59,7 +59,12 @@ function buildFeatureStrings(f: PlanFeatures): string[] {
 
 /* ── 플랜별 스타일 ──────────────────────────────────────── */
 
-function getPlanStyle(code: string) {
+interface PlanStyle {
+  highlighted: boolean;
+  badge: string | null;
+}
+
+function getPlanStyle(code: string): PlanStyle {
   switch (code) {
     case 'pro':
       return { highlighted: true, badge: '인기' };
@@ -156,6 +161,16 @@ function PricingPlaceholder() {
 
 /* ── PricingSection ─────────────────────────────────────── */
 
+/** DRF 페이지네이션 형식 { results: [...] } 또는 flat array 모두 처리 */
+function extractPlanItems(data: unknown): unknown[] {
+  if (typeof data === 'object' && data !== null && 'results' in data) {
+    const results = (data as Record<string, unknown>).results;
+    if (Array.isArray(results)) return results;
+  }
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
 function isValidPlan(item: unknown): item is BackendPlan {
   if (typeof item !== 'object' || item === null) return false;
   const r = item as Record<string, unknown>;
@@ -185,13 +200,7 @@ export function PricingSection() {
       })
       .then((data: unknown) => {
         if (cancelled) return;
-        // DRF 페이지네이션 형식 처리: { results: [...] } 또는 flat array
-        const items = (
-          typeof data === 'object' && data !== null && 'results' in data && Array.isArray((data as Record<string, unknown>).results)
-            ? (data as Record<string, unknown>).results
-            : Array.isArray(data) ? data : []
-        ) as unknown[];
-        setPlans(items.filter(isValidPlan));
+        setPlans(extractPlanItems(data).filter(isValidPlan));
       })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) {
