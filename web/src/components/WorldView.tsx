@@ -4,9 +4,9 @@
  */
 
 import { useState, useMemo } from 'react';
-import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Package, Globe, Filter, Star, Link2 } from 'lucide-react';
+import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Package, Globe, Filter, Star, Link2, Quote, BookOpen } from 'lucide-react';
 import { useStore } from '../store';
-import type { Entity, HyperEdge } from '../types';
+import type { Entity, HyperEdge, LoreEntry } from '../types';
 import { getEntitiesByCategory, getEdgesByEntity } from '../services/knowledgeGraphQueries';
 
 type WorldTab = 'locations' | 'organizations' | 'concepts' | 'items';
@@ -31,6 +31,7 @@ export function WorldView() {
   const selectedEntityId = useStore((s) => s.selectedEntityId);
   const [activeTab, setActiveTab] = useState<WorldTab>('locations');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedLoreIds, setExpandedLoreIds] = useState<Set<string>>(new Set());
   const [minImportance, setMinImportance] = useState<number>(1);
 
   // 카테고리별 엔티티 분류 (중요도 필터 적용)
@@ -59,6 +60,28 @@ export function WorldView() {
       concepts: getEntitiesByCategory(entities, 'concept').length,
       items: getEntitiesByCategory(entities, 'item').length,
     };
+  }, [knowledgeGraph]);
+
+  // 엔티티별 lore 카테고리 엔트리 그룹핑
+  const loreEntriesByEntity = useMemo(() => {
+    if (!knowledgeGraph?.lorebook) return {} as Record<string, LoreEntry[]>;
+    const map: Record<string, LoreEntry[]> = {};
+    for (const entry of Object.values(knowledgeGraph.lorebook.entries)) {
+      if (entry.category !== 'lore') continue;
+      if (!map[entry.entityName]) map[entry.entityName] = [];
+      map[entry.entityName].push(entry);
+    }
+    return map;
+  }, [knowledgeGraph]);
+
+  // 장면 ID → 순서 매핑 (장면 번호 표시용)
+  const sceneOrderMap = useMemo(() => {
+    if (!knowledgeGraph) return {} as Record<string, number>;
+    const map: Record<string, number> = {};
+    for (const snapshot of Object.values(knowledgeGraph.sceneSnapshots || {})) {
+      map[snapshot.sceneId] = snapshot.order;
+    }
+    return map;
   }, [knowledgeGraph]);
 
   // 장소 계층 구조 생성
@@ -217,6 +240,13 @@ export function WorldView() {
     setExpandedIds(newExpanded);
   };
 
+  const toggleLore = (entityId: string) => {
+    const next = new Set(expandedLoreIds);
+    if (next.has(entityId)) next.delete(entityId);
+    else next.add(entityId);
+    setExpandedLoreIds(next);
+  };
+
   if (!knowledgeGraph) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
@@ -303,6 +333,47 @@ export function WorldView() {
                   {node.entity.description}
                 </p>
               )}
+
+              {/* 설정 상세 (lore 엔트리) */}
+              {(() => {
+                const loreEntries = loreEntriesByEntity[node.entity.name];
+                if (!loreEntries?.length) return null;
+                const isLoreExpanded = expandedLoreIds.has(node.entity.id);
+                return (
+                  <div className="mt-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleLore(node.entity.id); }}
+                      className="flex items-center gap-1.5 text-xs text-sky-600 hover:text-sky-700 font-medium transition-colors"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      <span>설정 상세 ({loreEntries.length})</span>
+                      {isLoreExpanded
+                        ? <ChevronDown className="w-3 h-3" />
+                        : <ChevronRight className="w-3 h-3" />}
+                    </button>
+                    {isLoreExpanded && (
+                      <div className="mt-1.5 ml-1 border-l-2 border-sky-200 pl-3 space-y-2">
+                        {loreEntries.map(entry => (
+                          <div key={entry.id} className="text-xs">
+                            <p className="text-gray-600 leading-relaxed">{entry.content}</p>
+                            {entry.quote && (
+                              <div className="flex items-start gap-1.5 mt-1 bg-violet-50 rounded-lg px-2 py-1.5">
+                                <Quote className="w-3 h-3 text-violet-400 mt-0.5 flex-shrink-0" />
+                                <span className="text-violet-600 italic">{entry.quote}</span>
+                              </div>
+                            )}
+                            {sceneOrderMap[entry.sceneId] != null && (
+                              <span className="text-[10px] text-gray-400 mt-0.5 inline-block">
+                                장면 {sceneOrderMap[entry.sceneId]}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 관련 캐릭터 */}
               {node.relatedCharacters.length > 0 && (
