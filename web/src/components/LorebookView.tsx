@@ -38,14 +38,6 @@ const CHARACTER_CATEGORIES: LoreCategory[] = [
   'motivation', 'relationship_detail',
 ];
 
-// ─── 카테고리 필터 탭 ───
-
-type CategoryFilter = 'all' | LoreCategory;
-
-const CATEGORY_TABS: { id: CategoryFilter; label: string }[] = [
-  { id: 'all', label: '전체' },
-  ...CHARACTER_CATEGORIES.map(cat => ({ id: cat as CategoryFilter, label: CATEGORY_CONFIG[cat].label })),
-];
 
 function getEntityIcon(category?: EntityCategory) {
   switch (category) {
@@ -86,7 +78,6 @@ interface EntityCardData {
 
 export function LorebookView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
 
@@ -123,8 +114,6 @@ export function LorebookView() {
       // 비인물 엔티티 제외
       const kgCat = entityCategoryMap[entry.entityName];
       if (kgCat && kgCat !== 'character' && kgCat !== 'creature') continue;
-      // 카테고리 필터
-      if (selectedCategory !== 'all' && entry.category !== selectedCategory) continue;
 
       if (!entityMap[entry.entityName]) entityMap[entry.entityName] = [];
       entityMap[entry.entityName].push(entry);
@@ -143,23 +132,7 @@ export function LorebookView() {
     }
 
     return cards;
-  }, [entries, selectedCategory, entityCategoryMap, searchQuery]);
-
-  // 카테고리별 엔티티 수 (전체 필터 기준)
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: 0 };
-    const allNames = new Set<string>();
-    for (const entry of entries) {
-      if (!CHARACTER_CATEGORIES.includes(entry.category)) continue;
-      const kgCat = entityCategoryMap[entry.entityName];
-      if (kgCat && kgCat !== 'character' && kgCat !== 'creature') continue;
-      allNames.add(entry.entityName);
-      if (!counts[entry.category]) counts[entry.category] = 0;
-      counts[entry.category]++;
-    }
-    counts['all'] = allNames.size;
-    return counts;
-  }, [entries, entityCategoryMap]);
+  }, [entries, entityCategoryMap, searchQuery]);
 
   const selectedCard = useMemo(() => {
     if (!selectedEntity) return null;
@@ -193,42 +166,11 @@ export function LorebookView() {
 
   return (
     <div className="h-full flex flex-col bg-gray-100">
-      {/* ─── 헤더: 탭 + 검색 ─── */}
+      {/* ─── 헤더: 검색 ─── */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {CATEGORY_TABS.map(tab => {
-            const isActive = selectedCategory === tab.id;
-            const config = tab.id !== 'all' ? CATEGORY_CONFIG[tab.id as LoreCategory] : null;
-            const Icon = config?.icon;
-            const count = categoryCounts[tab.id] || 0;
-            if (tab.id !== 'all' && count === 0) return null;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => { setSelectedCategory(tab.id); setSelectedEntity(null); }}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                  isActive
-                    ? 'text-white shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                }`}
-                style={isActive && config ? { backgroundColor: config.color } : isActive ? { backgroundColor: '#4f46e5' } : undefined}
-              >
-                {Icon && <Icon className="w-3 h-3" />}
-                {tab.label}
-                {count > 0 && (
-                  <span className={`text-[9px] px-1 rounded-full min-w-[14px] text-center ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {tab.id === 'all' ? count : count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          <div className="h-5 w-px bg-gray-200 mx-1" />
-
-          <div className="relative w-44">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 font-medium">{entityCards.length}명</span>
+          <div className="relative w-48">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               type="text"
