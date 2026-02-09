@@ -36,7 +36,7 @@ const VIEW_TABS: { mode: ViewMode; label: string; icon: typeof Network }[] = [
   { mode: 'timeline', label: '타임라인', icon: Clock },
   { mode: 'chronicle', label: '연대기', icon: User },
   { mode: 'world', label: '세계관', icon: Globe },
-  { mode: 'lorebook', label: '로어북', icon: BookOpen },
+  { mode: 'lorebook', label: '인물 카드', icon: BookOpen },
   { mode: 'source', label: '원본', icon: FileText },
   { mode: 'chat', label: '채팅', icon: MessageCircle },
 ];

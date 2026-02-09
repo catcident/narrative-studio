@@ -1,11 +1,12 @@
 /**
- * 로어북 뷰어 — 왼쪽 포켓몬 스타일 카드 그리드 + 오른쪽 상세 패널
+ * 인물 카드 뷰어 — 왼쪽 포켓몬 스타일 카드 그리드 + 오른쪽 상세 패널
+ * 캐릭터/크리처 엔티티의 프로필 정보만 표시 (세계관 설정은 WorldView에서 표시)
  */
 
 import { useState, useMemo } from 'react';
 import {
-  BookOpen, User, Globe, Search, Quote, Eye, Shirt, Brain, Swords,
-  History, Target, Users, X, Cat, Box,
+  BookOpen, User, Search, Quote, Eye, Shirt, Brain, Swords,
+  History, Target, Users, X, Cat, Box, Globe,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useStore } from '../store';
@@ -37,25 +38,6 @@ const CHARACTER_CATEGORIES: LoreCategory[] = [
   'motivation', 'relationship_detail',
 ];
 
-const WORLD_CATEGORIES: LoreCategory[] = ['lore'];
-
-// ─── 타입 탭 ───
-
-type EntityTab = 'all' | 'character' | 'world';
-
-interface TabConfig {
-  id: EntityTab;
-  label: string;
-  icon: typeof User;
-  loreCategories: LoreCategory[];
-  entityCategories?: EntityCategory[];
-}
-
-const TABS: TabConfig[] = [
-  { id: 'all', label: '전체', icon: BookOpen, loreCategories: [...CHARACTER_CATEGORIES, ...WORLD_CATEGORIES] },
-  { id: 'character', label: '인물', icon: User, loreCategories: CHARACTER_CATEGORIES, entityCategories: ['character', 'creature'] },
-  { id: 'world', label: '설정', icon: Globe, loreCategories: WORLD_CATEGORIES },
-];
 
 function getEntityIcon(category?: EntityCategory) {
   switch (category) {
@@ -96,7 +78,6 @@ interface EntityCardData {
 
 export function LorebookView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
-  const [activeTab, setActiveTab] = useState<EntityTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
 
@@ -124,35 +105,16 @@ export function LorebookView() {
     return map;
   }, [knowledgeGraph]);
 
-  const matchesTab = (entityName: string, entry: LoreEntry, tab: TabConfig): boolean => {
-    if (tab.id === 'all') return true;
-    const kgCat = entityCategoryMap[entityName];
-    if (kgCat) {
-      if (tab.entityCategories?.includes(kgCat)) return tab.loreCategories.includes(entry.category);
-      if (tab.entityCategories) return false;
-    }
-    return tab.loreCategories.includes(entry.category);
-  };
-
-  const tabCounts = useMemo(() => {
-    const counts: Record<EntityTab, number> = { all: 0, character: 0, world: 0 };
-    for (const tab of TABS) {
-      const names = new Set<string>();
-      for (const entry of entries) {
-        if (matchesTab(entry.entityName, entry, tab)) names.add(entry.entityName);
-      }
-      counts[tab.id] = names.size;
-    }
-    return counts;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, entityCategoryMap]);
-
-  const tabConfig = TABS.find(t => t.id === activeTab)!;
-
+  // 캐릭터/크리처 엔티티의 인물 카테고리 엔트리만 필터
   const entityCards = useMemo(() => {
     const entityMap: Record<string, LoreEntry[]> = {};
     for (const entry of entries) {
-      if (!matchesTab(entry.entityName, entry, tabConfig)) continue;
+      // lore 카테고리 제외 (세계관 탭에서 표시)
+      if (!CHARACTER_CATEGORIES.includes(entry.category)) continue;
+      // 비인물 엔티티 제외
+      const kgCat = entityCategoryMap[entry.entityName];
+      if (kgCat && kgCat !== 'character' && kgCat !== 'creature') continue;
+
       if (!entityMap[entry.entityName]) entityMap[entry.entityName] = [];
       entityMap[entry.entityName].push(entry);
     }
@@ -170,18 +132,12 @@ export function LorebookView() {
     }
 
     return cards;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, activeTab, tabConfig, entityCategoryMap, searchQuery]);
+  }, [entries, entityCategoryMap, searchQuery]);
 
   const selectedCard = useMemo(() => {
     if (!selectedEntity) return null;
     return entityCards.find(c => c.name === selectedEntity) || null;
   }, [selectedEntity, entityCards]);
-
-  const handleTabChange = (tabId: EntityTab) => {
-    setActiveTab(tabId);
-    setSelectedEntity(null);
-  };
 
   // ─── 빈 상태 ───
 
@@ -201,7 +157,7 @@ export function LorebookView() {
       <div className="h-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <BookOpen className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-          <p className="text-sm text-gray-500 font-medium">로어북 데이터가 없습니다</p>
+          <p className="text-sm text-gray-500 font-medium">인물 카드 데이터가 없습니다</p>
           <p className="text-xs mt-1 text-gray-400">소설을 분석하면 인물 프로필이 추출됩니다</p>
         </div>
       </div>
@@ -210,36 +166,11 @@ export function LorebookView() {
 
   return (
     <div className="h-full flex flex-col bg-gray-100">
-      {/* ─── 헤더: 탭 + 검색 ─── */}
+      {/* ─── 헤더: 검색 ─── */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          {TABS.filter(tab => tab.id === 'all' || tabCounts[tab.id] > 0).map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {tab.label}
-                <span className={`text-[10px] px-1 rounded-full min-w-[16px] text-center ${
-                  isActive ? 'bg-blue-500 text-blue-100' : 'bg-gray-200 text-gray-500'
-                }`}>
-                  {tabCounts[tab.id]}
-                </span>
-              </button>
-            );
-          })}
-
-          <div className="h-5 w-px bg-gray-200 mx-1" />
-
-          <div className="relative w-44">
+          <span className="text-xs text-gray-500 font-medium">{entityCards.length}명</span>
+          <div className="relative w-48">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               type="text"
@@ -432,10 +363,7 @@ function DetailPanel({
     byCategory[cat].sort((a, b) => (sceneOrderMap[a.sceneId] ?? 0) - (sceneOrderMap[b.sceneId] ?? 0));
   }
 
-  const isChar = kgCategory === 'character' || kgCategory === 'creature' ||
-    (!kgCategory && card.entries.some(e => CHARACTER_CATEGORIES.includes(e.category)));
-  const orderedCats = (isChar ? CHARACTER_CATEGORIES : WORLD_CATEGORIES)
-    .filter(cat => byCategory[cat]?.length);
+  const orderedCats = CHARACTER_CATEGORIES.filter(cat => byCategory[cat]?.length);
 
   return (
     <div className="w-1/2 h-full flex flex-col bg-white">
