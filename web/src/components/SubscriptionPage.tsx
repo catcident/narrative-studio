@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
-import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
+import { getPlans, getCreditPackages, buildPlanFeatureStrings, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
 import type { ByokMode } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
@@ -116,7 +116,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
   const planIcon = (code: string) => {
     switch (code) {
-      case 'business': return <Crown aria-hidden="true" className="w-5 h-5" />;
+      case 'business':
       case 'pro': return <Crown aria-hidden="true" className="w-5 h-5" />;
       case 'basic': return <Zap aria-hidden="true" className="w-5 h-5" />;
       default: return <Star aria-hidden="true" className="w-5 h-5" />;
@@ -290,51 +290,12 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                       </div>
 
                       <div className="space-y-2 text-sm flex-1">
-                        {plan.features.models === 'all' ? (
-                          <div className="flex items-center gap-2 text-gray-600">
+                        {buildPlanFeatureStrings(plan.features).map((feature) => (
+                          <div key={feature} className="flex items-center gap-2 text-gray-600">
                             <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>모든 AI 모델 사용 가능</span>
+                            <span>{feature}</span>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>{(plan.features.models as string[]).length}개 모델 사용 가능</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>최대 {plan.features.max_file_size_mb}MB 파일</span>
-                        </div>
-                        {plan.features.max_saved_graphs !== undefined && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>저장 {plan.features.max_saved_graphs === -1 ? '무제한' : `${plan.features.max_saved_graphs.toLocaleString()}개`}</span>
-                          </div>
-                        )}
-                        {plan.features.max_chats_per_analysis !== undefined && plan.features.max_chats_per_analysis !== -1 && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>분석당 채팅 {plan.features.max_chats_per_analysis}회</span>
-                          </div>
-                        )}
-                        {plan.features.max_chats_per_analysis === -1 && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>채팅 횟수 무제한</span>
-                          </div>
-                        )}
-                        {plan.features.byok && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>BYOK (개인 API 키 사용)</span>
-                          </div>
-                        )}
-                        {plan.features.can_purchase_credits && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span>추가 크레딧 구매 가능</span>
-                          </div>
-                        )}
+                        ))}
                       </div>
 
                       {!isCurrent && plan.price_krw > 0 && (

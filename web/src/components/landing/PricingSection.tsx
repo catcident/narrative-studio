@@ -3,18 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
+import { buildPlanFeatureStrings } from '../../services/billing';
+import type { PlanFeatures } from '../../types';
 
 /* ── 백엔드 응답 타입 ──────────────────────────────────── */
-
-interface PlanFeatures {
-  models: string[] | 'all';
-  max_file_size_mb: number;
-  max_saved_graphs?: number;
-  max_chats_per_analysis?: number;
-  can_purchase_credits?: boolean;
-  byok?: boolean;
-  export_formats?: string[];
-}
 
 interface BackendPlan {
   code: string;
@@ -22,39 +14,6 @@ interface BackendPlan {
   price_krw: number;
   monthly_credits: number;
   features: PlanFeatures;
-}
-
-/* ── 기능 문구 생성 ─────────────────────────────────────── */
-
-function buildFeatureStrings(f: PlanFeatures): string[] {
-  const out: string[] = [];
-
-  if (f.models === 'all') {
-    out.push('모든 AI 모델 사용');
-  } else if (Array.isArray(f.models)) {
-    out.push(`${f.models.length}개 AI 모델 사용`);
-  }
-
-  out.push(`최대 ${f.max_file_size_mb}MB 파일`);
-
-  if (f.max_saved_graphs !== undefined) {
-    out.push(f.max_saved_graphs === -1 ? '관계도 무제한 저장' : `관계도 ${f.max_saved_graphs}개 저장`);
-  }
-
-  if (f.max_chats_per_analysis !== undefined && f.max_chats_per_analysis !== -1) {
-    out.push(`분석당 채팅 ${f.max_chats_per_analysis}회`);
-  } else if (f.max_chats_per_analysis === -1) {
-    out.push('채팅 횟수 무제한');
-  }
-
-  if (f.export_formats && f.export_formats.length > 0) {
-    out.push(`${f.export_formats.map(s => s.toUpperCase()).join(', ')} 내보내기`);
-  }
-
-  if (f.can_purchase_credits) out.push('추가 크레딧 구매 가능');
-  if (f.byok) out.push('개인 API 키 사용 (BYOK)');
-
-  return out;
 }
 
 /* ── 플랜별 스타일 ──────────────────────────────────────── */
@@ -73,12 +32,27 @@ function getPlanStyle(code: string): PlanStyle {
   }
 }
 
+/* ── 플랜 수에 따른 그리드 레이아웃 ──────────────────────── */
+
+function getGridLayoutClass(planCount: number): string {
+  switch (planCount) {
+    case 1:
+      return 'max-w-sm';
+    case 2:
+      return 'md:grid-cols-2 max-w-3xl';
+    case 4:
+      return 'md:grid-cols-2 lg:grid-cols-4 max-w-6xl';
+    default:
+      return 'md:grid-cols-3 max-w-6xl';
+  }
+}
+
 /* ── PlanCard ───────────────────────────────────────────── */
 
 function PlanCard({ plan }: { plan: BackendPlan }) {
   const style = getPlanStyle(plan.code);
   const isPaid = plan.price_krw > 0;
-  const featureStrings = buildFeatureStrings(plan.features);
+  const featureStrings = buildPlanFeatureStrings(plan.features);
 
   return (
     <div className={`relative rounded-2xl p-8 border transition-all duration-300 flex flex-col ${
@@ -233,12 +207,7 @@ export function PricingSection() {
         {loading ? (
           <PricingPlaceholder />
         ) : plans.length > 0 ? (
-          <div className={`grid gap-6 mx-auto ${
-            plans.length === 1 ? 'max-w-sm' :
-            plans.length === 2 ? 'md:grid-cols-2 max-w-3xl' :
-            plans.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4 max-w-6xl' :
-            'md:grid-cols-3 max-w-6xl'
-          }`}>
+          <div className={`grid gap-6 mx-auto ${getGridLayoutClass(plans.length)}`}>
             {plans.map((plan) => (
               <PlanCard key={plan.code} plan={plan} />
             ))}
