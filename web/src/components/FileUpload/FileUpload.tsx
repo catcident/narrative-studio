@@ -374,7 +374,10 @@ export function FileUpload() {
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${combinedTitle}`, updateCreditBalance);
+        const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${combinedTitle}`, updateCreditBalance);
+        if (settleResult.actualCredits !== null) {
+          useStore.getState().setSettledCredits(settleResult.actualCredits);
+        }
       }
 
       const sourceFiles = buildSourceFiles(fileInfos);
@@ -493,7 +496,10 @@ export function FileUpload() {
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 완료: ${savedProgress.title}`, updateCreditBalance);
+        const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 완료: ${savedProgress.title}`, updateCreditBalance);
+        if (settleResult.actualCredits !== null) {
+          useStore.getState().setSettledCredits(settleResult.actualCredits);
+        }
       }
 
       setProgress('저장 중...');
@@ -640,7 +646,10 @@ export function FileUpload() {
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${title}`, updateCreditBalance);
+        const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 완료: ${title}`, updateCreditBalance);
+        if (settleResult.actualCredits !== null) {
+          useStore.getState().setSettledCredits(settleResult.actualCredits);
+        }
       }
 
       newKnowledgeGraph.metadata.author = bookAuthor.trim();

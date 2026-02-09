@@ -426,26 +426,34 @@ export function getBalanceAlertLevel(
 }
 
 /**
- * 세션 수준 크레딧 계산 (creditsPerChunk 기반 비례 근사).
- * 실제 토큰 사용량을 typical chunk 토큰과 비교하여 비례 산출.
+ * 세션 수준 크레딧 계산 (고유 청크 수 × creditsPerChunk 기반 근사).
+ * creditsPerChunk가 이미 extractor+selector+lorebook+merger 비용을 포함하므로,
+ * 고유 청크 인덱스 수만으로 계산하여 이중 계산 방지.
  *
- * 정확도 참고: 실제 정산은 서버 settle이 수행. 이 함수는 UI 표시용 근사치.
+ * 정확도 참고: 실제 정산은 서버 settle이 수행. 이 함수는 UI 표시용 근사치(폴백).
+ * merger review sentinel(chunkIndex=totalChunks)이 +1 청크로 포함되어 creditsPerChunk 1단위 과추정 가능.
  */
 export function calculateSessionCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
   if (chunks.length === 0) return 0;
 
-  const inputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
-  const outputTokens = Math.ceil(inputTokens * OUTPUT_RATIO);
-  const TYPICAL_CHUNK_TOKENS = inputTokens + outputTokens;
+  // 고유 청크 인덱스 수 = 실제 분석 청크 수 (+ merger review sentinel 포함)
+  const chunkIndices = new Set(chunks.map(c => c.chunkIndex));
 
-  let total = 0;
+  // 가장 많이 사용된 모델의 creditsPerChunk 사용
+  const modelCounts = new Map<string, number>();
   for (const chunk of chunks) {
-    const modelInfo = findModel(chunk.model, dynamicModels);
-    const cpc = modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK;
-    const chunkTokens = chunk.promptTokens + chunk.completionTokens;
-    total += cpc * (chunkTokens / TYPICAL_CHUNK_TOKENS);
+    modelCounts.set(chunk.model, (modelCounts.get(chunk.model) ?? 0) + 1);
   }
-  return Math.max(1, Math.ceil(total));
+  let dominantModel = '';
+  let maxCount = 0;
+  for (const [model, count] of modelCounts) {
+    if (count > maxCount) { dominantModel = model; maxCount = count; }
+  }
+
+  const modelInfo = findModel(dominantModel, dynamicModels);
+  const cpc = modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK;
+
+  return Math.max(1, Math.ceil(cpc * chunkIndices.size));
 }
 
 // ==================== 검증 비용 추정 ====================

@@ -83,7 +83,10 @@ export function useAddFileAnalysis() {
       }
 
       if (holdToken) {
-        await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 완료: ${fileName}`, updateCreditBalance);
+        const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 완료: ${fileName}`, updateCreditBalance);
+        if (settleResult.actualCredits !== null) {
+          useStore.getState().setSettledCredits(settleResult.actualCredits);
+        }
       }
 
       setProgress('저장 중...');

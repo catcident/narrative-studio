@@ -163,16 +163,16 @@ export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
  */
 export const FALLBACK_MODELS: ModelInfo[] = [
   // 핵심 5종
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', creditsPerChunk: 2, creditsPerChat: 4, description: '경제적', coreModel: true },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', creditsPerChunk: 3, creditsPerChat: 6, description: '추천', coreModel: true },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', creditsPerChunk: 4, creditsPerChat: 8, description: '균형', coreModel: true },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', creditsPerChunk: 20, creditsPerChat: 49, description: '고품질', coreModel: true },
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', creditsPerChunk: 25, creditsPerChat: 61, description: '최고 품질', coreModel: true },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', creditsPerChunk: 3, creditsPerChat: 4, description: '경제적', coreModel: true },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', creditsPerChunk: 4, creditsPerChat: 6, description: '추천', coreModel: true },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', creditsPerChunk: 7, creditsPerChat: 8, description: '균형', coreModel: true },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', creditsPerChunk: 35, creditsPerChat: 49, description: '고품질', coreModel: true },
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', creditsPerChunk: 44, creditsPerChat: 61, description: '최고 품질', coreModel: true },
   // 선택 4종
-  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', creditsPerChunk: 2, creditsPerChat: 4, description: '가장 저렴', coreModel: false },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', creditsPerChunk: 2, creditsPerChat: 5, description: '가성비', coreModel: false },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', creditsPerChunk: 2, creditsPerChat: 5, description: '준수한 성능', coreModel: false },
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 3, creditsPerChat: 6, description: '경제적', coreModel: false },
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', creditsPerChunk: 3, creditsPerChat: 4, description: '가장 저렴', coreModel: false },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', creditsPerChunk: 3, creditsPerChat: 5, description: '가성비', coreModel: false },
+  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', creditsPerChunk: 4, creditsPerChat: 5, description: '준수한 성능', coreModel: false },
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 4, creditsPerChat: 6, description: '경제적', coreModel: false },
 ];
 
 export const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';

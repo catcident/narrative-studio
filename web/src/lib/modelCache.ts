@@ -169,6 +169,13 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
       m.creditsPerChat = computeCreditsPerChat(m.id, serverModels);
     }
 
+    // 정적 폴백 USD도 최신 가격으로 갱신 (다음 폴백 시 stale 방지)
+    for (const m of serverModels) {
+      if (m.available) {
+        SERVER_MODEL_COSTS[m.id] = { inputCost: m.inputCost, outputCost: m.outputCost };
+      }
+    }
+
     // 클라이언트 모델 생성 (USD 정보 strip, 이미 계산된 크레딧 값 복사)
     const clientModels = serverModels.map(toClientModel);
 

@@ -157,6 +157,7 @@ extractKnowledgeGraph({ onChunkBilling })
 - [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 (잔액 갱신 없음)
 - [ ] `_billing` 응답에서 `model: string` + `byok` 필수 확인 — `ChunkBilling` 타입 준수
 - [ ] `finalizeHold` 성공/실패 양쪽에서 호출 — `holdToken`과 `chunkUsages`는 try 블록 밖에서 선언 (catch에서 접근 필요)
+- [ ] `finalizeHold` 성공 경로에서 `setSettledCredits(settleResult.actualCredits)` 호출 — UsageSummary/ChatMessage에 서버 정산값 표시
 - [ ] `/api/chat` 호출 시 `idempotency_key: crypto.randomUUID()` 포함
 - [ ] 402 응답 명시 처리 — generic error에 흡수 금지
 - [ ] `subscription === null` 가드 — hold/settle/release 호출 전 체크 → null이면 billing 전체 스킵
@@ -164,8 +165,9 @@ extractKnowledgeGraph({ onChunkBilling })
 - [ ] API 키 접근은 `getApiKey()` / `hasApiKey()` 유틸리티 사용 — `localStorage.getItem` 직접 접근 금지
 - [ ] `AUTH_ENABLED=false` 환경에서 billing 비활성 → 기존 동작 유지
 - [ ] `useStore.getState()` — 비동기 콜백 내부에서 stale closure 방지
-- [ ] UI 크레딧 표시는 `calculateSessionCreditsFromChunks()` 사용 — `calculateCreditsFromChunks()`는 레거시
+- [ ] UI 크레딧 표시는 `settledCredits` (서버 정산값) 우선, 폴백으로 `calculateSessionCreditsFromChunks()` 사용
 - [ ] billing finally 블록에 `loadSubscription()` 필수 — 모든 billing 진입점에서 구독 상태 갱신
+- [ ] 새 per-chunk LLM 호출 추가 시: `computeCreditsPerChunk()`에 비용 포함 + `FALLBACK_MODELS` 값 재계산 + `modelCosts.ts`에 상수 추가
 - [ ] (extraction 전용) `saveCurrentProgress(i)` vs `(i+1)` — 미분석 청크는 `i`, 성공 청크는 `i+1`
 - [ ] (extraction 전용) `syncPartialAnalysis(setPartialAnalysis)` — 완료/실패 후 반드시 호출 (success + error 양쪽)
 
@@ -281,8 +283,8 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onCh
 - **예상 비용 전달**: `ensureSufficientBalance`의 3번째 파라미터 `estimatedCredits`로 예상 비용 > 잔액 시 사전 차단
 - **토큰 누적**: `onChunkBilling` 콜백은 토큰 사용량 누적만 수행 — 잔액 갱신은 settle 시에만
 - **settle 시 잔액 갱신**: `settleCredits()` 응답의 `balance_after`로 CreditBadge 갱신
-- **크레딧 표시**: UI 표시용 크레딧은 `calculateSessionCreditsFromChunks()` 사용 (`creditsPerChunk` 기반 근사치). 실제 정산은 서버 settle
-- **`finalizeHold` 반환값**: `FinalizeHoldResult.actualCredits` — settle 시 실제 차감 크레딧, release 시 null
+- **크레딧 표시**: UI 표시는 `settledCredits` (서버 정산값) 우선, 폴백으로 `calculateSessionCreditsFromChunks()` (고유 청크 수 × `creditsPerChunk` 근사). 실제 정산은 서버 settle
+- **`finalizeHold` 반환값**: `FinalizeHoldResult.actualCredits` — settle 시 실제 차감 크레딧, release 시 null. **성공 경로에서 `setSettledCredits()` 호출 필수**
 
 ### ⚠️ extraction 파이프라인 → `/api/analyze` 요청 본문
 

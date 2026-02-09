@@ -19,6 +19,7 @@ import {
   MERGER_REVIEW_PROMPT_CHARS,
   MERGER_REVIEW_OUTPUT_TOKENS,
   MERGER_REVIEW_MODEL,
+  LOREBOOK_OUTPUT_RATIO,
 } from './modelCosts';
 import type { ModelInfo } from '@/types';
 
@@ -159,7 +160,7 @@ export function resolveTokenBilling(
 
 // ==================== 서버 전용 크레딧 사전 계산 ====================
 
-/** 서버 전용: 모델의 분석 청크당 크레딧 (extractor + selector + merger 오버헤드 + embedding 포함) */
+/** 서버 전용: 모델의 분석 청크당 크레딧 (extractor + lorebook + selector + merger 오버헤드 + embedding 포함) */
 export function computeCreditsPerChunk(model: string, dynamicModels?: ServerModelInfo[]): number {
   const extractorCosts = getModelCosts(model, dynamicModels);
   const selectorCosts = getModelCosts(SELECTOR_MODEL, dynamicModels);
@@ -169,6 +170,10 @@ export function computeCreditsPerChunk(model: string, dynamicModels?: ServerMode
   const extInputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
   const extOutputTokens = Math.ceil(extInputTokens * OUTPUT_RATIO);
   const extCost = tokenCostUsd(extInputTokens, extOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
+
+  // Lorebook cost per chunk (parallel call, same model + similar input as extractor)
+  const loreOutputTokens = Math.ceil(extInputTokens * LOREBOOK_OUTPUT_RATIO);
+  const loreCost = tokenCostUsd(extInputTokens, loreOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
 
   // Selector cost (avg: ~1 call per chunk for chunks > 1)
   const selInputTokens = Math.ceil(SELECTOR_PROMPT_CHARS / CHARS_PER_TOKEN);
@@ -184,7 +189,7 @@ export function computeCreditsPerChunk(model: string, dynamicModels?: ServerMode
   const embedTokens = estimatedEntities * AVG_ENTITY_TOKENS + AVG_CHUNK_EMBED_TOKENS;
   const embedCost = (embedTokens / 1_000_000) * EMBEDDING_INPUT_COST;
 
-  const totalCostPerChunk = extCost + selCost + mergerPerChunk + embedCost;
+  const totalCostPerChunk = extCost + loreCost + selCost + mergerPerChunk + embedCost;
 
   // Markup based on extractor chunk cost only
   const markup = calculateMarkup(extCost);

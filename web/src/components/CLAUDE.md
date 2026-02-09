@@ -130,7 +130,7 @@ NextAuth.js SessionProvider 래퍼
 ### UsageSummary.tsx
 
 분석 완료 후 사용량 요약 모달. `store.showUsageSummary`로 표시 제어.
-- settle 정산 결과 기반 크레딧 표시
+- 크레딧 표시: `settledCredits` (서버 정산값) 우선, 폴백으로 `calculateSessionCreditsFromChunks()` 근사치
 - 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
 
 ### SubscriptionPage.tsx
@@ -428,6 +428,7 @@ resetProgressState(true);
 subscription: BillingSubscription | null;  // 계정 수준 (reset()에서 유지)
 currentUsage: CurrentUsage;                // 분석 세션 수준 (reset()에서 초기화)
 showUsageSummary: boolean;                 // 분석 세션 수준 (reset()에서 초기화)
+settledCredits: number | null;             // 서버 정산 크레딧 (resetCurrentUsage에서 초기화)
 ```
 
 ### 셀렉터 훅
@@ -435,6 +436,7 @@ showUsageSummary: boolean;                 // 분석 세션 수준 (reset()에�
 ```typescript
 useBillingSubscription()  // subscription 객체
 useCreditBalance()        // creditBalance 또는 null
+useSettledCredits()       // 서버 정산 크레딧 (settle 후 설정, 세션 시작 시 null)
 ```
 
 ### ⚠️ Zustand 셀렉터 규칙

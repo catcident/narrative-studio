@@ -21,3 +21,7 @@ export const SELECTOR_MODEL = 'google/gemini-2.0-flash-001';
 export const MERGER_REVIEW_PROMPT_CHARS = 2500;
 export const MERGER_REVIEW_OUTPUT_TOKENS = 200;
 export const MERGER_REVIEW_MODEL = 'google/gemini-2.0-flash-001';
+
+// Lorebook 추출 상수 (청크당 병렬 호출, extractor와 동일 모델)
+// extractor와 동일 입력 규모 (chunk text 지배적), 더 작은 출력 (구조화된 lore entries)
+export const LOREBOOK_OUTPUT_RATIO = 0.30;

@@ -249,12 +249,14 @@ if (limited) {
 // 공유 상수
 CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
 SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
-MERGER_REVIEW_PROMPT_CHARS, MERGER_REVIEW_OUTPUT_TOKENS, MERGER_REVIEW_MODEL
+MERGER_REVIEW_PROMPT_CHARS, MERGER_REVIEW_OUTPUT_TOKENS, MERGER_REVIEW_MODEL,
+LOREBOOK_OUTPUT_RATIO
 ```
 
 **⚠️ 상수 변경 시 주의사항**:
 - `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값.
 - 새 모델 추가 시 `types.ts`의 `FALLBACK_MODELS`에 `creditsPerChunk`/`creditsPerChat` 추가, `serverCosts.ts`의 `SERVER_MODEL_COSTS`에 USD 단가 추가.
+- **새 per-chunk LLM 호출 추가 시**: `computeCreditsPerChunk()`에 비용 추가 + `FALLBACK_MODELS` 값 재계산 + `modelCosts.ts`에 상수 추가. 예: `LOREBOOK_OUTPUT_RATIO` 추가 시 `computeCreditsPerChunk`에 lorebook 비용 반영.
 
 ---
 
@@ -278,7 +280,7 @@ calculateMixedSessionCredits(chunks, dynamicModels?) → number
 calculateSessionCredits(totalSessionCostUsd, chunkCostUsd) → number
 
 // 모델별 크레딧 사전 계산 (modelCache에서 사용)
-computeCreditsPerChunk(model, dynamicModels?) → number
+computeCreditsPerChunk(model, dynamicModels?) → number  // extractor + lorebook + selector + merger/3 + embedding
 computeCreditsPerChat(model, dynamicModels?) → number
 
 // API 라우트 공용

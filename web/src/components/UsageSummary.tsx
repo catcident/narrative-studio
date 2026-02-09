@@ -3,7 +3,7 @@
  */
 
 import { X, FileCheck, Key } from 'lucide-react';
-import { useStore, useCreditBalance, useModels, useByokEnabled } from '../store';
+import { useStore, useCreditBalance, useModels, useByokEnabled, useSettledCredits } from '../store';
 import { calculateSessionCreditsFromChunks } from '../services/billing';
 import { hasApiKey } from '../services/extraction';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
@@ -17,6 +17,7 @@ export function UsageSummary() {
   const showTokenDetails = useShowTokenDetails();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
+  const settledCredits = useSettledCredits();
   const isUsingPersonalKey = byokEnabled && hasApiKey();
 
   if (!showUsageSummary) return null;
@@ -24,8 +25,8 @@ export function UsageSummary() {
   const totalChunks = currentUsage.chunks.length;
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
 
-  // 세션 수준 크레딧 계산 (서버 settle과 동일 수식 — 합산 후 1회 올림)
-  const creditsUsed = calculateSessionCreditsFromChunks(currentUsage.chunks, allModels);
+  // 서버 정산값(settledCredits) 우선, 없으면 클라이언트 근사치 폴백
+  const creditsUsed = settledCredits ?? calculateSessionCreditsFromChunks(currentUsage.chunks, allModels);
 
   return (
     <ModalOverlay onClose={() => setShowUsageSummary(false)} maxWidth="md">

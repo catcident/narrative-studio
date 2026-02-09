@@ -44,6 +44,7 @@ interface AppState {
   subscription: BillingSubscription | null;
   currentUsage: CurrentUsage;
   showUsageSummary: boolean;
+  settledCredits: number | null;
 
   // Models (앱 수준 — reset()에서 유지)
   models: ModelInfo[];
@@ -92,6 +93,7 @@ interface AppState {
   addChunkUsage: (chunk: ChunkUsage) => void;
   resetCurrentUsage: () => void;
   setShowUsageSummary: (show: boolean) => void;
+  setSettledCredits: (credits: number | null) => void;
 }
 
 const initialUsage: CurrentUsage = {
@@ -122,6 +124,7 @@ export const useStore = create<AppState>((set, get) => ({
   subscription: null,
   currentUsage: initialUsage,
   showUsageSummary: false,
+  settledCredits: null,
   models: FALLBACK_MODELS,
   modelsLoaded: false,
   loadModels: async () => {
@@ -229,6 +232,7 @@ export const useStore = create<AppState>((set, get) => ({
       error: null,
       currentUsage: initialUsage,
       showUsageSummary: false,
+      settledCredits: null,
     });
   },
 
@@ -266,8 +270,9 @@ export const useStore = create<AppState>((set, get) => ({
       chunks: [...state.currentUsage.chunks, chunk],
     },
   })),
-  resetCurrentUsage: () => set({ currentUsage: initialUsage }),
+  resetCurrentUsage: () => set({ currentUsage: initialUsage, settledCredits: null }),
   setShowUsageSummary: (show) => set({ showUsageSummary: show }),
+  setSettledCredits: (settledCredits) => set({ settledCredits }),
 }));
 
 // 셀렉터 헬퍼
@@ -307,6 +312,7 @@ export const useExportFormats = () => useStore((s) =>
 export const useCanBatchAnalysis = () => useStore((s) =>
   s.authEnabled === false ? true : s.subscription?.features?.export_formats?.includes('pdf') ?? false);
 export const useByokMode = () => useStore((s) => s.byokMode);
+export const useSettledCredits = () => useStore((s) => s.settledCredits);
 export const useAnalysisQueue = () => useStore((s) => s.analysisQueue);
 export const useIsQueueProcessing = () => useStore((s) => s.isQueueProcessing);
 
