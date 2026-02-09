@@ -7,6 +7,7 @@ import type { NovelKnowledgeGraph, Entity, HyperEdge, ModelInfo } from '../types
 import { DEFAULT_MODEL } from '../types';
 import { searchSimilarEntities, searchSimilarChunks, type ChunkSearchResult } from './embedding';
 import { getModelCosts, tokenCostUsd, CHARS_PER_TOKEN, calculateMixedSessionCredits } from '@/lib/modelCosts';
+import { getApiKey } from './extraction/types';
 
 // ==================== Billing 타입 ====================
 
@@ -472,14 +473,6 @@ function findMentionedEntityIds(
   return mentioned;
 }
 
-/**
- * 키워드 확장 (단순화 - LLM이 엔티티 목록에서 직접 찾도록 함)
- */
-function expandKeywords(keywords: string[]): string[] {
-  // 이제 시스템 프롬프트에 전체 엔티티 목록이 포함되므로
-  // 복잡한 유사어 매핑 없이 원본 키워드만 반환
-  return keywords;
-}
 
 /**
  * 일반적인 질문 패턴 감지 및 관련 컨텍스트 생성
@@ -496,7 +489,6 @@ function detectQueryIntent(query: string): {
   wantsCategoryList: boolean;  // 카테고리 전체 목록 요청
   targetCategory: string | null;  // 요청된 특정 카테고리
   keywords: string[];
-  expandedKeywords: string[];
 } {
   const queryLower = query.toLowerCase();
 
@@ -550,9 +542,6 @@ function detectQueryIntent(query: string): {
     .split(/\s+/)
     .filter(w => w.length >= 2 && !stopWords.includes(w));
 
-  // 유사어로 확장
-  const expandedKeywords = expandKeywords(keywords);
-
   return {
     wantsCharacters,
     wantsRelationships,
@@ -565,7 +554,6 @@ function detectQueryIntent(query: string): {
     wantsCategoryList,
     targetCategory,
     keywords,
-    expandedKeywords
   };
 }
 
@@ -627,12 +615,12 @@ function extractRelevantContext(
   }
 
   // 1-1. 확장된 키워드로 엔티티 이름/설명에서 검색 (부분 매칭)
-  if (mentionedEntityIds.length === 0 && intent.expandedKeywords.length > 0) {
+  if (mentionedEntityIds.length === 0 && intent.keywords.length > 0) {
     Object.entries(knowledgeGraph.entities).forEach(([id, entity]) => {
       const nameLower = entity.name.toLowerCase();
       const descLower = (entity.description || '').toLowerCase();
 
-      for (const keyword of intent.expandedKeywords) {
+      for (const keyword of intent.keywords) {
         if (nameLower.includes(keyword) || descLower.includes(keyword)) {
           if (!mentionedEntityIds.includes(id)) {
             mentionedEntityIds.push(id);
@@ -644,11 +632,11 @@ function extractRelevantContext(
   }
 
   // 1-1-2. 여전히 못 찾았으면 hyperedge statement에서도 검색
-  if (mentionedEntityIds.length === 0 && intent.expandedKeywords.length > 0) {
+  if (mentionedEntityIds.length === 0 && intent.keywords.length > 0) {
     const relatedEntityIds = new Set<string>();
     Object.values(knowledgeGraph.hyperedges).forEach(edge => {
       const statementLower = edge.statement.toLowerCase();
-      if (intent.expandedKeywords.some(kw => statementLower.includes(kw))) {
+      if (intent.keywords.some(kw => statementLower.includes(kw))) {
         edge.entities.forEach(id => relatedEntityIds.add(id));
       }
     });
@@ -663,7 +651,7 @@ function extractRelevantContext(
         if (e.category !== 'item') return false;
         const nameLower = e.name.toLowerCase();
         const descLower = (e.description || '').toLowerCase();
-        return intent.expandedKeywords.some(kw => nameLower.includes(kw) || descLower.includes(kw));
+        return intent.keywords.some(kw => nameLower.includes(kw) || descLower.includes(kw));
       })
       .slice(0, 10);
 
@@ -873,20 +861,8 @@ function extractRelevantContext(
   return contexts.join('\n');
 }
 
-interface QueryIntent {
-  wantsCharacters: boolean;
-  wantsRelationships: boolean;
-  wantsItems: boolean;
-  wantsSummary: boolean;
-  wantsLocations: boolean;
-  wantsOrganizations: boolean;
-  wantsEvents: boolean;
-  wantsConcepts: boolean;
-  wantsCategoryList: boolean;
-  targetCategory: string | null;
-  keywords: string[];
-  expandedKeywords: string[];
-}
+/** detectQueryIntent 반환 타입 (buildSystemPrompt에서도 사용) */
+type QueryIntent = ReturnType<typeof detectQueryIntent>;
 
 /**
  * 시스템 프롬프트 생성 (관련 엔티티만 포함)
@@ -1093,9 +1069,7 @@ export async function sendChatMessage(
   onChunk?: (chunk: string) => void,
   graphId?: string
 ): Promise<ChatResult> {
-  const userApiKey = typeof window !== 'undefined'
-    ? localStorage.getItem('OPENROUTER_API_KEY') || ''
-    : '';
+  const userApiKey = getApiKey();
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
 
@@ -1264,7 +1238,6 @@ export async function sendChatMessage(
     wantsCategoryList: queryAnalysis.wantsCategoryList,
     targetCategory: queryAnalysis.targetCategory,
     keywords: queryAnalysis.keywords,
-    expandedKeywords: queryAnalysis.keywords,
   };
 
   let relevantContext = lastUserMessage

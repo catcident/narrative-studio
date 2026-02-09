@@ -6,6 +6,7 @@
 import { toPng, toSvg } from 'html-to-image';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
+import { buildFontEmbedCSS, FONT_FAMILY } from './fontLoader';
 
 const IMAGE_WIDTH = 2048;
 const IMAGE_HEIGHT = 1536;
@@ -86,13 +87,17 @@ export async function exportGraphAsSvg(
 
   const viewport = computeViewport(nodes);
 
+  const fontEmbedCSS = await buildFontEmbedCSS();
+
   const dataUrl = await toSvg(el, {
     backgroundColor: '#f9fafb',
     width: IMAGE_WIDTH,
     height: IMAGE_HEIGHT,
+    fontEmbedCSS: fontEmbedCSS ?? undefined,
     style: {
       width: `${IMAGE_WIDTH}px`,
       height: `${IMAGE_HEIGHT}px`,
+      fontFamily: fontEmbedCSS ? FONT_FAMILY : undefined,
       transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
     },
   });

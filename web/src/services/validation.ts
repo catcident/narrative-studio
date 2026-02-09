@@ -14,7 +14,7 @@ import type {
   SceneSnapshot,
 } from '../types';
 import { DEFAULT_MODEL } from '../types';
-import type { ChunkBilling } from './extraction/types';
+import type { ChunkBilling, ChunkBillingCallback } from './extraction/types';
 
 // ==================== 상수 ====================
 
@@ -30,7 +30,7 @@ interface ValidationContext {
   apiKey?: string;  // 옵셔널 - 서버에서 환경변수 사용 가능
   model?: string;
   onProgress?: (fileId: string, status: ValidationStatus) => void;
-  onChunkBilling?: (chunkIndex: number, billing: ChunkBilling) => void;
+  onChunkBilling?: ChunkBillingCallback;
 }
 
 interface FileGraphData {
@@ -48,12 +48,10 @@ interface FileGraphData {
  * 파일별 그래프 데이터 추출
  * @param graph 전체 지식 그래프
  * @param file 대상 파일
- * @param scopeFileIds 범위 제한용 파일 ID들 (이 파일들의 장면에서만 엔티티 정보 추출)
  */
 function extractFileGraphData(
   graph: NovelKnowledgeGraph,
   file: SourceFile,
-  scopeFileIds?: Set<string>
 ): FileGraphData {
   const fileId = file.id;
   const fileName = file.fileName;
@@ -76,26 +74,10 @@ function extractFileGraphData(
     });
   });
 
-  // 엔티티 가져오되, scopeFileIds가 있으면 해당 범위 장면의 정보만 사용
-  let entities: Entity[];
-  if (scopeFileIds) {
-    // 범위 내 파일들의 장면 ID 수집
-    const scopeSceneIds = new Set<string>();
-    Object.values(graph.snapshots).forEach((scene) => {
-      if (scopeFileIds.has(scene.sourceFileId || '')) {
-        scopeSceneIds.add(scene.sceneId);
-      }
-    });
-
-    // 엔티티 정보를 범위 내 장면 기준으로 필터링
-    // description/attributes는 검증에서 사용하지 않음 (병합 데이터라 오염 가능)
-    entities = Object.values(graph.entities)
-      .filter((e) => entityIds.has(e.id));
-  } else {
-    entities = Object.values(graph.entities).filter((e) =>
-      entityIds.has(e.id)
-    );
-  }
+  // 해당 파일에 등장하는 엔티티만 필터링
+  // description/attributes는 검증에서 사용하지 않음 (병합 데이터라 오염 가능)
+  const entities = Object.values(graph.entities)
+    .filter((e) => entityIds.has(e.id));
 
   // 해당 파일의 관계들
   const edges = Object.values(graph.hyperedges).filter(
@@ -118,17 +100,6 @@ function entityToString(entity: Entity): string {
     str += ` [별칭: ${entity.aliases.join(', ')}]`;
   }
   return str;
-}
-
-/**
- * 관계 정보를 문자열로 변환
- * statement는 entity description 복사본일 수 있어 오염 가능 → 타입/참여자만 사용
- */
-function edgeToString(edge: HyperEdge, entities: Record<string, Entity>): string {
-  const entityNames = edge.entities
-    .map((id) => entities[id]?.name || id)
-    .join(', ');
-  return `- [${edge.type}] ${entityNames}`;
 }
 
 /**
@@ -300,6 +271,7 @@ ${currentContext}
         model,
         ...(apiKey && { apiKey }),
         stream: false,
+        idempotency_key: crypto.randomUUID(),
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
@@ -317,7 +289,7 @@ ${currentContext}
     // _billing 파싱 (Phase 4: 검증 과금 추적)
     const rawBilling = data._billing;
     const billing: ChunkBilling | null = rawBilling
-      ? { prompt_tokens: rawBilling.prompt_tokens || 0, completion_tokens: rawBilling.completion_tokens || 0, model: rawBilling.model || model }
+      ? { prompt_tokens: rawBilling.prompt_tokens || 0, completion_tokens: rawBilling.completion_tokens || 0, model: rawBilling.model || model, byok: rawBilling.byok }
       : null;
 
     console.log(`[validation] 청크 ${chunkIndex} LLM 응답:`, content);
@@ -469,15 +441,9 @@ export async function validateFile(
   const currentFile = sourceFiles[fileIndex];
   const previousFiles = sourceFiles.slice(0, fileIndex);
 
-  // 범위 제한: 이전 파일들 + 현재 파일만 (5화 검증 시 1~5화만)
-  const scopeFileIds = new Set([
-    ...previousFiles.map((f) => f.id),
-    currentFile.id,
-  ]);
-
-  // 그래프 데이터 추출 (범위 내 파일 정보만 사용)
-  const currentData = extractFileGraphData(graph, currentFile, scopeFileIds);
-  const previousData = previousFiles.map((f) => extractFileGraphData(graph, f, scopeFileIds));
+  // 그래프 데이터 추출
+  const currentData = extractFileGraphData(graph, currentFile);
+  const previousData = previousFiles.map((f) => extractFileGraphData(graph, f));
 
   // LLM 검증
   const model = context.model || DEFAULT_MODEL;
