@@ -698,6 +698,13 @@ const CATEGORY_AS_NAME = new Set([
   'concept', 'character', 'location', 'item', 'creature', 'event', 'organization',
 ]);
 
+// 무효한 엔티티 이름: 너무 일반적이거나 구체적이지 않은 단어
+const INVALID_ENTITY_NAMES = new Set([
+  '세계', '세상', '여기', '저기', '거기', '이곳', '저곳', '그곳',
+  '환경', '상황', '분위기', '사건', '장면', '시간', '공간',
+  '모두', '전부', '아무도', '누군가', '어떤', '무언가',
+]);
+
 // 대명사/지시어 (resolve 시도 후 실패할 때만 필터)
 const PRONOUN_NAMES = new Set([
   '나', '그', '그녀', '그들', '화자', '주인공', '저', '우리',
@@ -784,8 +791,8 @@ export function mergeLoreEntries(
       // 1. 이름 정리: 괄호/별칭 제거
       let entityName = cleanEntityName(raw.entity_name);
 
-      // 2. 카테고리명을 이름으로 쓴 경우 즉시 필터 (resolve 불가)
-      if (CATEGORY_AS_NAME.has(entityName.toLowerCase())) {
+      // 2. 카테고리명 또는 무효한 이름인 경우 필터
+      if (CATEGORY_AS_NAME.has(entityName.toLowerCase()) || INVALID_ENTITY_NAMES.has(entityName.toLowerCase())) {
         skippedInvalid++;
         continue;
       }

@@ -566,8 +566,23 @@ async function main() {
   let testFiles: string[] = [];
   if (fileArgs.includes('all')) {
     testFiles = fs.readdirSync(TEST_DIR).filter(f => f.endsWith('.txt')).sort().map(f => path.join(TEST_DIR, f));
+  } else if (fileArgs.includes('data')) {
+    // data/ 폴더의 실제 소설 데이터 (.md) 사용
+    const dataDir = path.resolve(TEST_DIR, '../data');
+    const mdFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.md') && !f.includes('test')).sort();
+    // 모든 md 파일을 하나로 합쳐서 테스트
+    const combined = mdFiles.map(f => fs.readFileSync(path.join(dataDir, f), 'utf-8')).join('\n\n');
+    const tmpFile = path.join(TEST_DIR, '_DATA_실제소설.txt');
+    fs.writeFileSync(tmpFile, combined, 'utf-8');
+    testFiles.push(tmpFile);
+    console.log(`  실제 데이터 결합: ${mdFiles.join(', ')} → ${combined.length}자`);
   } else {
     for (const a of fileArgs) {
+      // 직접 파일 경로도 지원
+      if (fs.existsSync(a)) {
+        testFiles.push(path.resolve(a));
+        continue;
+      }
       const p = a.padStart(2, '0');
       const f = fs.readdirSync(TEST_DIR).filter(f => f.startsWith(p) && f.endsWith('.txt'));
       if (f.length) testFiles.push(path.join(TEST_DIR, f[0]));
