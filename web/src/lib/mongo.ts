@@ -7,6 +7,8 @@ let db: Db | null = null;
 
 let indexesCreated = false;
 
+const ANONYMOUS_TTL_SECONDS = 30 * 24 * 60 * 60; // 30일
+
 async function ensureIndexes(database: Db): Promise<void> {
   if (indexesCreated) return;
   try {
@@ -17,10 +19,24 @@ async function ensureIndexes(database: Db): Promise<void> {
       database.collection('novels').createIndex({ userId: 1 }),
       database.collection('entityEmbeddings').createIndex({ graphId: 1, userId: 1 }),
       database.collection('chunkEmbeddings').createIndex({ graphId: 1, userId: 1 }),
+
+      // anonymous 사용자 데이터 30일 자동 만료
+      database.collection('knowledgeGraphs').createIndex(
+        { updatedAt: 1 },
+        { expireAfterSeconds: ANONYMOUS_TTL_SECONDS, partialFilterExpression: { userId: 'anonymous' } },
+      ),
+      database.collection('novels').createIndex(
+        { updatedAt: 1 },
+        { expireAfterSeconds: ANONYMOUS_TTL_SECONDS, partialFilterExpression: { userId: 'anonymous' } },
+      ),
+      database.collection('knowledgeGraphVersions').createIndex(
+        { savedAt: 1 },
+        { expireAfterSeconds: ANONYMOUS_TTL_SECONDS, partialFilterExpression: { userId: 'anonymous' } },
+      ),
     ]);
     indexesCreated = true;
     console.log('[MongoDB] 인덱스 확인 완료');
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn('[MongoDB] 인덱스 생성 실패 (무시):', err);
   }
 }

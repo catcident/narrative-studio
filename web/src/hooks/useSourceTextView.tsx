@@ -127,7 +127,7 @@ export function useSourceTextView() {
     const query = searchQuery.toLowerCase();
     return sourceFiles.filter(f =>
       f.fileName.toLowerCase().includes(query) ||
-      f.text.toLowerCase().includes(query)
+      (f.text ?? '').toLowerCase().includes(query)
     );
   }, [sourceFiles, searchQuery]);
 
@@ -360,7 +360,7 @@ export function useSourceTextView() {
     if (fileIndex < 0) return;
 
     const file = currentFiles[fileIndex];
-    if (file.text === editingText) {
+    if ((file.text ?? '') === editingText) {
       handleCancelEdit();
       return;
     }

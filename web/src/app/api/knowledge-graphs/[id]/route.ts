@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
+import { fetchStorageLimits, saveVersionHistory, DEFAULT_MAX_VERSIONS } from '@/lib/versionHistory';
 
 // 단일 조회 (원본 텍스트 포함 옵션, 사용자 소유권 확인)
 export async function GET(
@@ -81,10 +82,15 @@ export async function PUT(
   try {
     const authResult = await requireAuth();
     if ('error' in authResult) return authResult.error;
-    const { userId } = authResult;
+    const { userId, accessToken } = authResult;
 
     const { id } = await params;
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { knowledgeGraph } = body;
 
     if (!knowledgeGraph) {
@@ -102,6 +108,23 @@ export async function PUT(
 
     if (!existing) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // 이전 버전을 히스토리에 저장 (fail-safe: 실패해도 업데이트 진행)
+    try {
+      // anonymous는 fetchStorageLimits 네트워크 호출 불필요 (accessToken 없음)
+      const maxVersions = userId !== 'anonymous'
+        ? (await fetchStorageLimits(accessToken)).maxVersions
+        : DEFAULT_MAX_VERSIONS;
+      await saveVersionHistory({
+        db,
+        existingDoc: existing,
+        note: `v${existing.version ?? 1}: ${existing.title}`,
+        maxVersions,
+        userId,
+      });
+    } catch (versionErr: unknown) {
+      console.error('[api] PUT version history error:', versionErr);
     }
 
     // 업데이트
@@ -143,6 +166,18 @@ export async function DELETE(
       _id: new ObjectId(id),
       userId,
     });
+
+    if (result.deletedCount > 0) {
+      try {
+        await Promise.all([
+          db.collection('knowledgeGraphVersions').deleteMany({ dataId: id }),
+          db.collection('entityEmbeddings').deleteMany({ graphId: id, userId }),
+          db.collection('chunkEmbeddings').deleteMany({ graphId: id, userId }),
+        ]);
+      } catch (cleanupErr: unknown) {
+        console.error('[api] knowledge-graphs/[id] DELETE cascade cleanup error:', cleanupErr);
+      }
+    }
 
     return NextResponse.json({ success: result.deletedCount > 0 });
   } catch (err: unknown) {

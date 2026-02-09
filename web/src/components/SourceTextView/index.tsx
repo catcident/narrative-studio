@@ -251,7 +251,7 @@ export function SourceTextView() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleStartEdit(file.id, file.text);
+                    handleStartEdit(file.id, file.text ?? '');
                     if (!isExpanded) toggleFile(file.id);
                   }}
                   className="p-1.5 hover:bg-blue-100 rounded transition-colors"
@@ -265,7 +265,7 @@ export function SourceTextView() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    copyText(file.id, file.text);
+                    copyText(file.id, file.text ?? '');
                   }}
                   className="p-1.5 hover:bg-gray-200 rounded transition-colors"
                   title="텍스트 복사"
@@ -403,7 +403,7 @@ export function SourceTextView() {
                   ) : (
                     <div className="bg-gray-50">
                       <pre className="p-4 text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
-                        {searchQuery ? highlightText(file.text, searchQuery) : file.text}
+                        {searchQuery ? highlightText(file.text ?? '', searchQuery) : (file.text ?? '')}
                       </pre>
                     </div>
                   )}

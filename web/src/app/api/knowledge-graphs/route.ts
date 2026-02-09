@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
-import { proxyToCatcident } from '@/services/billingProxy';
+import {
+  fetchStorageLimits,
+  saveVersionHistory,
+  DEFAULT_MAX_SAVED_GRAPHS,
+  DEFAULT_MAX_VERSIONS,
+} from '@/lib/versionHistory';
 
 // 목록 조회 (세션 userId로 필터링)
 export async function GET(request: NextRequest) {
@@ -20,7 +25,7 @@ export async function GET(request: NextRequest) {
       title: item.title || item.data?.metadata?.title || '제목 없음',
       savedAt: item.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: item.updatedAt?.toISOString() || new Date().toISOString(),
-      version: item.version || 1,
+      version: item.version ?? 1,
       entityCount: item.entityCount || 0,
       edgeCount: item.edgeCount || 0,
       sceneCount: item.sceneCount || 0,
@@ -34,22 +39,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 플랜 features 조회 헬퍼 (fail-open: 실패 시 null)
-async function fetchPlanFeatures(
-  accessToken: string | undefined
-): Promise<{ max_saved_graphs?: number; max_versions?: number } | null> {
-  try {
-    const response = await proxyToCatcident('/subscription/?service=storygraph', accessToken);
-    if (response.ok) {
-      const data = await response.json();
-      return data.features ?? null;
-    }
-  } catch (err: unknown) {
-    console.warn('[storage] subscription 조회 실패, 제한 미적용:', err instanceof Error ? err.message : err);
-  }
-  return null;
-}
-
 // 지식 그래프 저장 (novelId로 소설 텍스트 연결, 세션 인증)
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +48,12 @@ export async function POST(request: NextRequest) {
 
     const db = await connectMongo();
     const collection = db.collection('knowledgeGraphs');
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     // body 구조: { knowledgeGraph, novelId?, existingId? }
     const data = body.knowledgeGraph || body;
@@ -76,8 +70,8 @@ export async function POST(request: NextRequest) {
     const edgeCount = Object.keys(data.hyperedges || {}).length;
     const sceneCount = Object.keys(data.snapshots || {}).length;
 
-    // 플랜 features 조회 (anonymous가 아닌 경우만)
-    const features = userId !== 'anonymous' ? await fetchPlanFeatures(accessToken) : null;
+    // 플랜 스토리지 제한 조회 (anonymous가 아닌 경우만)
+    const limits = userId !== 'anonymous' ? await fetchStorageLimits(accessToken) : null;
 
     // 1. existingId로 먼저 찾기 (파일 추가 시)
     let existing = null;
@@ -95,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (existing) {
-      const newVersion = (existing.version || 1) + 1;
+      const newVersion = (existing.version ?? 1) + 1;
 
       // 새로 추가된 파일명 추출 (기존 소스 파일 수와 비교)
       const existingFileCount = existing.data?.metadata?.sourceFiles?.length || 0;
@@ -103,35 +97,19 @@ export async function POST(request: NextRequest) {
       const addedFiles = newSourceFiles.slice(existingFileCount);
       const addedFileNames = addedFiles.map((f: { fileName?: string }) => f.fileName).join(', ');
 
-      // 이전 버전을 히스토리에 저장
-      const versionsCollection = db.collection('knowledgeGraphVersions');
-      await versionsCollection.insertOne({
-        dataId: existing._id.toString(),
-        version: existing.version || 1,
-        savedAt: existing.updatedAt || existing.createdAt || now,
-        note: addedFileNames ? `+${addedFileNames}` : `v${existing.version || 1}: ${existing.title}`,
-        data: existing.data,
-        addedFiles: addedFileNames || null,
-      });
-
-      // 버전 히스토리 제한 (FIFO: 오래된 것부터 삭제)
-      const maxVersions = features?.max_versions ?? -1;
-      if (maxVersions !== -1) {
-        const graphDocId = existing._id.toString();
-        const versionCount = await versionsCollection.countDocuments({ dataId: graphDocId });
-        if (versionCount > maxVersions) {
-          const excess = versionCount - maxVersions;
-          const oldestVersions = await versionsCollection
-            .find({ dataId: graphDocId })
-            .sort({ savedAt: 1 })
-            .limit(excess)
-            .toArray();
-          if (oldestVersions.length > 0) {
-            await versionsCollection.deleteMany({
-              _id: { $in: oldestVersions.map(v => v._id) }
-            });
-          }
-        }
+      // 이전 버전을 히스토리에 저장 (text 제거 + FIFO)
+      try {
+        const maxVersions = limits?.maxVersions ?? DEFAULT_MAX_VERSIONS;
+        await saveVersionHistory({
+          db,
+          existingDoc: existing,
+          note: addedFileNames ? `+${addedFileNames}` : `v${existing.version ?? 1}: ${existing.title}`,
+          maxVersions,
+          userId,
+          addedFiles: addedFileNames || null,
+        });
+      } catch (versionErr: unknown) {
+        console.error('[api] POST version history error:', versionErr);
       }
 
       await collection.updateOne({ _id: existing._id }, {
@@ -161,15 +139,13 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // 저장 그래프 수 제한 (새 그래프 insert 시에만)
-      const maxSavedGraphs = features?.max_saved_graphs ?? -1;
-      if (maxSavedGraphs !== -1) {
-        const existingCount = await collection.countDocuments({ userId });
-        if (existingCount >= maxSavedGraphs) {
-          return NextResponse.json(
-            { error: `저장 가능한 그래프 수를 초과했습니다 (최대 ${maxSavedGraphs}개). 기존 그래프를 삭제하거나 상위 플랜으로 업그레이드해주세요.` },
-            { status: 403 }
-          );
-        }
+      const maxSavedGraphs = limits?.maxSavedGraphs ?? DEFAULT_MAX_SAVED_GRAPHS;
+      const existingCount = await collection.countDocuments({ userId });
+      if (existingCount >= maxSavedGraphs) {
+        return NextResponse.json(
+          { error: `저장 가능한 그래프 수를 초과했습니다 (최대 ${maxSavedGraphs}개). 기존 그래프를 삭제하거나 상위 플랜으로 업그레이드해주세요.` },
+          { status: 403 }
+        );
       }
 
       const result = await collection.insertOne({

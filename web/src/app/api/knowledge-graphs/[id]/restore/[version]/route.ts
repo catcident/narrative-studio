@@ -37,6 +37,32 @@ export async function POST(
       return NextResponse.json({ error: 'Version not found' }, { status: 404 });
     }
 
+    // 버전에서 제거된 sourceFiles text를 현재 그래프에서 재구성
+    try {
+      const versionSourceFiles = versionDoc.data?.metadata?.sourceFiles as
+        Array<{ id: string; text?: string; [key: string]: unknown }> | undefined;
+
+      if (Array.isArray(versionSourceFiles)) {
+        const currentFiles = knowledgeGraph.data?.metadata?.sourceFiles as
+          Array<{ id: string; text?: string }> | undefined;
+
+        const currentFileMap = new Map<string, string>();
+        if (Array.isArray(currentFiles)) {
+          for (const f of currentFiles) {
+            if (f.id && f.text) currentFileMap.set(f.id, f.text);
+          }
+        }
+
+        for (const vf of versionSourceFiles) {
+          if (!vf.text) {
+            vf.text = currentFileMap.get(vf.id) ?? '';
+          }
+        }
+      }
+    } catch (reconstructErr: unknown) {
+      console.error('[api] restore text reconstruction error:', reconstructErr);
+    }
+
     return NextResponse.json(versionDoc.data);
   } catch (err: unknown) {
     console.error('[api] knowledge-graphs/[id]/restore POST error:', err);

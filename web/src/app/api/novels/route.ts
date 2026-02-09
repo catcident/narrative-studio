@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
 
+// 소설 저장 제한
+const MAX_NOVEL_TEXT_LENGTH = 5_000_000;
+const MAX_NOVELS_PER_USER = 20;
+
 // 소설 원본 텍스트 목록 조회 (세션 userId로 필터링)
 export async function GET(request: NextRequest) {
   try {
@@ -37,12 +41,24 @@ export async function POST(request: NextRequest) {
 
     const db = await connectMongo();
     const collection = db.collection('novels');
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     const { title, text, knowledgeGraphId } = body;
 
-    if (!title || !text) {
+    if (!title || typeof text !== 'string' || text.length === 0) {
       return NextResponse.json({ error: 'title and text are required' }, { status: 400 });
+    }
+
+    if (text.length > MAX_NOVEL_TEXT_LENGTH) {
+      return NextResponse.json(
+        { error: `텍스트 크기가 제한을 초과했습니다 (최대 ${(MAX_NOVEL_TEXT_LENGTH / 1_000_000).toFixed(0)}백만 자)` },
+        { status: 400 }
+      );
     }
 
     const now = new Date();
@@ -68,6 +84,14 @@ export async function POST(request: NextRequest) {
         knowledgeGraphId: knowledgeGraphId || existing.knowledgeGraphId,
       });
     } else {
+      const novelCount = await collection.countDocuments({ userId });
+      if (novelCount >= MAX_NOVELS_PER_USER) {
+        return NextResponse.json(
+          { error: `저장 가능한 소설 수를 초과했습니다 (최대 ${MAX_NOVELS_PER_USER}개). 기존 소설을 삭제해주세요.` },
+          { status: 403 }
+        );
+      }
+
       const result = await collection.insertOne({
         title,
         text,
