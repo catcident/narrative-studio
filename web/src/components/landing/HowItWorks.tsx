@@ -6,7 +6,6 @@ const STEPS = [
     title: '소설 업로드',
     description: 'TXT, PDF, MD 형식의 소설 파일을 드래그 앤 드롭으로 업로드하세요. 여러 파일을 순서대로 추가할 수도 있습니다.',
     icon: Upload,
-    accent: 'from-blue-500 to-indigo-500',
     bgAccent: 'bg-blue-50',
     textAccent: 'text-blue-600',
   },
@@ -15,7 +14,6 @@ const STEPS = [
     title: 'AI 자동 분석',
     description: 'AI가 텍스트를 읽고 인물, 장소, 조직 등 엔티티를 추출합니다. 관계 유형과 장면별 변화도 자동으로 파악합니다.',
     icon: Sparkles,
-    accent: 'from-violet-500 to-purple-500',
     bgAccent: 'bg-violet-50',
     textAccent: 'text-violet-600',
   },
@@ -24,7 +22,6 @@ const STEPS = [
     title: '관계도 탐색',
     description: '인터랙티브 그래프에서 인물 관계를 탐색하세요. 타임라인, 연대기, 세계관 등 6가지 뷰로 분석 결과를 확인합니다.',
     icon: Share2,
-    accent: 'from-emerald-500 to-teal-500',
     bgAccent: 'bg-emerald-50',
     textAccent: 'text-emerald-600',
   },
@@ -35,10 +32,12 @@ export function HowItWorks() {
     <section id="how-it-works" className="py-24 md:py-32 bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16 md:mb-20">
-          <span className="text-sm font-medium text-indigo-600 tracking-wide uppercase">How it works</span>
-          <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
             세 단계로 완성되는 관계도
           </h2>
+          <p className="mt-4 text-gray-500 max-w-md mx-auto">
+            업로드부터 관계도 탐색까지, 복잡한 설정 없이 바로 시작하세요
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 md:gap-6 lg:gap-12">

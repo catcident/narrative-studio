@@ -13,8 +13,7 @@ export function ChatShowcase() {
         <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
           {/* Text */}
           <div>
-            <span className="text-sm font-medium text-indigo-600 tracking-wide uppercase">AI Chat</span>
-            <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
               분석 결과에 대해
               <br />
               AI와 대화하세요

@@ -40,8 +40,7 @@ export function FeaturesSection() {
     <section id="features" className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16 md:mb-20">
-          <span className="text-sm font-medium text-indigo-600 tracking-wide uppercase">Features</span>
-          <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
             분석부터 공유까지, 한 곳에서
           </h2>
           <p className="mt-4 text-gray-500 max-w-lg mx-auto">

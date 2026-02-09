@@ -1,54 +1,38 @@
-const FOOTER_SECTIONS = [
-  {
-    title: '서비스',
-    links: [
-      { label: '기능 소개', href: '/#features' },
-      { label: '요금제', href: '/#pricing' },
-    ],
-  },
-  {
-    title: '고양이의 만행',
-    links: [
-      { label: '홈페이지', href: 'https://catcident.com', external: true },
-      { label: '뉴스', href: 'https://catcident.com/ko/news/', external: true },
-    ],
-  },
-  {
-    title: '법적 정보',
-    links: [
-      { label: '이용약관', href: 'https://catcident.com/ko/terms/', external: true },
-      { label: '개인정보처리방침', href: 'https://catcident.com/ko/privacy/', external: true },
-    ],
-  },
+const LEGAL_LINKS = [
+  { label: '이용약관', href: 'https://catcident.com/ko/terms/' },
+  { label: '개인정보처리방침', href: 'https://catcident.com/ko/privacy/' },
 ] as const;
 
 export function Footer() {
   return (
-    <footer className="border-t border-gray-200 bg-white mt-auto">
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-          {FOOTER_SECTIONS.map((section) => (
-            <div key={section.title}>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">{section.title}</h3>
-              <ul className="space-y-2">
-                {section.links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      {...('external' in link && link.external ? { target: '_blank', rel: 'noopener' } : {})}
-                      className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <footer className="mt-auto w-full py-16 px-6">
+      <div className="max-w-5xl mx-auto flex flex-col items-center gap-3">
+        <a
+          href="https://catcident.com"
+          target="_blank"
+          rel="noopener"
+          className="text-sm font-semibold text-gray-400 hover:text-gray-600 tracking-tight transition-colors"
+        >
+          고양이의 만행
+        </a>
+
+        <div className="flex items-center gap-3 text-xs text-gray-300">
+          {LEGAL_LINKS.map((link, i) => (
+            <span key={link.label} className="flex items-center gap-3">
+              {i > 0 && <span aria-hidden="true" className="text-gray-200">·</span>}
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener"
+                className="hover:text-gray-500 transition-colors"
+              >
+                {link.label}
+              </a>
+            </span>
           ))}
         </div>
-        <div className="mt-8 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-          &copy; 2026 고양이의 만행. All rights reserved.
-        </div>
+
+        <p className="text-[11px] text-gray-300">&copy; 2026 고양이의 만행</p>
       </div>
     </footer>
   );

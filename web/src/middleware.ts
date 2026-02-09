@@ -43,12 +43,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Landing page: redirect to /app if logged in
-    if (isLandingPage && isLoggedIn) {
-      return NextResponse.redirect(new URL('/app', req.nextUrl));
-    }
-
-    // Public pages: accessible without auth
+    // Public pages: accessible without auth (including landing page for logged-in users)
     if (isPublicPage) {
       return NextResponse.next();
     }

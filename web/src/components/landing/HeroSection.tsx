@@ -85,6 +85,164 @@ function GraphVisualization() {
   );
 }
 
+/* ── 앱 인터페이스 목업 ─────────────────────────────────── */
+
+const MOCKUP_NODES: readonly { x: number; y: number; r: number; color: string; label: string; selected?: true }[] = [
+  { x: 35, y: 28, r: 3.2, color: '#6366f1', label: '김민수', selected: true },
+  { x: 58, y: 22, r: 2.6, color: '#8b5cf6', label: '이서연' },
+  { x: 20, y: 48, r: 2.8, color: '#ef4444', label: '박준혁' },
+  { x: 48, y: 52, r: 2.2, color: '#22c55e', label: '한강마을' },
+  { x: 70, y: 45, r: 2.4, color: '#f59e0b', label: '정하나' },
+  { x: 30, y: 72, r: 2.0, color: '#a855f7', label: '청풍회' },
+  { x: 55, y: 75, r: 2.6, color: '#6366f1', label: '최도윤' },
+  { x: 75, y: 68, r: 1.8, color: '#eab308', label: '비밀편지' },
+];
+
+const MOCKUP_EDGES = [
+  { from: 0, to: 1 }, { from: 0, to: 2 }, { from: 0, to: 4 },
+  { from: 1, to: 4 }, { from: 2, to: 5 }, { from: 3, to: 0 },
+  { from: 4, to: 6 }, { from: 5, to: 6 }, { from: 6, to: 7 },
+] as const;
+
+const SIDEBAR_FIELDS = [
+  { label: '별칭', value: '민수, 김대리' },
+  { label: '카테고리', value: '인물 (주인공)' },
+  { label: '중요도', value: '10 / 10' },
+] as const;
+
+const SIDEBAR_RELATIONS = [
+  { name: '이서연', type: '연인', color: '#8b5cf6' },
+  { name: '박준혁', type: '적대', color: '#ef4444' },
+  { name: '정하나', type: '동료', color: '#f59e0b' },
+] as const;
+
+function AppMockup() {
+  return (
+    <div className="relative mx-auto max-w-5xl" aria-hidden="true">
+      {/* Glow background */}
+      <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 rounded-3xl blur-2xl" />
+
+      <div className="relative rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden">
+        {/* Title bar */}
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 border-b border-gray-800">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="px-4 py-1 bg-gray-800 rounded-md text-[10px] text-gray-400">
+              storygraph.catcident.com
+            </div>
+          </div>
+          <div className="w-12" />
+        </div>
+
+        {/* App chrome — toolbar */}
+        <div className="flex items-center gap-3 px-4 py-2 bg-white border-b border-gray-200">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded bg-indigo-500/20" />
+            <span className="text-[10px] font-bold text-gray-700">스토리그래프</span>
+          </div>
+          <span className="text-[9px] text-gray-400 truncate">나미야 잡화점의 기적</span>
+          <div className="ml-auto flex items-center gap-1">
+            {['관계도', '타임라인', '채팅'].map((tab, i) => (
+              <div key={tab} className={`px-2 py-0.5 rounded text-[8px] font-medium ${
+                i === 0 ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400'
+              }`}>
+                {tab}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <div className="flex" style={{ height: '280px' }}>
+          {/* Graph area */}
+          <div className="flex-1 bg-gray-50 relative overflow-hidden">
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" fill="none">
+              {/* Edges */}
+              {MOCKUP_EDGES.map((edge, i) => {
+                const from = MOCKUP_NODES[edge.from];
+                const to = MOCKUP_NODES[edge.to];
+                return (
+                  <line
+                    key={i}
+                    x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                    stroke="#d1d5db" strokeWidth="0.3"
+                  />
+                );
+              })}
+
+              {/* Nodes */}
+              {MOCKUP_NODES.map((node, i) => (
+                <g key={i}>
+                  {node.selected && (
+                    <circle cx={node.x} cy={node.y} r={node.r + 1.2}
+                      fill="none" stroke="#6366f1" strokeWidth="0.3" opacity={0.5}
+                      strokeDasharray="1 0.8"
+                    />
+                  )}
+                  <circle cx={node.x} cy={node.y} r={node.r}
+                    fill={node.color} opacity={0.85}
+                  />
+                  <text x={node.x} y={node.y + node.r + 2.5}
+                    textAnchor="middle" style={{ fontSize: '2.2px' }}
+                    className="fill-gray-500 font-medium"
+                  >
+                    {node.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {/* Detail sidebar */}
+          <div className="w-[180px] bg-white border-l border-gray-200 p-3 overflow-hidden">
+            {/* Character header */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
+                <span className="text-[7px] text-white font-bold">김</span>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-gray-800">김민수</div>
+                <div className="text-[8px] text-gray-400">주인공</div>
+              </div>
+            </div>
+
+            {/* Fields */}
+            <div className="space-y-2 mb-3">
+              {SIDEBAR_FIELDS.map((f) => (
+                <div key={f.label}>
+                  <div className="text-[7px] text-gray-400 uppercase tracking-wider">{f.label}</div>
+                  <div className="text-[9px] text-gray-600 mt-0.5">{f.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-gray-100 mb-2" />
+
+            {/* Relations */}
+            <div className="text-[7px] text-gray-400 uppercase tracking-wider mb-1.5">관계</div>
+            <div className="space-y-1.5">
+              {SIDEBAR_RELATIONS.map((rel) => (
+                <div key={rel.name} className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: rel.color }} />
+                  <span className="text-[8px] text-gray-600">{rel.name}</span>
+                  <span className="ml-auto text-[7px] text-gray-400 bg-gray-50 px-1 rounded">{rel.type}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Hero Section ────────────────────────────────────────── */
+
 export function HeroSection() {
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden">
@@ -147,22 +305,9 @@ export function HeroSection() {
           <GraphVisualization />
         </div>
 
-        {/* Product screenshot placeholder */}
+        {/* App mockup — replaces screenshot placeholder */}
         <div className="mt-20 md:mt-28">
-          <div className="relative mx-auto max-w-5xl">
-            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 rounded-3xl blur-2xl" aria-hidden="true" />
-            <div className="relative aspect-[16/9] bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <p className="text-sm">제품 스크린샷</p>
-                <p className="text-xs text-gray-600 mt-1">추후 실제 화면으로 교체</p>
-              </div>
-            </div>
-          </div>
+          <AppMockup />
         </div>
       </div>
     </section>

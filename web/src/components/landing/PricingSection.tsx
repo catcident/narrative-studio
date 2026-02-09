@@ -4,27 +4,76 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 
-interface Plan {
+/* ── 백엔드 응답 타입 ──────────────────────────────────── */
+
+interface PlanFeatures {
+  models: string[] | 'all';
+  max_file_size_mb: number;
+  max_saved_graphs?: number;
+  max_chats_per_analysis?: number;
+  can_purchase_credits?: boolean;
+  byok?: boolean;
+  export_formats?: string[];
+}
+
+interface BackendPlan {
   code: string;
   name: string;
-  price_monthly: number;
-  credits_monthly: number;
-  features: string[];
-  is_default: boolean;
+  price_krw: number;
+  monthly_credits: number;
+  features: PlanFeatures;
 }
+
+/* ── 기능 문구 생성 ─────────────────────────────────────── */
+
+function buildFeatureStrings(f: PlanFeatures): string[] {
+  const out: string[] = [];
+
+  if (f.models === 'all') {
+    out.push('모든 AI 모델 사용');
+  } else if (Array.isArray(f.models)) {
+    out.push(`${f.models.length}개 AI 모델 사용`);
+  }
+
+  out.push(`최대 ${f.max_file_size_mb}MB 파일`);
+
+  if (f.max_saved_graphs !== undefined) {
+    out.push(f.max_saved_graphs === -1 ? '관계도 무제한 저장' : `관계도 ${f.max_saved_graphs}개 저장`);
+  }
+
+  if (f.max_chats_per_analysis !== undefined && f.max_chats_per_analysis !== -1) {
+    out.push(`분석당 채팅 ${f.max_chats_per_analysis}회`);
+  } else if (f.max_chats_per_analysis === -1) {
+    out.push('채팅 무제한');
+  }
+
+  if (f.export_formats && f.export_formats.length > 0) {
+    out.push(`${f.export_formats.map(s => s.toUpperCase()).join(', ')} 내보내기`);
+  }
+
+  if (f.can_purchase_credits) out.push('추가 크레딧 구매 가능');
+  if (f.byok) out.push('개인 API 키 사용 (BYOK)');
+
+  return out;
+}
+
+/* ── 플랜별 스타일 ──────────────────────────────────────── */
 
 function getPlanStyle(code: string) {
   switch (code) {
     case 'pro':
-    case 'business':
       return { highlighted: true, badge: '인기' };
     default:
       return { highlighted: false, badge: null };
   }
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+/* ── PlanCard ───────────────────────────────────────────── */
+
+function PlanCard({ plan }: { plan: BackendPlan }) {
   const style = getPlanStyle(plan.code);
+  const isPaid = plan.price_krw > 0;
+  const featureStrings = buildFeatureStrings(plan.features);
 
   return (
     <div className={`relative rounded-2xl p-8 border transition-all duration-300 ${
@@ -43,10 +92,10 @@ function PlanCard({ plan }: { plan: Plan }) {
       <div>
         <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
         <div className="mt-4 flex items-baseline gap-1">
-          {plan.price_monthly > 0 ? (
+          {isPaid ? (
             <>
               <span className="text-3xl font-bold text-gray-900">
-                {plan.price_monthly.toLocaleString()}
+                {plan.price_krw.toLocaleString()}
               </span>
               <span className="text-sm text-gray-500">원/월</span>
             </>
@@ -54,15 +103,15 @@ function PlanCard({ plan }: { plan: Plan }) {
             <span className="text-3xl font-bold text-gray-900">무료</span>
           )}
         </div>
-        {plan.credits_monthly > 0 && (
+        {plan.monthly_credits > 0 && (
           <p className="mt-2 text-sm text-gray-500">
-            월 {plan.credits_monthly.toLocaleString()} 크레딧
+            월 {plan.monthly_credits.toLocaleString()} 크레딧
           </p>
         )}
       </div>
 
       <ul className="mt-6 space-y-3">
-        {plan.features.map((feature) => (
+        {featureStrings.map((feature) => (
           <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-600">
             <Check aria-hidden="true" className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
             <span>{feature}</span>
@@ -74,15 +123,17 @@ function PlanCard({ plan }: { plan: Plan }) {
         href="/login"
         className={`mt-8 block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all ${
           style.highlighted
-            ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-lg shadow-indigo-500/25'
+            ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-sm hover:shadow-md'
             : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
         }`}
       >
-        {plan.is_default ? '무료로 시작' : '구독하기'}
+        {isPaid ? '시작하기' : '무료로 시작'}
       </Link>
     </div>
   );
 }
+
+/* ── 로딩 플레이스홀더 ──────────────────────────────────── */
 
 function PricingPlaceholder() {
   return (
@@ -103,8 +154,23 @@ function PricingPlaceholder() {
   );
 }
 
+/* ── PricingSection ─────────────────────────────────────── */
+
+function isValidPlan(item: unknown): item is BackendPlan {
+  if (typeof item !== 'object' || item === null) return false;
+  const r = item as Record<string, unknown>;
+  return (
+    typeof r.code === 'string' &&
+    typeof r.name === 'string' &&
+    typeof r.price_krw === 'number' &&
+    typeof r.monthly_credits === 'number' &&
+    typeof r.features === 'object' &&
+    r.features !== null
+  );
+}
+
 export function PricingSection() {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<BackendPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -118,18 +184,14 @@ export function PricingSection() {
         return res.json();
       })
       .then((data: unknown) => {
-        if (!cancelled && Array.isArray(data)) {
-          const validPlans = data.filter(
-            (item): item is Plan =>
-              typeof item === 'object' &&
-              item !== null &&
-              typeof (item as Record<string, unknown>).code === 'string' &&
-              typeof (item as Record<string, unknown>).name === 'string' &&
-              typeof (item as Record<string, unknown>).price_monthly === 'number' &&
-              typeof (item as Record<string, unknown>).credits_monthly === 'number',
-          );
-          setPlans(validPlans);
-        }
+        if (cancelled) return;
+        // DRF 페이지네이션 형식 처리: { results: [...] } 또는 flat array
+        const items = (
+          typeof data === 'object' && data !== null && 'results' in data && Array.isArray((data as Record<string, unknown>).results)
+            ? (data as Record<string, unknown>).results
+            : Array.isArray(data) ? data : []
+        ) as unknown[];
+        setPlans(items.filter(isValidPlan));
       })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) {
@@ -151,8 +213,7 @@ export function PricingSection() {
     <section id="pricing" className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16 md:mb-20">
-          <span className="text-sm font-medium text-indigo-600 tracking-wide uppercase">Pricing</span>
-          <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
             합리적인 요금제
           </h2>
           <p className="mt-4 text-gray-500 max-w-lg mx-auto">
@@ -163,9 +224,10 @@ export function PricingSection() {
         {loading ? (
           <PricingPlaceholder />
         ) : plans.length > 0 ? (
-          <div className={`grid gap-6 max-w-4xl mx-auto ${
+          <div className={`grid gap-6 max-w-5xl mx-auto ${
             plans.length === 1 ? 'max-w-sm' :
             plans.length === 2 ? 'md:grid-cols-2 max-w-2xl' :
+            plans.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' :
             'md:grid-cols-3'
           }`}>
             {plans.map((plan) => (

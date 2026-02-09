@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Gift } from 'lucide-react';
+import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, RefreshCw, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
 import { getPlans, getCreditPackages, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
@@ -174,6 +174,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
         {/* 본문 */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* 테스트 모드 배너 */}
+          <div role="status" className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+            <Info aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">현재 결제 시스템은 테스트 모드로 운영 중입니다</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                실제 결제가 이루어지지 않습니다. 정식 오픈 시 안내드리겠습니다.
+              </p>
+            </div>
+          </div>
+
           {loading ? (
             <div className="text-center text-gray-400 py-12">로딩 중...</div>
           ) : loadError ? (
@@ -346,9 +357,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                 <div className="text-center text-gray-400 py-12">준비된 상품이 없습니다.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {packages.map(pkg => {
-                    const firstPurchaseBonus = Math.round(pkg.credits * 0.5);
-                    return (
+                  {packages.map(pkg => (
                       <div key={pkg.id} className="border border-gray-200 rounded-xl p-5">
                         <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
                         <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
@@ -359,10 +368,6 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                             +{pkg.bonus_pct}% 보너스
                           </div>
                         )}
-                        {/* C3: 첫 구매 보너스 크레딧 표시 */}
-                        <div className="text-xs text-amber-600 font-medium mb-1">
-                          첫 구매 시 +{firstPurchaseBonus.toLocaleString()} 보너스
-                        </div>
                         <div className="text-sm text-gray-500 mb-1">
                           {pkg.price_krw.toLocaleString()}원
                           <span className="text-xs text-gray-400 ml-1">
@@ -384,22 +389,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                           구매하기
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* C3: 첫 구매 보너스 안내 */}
-              {subscription?.features.can_purchase_credits && (
-                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-                  <Gift aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">첫 패키지 구매 시 +50% 보너스!</p>
-                    <p className="text-xs text-amber-600 mt-1">
-                      첫 번째 크레딧 패키지 구매 시 기본 크레딧의 50%가 추가 지급됩니다.
-                      결제 시스템 준비 중입니다.
-                    </p>
-                  </div>
+                  ))}
                 </div>
               )}
 
