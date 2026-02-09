@@ -29,6 +29,9 @@ export async function proxyToCatcident(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    // 내부 Docker 통신 시 Django SECURE_SSL_REDIRECT 우회
+    // (원본 요청은 HTTPS → Caddy → storygraph 경유이므로 사실을 전달)
+    'X-Forwarded-Proto': 'https',
   };
 
   if (accessToken) {
