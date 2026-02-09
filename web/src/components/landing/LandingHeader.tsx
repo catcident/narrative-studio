@@ -46,7 +46,7 @@ export function LandingHeader(): React.ReactNode {
           <span className="text-lg font-bold text-gray-900 tracking-tight">스토리그래프</span>
         </Link>
 
-        <nav aria-label="메인 네비게이션" className="flex items-center gap-1">
+        <nav aria-label="메인 네비게이션" className="flex items-center gap-2">
           <a href="#features" className="sr-only md:not-sr-only md:inline-flex px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg">
             기능
           </a>

@@ -44,7 +44,7 @@ function buildFeatureStrings(f: PlanFeatures): string[] {
   if (f.max_chats_per_analysis !== undefined && f.max_chats_per_analysis !== -1) {
     out.push(`분석당 채팅 ${f.max_chats_per_analysis}회`);
   } else if (f.max_chats_per_analysis === -1) {
-    out.push('채팅 무제한');
+    out.push('채팅 횟수 무제한');
   }
 
   if (f.export_formats && f.export_formats.length > 0) {
@@ -81,7 +81,7 @@ function PlanCard({ plan }: { plan: BackendPlan }) {
   const featureStrings = buildFeatureStrings(plan.features);
 
   return (
-    <div className={`relative rounded-2xl p-8 border transition-all duration-300 ${
+    <div className={`relative rounded-2xl p-8 border transition-all duration-300 flex flex-col ${
       style.highlighted
         ? 'bg-white border-indigo-200 shadow-xl shadow-indigo-500/10 scale-[1.02]'
         : 'bg-white border-gray-200 shadow-sm hover:shadow-md'
@@ -115,7 +115,7 @@ function PlanCard({ plan }: { plan: BackendPlan }) {
         )}
       </div>
 
-      <ul className="mt-6 space-y-3">
+      <ul className="mt-6 space-y-3 flex-1">
         {featureStrings.map((feature) => (
           <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-600">
             <Check aria-hidden="true" className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
@@ -142,7 +142,7 @@ function PlanCard({ plan }: { plan: BackendPlan }) {
 
 function PricingPlaceholder() {
   return (
-    <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+    <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
       {[1, 2, 3].map((i) => (
         <div key={i} className="bg-white rounded-2xl p-8 border border-gray-100 animate-pulse">
           <div className="h-5 bg-gray-200 rounded w-20 mb-4" />
@@ -233,11 +233,11 @@ export function PricingSection() {
         {loading ? (
           <PricingPlaceholder />
         ) : plans.length > 0 ? (
-          <div className={`grid gap-6 max-w-5xl mx-auto ${
+          <div className={`grid gap-6 mx-auto ${
             plans.length === 1 ? 'max-w-sm' :
-            plans.length === 2 ? 'md:grid-cols-2 max-w-2xl' :
-            plans.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' :
-            'md:grid-cols-3'
+            plans.length === 2 ? 'md:grid-cols-2 max-w-3xl' :
+            plans.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4 max-w-6xl' :
+            'md:grid-cols-3 max-w-6xl'
           }`}>
             {plans.map((plan) => (
               <PlanCard key={plan.code} plan={plan} />

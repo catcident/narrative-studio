@@ -317,6 +317,12 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                             <span>분석당 채팅 {plan.features.max_chats_per_analysis}회</span>
                           </div>
                         )}
+                        {plan.features.max_chats_per_analysis === -1 && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span>채팅 횟수 무제한</span>
+                          </div>
+                        )}
                         {plan.features.byok && (
                           <div className="flex items-center gap-2 text-gray-600">
                             <Check aria-hidden="true" className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -362,7 +368,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {packages.map(pkg => (
-                      <div key={pkg.id} className="border border-gray-200 rounded-xl p-5">
+                      <div key={pkg.id} className="border border-gray-200 rounded-xl p-5 flex flex-col">
                         <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
                         <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
                           {pkg.credits.toLocaleString()} 크레딧
@@ -378,7 +384,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                             ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
                           </span>
                         </div>
-                        <div className="text-xs text-gray-400 mb-4">만료 없음</div>
+                        <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
                         <button
                           onClick={() => window.open(
                             `${billingBaseUrl}/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
