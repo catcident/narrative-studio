@@ -25,6 +25,7 @@ export async function middleware(request: NextRequest) {
     const isAuthRoute = pathname.startsWith('/api/auth');
     const isPublicApi = pathname === '/api/config'
       || pathname === '/api/models'
+      || pathname === '/api/legal-meta'
       || pathname === '/api/billing/plans'
       || pathname === '/api/billing/packages';
     const isLoginPage = pathname === '/login';
