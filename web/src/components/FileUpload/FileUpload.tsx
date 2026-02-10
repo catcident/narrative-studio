@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis, useAuthEnabled } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, estimateUsageFromText } from '../../services/billing';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../../types';
@@ -340,7 +340,7 @@ export function FileUpload() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        const estimate = subscription ? estimateUsageLocally(combinedText.length, currentModel, allModels) : null;
+        const estimate = subscription ? estimateUsageFromText(combinedText, currentModel, allModels) : null;
         await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
         if (subscription && estimate) {
@@ -609,7 +609,7 @@ export function FileUpload() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        const estimate = subscription ? estimateUsageLocally(text.length, currentModel, allModels) : null;
+        const estimate = subscription ? estimateUsageFromText(text, currentModel, allModels) : null;
         await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
         if (subscription && estimate) {

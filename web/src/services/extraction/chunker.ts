@@ -35,6 +35,11 @@ export function splitIntoSmartChunks(text: string, targetSize: number = 5000, ov
   return splitIntoSmartChunksWithSource(text, targetSize, overlapSize).map(c => c.content);
 }
 
+/** 스마트 청크 수만 반환 (UI 예상 표시용, 실제 분할과 동일 로직) */
+export function countSmartChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): number {
+  return splitIntoSmartChunksWithSource(text, targetSize, overlapSize).length;
+}
+
 /**
  * 청크 분할 + 원본 파일 인덱스 추적
  */
@@ -66,35 +71,35 @@ export function splitIntoSmartChunksWithSource(text: string, targetSize: number 
   return allChunks;
 }
 
+// ⚠️ 화/장 단위로만 분할! 씬 단위로 분할하면 안 됨! (모듈 수준에서 1회 컴파일)
+const CHAPTER_PATTERN = new RegExp(
+  '(?=' +
+    // 마크다운 H1 헤딩만 (# 제목) - ##, ###는 씬 구분이므로 제외
+    '\\n#\\s+\\d+화[:\\s]' +
+  ')|(?=' +
+    // 한글 장/화/편/절 (줄 시작, 숫자 필수)
+    '\\n(?:제)?\\s*\\d+\\s*[장화편절](?:[:\\s]|$)' +
+  ')|(?=' +
+    // 괄호로 감싼 형식
+    '\\n[\\[【\\(]\\s*(?:제)?\\s*\\d+\\s*[장화편절]?\\s*[\\]】\\)]' +
+  ')|(?=' +
+    // 영문 Chapter/Episode/Part
+    '\\n(?:Chapter|Episode|Part|Ch\\.|Ep\\.)\\s*\\d+' +
+  ')|(?=' +
+    // 프롤로그/에필로그/서장/종장
+    '\\n(?:프롤로그|에필로그|Prologue|Epilogue|서장|종장|막간|Interlude)(?:[:\\s]|$)' +
+  ')',
+  'gi'
+);
+
 /**
  * 단일 파일 청크 분할 (기존 로직)
  */
 function splitSingleFileIntoChunks(text: string, targetSize: number = 5000, overlapSize: number = 300): string[] {
   const chunks: string[] = [];
 
-  // ⚠️ 화/장 단위로만 분할! 씬 단위로 분할하면 안 됨!
-  const chapterPattern = new RegExp(
-    '(?=' +
-      // 마크다운 H1 헤딩만 (# 제목) - ##, ###는 씬 구분이므로 제외
-      '\\n#\\s+\\d+화[:\\s]' +
-    ')|(?=' +
-      // 한글 장/화/편/절 (줄 시작, 숫자 필수)
-      '\\n(?:제)?\\s*\\d+\\s*[장화편절](?:[:\\s]|$)' +
-    ')|(?=' +
-      // 괄호로 감싼 형식
-      '\\n[\\[【\\(]\\s*(?:제)?\\s*\\d+\\s*[장화편절]?\\s*[\\]】\\)]' +
-    ')|(?=' +
-      // 영문 Chapter/Episode/Part
-      '\\n(?:Chapter|Episode|Part|Ch\\.|Ep\\.)\\s*\\d+' +
-    ')|(?=' +
-      // 프롤로그/에필로그/서장/종장
-      '\\n(?:프롤로그|에필로그|Prologue|Epilogue|서장|종장|막간|Interlude)(?:[:\\s]|$)' +
-    ')',
-    'gi'
-  );
-
   // 먼저 장/화 단위로 분할
-  const sections = text.split(chapterPattern).filter(s => s.trim());
+  const sections = text.split(CHAPTER_PATTERN).filter(s => s.trim());
 
   for (const section of sections) {
     // 장/화 헤더로 시작하는 섹션인지 확인

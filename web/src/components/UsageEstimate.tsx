@@ -3,9 +3,9 @@
  * 로컬 계산 (API 호출 없음), 크레딧 중심 표시
  */
 
-import { useMemo } from 'react';
+import { useMemo, useDeferredValue } from 'react';
 import { Calculator, AlertTriangle, CheckCircle, Key } from 'lucide-react';
-import { estimateUsageLocally } from '../services/billing';
+import { estimateUsageLocally, estimateUsageFromText } from '../services/billing';
 import { useCreditBalance, useModels, useByokEnabled } from '../store';
 import { hasApiKey } from '../services/extraction';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
@@ -13,18 +13,25 @@ import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 interface UsageEstimateProps {
   charCount: number;
   model: string;
+  /** 텍스트가 제공되면 스마트 청커로 정확한 청크 수 계산 (직접 입력 시) */
+  text?: string;
 }
 
-export function UsageEstimate({ charCount, model }: UsageEstimateProps) {
+export function UsageEstimate({ charCount, model, text }: UsageEstimateProps) {
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
   const isUsingPersonalKey = byokEnabled && hasApiKey();
 
+  // 대용량 텍스트 입력 시 매 키스트로크마다 스마트 청커 실행 방지
+  const deferredText = useDeferredValue(text);
+
   const estimate = useMemo(
-    () => estimateUsageLocally(charCount, model, allModels),
-    [charCount, model, allModels],
+    () => deferredText
+      ? estimateUsageFromText(deferredText, model, allModels)
+      : estimateUsageLocally(charCount, model, allModels),
+    [deferredText, charCount, model, allModels],
   );
 
   if (estimate.chunks === 0) return null;

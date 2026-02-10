@@ -17,6 +17,7 @@ import type {
 } from '../types';
 import { DEFAULT_MODEL, FALLBACK_MODELS, DEFAULT_CREDITS_PER_CHUNK, DEFAULT_CREDITS_PER_CHAT } from '../types';
 import type { ChunkBillingCallback } from './extraction/types';
+import { countSmartChunks } from './extraction';
 import {
   CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
 } from '@/lib/modelCosts';
@@ -284,22 +285,11 @@ export function findModel(model: string, dynamicModels?: ModelInfo[]): ModelInfo
     ?? FALLBACK_MODELS.find(m => m.id === model);
 }
 
-/**
- * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
- *
- * creditsPerChunk 기반 추정 (USD 계산 없이 단순 곱셈).
- * 토큰 추정은 showTokenDetails UI용으로 유지.
- */
-export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
-  if (charCount <= 0) return ZERO_ESTIMATE;
-
-  const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
-  const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
-
+/** 청크 수 → UsageEstimate 변환 (공통 헬퍼) */
+function buildEstimate(chunks: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
   const modelInfo = findModel(model, dynamicModels);
   const estimated_credits = Math.max(1, (modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK) * chunks);
 
-  // 토큰 추정 (showTokenDetails용)
   const inputTokensPerChunk = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
   const outputTokensPerChunk = Math.ceil(inputTokensPerChunk * OUTPUT_RATIO);
 
@@ -309,6 +299,35 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
     estimated_output_tokens: chunks * outputTokensPerChunk,
     chunks,
   };
+}
+
+/**
+ * 로컬에서 예상 사용량을 동기 계산 (API 호출 없음)
+ *
+ * creditsPerChunk 기반 추정 (USD 계산 없이 단순 곱셈).
+ * 텍스트가 없는 경로(파일 미읽음, 이어하기)에서 폴백으로 사용.
+ */
+export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
+  if (charCount <= 0) return ZERO_ESTIMATE;
+
+  const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
+  const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
+
+  return buildEstimate(chunks, model, dynamicModels);
+}
+
+/**
+ * 텍스트 기반 예상 사용량 계산 (스마트 청커 사용 — 정확한 청크 수)
+ *
+ * 실제 텍스트를 스마트 청커에 전달하여 장/화 경계 분할을 반영한 정확한 청크 수를 산출.
+ * 텍스트가 있는 경로(직접 입력, 파일 읽기 후 hold, 추가 분석, 배치)에서 사용.
+ */
+export function estimateUsageFromText(text: string, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
+  if (!text.trim()) return ZERO_ESTIMATE;
+
+  const chunks = countSmartChunks(text);
+
+  return buildEstimate(chunks, model, dynamicModels);
 }
 
 // ==================== 잔액 사전 확인 ====================

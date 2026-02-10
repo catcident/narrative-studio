@@ -121,8 +121,9 @@ NextAuth.js SessionProvider 래퍼
 
 ### UsageEstimate.tsx
 
-분석 전 예상 비용 표시. Props: `{ charCount, model }`.
-- `estimateUsageLocally()` 로컬 동기 계산 (API 호출 없음, `useMemo`)
+분석 전 예상 비용 표시. Props: `{ charCount, model, text? }`.
+- `text` prop 있으면 `estimateUsageFromText()` (스마트 청커 정확 계산), 없으면 `estimateUsageLocally()` (charCount 근사)
+- 로컬 동기 계산 (API 호출 없음, `useMemo`)
 - 주 표시: **크레딧 + 청크** (항상), 토큰 상세 (조건부 — `useShowTokenDetails()`)
 - 잔액 비교: `creditBalance !== null`일 때만 분석 가능/불가 표시
 - **주의**: charCount는 반드시 문자 수 (file.size bytes가 아님)

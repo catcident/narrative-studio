@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText } from '../services/billing';
 import { readFileAsText } from '../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
 
@@ -47,7 +47,7 @@ export function useAddFileAnalysis() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        const estimate = subscription ? estimateUsageLocally(text.length, model, allModels) : null;
+        const estimate = subscription ? estimateUsageFromText(text, model, allModels) : null;
         await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
         if (subscription && estimate) {

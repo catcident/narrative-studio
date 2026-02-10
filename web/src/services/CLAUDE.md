@@ -247,8 +247,9 @@ getCreditPackages()         // 크레딧 상품 목록
 // 모델 조회 공유 헬퍼 (chat.ts에서도 import하여 사용)
 findModel(model, dynamicModels?)  // dynamicModels → FALLBACK_MODELS 폴백
 
-// 로컬 순수 함수 (API 호출 없음, creditsPerChunk/creditsPerChat 기반 근사)
-estimateUsageLocally(charCount, model, dynamicModels?)  // creditsPerChunk × 청크 수
+// 로컬 순수 함수 (API 호출 없음, creditsPerChunk/creditsPerChat 기반)
+estimateUsageFromText(text, model, dynamicModels?)  // 스마트 청커 기반 정확 추정 (텍스트 있는 경로)
+estimateUsageLocally(charCount, model, dynamicModels?)  // charCount 근사 폴백 (텍스트 없는 경로: 파일 미읽음, 이어하기, 배치)
 calculateSessionCreditsFromChunks(chunks, dynamicModels?)  // creditsPerChunk 비례 근사 (UI 표시용)
 estimateValidationCost(fileCount, model?, dynamicModels?)  // creditsPerChunk × 호출 수
 
@@ -271,9 +272,11 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onCh
 
 ### 로컬 추정 함수
 
-`estimateUsageLocally()`, `estimateValidationCost()`, `calculateSessionCreditsFromChunks()`는 `creditsPerChunk` 기반 근사치.
-실제 정산은 서버 settle (`lib/serverCosts.ts`)이 USD 기반으로 수행.
-모델 크레딧 정보는 `FALLBACK_MODELS` (types.ts) + 서버 `/api/models` 동적 갱신.
+- `estimateUsageFromText()`: 스마트 청커(`countSmartChunks`) 기반 정확 추정. 텍스트가 있는 경로(직접 입력, 파일 읽기 후 hold, 추가 분석)에서 사용.
+- `estimateUsageLocally()`: charCount 기반 근사. 텍스트가 없는 경로(파일 미읽음 UI, 이어하기)에서 폴백으로 사용. 배치는 텍스트 보유(`QueueItem.text`) → `estimateUsageFromText` 사용.
+- `estimateValidationCost()`, `calculateSessionCreditsFromChunks()`: `creditsPerChunk` 기반 근사.
+- 실제 정산은 서버 settle (`lib/serverCosts.ts`)이 USD 기반으로 수행.
+- 모델 크레딧 정보는 `FALLBACK_MODELS` (types.ts) + 서버 `/api/models` 동적 갱신.
 
 ### 중요 규칙
 

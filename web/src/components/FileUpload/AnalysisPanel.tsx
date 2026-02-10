@@ -427,11 +427,12 @@ export function AnalysisPanel({
             </div>
           )}
 
-          {/* 예상 사용량 — 파일은 bytes→chars 근사 변환 (UTF-8 한글 ~3bytes/char) */}
+          {/* 예상 사용량 — 직접 입력 시 스마트 청커로 정확 계산, 파일은 bytes→chars 근사 */}
           {(selectedFiles.length > 0 || directText.trim()) && (
             <UsageEstimate
               charCount={directText.trim() ? directText.length : Math.ceil(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 3)}
               model={currentModel}
+              text={directText.trim() ? directText : undefined}
             />
           )}
 

@@ -7,7 +7,7 @@ import { useCallback, useRef } from 'react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText } from '../services/billing';
 import { getAvailableModelIds } from '../types';
 import type { ChunkUsage } from '../types';
 import type { ChunkBillingCallback } from '../services/extraction';
@@ -51,7 +51,7 @@ export function useBatchAnalysis() {
 
         // 잔액 확인 + hold (billing 활성 시)
         if (!isUsingPersonalKey) {
-          const estimate = freshSubscription ? estimateUsageLocally(item.charCount, item.model, freshModels) : null;
+          const estimate = freshSubscription ? estimateUsageFromText(item.text, item.model, freshModels) : null;
           await ensureSufficientBalance(freshSubscription, freshAuthEnabled, estimate?.estimated_credits);
 
           if (freshSubscription && estimate) {
