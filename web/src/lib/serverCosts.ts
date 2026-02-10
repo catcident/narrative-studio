@@ -55,18 +55,20 @@ export interface ServerModelInfo extends ModelInfo {
 
 // ==================== 서버 전용 모델 비용 데이터 ====================
 
-/** 정적 폴백 비용 데이터 (API 불가 시 사용) */
+/** 정적 폴백 비용 데이터 (API 불가 시 사용, 런타임에 OpenRouter 가격으로 갱신됨) */
 export const SERVER_MODEL_COSTS: Record<string, { inputCost: number; outputCost: number }> = {
-  'google/gemini-2.0-flash-001': { inputCost: 0.10, outputCost: 0.40 },
-  'openai/gpt-4o-mini': { inputCost: 0.15, outputCost: 0.60 },
-  'anthropic/claude-3-haiku': { inputCost: 0.25, outputCost: 1.25 },
-  'openai/gpt-4o': { inputCost: 2.50, outputCost: 10.00 },
-  'anthropic/claude-sonnet-4': { inputCost: 3.00, outputCost: 15.00 },
-  'google/gemini-2.5-flash-lite': { inputCost: 0.075, outputCost: 0.30 },
-  'deepseek/deepseek-chat': { inputCost: 0.14, outputCost: 0.28 },
-  'qwen/qwen-2.5-72b-instruct': { inputCost: 0.12, outputCost: 0.39 },
-  'google/gemini-2.5-flash': { inputCost: 0.15, outputCost: 0.60 },
-  'anthropic/claude-3.5-sonnet': { inputCost: 3.00, outputCost: 15.00 },
+  // 핵심 모델
+  'google/gemini-2.5-flash': { inputCost: 0.30, outputCost: 2.50 },
+  'openai/gpt-5-nano': { inputCost: 0.05, outputCost: 0.40 },
+  'openai/gpt-5-mini': { inputCost: 0.25, outputCost: 2.00 },
+  'anthropic/claude-haiku-4.5': { inputCost: 1.00, outputCost: 5.00 },
+  'anthropic/claude-sonnet-4.5': { inputCost: 3.00, outputCost: 15.00 },
+  // 추가 모델
+  'google/gemini-2.5-flash-lite': { inputCost: 0.10, outputCost: 0.40 },
+  'deepseek/deepseek-v3.2': { inputCost: 0.25, outputCost: 0.38 },
+  'openai/gpt-5.1': { inputCost: 1.25, outputCost: 10.00 },
+  'google/gemini-2.5-pro': { inputCost: 1.25, outputCost: 10.00 },
+  'google/gemini-3-flash-preview': { inputCost: 0.50, outputCost: 3.00 },
 };
 
 // ==================== 서버 전용 함수 ====================

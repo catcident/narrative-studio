@@ -144,16 +144,18 @@ export interface CuratedModelMeta {
  * 동적 모델 로딩 시 이 목록에 있는 모델만 표시됨.
  */
 export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
-  'anthropic/claude-sonnet-4': { description: '최고 품질', sortOrder: 10, coreModel: true },
-  'anthropic/claude-3.5-sonnet': { description: '최고 품질', sortOrder: 11, coreModel: false },
-  'openai/gpt-4o': { description: '고품질', sortOrder: 20, coreModel: true },
-  'openai/gpt-4o-mini': { description: '추천', sortOrder: 25, coreModel: true },
-  'anthropic/claude-3-haiku': { description: '균형', sortOrder: 30, coreModel: true },
-  'google/gemini-2.0-flash-001': { description: '경제적', sortOrder: 40, coreModel: true },
-  'google/gemini-2.5-flash': { description: '경제적', sortOrder: 41, coreModel: false },
-  'deepseek/deepseek-chat': { description: '가성비', sortOrder: 50, coreModel: false },
-  'qwen/qwen-2.5-72b-instruct': { description: '준수한 성능', sortOrder: 60, coreModel: false },
-  'google/gemini-2.5-flash-lite': { description: '가장 저렴', sortOrder: 70, coreModel: false },
+  // 핵심 모델 (coreModel: true)
+  'google/gemini-2.5-flash': { description: '경제적 (기본)', sortOrder: 10, coreModel: true },
+  'openai/gpt-5-nano': { description: '최저가', sortOrder: 20, coreModel: true },
+  'openai/gpt-5-mini': { description: '추천', sortOrder: 25, coreModel: true },
+  'anthropic/claude-haiku-4.5': { description: '균형', sortOrder: 30, coreModel: true },
+  'anthropic/claude-sonnet-4.5': { description: '최고 품질', sortOrder: 40, coreModel: true },
+  // 추가 모델 (coreModel: false)
+  'google/gemini-2.5-flash-lite': { description: '가장 저렴', sortOrder: 50, coreModel: false },
+  'deepseek/deepseek-v3.2': { description: '가성비', sortOrder: 55, coreModel: false },
+  'openai/gpt-5.1': { description: 'GPT 프리미엄', sortOrder: 60, coreModel: false },
+  'google/gemini-2.5-pro': { description: 'Gemini 프리미엄', sortOrder: 65, coreModel: false },
+  'google/gemini-3-flash-preview': { description: '차세대 (실험)', sortOrder: 70, coreModel: false },
 };
 
 /**
@@ -163,19 +165,20 @@ export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
  */
 export const FALLBACK_MODELS: ModelInfo[] = [
   // 핵심 5종
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', creditsPerChunk: 3, creditsPerChat: 4, description: '경제적', coreModel: true },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', creditsPerChunk: 4, creditsPerChat: 6, description: '추천', coreModel: true },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', creditsPerChunk: 7, creditsPerChat: 8, description: '균형', coreModel: true },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', creditsPerChunk: 35, creditsPerChat: 49, description: '고품질', coreModel: true },
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', creditsPerChunk: 44, creditsPerChat: 61, description: '최고 품질', coreModel: true },
-  // 선택 4종
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 10, creditsPerChat: 13, description: '경제적 (기본)', coreModel: true },
+  { id: 'openai/gpt-5-nano', name: 'GPT-5 Nano', creditsPerChunk: 3, creditsPerChat: 4, description: '최저가', coreModel: true },
+  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', creditsPerChunk: 9, creditsPerChat: 12, description: '추천', coreModel: true },
+  { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5', creditsPerChunk: 19, creditsPerChat: 25, description: '균형', coreModel: true },
+  { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5', creditsPerChunk: 44, creditsPerChat: 61, description: '최고 품질', coreModel: true },
+  // 추가 5종
   { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', creditsPerChunk: 3, creditsPerChat: 4, description: '가장 저렴', coreModel: false },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', creditsPerChunk: 3, creditsPerChat: 5, description: '가성비', coreModel: false },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', creditsPerChunk: 4, creditsPerChat: 5, description: '준수한 성능', coreModel: false },
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 4, creditsPerChat: 6, description: '경제적', coreModel: false },
+  { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3.2', creditsPerChunk: 5, creditsPerChat: 6, description: '가성비', coreModel: false },
+  { id: 'openai/gpt-5.1', name: 'GPT-5.1', creditsPerChunk: 29, creditsPerChat: 40, description: 'GPT 프리미엄', coreModel: false },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', creditsPerChunk: 29, creditsPerChat: 40, description: 'Gemini 프리미엄', coreModel: false },
+  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', creditsPerChunk: 13, creditsPerChat: 17, description: '차세대 (실험)', coreModel: false },
 ];
 
-export const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+export const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 
 /** available !== false인 모델의 ID 배열 반환 (orchestrator availableModelIds용) */
 export function getAvailableModelIds(models: ModelInfo[]): string[] {

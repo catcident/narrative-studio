@@ -15,12 +15,12 @@ export const OUTPUT_RATIO = 0.45;
 // ENTITY_SELECTION_PROMPT(~500자) + textPreview(1000자) + SYSTEM_PROMPT(~250자) + entitySummaries 평균(~1000자)
 export const SELECTOR_PROMPT_CHARS = 2750;
 export const SELECTOR_OUTPUT_TOKENS = 100;
-export const SELECTOR_MODEL = 'google/gemini-2.0-flash-001';
+export const SELECTOR_MODEL = 'google/gemini-2.5-flash-lite';
 
 // Merger review 추정 상수 (3청크 이상일 때 1회 호출)
 export const MERGER_REVIEW_PROMPT_CHARS = 2500;
 export const MERGER_REVIEW_OUTPUT_TOKENS = 200;
-export const MERGER_REVIEW_MODEL = 'google/gemini-2.0-flash-001';
+export const MERGER_REVIEW_MODEL = 'google/gemini-2.5-flash-lite';
 
 // Lorebook 추출 상수 (청크당 병렬 호출, extractor와 동일 모델)
 // extractor와 동일 입력 규모 (chunk text 지배적), 더 작은 출력 (구조화된 lore entries)

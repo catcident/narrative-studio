@@ -6,6 +6,7 @@ import type { Entity, HyperEdge, EntityCategory } from '../../types';
 import type { KnownEntity, EntitySummary, ChunkBilling, ChunkExtractedData, AccumulatedGraph } from './types';
 import { CATEGORY_NAMES, getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_SELECTION_PROMPT } from './prompts';
+import { SELECTOR_MODEL } from '@/lib/modelCosts';
 
 /**
  * 지식그래프에서 엔티티 요약 목록 생성
@@ -103,8 +104,8 @@ export async function selectRelevantEntities(
   console.log(`[extraction] 선별 프롬프트 크기: ${prompt.length}자, 엔티티 ${entityCount}개`);
 
   try {
-    // 빠른 모델로 선별 (gemini-flash 사용)
-    const selectionModel = 'google/gemini-2.0-flash-001';
+    // 빠른 모델로 선별 (Flash 모델 사용)
+    const selectionModel = SELECTOR_MODEL;
     const userApiKey = apiKeyOverride !== undefined ? apiKeyOverride : getApiKey();
 
     const response = await fetchWithClientTimeout('/api/analyze', {

@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { getApiKey, stripMarkdownCodeBlock, fetchWithClientTimeout } from './types';
 import { ENTITY_MERGE_REVIEW_PROMPT } from './prompts';
+import { MERGER_REVIEW_MODEL } from '@/lib/modelCosts';
 
 // --- ID 포맷 헬퍼 ---
 
@@ -319,7 +320,7 @@ export async function reviewEntityMerges(
   const prompt = ENTITY_MERGE_REVIEW_PROMPT.replace('{{entityList}}', entityList);
 
   try {
-    const reviewModel = 'google/gemini-2.0-flash-001';
+    const reviewModel = MERGER_REVIEW_MODEL;
     const userApiKey = apiKeyOverride !== undefined ? apiKeyOverride : getApiKey();
 
     const response = await fetchWithClientTimeout('/api/analyze', {
@@ -341,7 +342,7 @@ export async function reviewEntityMerges(
     const mergerBilling: ChunkBilling | null = data._billing ? {
       prompt_tokens: data._billing.prompt_tokens ?? 0,
       completion_tokens: data._billing.completion_tokens ?? 0,
-      model: data._billing.model ?? 'google/gemini-2.0-flash-001',
+      model: data._billing.model ?? MERGER_REVIEW_MODEL,
       byok: data._billing.byok,
     } : null;
     const content = data.choices?.[0]?.message?.content || '';
