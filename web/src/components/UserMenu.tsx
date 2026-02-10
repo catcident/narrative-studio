@@ -6,6 +6,7 @@
 import { signOut, useSession } from 'next-auth/react';
 import { LogOut } from 'lucide-react';
 import { useBillingSubscription } from '../store';
+import { clearUserScopedStorage } from '../lib/userScopedStorage';
 
 interface UserMenuProps {
   /** Additional container className */
@@ -50,7 +51,7 @@ export function UserMenu({ className = '' }: UserMenuProps): React.ReactNode {
         </span>
       )}
       <button
-        onClick={() => signOut({ callbackUrl: '/login' })}
+        onClick={() => { clearUserScopedStorage(); signOut({ callbackUrl: '/login' }); }}
         aria-label="로그아웃"
         className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
       >
