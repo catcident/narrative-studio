@@ -171,9 +171,8 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
 
     // 정적 폴백도 최신 값으로 갱신 (다음 폴백 시 stale 방지)
     for (const m of serverModels) {
-      if (m.available) {
-        SERVER_MODEL_COSTS[m.id] = { inputCost: m.inputCost, outputCost: m.outputCost };
-      }
+      if (!m.available) continue;
+      SERVER_MODEL_COSTS[m.id] = { inputCost: m.inputCost, outputCost: m.outputCost };
       const fallback = FALLBACK_MODELS.find(f => f.id === m.id);
       if (fallback) {
         fallback.creditsPerChunk = m.creditsPerChunk;

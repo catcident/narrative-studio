@@ -18,7 +18,7 @@ import { mergeExtractions } from '../web/src/services/extraction/merger';
 import type { ChunkExtractedData, MergedExtraction } from '../web/src/services/extraction/types';
 
 // ─── 설정 ───
-const MODEL = 'google/gemini-2.0-flash-001';
+const MODEL = 'google/gemini-2.5-flash';
 const CHUNK_SIZE = 5000;
 const TEST_DIR = path.resolve(__dirname);
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';

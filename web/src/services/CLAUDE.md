@@ -68,14 +68,9 @@ relationType = '관련';  // '위치', '소유'
 
 ### 지원 모델 (OpenRouter)
 
-| 모델 | 특징 |
-|------|------|
-| `google/gemini-2.0-flash-001` | **기본값**. 빠르고 저렴 |
-| `deepseek/deepseek-chat` | 가성비 최고 |
-| `anthropic/claude-3.5-sonnet` | 최고 품질 |
-| `openai/gpt-4o` | 고품질 |
-
-> 전체 모델 목록은 `types.ts`의 `FALLBACK_MODELS` 참조 (클라이언트 폴백). 서버 USD 단가는 `lib/serverCosts.ts`의 `SERVER_MODEL_COSTS`
+> 전체 모델 목록은 `types.ts`의 `CURATED_MODEL_META` 참조 (큐레이션 게이트키퍼).
+> 클라이언트 폴백 크레딧: `FALLBACK_MODELS`. 서버 USD 단가: `lib/serverCosts.ts`의 `SERVER_MODEL_COSTS`.
+> 모델 ID를 하드코딩하지 말 것 — 반드시 `modelCosts.ts`의 상수(`SELECTOR_MODEL`, `MERGER_REVIEW_MODEL`) 또는 `types.ts`의 `DEFAULT_MODEL` 사용.
 
 ### 프롬프트 엔지니어링 포인트
 
