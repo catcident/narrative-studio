@@ -27,7 +27,7 @@ import { CreditConfirmDialog } from './components/CreditConfirmDialog';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { BalanceAlertBanner } from './components/BalanceAlertBanner';
 import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeGraphById } from './services/storage';
-import { loadProgress, syncPartialAnalysis } from './services/extraction';
+import { syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
 import { useResumeAnalysis } from './hooks/useResumeAnalysis';
 import { Footer } from './components/Footer';
@@ -86,21 +86,6 @@ function App() {
     };
   }, [loadSubscription]);
 
-  // 마운트 시 부분 분석 상태 동기화 (타이틀 매칭)
-  useEffect(() => {
-    if (!knowledgeGraph) return;
-    const progress = loadProgress();
-    if (progress && progress.title === knowledgeGraph.metadata.title) {
-      setPartialAnalysis({
-        processedChunks: progress.processedChunks,
-        totalChunks: progress.totalChunks,
-        title: progress.title,
-        timestamp: progress.timestamp,
-        model: progress.model,
-      });
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만
-
   // 마운트 시 sessionStorage에서 세션 복원
   useEffect(() => {
     const savedDataId = sessionStorage.getItem('currentDataId');
@@ -108,7 +93,7 @@ function App() {
       loadKnowledgeGraphById(savedDataId).then((loaded) => {
         if (loaded) {
           setKnowledgeGraph(loaded, undefined, savedDataId);
-          syncPartialAnalysis(setPartialAnalysis);
+          syncPartialAnalysis(setPartialAnalysis, loaded.metadata.title);
         } else {
           sessionStorage.removeItem('currentDataId');
         }
@@ -161,7 +146,7 @@ function App() {
   // 데이터 관리자에서 불러오기 (ID 포함)
   const handleLoadKnowledgeGraph = (loaded: NovelKnowledgeGraph, dataId?: string) => {
     setKnowledgeGraph(loaded, undefined, dataId);
-    syncPartialAnalysis(setPartialAnalysis);
+    syncPartialAnalysis(setPartialAnalysis, loaded.metadata.title);
     setShowDataManager(false);
   };
 

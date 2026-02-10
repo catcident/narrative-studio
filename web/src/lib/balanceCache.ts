@@ -52,10 +52,15 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
     return null;
   }
 
-  // Check cache first — positive balances or BYOK users pass immediately
+  // Check cache first
   const cached = balanceCache.get(userId);
-  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS && (cached.balance > 0 || cached.byok)) {
-    return null;
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    if (cached.balance > 0 || cached.byok) {
+      return null;  // fast-pass
+    }
+    // 캐시된 zero/negative balance → 즉시 차단 (fresh fetch 불필요)
+    console.log(`[analyze] Blocked zero-balance user (cached): ${userId}`);
+    return 'Insufficient credits. Please purchase more credits to continue.';
   }
 
   // Fetch fresh subscription info (balance + byok) from billing service
@@ -76,14 +81,10 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
     const byok = data.features?.byok ?? false;
     const planCode = data.plan?.code ?? 'free';
 
-    // Cache positive balances; also cache zero balances if BYOK (they don't need credits).
-    // Non-BYOK zero balances are not cached so admin-added credits take effect immediately.
-    if (balance > 0 || byok) {
-      evictStaleEntries();
-      balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
-    } else {
-      balanceCache.delete(userId);
-    }
+    // Cache all balances (including zero/negative) to enable fast blocking.
+    // Admin-added credits take effect after TTL (5min) — security over immediacy.
+    evictStaleEntries();
+    balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
 
     if (balance <= 0 && !byok) {
       console.log(`[analyze] Blocked zero-balance user: ${userId}`);
@@ -108,12 +109,9 @@ export function updateBalanceCache(userId: string, balance: number): void {
   const existing = balanceCache.get(userId);
   const byok = existing?.byok ?? false;
   const planCode = existing?.planCode ?? 'free';
-  // BYOK 사용자는 zero balance여도 캐시 유지 (크레딧 불필요)
-  if (balance > 0 || byok) {
-    balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
-  } else {
-    balanceCache.delete(userId);
-  }
+  // Zero/negative balance도 캐싱하여 hold 직후 즉시 차단 가능
+  evictStaleEntries();
+  balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
 }
 
 /**

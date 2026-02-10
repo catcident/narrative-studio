@@ -115,7 +115,7 @@ export function useAddFileAnalysis() {
         updated, undefined, currentDataId || undefined,
       );
       setKnowledgeGraph(updated, undefined, saved.id);
-      syncPartialAnalysis(setPartialAnalysis);
+      syncPartialAnalysis(setPartialAnalysis, updated.metadata.title);
       setProgress('');
       setShowUsageSummary(true);
     } catch (err: unknown) {

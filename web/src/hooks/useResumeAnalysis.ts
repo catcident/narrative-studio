@@ -131,7 +131,7 @@ export function useResumeAnalysis() {
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
       setProgress('');
       setShowUsageSummary(true);
-      syncPartialAnalysis(setPartialAnalysis);
+      syncPartialAnalysis(setPartialAnalysis, newKnowledgeGraph.metadata.title);
     } catch (err: unknown) {
       console.error('[extraction] resume error:', err);
       setError(err instanceof Error ? err.message : '이어하기 중 오류가 발생했습니다.');

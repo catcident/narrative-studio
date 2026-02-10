@@ -224,7 +224,16 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         // LLM으로 관련 엔티티 선별
         const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel, effectiveApiKey);
 
-        // selector billing 추적 (토큰 사용량 누적)
+        // 잔액 부족 감지 → graceful stop (billing 추적 전에 체크 — 0토큰 엔트리가 settle에 포함되면 Math.max(1,...) = 1 크레딧 차감)
+        if (selectionBilling?.insufficient_balance) {
+          console.warn(`[extraction] 청크 ${i + 1}: 잔액 부족 감지 (selector), 분석 중단`);
+          onProgress?.(`크레딧이 부족하여 분석을 중단합니다 (${i}/${totalChunks}). 이어하기로 재개할 수 있습니다.`);
+          saveCurrentProgress(i);
+          loopCompleted = false;
+          break;
+        }
+
+        // selector billing 추적 (토큰 사용량 누적 — insufficient_balance 체크 이후)
         if (selectionBilling && onChunkBilling) {
           onChunkBilling(i, selectionBilling);
         }
@@ -257,6 +266,15 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
       const extracted = extractionResult.data;
       const billing = extractionResult.billing;
+
+      // 잔액 부족 감지 → graceful stop (0토큰 billing은 currentUsage에 추가하지 않음 — settle Math.max(1,...) 방지)
+      if (billing?.insufficient_balance || lorebookResult.billing?.insufficient_balance) {
+        console.warn(`[extraction] 청크 ${i + 1}: 잔액 부족 감지 (extractor/lorebook), 분석 중단`);
+        onProgress?.(`크레딧이 부족하여 분석을 중단합니다 (${i}/${totalChunks}). 이어하기로 재개할 수 있습니다.`);
+        saveCurrentProgress(i);
+        loopCompleted = false;
+        break;
+      }
 
       if (extracted) {
         // billing 정보를 콜백으로 전달 (토큰 사용량 누적)
@@ -360,11 +378,6 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       saveCurrentProgress(i);
       throw new Error(`청크 ${i + 1}/${totalChunks} 처리 실패: ${errMsg || '알 수 없는 오류'}. 이어하기로 재시도할 수 있습니다.`);
     }
-  }
-
-  // 완전히 완료된 경우에만 진행상황 삭제 (잔액 부족 중단 시 이어하기 위해 보존)
-  if (loopCompleted) {
-    clearProgress();
   }
 
   // 모든 청크가 실패(빈 결과)인 경우 에러로 처리
@@ -488,7 +501,14 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   );
   console.log(`[extraction] 로어북 병합: ${mergedLore.length}개 엔트리`);
 
-  return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph, mergedLore);
+  const result = buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph, mergedLore);
+
+  // 후처리까지 모두 성공한 경우에만 진행상황 삭제 (잔액 부족 중단 시 이어하기 위해 보존)
+  if (loopCompleted) {
+    clearProgress();
+  }
+
+  return result;
 }
 
 // ==================== 개별 로어북 추출 ====================
@@ -628,9 +648,14 @@ export async function extractLorebookOnly(options: ExtractLorebookOnlyOptions): 
  */
 export function syncPartialAnalysis(
   setPartialAnalysis: (info: PartialAnalysisInfo | null) => void,
+  expectedTitle?: string,
 ): void {
   const progress = loadProgress();
   if (progress) {
+    if (expectedTitle !== undefined && progress.title !== expectedTitle) {
+      setPartialAnalysis(null);
+      return;
+    }
     setPartialAnalysis({
       processedChunks: progress.processedChunks,
       totalChunks: progress.totalChunks,

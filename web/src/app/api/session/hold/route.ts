@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { checkAnalyzeEligibility, updateBalanceCache } from '@/lib/balanceCache';
+import { checkAnalyzeEligibility } from '@/lib/balanceCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
 
@@ -76,7 +76,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 });
     }
 
-    updateBalanceCache(userId, data.balance_after);
+    // balanceCache는 hold 후 갱신하지 않음:
+    // hold가 잔액을 0으로 만들어도, 해당 세션의 analyze 호출은 held 크레딧으로 진행되어야 함.
+    // 캐시에 0을 기록하면 자기 세션의 첫 analyze 호출이 차단됨.
+    // settle/release 라우트에서 최종 잔액으로 캐시 갱신.
     console.log(`[session] hold created for user ${userId}: token=${data.hold_token}, amount=${data.amount}`);
 
     return NextResponse.json(data);

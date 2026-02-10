@@ -417,7 +417,7 @@ export function FileUpload() {
       setBookTitle('');
       setBookAuthor('');
       setKnowledgeGraph(newKnowledgeGraph, combinedText, saved.id);
-      syncPartialAnalysis(setPartialAnalysis);
+      syncPartialAnalysis(setPartialAnalysis, newKnowledgeGraph.metadata.title);
       resetProgressState();
       return true;
     });
@@ -550,7 +550,7 @@ export function FileUpload() {
       const saved = await saveKnowledgeGraph(newKnowledgeGraph);
 
       setKnowledgeGraph(newKnowledgeGraph, undefined, saved.id);
-      syncPartialAnalysis(setPartialAnalysis);
+      syncPartialAnalysis(setPartialAnalysis, newKnowledgeGraph.metadata.title);
       resetProgressState();
       return true;
     });
@@ -781,7 +781,7 @@ export function FileUpload() {
       setSelectedFiles([]);
 
       setKnowledgeGraph(newKnowledgeGraph, text, saved.id);
-      syncPartialAnalysis(setPartialAnalysis);
+      syncPartialAnalysis(setPartialAnalysis, newKnowledgeGraph.metadata.title);
       resetProgressState();
       return true;
     });
