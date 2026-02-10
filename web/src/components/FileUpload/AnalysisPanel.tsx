@@ -250,9 +250,19 @@ export function AnalysisPanel({
             {!lockedModel && availableModels.some(m => m.coreModel === false) && (
               <button
                 onClick={() => setShowAllModels(!showAllModels)}
-                className="text-xs text-purple-500 hover:text-purple-700 mt-1"
+                className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-800 px-2 py-0.5 rounded-full border border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-colors"
               >
-                {showAllModels ? '핵심 모델만 보기' : `더 많은 모델 보기 (${availableModels.filter(m => m.coreModel === false).length}종)`}
+                {showAllModels ? (
+                  <>
+                    <ChevronUp aria-hidden="true" className="w-3 h-3" />
+                    핵심 모델만 보기
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown aria-hidden="true" className="w-3 h-3" />
+                    {`더 많은 모델 보기 (${availableModels.filter(m => m.coreModel === false).length}종)`}
+                  </>
+                )}
               </button>
             )}
             {lockedModel && (
