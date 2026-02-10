@@ -2,9 +2,9 @@
  * 지식 그래프 추출 서비스 — 메인 오케스트레이션
  */
 
-import type { NovelKnowledgeGraph, PartialAnalysisInfo } from '../../types';
+import type { NovelKnowledgeGraph, PartialAnalysisInfo, Lorebook, LoreEntry } from '../../types';
 import { DEFAULT_MODEL, FALLBACK_MODELS } from '../../types';
-import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions, RawLoreEntry } from './types';
+import type { KnownEntity, ChunkExtractedData, ExtractionProgress, ExtractionOptions, RawLoreEntry, ChunkBillingCallback, ByokMode } from './types';
 import { EMPTY_CHUNK_DATA, getEffectiveApiKey, getByokMode } from './types';
 import { splitIntoSmartChunksWithSource } from './chunker';
 import { selectRelevantEntities, filterEntitiesByNames, buildAccumulatedGraph } from './selector';
@@ -98,7 +98,8 @@ export function clearProgress(): void {
 }
 
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
-  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling, availableModelIds, byokMode: optByokMode, creditBalance } = options;
+  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling, availableModelIds, byokMode: optByokMode, creditBalance, enableLorebook: optEnableLorebook } = options;
+  const enableLorebook = resumeFrom?.enableLorebook ?? optEnableLorebook ?? true;
 
   // BYOK 모드에 따른 유효 API 키 결정 (세션 시작 시 1회)
   const byokMode = optByokMode ?? getByokMode();
@@ -182,6 +183,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       model: useModel,
       originalText: resumeFrom?.originalText || text,
       fileNames: resumeFrom?.fileNames || fileNames,
+      enableLorebook,
     });
   };
 
@@ -240,13 +242,17 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
       console.log(`[extraction] 청크 ${i + 1}: 프롬프트에 전달할 엔티티: ${entitiesToUse.length}개`);
 
       // LLM A (관계 추출) + LLM B (로어북 추출) 병렬 호출
+      const lorebookPromise = enableLorebook
+        ? extractLorebook(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey).catch(err => {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            console.error(`[lorebook] 청크 ${i + 1} 로어북 추출 실패:`, errMsg);
+            return { data: [] as RawLoreEntry[], billing: null };
+          })
+        : Promise.resolve({ data: [] as RawLoreEntry[], billing: null });
+
       const [extractionResult, lorebookResult] = await Promise.all([
         extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey),
-        extractLorebook(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey).catch(err => {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          console.error(`[lorebook] 청크 ${i + 1} 로어북 추출 실패:`, errMsg);
-          return { data: [] as RawLoreEntry[], billing: null };
-        }),
+        lorebookPromise,
       ]);
 
       const extracted = extractionResult.data;
@@ -373,7 +379,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
     const reason = lastFailureReason
       ? `\n원인: ${lastFailureReason}`
       : '';
-    throw new Error(`청크 ${countInfo} 분석에 실패했습니다.${reason}`);
+    throw new Error(`청크 ${countInfo} 분석에 실패했습니다 (모델: ${useModel}).${reason}`);
   }
 
   onProgress?.('인물 정보 병합 중...');
@@ -483,6 +489,137 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   console.log(`[extraction] 로어북 병합: ${mergedLore.length}개 엔트리`);
 
   return buildKnowledgeGraph(validated, title, useModel, finalFileNames, finalText, existingGraph, mergedLore);
+}
+
+// ==================== 개별 로어북 추출 ====================
+
+export interface ExtractLorebookOnlyOptions {
+  knowledgeGraph: NovelKnowledgeGraph;
+  model?: string;
+  onProgress?: (msg: string, current?: number, total?: number) => void;
+  onChunkBilling?: ChunkBillingCallback;
+  byokMode?: ByokMode;
+  creditBalance?: number | null;
+  availableModelIds?: string[];
+}
+
+/**
+ * 기존 지식 그래프에 로어북만 추가 추출.
+ * sourceFiles 텍스트를 청크 분할 → 각 청크에 extractLorebook 호출 → 병합.
+ */
+export async function extractLorebookOnly(options: ExtractLorebookOnlyOptions): Promise<Lorebook> {
+  const { knowledgeGraph, model, onProgress, onChunkBilling, byokMode: optByokMode, creditBalance } = options;
+
+  const byokMode = optByokMode ?? getByokMode();
+  const effectiveApiKey = getEffectiveApiKey(byokMode, creditBalance ?? null);
+  const useModel = model ?? knowledgeGraph.metadata.model ?? DEFAULT_MODEL;
+
+  // 텍스트 추출: sourceFiles에서
+  let combinedText = '';
+  const fileNames: string[] = [];
+  const sourceFileIds: string[] = [];
+
+  if (knowledgeGraph.metadata.sourceFiles && knowledgeGraph.metadata.sourceFiles.length > 0) {
+    for (const sf of knowledgeGraph.metadata.sourceFiles) {
+      if (combinedText) combinedText += '\n\n--- 파일 구분 ---\n\n';
+      combinedText += sf.text;
+      fileNames.push(sf.fileName);
+      sourceFileIds.push(sf.id);
+    }
+  }
+
+  if (!combinedText.trim()) {
+    throw new Error('원본 텍스트가 없어 로어북을 추출할 수 없습니다. 소설 원본이 포함된 그래프에서 시도해주세요.');
+  }
+
+  // 청크 분할
+  const chunksWithSource = splitIntoSmartChunksWithSource(combinedText, 5000);
+  const chunks = chunksWithSource.map(c => c.content);
+  const chunkSourceFileIndices = chunksWithSource.map(c => c.sourceFileIndex);
+  const totalChunks = chunks.length;
+
+  onProgress?.(`로어북 추출: ${totalChunks}개 청크 분석 준비...`);
+
+  // knownEntities 구성 (기존 entities에서)
+  const knownEntities: KnownEntity[] = Object.values(knowledgeGraph.entities).map(e => ({
+    name: e.name,
+    description: (e.description ?? '').slice(0, 100),
+    category: e.category ?? 'character',
+    aliases: e.aliases ?? [],
+  }));
+
+  // 청크별 로어북 추출
+  const allExtractedLore: RawLoreEntry[][] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    onProgress?.(`로어북 추출: 청크 ${i + 1}/${totalChunks} 분석 중...`, i + 1, totalChunks);
+
+    try {
+      const result = await extractLorebook(chunks[i], i + 1, knownEntities, useModel, effectiveApiKey);
+
+      if (result.billing && onChunkBilling) {
+        onChunkBilling(i, result.billing);
+      }
+
+      allExtractedLore.push(result.data ?? []);
+    } catch (err: unknown) {
+      console.error(`[lorebook-only] 청크 ${i + 1} 실패:`, err instanceof Error ? err.message : err);
+      allExtractedLore.push([]);
+    }
+  }
+
+  onProgress?.('로어북 병합 중...');
+
+  // 장면 매핑 구축: 기존 snapshots 순서 기반 근사
+  // 청크별 로컬 scene ID → 글로벌 S-format 매핑
+  const snapshotIds = Object.keys(knowledgeGraph.snapshots).sort();
+
+  const chunkLocalToSFormat: Array<Record<number, string>> = [];
+  for (let ci = 0; ci < totalChunks; ci++) {
+    const localToS: Record<number, string> = {};
+    // 이 청크에 해당하는 장면들 근사: 전체 장면을 청크 수로 균등 배분
+    const startScene = Math.floor((ci / totalChunks) * snapshotIds.length);
+    const endScene = Math.floor(((ci + 1) / totalChunks) * snapshotIds.length);
+    for (let localId = 1; localId <= Math.max(1, endScene - startScene); localId++) {
+      const globalIdx = startScene + localId - 1;
+      if (globalIdx < snapshotIds.length) {
+        localToS[localId] = snapshotIds[globalIdx];
+      }
+    }
+    chunkLocalToSFormat.push(localToS);
+  }
+
+  // 엔티티 이름 매핑 (aliases → canonical name)
+  const entityNameMapping: Record<string, string> = {};
+  for (const entity of Object.values(knowledgeGraph.entities)) {
+    for (const alias of (entity.aliases ?? [])) {
+      if (alias !== entity.name) {
+        entityNameMapping[alias] = entity.name;
+      }
+    }
+  }
+
+  const knownEntityNames = Object.values(knowledgeGraph.entities).map(e => e.name);
+
+  const mergedLore = mergeLoreEntries(
+    allExtractedLore,
+    chunkSourceFileIndices,
+    chunkLocalToSFormat,
+    entityNameMapping,
+    fileNames.length > 0 ? fileNames : undefined,
+    sourceFileIds.length > 0 ? sourceFileIds : undefined,
+    knownEntityNames,
+  );
+
+  console.log(`[lorebook-only] 로어북 추출 완료: ${mergedLore.length}개 엔트리`);
+
+  // LoreEntry[] → Lorebook 변환
+  const entries: Record<string, LoreEntry> = {};
+  for (const entry of mergedLore) {
+    entries[entry.id] = entry;
+  }
+
+  return { entries };
 }
 
 /**

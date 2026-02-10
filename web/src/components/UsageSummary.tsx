@@ -22,7 +22,7 @@ export function UsageSummary() {
 
   if (!showUsageSummary) return null;
 
-  const totalChunks = currentUsage.chunks.length;
+  const totalChunks = new Set(currentUsage.chunks.map(c => c.chunkIndex)).size;
   const totalTokens = currentUsage.totalPromptTokens + currentUsage.totalCompletionTokens;
 
   // 서버 정산값(settledCredits) 우선, 없으면 클라이언트 근사치 폴백

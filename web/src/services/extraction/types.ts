@@ -100,6 +100,7 @@ export interface ExtractionProgress {
   model?: string;  // 사용된 모델
   originalText?: string;  // 원본 텍스트
   fileNames?: string[];  // 원본 파일명 배열
+  enableLorebook?: boolean;  // 이어하기 시 로어북 활성 여부 복원용
 }
 
 export type ProgressCallback = (msg: string, current?: number, total?: number, estimatedRemainingSeconds?: number | null) => void;
@@ -117,6 +118,7 @@ export interface ExtractionOptions {
   availableModelIds?: string[];  // 현재 사용 가능한 모델 ID 목록 (만료 모델 검증용)
   byokMode?: ByokMode;
   creditBalance?: number | null;
+  enableLorebook?: boolean;  // false이면 로어북 추출 스킵 (기본 true)
 }
 
 // --- 병합 타입 (merger.ts 내부 전용) ---

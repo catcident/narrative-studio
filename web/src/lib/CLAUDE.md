@@ -250,13 +250,14 @@ if (limited) {
 CHARS_PER_TOKEN, CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_RATIO,
 SELECTOR_PROMPT_CHARS, SELECTOR_OUTPUT_TOKENS, SELECTOR_MODEL,
 MERGER_REVIEW_PROMPT_CHARS, MERGER_REVIEW_OUTPUT_TOKENS, MERGER_REVIEW_MODEL,
-LOREBOOK_OUTPUT_RATIO
+SYSTEM_PROMPT_OVERHEAD_TOKENS, ESTIMATION_OUTPUT_RATIO, ESTIMATION_LOREBOOK_RATIO
 ```
 
 **⚠️ 상수 변경 시 주의사항**:
 - `CHARS_PER_TOKEN=1.5`는 한국어(~1.0)와 영문 시스템 프롬프트의 혼합을 반영한 값.
-- 새 모델 추가 시 `types.ts`의 `FALLBACK_MODELS`에 `creditsPerChunk`/`creditsPerChat` 추가, `serverCosts.ts`의 `SERVER_MODEL_COSTS`에 USD 단가 추가.
-- **새 per-chunk LLM 호출 추가 시**: `computeCreditsPerChunk()`에 비용 추가 + `FALLBACK_MODELS` 값 재계산 + `modelCosts.ts`에 상수 추가. 예: `LOREBOOK_OUTPUT_RATIO` 추가 시 `computeCreditsPerChunk`에 lorebook 비용 반영.
+- `ESTIMATION_*` 상수는 사전 추정용 (settle 정산과는 별도). `OUTPUT_RATIO`는 settle 마크업 계산용.
+- 새 모델 추가 시 `types.ts`의 `FALLBACK_MODELS`에 `creditsPerChunk`/`creditsPerChunkNoLore`/`creditsPerChat` 추가, `serverCosts.ts`의 `SERVER_MODEL_COSTS`에 USD 단가 추가.
+- **새 per-chunk LLM 호출 추가 시**: `computeCreditsPerChunk()`에 비용 추가 + `FALLBACK_MODELS` 값 재계산 + `modelCosts.ts`에 상수 추가. 예: `ESTIMATION_LOREBOOK_RATIO` 추가 시 `computeCreditsPerChunk`에 lorebook 비용 반영.
 
 ---
 

@@ -22,6 +22,10 @@ export const MERGER_REVIEW_PROMPT_CHARS = 2500;
 export const MERGER_REVIEW_OUTPUT_TOKENS = 200;
 export const MERGER_REVIEW_MODEL = 'google/gemini-2.5-flash-lite';
 
-// Lorebook 추출 상수 (청크당 병렬 호출, extractor와 동일 모델)
-// extractor와 동일 입력 규모 (chunk text 지배적), 더 작은 출력 (구조화된 lore entries)
-export const LOREBOOK_OUTPUT_RATIO = 0.30;
+// ==================== 추정 전용 상수 (computeCreditsPerChunk에서만 사용) ====================
+// 실제 LLM 호출은 시스템 프롬프트 + 이전 엔티티 컨텍스트를 포함하여 입력이 더 큼
+export const SYSTEM_PROMPT_OVERHEAD_TOKENS = 1200;
+// 추출 JSON 출력은 입력 대비 약 2.5배 (실측 기반, OUTPUT_RATIO=0.45는 settle 마크업 전용)
+export const ESTIMATION_OUTPUT_RATIO = 2.5;
+// 로어북 출력은 추출보다 작음 (~80%)
+export const ESTIMATION_LOREBOOK_RATIO = 2.0;

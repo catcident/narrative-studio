@@ -19,7 +19,9 @@ import {
   MERGER_REVIEW_PROMPT_CHARS,
   MERGER_REVIEW_OUTPUT_TOKENS,
   MERGER_REVIEW_MODEL,
-  LOREBOOK_OUTPUT_RATIO,
+  SYSTEM_PROMPT_OVERHEAD_TOKENS,
+  ESTIMATION_OUTPUT_RATIO,
+  ESTIMATION_LOREBOOK_RATIO,
 } from './modelCosts';
 import type { ModelInfo } from '@/types';
 
@@ -163,19 +165,22 @@ export function resolveTokenBilling(
 // ==================== 서버 전용 크레딧 사전 계산 ====================
 
 /** 서버 전용: 모델의 분석 청크당 크레딧 (extractor + lorebook + selector + merger 오버헤드 + embedding 포함) */
-export function computeCreditsPerChunk(model: string, dynamicModels?: ServerModelInfo[]): number {
+export function computeCreditsPerChunk(model: string, dynamicModels?: ServerModelInfo[], enableLorebook: boolean = true): number {
   const extractorCosts = getModelCosts(model, dynamicModels);
   const selectorCosts = getModelCosts(SELECTOR_MODEL, dynamicModels);
   const mergerCosts = getModelCosts(MERGER_REVIEW_MODEL, dynamicModels);
 
-  // Extractor cost per chunk
-  const extInputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
-  const extOutputTokens = Math.ceil(extInputTokens * OUTPUT_RATIO);
-  const extCost = tokenCostUsd(extInputTokens, extOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
+  // 추정 입력: 청크 텍스트 + 시스템 프롬프트 오버헤드
+  const baseInputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
+  const estInputTokens = baseInputTokens + SYSTEM_PROMPT_OVERHEAD_TOKENS;
 
-  // Lorebook cost per chunk (parallel call, same model + similar input as extractor)
-  const loreOutputTokens = Math.ceil(extInputTokens * LOREBOOK_OUTPUT_RATIO);
-  const loreCost = tokenCostUsd(extInputTokens, loreOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
+  // Extractor (추정 전용 비율 사용 — 실제 출력은 입력 대비 ~2.5x)
+  const estExtOutputTokens = Math.ceil(estInputTokens * ESTIMATION_OUTPUT_RATIO);
+  const estExtCost = tokenCostUsd(estInputTokens, estExtOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
+
+  // Lorebook (추정 전용 비율 — 추출보다 작은 출력)
+  const estLoreOutputTokens = Math.ceil(estInputTokens * ESTIMATION_LOREBOOK_RATIO);
+  const estLoreCost = tokenCostUsd(estInputTokens, estLoreOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
 
   // Selector cost (avg: ~1 call per chunk for chunks > 1)
   const selInputTokens = Math.ceil(SELECTOR_PROMPT_CHARS / CHARS_PER_TOKEN);
@@ -191,11 +196,14 @@ export function computeCreditsPerChunk(model: string, dynamicModels?: ServerMode
   const embedTokens = estimatedEntities * AVG_ENTITY_TOKENS + AVG_CHUNK_EMBED_TOKENS;
   const embedCost = (embedTokens / 1_000_000) * EMBEDDING_INPUT_COST;
 
-  const totalCostPerChunk = extCost + loreCost + selCost + mergerPerChunk + embedCost;
+  const totalEstimatedCost = estExtCost + (enableLorebook ? estLoreCost : 0) + selCost + mergerPerChunk + embedCost;
 
-  // Markup based on extractor chunk cost only
-  const markup = calculateMarkup(extCost);
-  return Math.max(1, Math.ceil((totalCostPerChunk * markup * USD_TO_KRW) / KRW_PER_CREDIT));
+  // 마크업: settle과 동일 기준 (기존 calculateChunkCostUsd 기반)
+  const markupRefCost = calculateChunkCostUsd(model, dynamicModels);
+  const markup = calculateMarkup(markupRefCost);
+
+  // 소수점 반환 — buildEstimate에서 최종 ceil
+  return Math.max(0.1, (totalEstimatedCost * markup * USD_TO_KRW) / KRW_PER_CREDIT);
 }
 
 /** 서버 전용: 모델의 기본 채팅 1회 크레딧 (4회 LLM 호출 기준) */

@@ -59,6 +59,7 @@ function toClientModel(server: ServerModelInfo): ModelInfo {
     name: server.name,
     description: server.description,
     creditsPerChunk: server.creditsPerChunk,
+    creditsPerChunkNoLore: server.creditsPerChunkNoLore,
     creditsPerChat: server.creditsPerChat,
     available: server.available,
     coreModel: server.coreModel,
@@ -102,6 +103,7 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
             inputCost: staticCost.inputCost,
             outputCost: staticCost.outputCost,
             creditsPerChunk: 0, // will be computed below
+            creditsPerChunkNoLore: 0,
             creditsPerChat: 0,
             available: true,
             coreModel: meta.coreModel,
@@ -129,6 +131,7 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
         outputCost: finalOutputCost,
         description: meta.description,
         creditsPerChunk: 0, // will be computed below
+        creditsPerChunkNoLore: 0,
         creditsPerChat: 0,
         available: true,
         coreModel: meta.coreModel,
@@ -149,6 +152,7 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
           inputCost: staticCost.inputCost,
           outputCost: staticCost.outputCost,
           creditsPerChunk: 0,
+          creditsPerChunkNoLore: 0,
           creditsPerChat: 0,
           available: false,
           coreModel: meta?.coreModel ?? false,
@@ -166,6 +170,7 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
     // creditsPerChunk/creditsPerChat 계산 (전체 모델 목록 확정 후)
     for (const m of serverModels) {
       m.creditsPerChunk = computeCreditsPerChunk(m.id, serverModels);
+      m.creditsPerChunkNoLore = computeCreditsPerChunk(m.id, serverModels, false);
       m.creditsPerChat = computeCreditsPerChat(m.id, serverModels);
     }
 
@@ -176,6 +181,7 @@ async function fetchFromOpenRouter(): Promise<ModelCache> {
       const fallback = FALLBACK_MODELS.find(f => f.id === m.id);
       if (fallback) {
         fallback.creditsPerChunk = m.creditsPerChunk;
+        fallback.creditsPerChunkNoLore = m.creditsPerChunkNoLore;
         fallback.creditsPerChat = m.creditsPerChat;
       }
     }

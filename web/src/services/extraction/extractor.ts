@@ -99,8 +99,8 @@ export async function extractFromChunk(
   try {
     const jsonContent = stripMarkdownCodeBlock(content);
     extracted = JSON.parse(jsonContent) as ChunkExtractedData;
-  } catch (parseErr) {
-    console.error('[extraction] JSON 파싱 에러, 원본:', content.slice(0, 1000));
+  } catch {
+    console.error(`[extraction] JSON 파싱 에러 (model=${model}), 원본 prefix:`, content.slice(0, 500));
     // JSON이 잘린 경우 복구 시도
     const fixedContent = tryFixJson(content);
     if (fixedContent) {
@@ -108,7 +108,7 @@ export async function extractFromChunk(
       extracted = fixedContent as ChunkExtractedData;
     } else {
       // 파싱 실패 시 빈 결과 반환 (전체 분석을 중단하지 않음)
-      console.warn('[extraction] JSON 파싱 실패, 이 청크 건너뜀');
+      console.warn(`[extraction] JSON 파싱 실패 (model=${model}), 이 청크 건너뜀. content prefix: ${content.slice(0, 200)}`);
       extracted = EMPTY_CHUNK_DATA;
     }
   }
@@ -258,11 +258,12 @@ export async function extractLorebook(
     const jsonContent = stripMarkdownCodeBlock(content);
     parsed = JSON.parse(jsonContent);
   } catch {
+    console.error(`[lorebook] JSON 파싱 에러 (model=${model}), content prefix:`, content.slice(0, 500));
     const fixedContent = tryFixJson(content);
     if (fixedContent && typeof fixedContent === 'object') {
       parsed = fixedContent as { lore_entries?: RawLoreEntry[] };
     } else {
-      console.warn('[lorebook] JSON 파싱 실패, 이 청크 건너뜀');
+      console.warn(`[lorebook] JSON 파싱 실패 (model=${model}), 이 청크 건너뜀. content prefix: ${content.slice(0, 200)}`);
       return { data: [], billing: data._billing ? { ...data._billing, model } : null };
     }
   }

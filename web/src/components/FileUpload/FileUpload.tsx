@@ -104,6 +104,7 @@ export function FileUpload() {
   const [directText, setDirectText] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [existingTitles, setExistingTitles] = useState<string[]>([]);
+  const [enableLorebook, setEnableLorebook] = useState(true);
   const [keyValidationLoading, setKeyValidationLoading] = useState(false);
   const [keyValidationError, setKeyValidationError] = useState<string | null>(null);
   const { addFile: addFileFromHook, execute: executeAddFromHook } = useAddFileAnalysis();
@@ -340,7 +341,7 @@ export function FileUpload() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        const estimate = subscription ? estimateUsageFromText(combinedText, currentModel, allModels) : null;
+        const estimate = subscription ? estimateUsageFromText(combinedText, currentModel, allModels, enableLorebook) : null;
         await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
         if (subscription && estimate) {
@@ -365,6 +366,7 @@ export function FileUpload() {
           fileNames: sortedFiles.map(f => f.name),
           onChunkBilling: createBillingCallback(addChunkUsage),
           availableModelIds: getAvailableModelIds(allModels),
+          enableLorebook,
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
@@ -398,7 +400,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, enableLorebook]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -457,8 +459,9 @@ export function FileUpload() {
       let holdToken: string | null = null;
       if (!isUsingPersonalKey) {
         const remainingChunks = savedProgress.totalChunks - savedProgress.processedChunks;
+        const resumeEnableLorebook = savedProgress.enableLorebook ?? true;
         const estimate = subscription && remainingChunks > 0
-          ? estimateUsageLocally(remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP), resumeModel, allModels)
+          ? estimateUsageLocally(remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP), resumeModel, allModels, resumeEnableLorebook)
           : null;
         await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
@@ -609,7 +612,7 @@ export function FileUpload() {
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
-        const estimate = subscription ? estimateUsageFromText(text, currentModel, allModels) : null;
+        const estimate = subscription ? estimateUsageFromText(text, currentModel, allModels, enableLorebook) : null;
         await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
 
         if (subscription && estimate) {
@@ -637,6 +640,7 @@ export function FileUpload() {
             : (sourceFileName ? [sourceFileName] : undefined),
           onChunkBilling: createBillingCallback(addChunkUsage),
           availableModelIds: getAvailableModelIds(allModels),
+          enableLorebook,
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
@@ -720,7 +724,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, enableLorebook]);
 
   // ==================== 렌더링 ====================
 
@@ -779,6 +783,8 @@ export function FileUpload() {
         fullTitle={fullTitle}
         canRegister={canRegister}
         handleRegister={handleRegister}
+        enableLorebook={enableLorebook}
+        setEnableLorebook={setEnableLorebook}
         canBatchAnalysis={canBatchAnalysis}
         onBatchAnalysis={handleBatchAnalysis}
         uploadAreaSlot={uploadArea}

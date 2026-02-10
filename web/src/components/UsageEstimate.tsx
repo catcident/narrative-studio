@@ -15,9 +15,11 @@ interface UsageEstimateProps {
   model: string;
   /** 텍스트가 제공되면 스마트 청커로 정확한 청크 수 계산 (직접 입력 시) */
   text?: string;
+  /** 로어북 활성 여부 (false이면 저렴한 크레딧 사용) */
+  enableLorebook?: boolean;
 }
 
-export function UsageEstimate({ charCount, model, text }: UsageEstimateProps) {
+export function UsageEstimate({ charCount, model, text, enableLorebook = true }: UsageEstimateProps) {
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
   const allModels = useModels();
@@ -29,9 +31,9 @@ export function UsageEstimate({ charCount, model, text }: UsageEstimateProps) {
 
   const estimate = useMemo(
     () => deferredText
-      ? estimateUsageFromText(deferredText, model, allModels)
-      : estimateUsageLocally(charCount, model, allModels),
-    [deferredText, charCount, model, allModels],
+      ? estimateUsageFromText(deferredText, model, allModels, enableLorebook)
+      : estimateUsageLocally(charCount, model, allModels, enableLorebook),
+    [deferredText, charCount, model, allModels, enableLorebook],
   );
 
   if (estimate.chunks === 0) return null;

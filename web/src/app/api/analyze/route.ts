@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
           ],
           temperature: 0.3,
           max_tokens: 16000,
+          response_format: { type: 'json_object' },
         }),
       },
       120000  // 2분 타임아웃
@@ -125,7 +126,23 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    console.log(`[analyze] 응답 성공`);
+    const content = data.choices?.[0]?.message?.content;
+    const isString = typeof content === 'string';
+    const contentLen = isString ? content.length : 0;
+    let isJson = false;
+    if (isString) {
+      try {
+        JSON.parse(content);
+        isJson = true;
+      } catch {
+        // JSON이 아님 — 클라이언트에서 tryFixJson으로 복구 시도
+      }
+    }
+    console.log(`[analyze] 응답 성공 (model=${model}, content_length=${contentLen}, is_json=${isJson})`);
+    if (isString && !isJson) {
+      console.warn(`[analyze] 비-JSON 응답 prefix: ${content.slice(0, 200)}`);
+    }
+
     return NextResponse.json(data);
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {

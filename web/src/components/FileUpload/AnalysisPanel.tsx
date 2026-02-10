@@ -53,6 +53,9 @@ interface AnalysisPanelProps {
   canRegister: boolean;
   // Register
   handleRegister: () => void;
+  // Lorebook toggle
+  enableLorebook: boolean;
+  setEnableLorebook: (v: boolean) => void;
   // Batch analysis (Pro+ multi-file)
   canBatchAnalysis: boolean;
   onBatchAnalysis?: () => void;
@@ -98,6 +101,8 @@ export function AnalysisPanel({
   fullTitle,
   canRegister,
   handleRegister,
+  enableLorebook,
+  setEnableLorebook,
   canBatchAnalysis,
   onBatchAnalysis,
   uploadAreaSlot,
@@ -231,7 +236,7 @@ export function AnalysisPanel({
               <optgroup label="핵심 모델">
                 {availableModels.filter(m => m.coreModel !== false).map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.name} - {model.description} (~{model.creditsPerChunk} 크레딧/청크)
+                    {model.name} - {model.description} (~{Math.round(enableLorebook ? model.creditsPerChunk : model.creditsPerChunkNoLore)} 크레딧/청크)
                   </option>
                 ))}
               </optgroup>
@@ -240,7 +245,7 @@ export function AnalysisPanel({
                 <optgroup label="추가 모델">
                   {availableModels.filter(m => m.coreModel === false).map((model) => (
                     <option key={model.id} value={model.id}>
-                      {model.name} - {model.description} (~{model.creditsPerChunk} 크레딧/청크)
+                      {model.name} - {model.description} (~{Math.round(enableLorebook ? model.creditsPerChunk : model.creditsPerChunkNoLore)} 크레딧/청크)
                     </option>
                   ))}
                 </optgroup>
@@ -274,6 +279,18 @@ export function AnalysisPanel({
               <p className="text-xs text-gray-500 mt-1">
                 비용은 크레딧/청크 단위입니다. 고품질 모델은 더 정확하지만 비용이 높습니다.
               </p>
+            )}
+            {/* 로어북 토글 */}
+            {!lockedModel && (
+              <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={enableLorebook}
+                  onChange={(e) => setEnableLorebook(e.target.checked)}
+                  className="w-4 h-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-sm text-purple-700">로어북 추출 (인물 프로필, 세계관 설정)</span>
+              </label>
             )}
           </div>
         </div>
@@ -443,6 +460,7 @@ export function AnalysisPanel({
               charCount={directText.trim() ? directText.length : Math.ceil(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 3)}
               model={currentModel}
               text={directText.trim() ? directText : undefined}
+              enableLorebook={enableLorebook}
             />
           )}
 

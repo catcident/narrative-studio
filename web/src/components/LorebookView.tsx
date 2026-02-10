@@ -7,9 +7,10 @@ import { useState, useMemo } from 'react';
 import {
   BookOpen, User, Search, Quote, Eye, Shirt, Brain, Swords,
   History, Target, Users, X, Cat, Box, Globe,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, RefreshCw, Loader2,
 } from 'lucide-react';
 import { useStore } from '../store';
+import { useLorebookExtraction } from '../hooks/useLorebookExtraction';
 import type { LoreEntry, LoreCategory, EntityCategory } from '../types';
 
 // ─── 카테고리 설정 ───
@@ -80,6 +81,7 @@ export function LorebookView() {
   const knowledgeGraph = useStore((s) => s.knowledgeGraph);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const { extractLorebook, isExtracting, progress, progressCurrent, progressTotal } = useLorebookExtraction();
 
   const entries = useMemo(() => {
     if (!knowledgeGraph?.lorebook) return [];
@@ -145,7 +147,7 @@ export function LorebookView() {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50">
         <div className="text-center text-gray-400">
-          <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-30" />
+          <BookOpen aria-hidden="true" className="w-12 h-12 mx-auto mb-2 opacity-30" />
           <p className="text-sm">데이터를 불러와주세요</p>
         </div>
       </div>
@@ -156,9 +158,42 @@ export function LorebookView() {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <BookOpen className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+          <BookOpen aria-hidden="true" className="w-12 h-12 mx-auto mb-2 text-gray-300" />
           <p className="text-sm text-gray-500 font-medium">인물 카드 데이터가 없습니다</p>
           <p className="text-xs mt-1 text-gray-400">소설을 분석하면 인물 프로필이 추출됩니다</p>
+          {isExtracting ? (
+            <div className="mt-4 space-y-2" role="status">
+              <div className="flex items-center justify-center gap-2 text-sm text-purple-600">
+                <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
+                <span>{progress}</span>
+              </div>
+              {progressTotal > 0 && (
+                <div className="w-48 mx-auto">
+                  <div
+                    className="h-1.5 bg-gray-200 rounded-full overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={progressCurrent}
+                    aria-valuemin={0}
+                    aria-valuemax={progressTotal}
+                  >
+                    <div
+                      className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.round((progressCurrent / progressTotal) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1">{progressCurrent} / {progressTotal}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => extractLorebook(knowledgeGraph)}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+            >
+              <BookOpen aria-hidden="true" className="w-4 h-4" />
+              로어북 추출
+            </button>
+          )}
         </div>
       </div>
     );
@@ -166,12 +201,12 @@ export function LorebookView() {
 
   return (
     <div className="h-full flex flex-col bg-gray-100">
-      {/* ─── 헤더: 검색 ─── */}
+      {/* ─── 헤더: 검색 + 갱신 ─── */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 font-medium">{entityCards.length}명</span>
           <div className="relative w-48">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search aria-hidden="true" className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="검색..."
@@ -183,13 +218,54 @@ export function LorebookView() {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
+                aria-label="검색 지우기"
               >
-                <X className="w-3 h-3" />
+                <X aria-hidden="true" className="w-3 h-3" />
               </button>
             )}
           </div>
+          <div className="flex-1" />
+          <button
+            onClick={() => extractLorebook(knowledgeGraph)}
+            disabled={isExtracting}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isExtracting ? (
+              <Loader2 aria-hidden="true" className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw aria-hidden="true" className="w-3.5 h-3.5" />
+            )}
+            로어북 갱신
+          </button>
         </div>
       </div>
+
+      {/* ─── 추출 진행 배너 ─── */}
+      {isExtracting && (
+        <div className="flex-shrink-0 bg-purple-50 border-b border-purple-200 px-4 py-2" role="status">
+          <div className="flex items-center gap-2">
+            <Loader2 aria-hidden="true" className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+            <span className="text-xs text-purple-700">{progress}</span>
+            {progressTotal > 0 && (
+              <>
+                <div
+                  className="flex-1 h-1.5 bg-purple-200 rounded-full overflow-hidden max-w-xs"
+                  role="progressbar"
+                  aria-valuenow={progressCurrent}
+                  aria-valuemin={0}
+                  aria-valuemax={progressTotal}
+                >
+                  <div
+                    className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.round((progressCurrent / progressTotal) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-purple-500">{progressCurrent}/{progressTotal}</span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ─── 메인: 왼쪽 카드 그리드 + 오른쪽 상세 ─── */}
       <div className="flex-1 flex overflow-hidden">
@@ -197,7 +273,7 @@ export function LorebookView() {
         <div className={`overflow-y-auto p-4 ${selectedCard ? 'w-1/2 border-r border-gray-200' : 'w-full'}`}>
           {entityCards.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
-              <Search className="w-6 h-6 mx-auto mb-2 opacity-40" />
+              <Search aria-hidden="true" className="w-6 h-6 mx-auto mb-2 opacity-40" />
               <p className="text-xs">검색 결과가 없습니다</p>
             </div>
           ) : (
@@ -274,7 +350,7 @@ function PokemonCard({
           className="w-7 h-7 rounded-full flex items-center justify-center shadow-sm"
           style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
         >
-          <EntityIcon className="w-3.5 h-3.5" style={{ color: theme.iconColor }} />
+          <EntityIcon aria-hidden="true" className="w-3.5 h-3.5" style={{ color: theme.iconColor }} />
         </div>
         <span className="text-xs font-bold text-white truncate flex-1 drop-shadow-sm">
           {card.name}
@@ -373,7 +449,7 @@ function DetailPanel({
           className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
           style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
         >
-          <EntityIcon className="w-5 h-5" style={{ color: theme.iconColor }} />
+          <EntityIcon aria-hidden="true" className="w-5 h-5" style={{ color: theme.iconColor }} />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-white truncate drop-shadow-sm">{card.name}</h2>
@@ -381,9 +457,10 @@ function DetailPanel({
         </div>
         <button
           onClick={onClose}
+          aria-label="닫기"
           className="p-1 rounded-md hover:bg-white/20 text-white/80 hover:text-white transition-colors"
         >
-          <X className="w-4 h-4" />
+          <X aria-hidden="true" className="w-4 h-4" />
         </button>
       </div>
 
@@ -408,8 +485,8 @@ function DetailPanel({
                 className="w-full flex items-center gap-2 px-3 py-2 hover:brightness-95 transition-all cursor-pointer"
                 style={{ backgroundColor: config.bg }}
               >
-                <ChevronIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: config.color }} />
-                <Icon className="w-3.5 h-3.5" style={{ color: config.color }} />
+                <ChevronIcon aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" style={{ color: config.color }} />
+                <Icon aria-hidden="true" className="w-3.5 h-3.5" style={{ color: config.color }} />
                 <span className="text-xs font-bold" style={{ color: config.color }}>
                   {config.label}
                 </span>
@@ -433,7 +510,7 @@ function DetailPanel({
                           style={{ backgroundColor: '#faf5ff', borderLeft: `3px solid ${config.color}40` }}
                         >
                           <p className="text-xs text-purple-700 italic leading-relaxed flex items-start gap-1.5">
-                            <Quote className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
+                            <Quote aria-hidden="true" className="w-3 h-3 flex-shrink-0 mt-0.5 opacity-70" />
                             {entry.quote}
                           </p>
                         </div>

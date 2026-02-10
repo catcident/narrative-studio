@@ -15,7 +15,7 @@ import type {
   ChunkUsage,
   ModelInfo,
 } from '../types';
-import { DEFAULT_MODEL, FALLBACK_MODELS, DEFAULT_CREDITS_PER_CHUNK, DEFAULT_CREDITS_PER_CHAT } from '../types';
+import { DEFAULT_MODEL, FALLBACK_MODELS, DEFAULT_CREDITS_PER_CHUNK, DEFAULT_CREDITS_PER_CHUNK_NO_LORE, DEFAULT_CREDITS_PER_CHAT } from '../types';
 import type { ChunkBillingCallback } from './extraction/types';
 import { countSmartChunks } from './extraction';
 import {
@@ -286,9 +286,12 @@ export function findModel(model: string, dynamicModels?: ModelInfo[]): ModelInfo
 }
 
 /** 청크 수 → UsageEstimate 변환 (공통 헬퍼) */
-function buildEstimate(chunks: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
+function buildEstimate(chunks: number, model: string, dynamicModels?: ModelInfo[], enableLorebook: boolean = true): UsageEstimate {
   const modelInfo = findModel(model, dynamicModels);
-  const estimated_credits = Math.max(1, (modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK) * chunks);
+  const cpc = enableLorebook
+    ? (modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK)
+    : (modelInfo?.creditsPerChunkNoLore ?? DEFAULT_CREDITS_PER_CHUNK_NO_LORE);
+  const estimated_credits = Math.max(1, Math.ceil(cpc * chunks));
 
   const inputTokensPerChunk = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
   const outputTokensPerChunk = Math.ceil(inputTokensPerChunk * OUTPUT_RATIO);
@@ -307,13 +310,13 @@ function buildEstimate(chunks: number, model: string, dynamicModels?: ModelInfo[
  * creditsPerChunk 기반 추정 (USD 계산 없이 단순 곱셈).
  * 텍스트가 없는 경로(파일 미읽음, 이어하기)에서 폴백으로 사용.
  */
-export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
+export function estimateUsageLocally(charCount: number, model: string, dynamicModels?: ModelInfo[], enableLorebook: boolean = true): UsageEstimate {
   if (charCount <= 0) return ZERO_ESTIMATE;
 
   const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
   const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
 
-  return buildEstimate(chunks, model, dynamicModels);
+  return buildEstimate(chunks, model, dynamicModels, enableLorebook);
 }
 
 /**
@@ -322,12 +325,12 @@ export function estimateUsageLocally(charCount: number, model: string, dynamicMo
  * 실제 텍스트를 스마트 청커에 전달하여 장/화 경계 분할을 반영한 정확한 청크 수를 산출.
  * 텍스트가 있는 경로(직접 입력, 파일 읽기 후 hold, 추가 분석, 배치)에서 사용.
  */
-export function estimateUsageFromText(text: string, model: string, dynamicModels?: ModelInfo[]): UsageEstimate {
+export function estimateUsageFromText(text: string, model: string, dynamicModels?: ModelInfo[], enableLorebook: boolean = true): UsageEstimate {
   if (!text.trim()) return ZERO_ESTIMATE;
 
   const chunks = countSmartChunks(text);
 
-  return buildEstimate(chunks, model, dynamicModels);
+  return buildEstimate(chunks, model, dynamicModels, enableLorebook);
 }
 
 // ==================== 잔액 사전 확인 ====================
@@ -473,6 +476,33 @@ export function calculateSessionCreditsFromChunks(chunks: ChunkUsage[], dynamicM
   const cpc = modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK;
 
   return Math.max(1, Math.ceil(cpc * chunkIndices.size));
+}
+
+// ==================== 로어북 전용 비용 추정 ====================
+
+/**
+ * 로어북만 추출할 때의 비용 추정.
+ * creditsPerChunk와 creditsPerChunkNoLore의 차이로 로어북 비용만 산출.
+ */
+export function estimateLorebookOnlyCost(
+  charCount: number,
+  model: string,
+  dynamicModels?: ModelInfo[],
+): { credits: number; chunks: number } {
+  if (charCount <= 0) return { credits: 0, chunks: 0 };
+
+  const effectiveChunk = CHUNK_SIZE - CHUNK_OVERLAP;
+  const chunks = Math.max(1, Math.ceil(charCount / effectiveChunk));
+
+  const modelInfo = findModel(model, dynamicModels);
+  const cpc = modelInfo?.creditsPerChunk ?? DEFAULT_CREDITS_PER_CHUNK;
+  const cpcNoLore = modelInfo?.creditsPerChunkNoLore ?? DEFAULT_CREDITS_PER_CHUNK_NO_LORE;
+  const loreCostPerChunk = Math.max(0, cpc - cpcNoLore);
+
+  return {
+    credits: Math.max(1, Math.ceil(loreCostPerChunk * chunks)),
+    chunks,
+  };
 }
 
 // ==================== 검증 비용 추정 ====================
