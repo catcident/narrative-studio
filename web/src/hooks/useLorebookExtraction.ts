@@ -7,7 +7,8 @@ import { useState, useCallback } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractLorebookOnly } from '../services/extraction';
 import { hasApiKey, getByokMode } from '../services/extraction';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateLorebookOnlyCost } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateLorebookOnlyCost, checkCreditSufficiency } from '../services/billing';
+import { requestCreditConfirmation } from '../store';
 import { saveKnowledgeGraph } from '../services/storage';
 import { getAvailableModelIds } from '../types';
 import type { NovelKnowledgeGraph, Lorebook } from '../types';
@@ -64,10 +65,28 @@ export function useLorebookExtraction(): UseLorebookExtractionResult {
         const estimate = subscription && model
           ? estimateLorebookOnlyCost(charCount, model, allModels)
           : null;
-        await ensureSufficientBalance(subscription, authEnabled, estimate?.credits);
+
+        // 크레딧 확인 다이얼로그 (항상 표시)
+        const check = checkCreditSufficiency(subscription, authEnabled, estimate?.credits);
+        if (check.level === 'blocked') throw new Error(check.message);
+
+        const dialogLevel = check.level === 'ok' ? 'info' : check.level;
+        const confirmed = await requestCreditConfirmation({
+          level: dialogLevel,
+          estimatedCredits: estimate?.credits ?? 0,
+          balance: subscription?.creditBalance ?? 0,
+          operationName: '로어북 추출',
+          canResume: false,
+        });
+        if (!confirmed) return;
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimate) {
-          const holdResult = await holdCredits(estimate.credits, model ?? '', estimate.chunks);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimate.credits, subscription.creditBalance)
+            : estimate.credits;
+          const holdResult = await holdCredits(holdAmount, model ?? '', estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
@@ -95,7 +114,10 @@ export function useLorebookExtraction(): UseLorebookExtractionResult {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `로어북 추출 중단: ${knowledgeGraph.metadata.title}`, updateCreditBalance);
+          const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `로어북 추출 중단: ${knowledgeGraph.metadata.title}`, updateCreditBalance);
+          if (settleResult.actualCredits !== null) {
+            useStore.getState().setSettledCredits(settleResult.actualCredits);
+          }
         }
         throw extractionErr;
       }

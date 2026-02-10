@@ -25,7 +25,7 @@ export const MERGER_REVIEW_MODEL = 'google/gemini-2.5-flash-lite';
 // ==================== 추정 전용 상수 (computeCreditsPerChunk에서만 사용) ====================
 // 실제 LLM 호출은 시스템 프롬프트 + 이전 엔티티 컨텍스트를 포함하여 입력이 더 큼
 export const SYSTEM_PROMPT_OVERHEAD_TOKENS = 1200;
-// 추출 JSON 출력은 입력 대비 약 2.5배 (실측 기반, OUTPUT_RATIO=0.45는 settle 마크업 전용)
-export const ESTIMATION_OUTPUT_RATIO = 2.5;
-// 로어북 출력은 추출보다 작음 (~80%)
-export const ESTIMATION_LOREBOOK_RATIO = 2.0;
+// 구조화 JSON 출력은 입력 대비 ~0.5배 (실측: 입력보다 작음, OUTPUT_RATIO=0.45는 settle 마크업 전용)
+export const ESTIMATION_OUTPUT_RATIO = 0.5;
+// 로어북 출력은 추출보다 작음 (~70%)
+export const ESTIMATION_LOREBOOK_RATIO = 0.35;

@@ -9,6 +9,26 @@ import { getSubscription } from './services/billing';
 import type { ByokMode } from './services/extraction';
 import { getByokMode, setByokMode as persistByokMode } from './services/extraction';
 
+// ==================== 크레딧 확인 다이얼로그 타입 ====================
+
+export interface CreditConfirmationInfo {
+  level: 'info' | 'caution' | 'warning';
+  estimatedCredits: number;
+  balance: number;
+  operationName: string;
+  canResume: boolean;
+  resolve: (confirmed: boolean) => void;
+}
+
+/** Store 기반 확인 다이얼로그 Promise 패턴 */
+export function requestCreditConfirmation(
+  info: Omit<CreditConfirmationInfo, 'resolve'>,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    useStore.getState().setCreditConfirmation({ ...info, resolve });
+  });
+}
+
 interface AppState {
   // 데이터
   knowledgeGraph: NovelKnowledgeGraph | null;
@@ -45,6 +65,7 @@ interface AppState {
   currentUsage: CurrentUsage;
   showUsageSummary: boolean;
   settledCredits: number | null;
+  creditConfirmation: CreditConfirmationInfo | null;
 
   // Models (앱 수준 — reset()에서 유지)
   models: ModelInfo[];
@@ -94,6 +115,7 @@ interface AppState {
   resetCurrentUsage: () => void;
   setShowUsageSummary: (show: boolean) => void;
   setSettledCredits: (credits: number | null) => void;
+  setCreditConfirmation: (info: CreditConfirmationInfo | null) => void;
 }
 
 const initialUsage: CurrentUsage = {
@@ -125,6 +147,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentUsage: initialUsage,
   showUsageSummary: false,
   settledCredits: null,
+  creditConfirmation: null,
   models: FALLBACK_MODELS,
   modelsLoaded: false,
   loadModels: async () => {
@@ -273,6 +296,7 @@ export const useStore = create<AppState>((set, get) => ({
   resetCurrentUsage: () => set({ currentUsage: initialUsage, settledCredits: null }),
   setShowUsageSummary: (show) => set({ showUsageSummary: show }),
   setSettledCredits: (settledCredits) => set({ settledCredits }),
+  setCreditConfirmation: (creditConfirmation) => set({ creditConfirmation }),
 }));
 
 // 셀렉터 헬퍼
@@ -325,5 +349,6 @@ export const useCharacters = (): Entity[] => {
 };
 
 export const useValidationResults = () => useStore((s) => s.validationResults);
+export const useCreditConfirmation = () => useStore((s) => s.creditConfirmation);
 export const useIsValidating = () => useStore((s) => s.isValidating);
 export const useValidatingFileId = () => useStore((s) => s.validatingFileId);

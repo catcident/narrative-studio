@@ -7,7 +7,8 @@ import { useCallback, useRef } from 'react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText, checkCreditSufficiency } from '../services/billing';
+import { requestCreditConfirmation } from '../store';
 import { getAvailableModelIds } from '../types';
 import type { ChunkUsage } from '../types';
 import type { ChunkBillingCallback } from '../services/extraction';
@@ -26,6 +27,40 @@ export function useBatchAnalysis() {
     if (pendingItems.length === 0) return;
 
     cancelledRef.current = false;
+
+    // 배치 시작 전 전체 큐의 총 예상 크레딧으로 사전 체크
+    {
+      const freshState = useStore.getState();
+      const freshSub = freshState.subscription;
+      const freshAuth = freshState.authEnabled;
+      const freshByok = freshSub?.features?.byok ?? false;
+      const freshModels = freshState.models;
+      const isPersonalKey = freshByok && hasApiKey();
+
+      if (!isPersonalKey && freshSub) {
+        const totalEstimated = pendingItems.reduce((sum, item) => {
+          const est = estimateUsageFromText(item.text, item.model, freshModels);
+          return sum + est.estimated_credits;
+        }, 0);
+
+        const check = checkCreditSufficiency(freshSub, freshAuth, totalEstimated);
+        if (check.level === 'blocked') {
+          console.error('[batch] 크레딧 부족:', check.message);
+          return;
+        }
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits: totalEstimated,
+            balance: freshSub.creditBalance,
+            operationName: '일괄 분석',
+            canResume: true,
+          });
+          if (!confirmed) return;
+        }
+      }
+    }
+
     setQueueProcessing(true);
 
     for (const item of pendingItems) {
@@ -52,10 +87,18 @@ export function useBatchAnalysis() {
         // 잔액 확인 + hold (billing 활성 시)
         if (!isUsingPersonalKey) {
           const estimate = freshSubscription ? estimateUsageFromText(item.text, item.model, freshModels) : null;
-          await ensureSufficientBalance(freshSubscription, freshAuthEnabled, estimate?.estimated_credits);
+          const itemCheck = checkCreditSufficiency(freshSubscription, freshAuthEnabled, estimate?.estimated_credits);
+          if (itemCheck.level === 'blocked') {
+            updateQueueItem(item.id, { status: 'failed', error: itemCheck.message ?? '크레딧 부족' });
+            continue;
+          }
+          await ensureSufficientBalance(freshSubscription, freshAuthEnabled);
 
           if (freshSubscription && estimate) {
-            const holdResult = await holdCredits(estimate.estimated_credits, item.model, estimate.chunks);
+            const holdAmount = itemCheck.level === 'warning'
+              ? Math.min(estimate.estimated_credits, freshSubscription.creditBalance)
+              : estimate.estimated_credits;
+            const holdResult = await holdCredits(holdAmount, item.model, estimate.chunks);
             if (!holdResult.ok) {
               const errorMsg = holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류';
               updateQueueItem(item.id, { status: 'failed', error: errorMsg });
@@ -99,7 +142,10 @@ export function useBatchAnalysis() {
         } catch (extractionErr: unknown) {
           if (holdToken) {
             try {
-              await finalizeHold(holdToken, itemChunks, `일괄 분석 중단: ${item.fileName}`, useStore.getState().updateCreditBalance);
+              const settleResult = await finalizeHold(holdToken, itemChunks, `일괄 분석 중단: ${item.fileName}`, useStore.getState().updateCreditBalance);
+              if (settleResult.actualCredits !== null) {
+                useStore.getState().setSettledCredits(settleResult.actualCredits);
+              }
             } catch (holdErr: unknown) {
               console.error('[batch] finalizeHold 오류:', holdErr instanceof Error ? holdErr.message : holdErr);
             }

@@ -147,7 +147,10 @@ extractKnowledgeGraph({ onChunkBilling })
 ```
 
 새로운 과금 서비스(분석, 채팅, 검증 등)를 추가할 때 체크리스트:
-- [ ] `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)` — 3번째 파라미터로 예상 비용 전달
+- [ ] `checkCreditSufficiency(subscription, authEnabled, estimatedCredits)` — billing guard 사전 확인 (blocked/caution/warning/ok)
+- [ ] `requestCreditConfirmation()` — warning/caution 시 확인 다이얼로그 표시 (import from `store.ts`)
+- [ ] `ensureSufficientBalance(subscription, authEnabled)` — 잔액 > 0 + subscription null 가드
+- [ ] warning 레벨 hold 금액: `Math.min(estimated, balance)` — 402 방지
 - [ ] `holdCredits()` → 작업 → `finalizeHold()` 세션 패턴 준수
 - [ ] `onChunkBilling` 콜백 전달 — 토큰 사용량 누적 (잔액 갱신 없음)
 - [ ] `_billing` 응답에서 `model: string` + `byok` 필수 확인 — `ChunkBilling` 타입 준수
@@ -250,7 +253,7 @@ estimateValidationCost(fileCount, model?, dynamicModels?)  // creditsPerChunk ×
 
 // 잔액 확인
 checkSufficientBalance()  // → { sufficient: true } | { sufficient: false; error: string }
-ensureSufficientBalance(subscription, authEnabled?, estimatedCredits?)  // 잔액 확인 + 예상 비용 비교
+ensureSufficientBalance(subscription, authEnabled?)  // 잔액 > 0 + subscription null 가드
 
 // 세션 관리
 holdCredits(estimatedAmount)            // 분석 전 크레딧 선점
@@ -277,8 +280,8 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onCh
 
 - **charCount vs bytes**: 분석 함수에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
 - **세션 패턴**: hold → 분석 → settle (성공) / release (실패). `/api/analyze`는 과금 없이 토큰 정보만 반환
-- **잔액 확인**: 모든 분석 진입점에서 `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)` 호출 필수
-- **예상 비용 전달**: `ensureSufficientBalance`의 3번째 파라미터 `estimatedCredits`로 예상 비용 > 잔액 시 사전 차단
+- **billing guard 시퀀스**: `checkCreditSufficiency()` → dialog → `ensureSufficientBalance()` → `holdCredits()`. 새 진입점 추가 시 이 순서 준수
+- **잔액 확인**: 모든 분석 진입점에서 `ensureSufficientBalance(subscription, authEnabled)` 호출 필수 (잔액 > 0 가드만 담당)
 - **토큰 누적**: `onChunkBilling` 콜백은 토큰 사용량 누적만 수행 — 잔액 갱신은 settle 시에만
 - **settle 시 잔액 갱신**: `settleCredits()` 응답의 `balance_after`로 CreditBadge 갱신
 - **크레딧 표시**: UI 표시는 `settledCredits` (서버 정산값) 우선, 폴백으로 `calculateSessionCreditsFromChunks()` (고유 청크 수 × `creditsPerChunk` 근사). 실제 정산은 서버 settle
@@ -379,7 +382,7 @@ estimateChatCost(messages, contextChars, model, dynamicModels?) → number  // �
 ```
 
 `creditsPerChat` 기반 근사 + 대화 이력/컨텍스트 길이 스케일링.
-`ChatView.tsx`에서 `ensureSufficientBalance(subscription, authEnabled, estimatedCredits)`으로 전송 전 차단.
+`ChatView.tsx`에서 `checkCreditSufficiency()` + `requestCreditConfirmation()` + `ensureSufficientBalance()`으로 전송 전 확인.
 
 ---
 

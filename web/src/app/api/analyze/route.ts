@@ -95,7 +95,6 @@ export async function POST(request: NextRequest) {
           ],
           temperature: 0.3,
           max_tokens: 16000,
-          response_format: { type: 'json_object' },
         }),
       },
       120000  // 2분 타임아웃

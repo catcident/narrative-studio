@@ -8,7 +8,8 @@ import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, Message
 import ReactMarkdown from 'react-markdown';
 import { useStore, useModels, useBillingSubscription, useByokEnabled, useAuthEnabled } from '../store';
 import { sendChatMessage, estimateChatCost, generateMessageId, type ChatMessage } from '../services/chat';
-import { ensureSufficientBalance, holdCredits, finalizeHold } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold, checkCreditSufficiency } from '../services/billing';
+import { requestCreditConfirmation } from '../store';
 import { hasApiKey } from '../services/extraction';
 import { DEFAULT_MODEL } from '../types';
 
@@ -276,20 +277,35 @@ export function ChatView() {
     // 비용 사전 추정
     const estimatedCredits = estimateChatCost(messages, contextChars, selectedModel, models);
 
-    // 잔액 사전 확인 (subscription이 있고, BYOK가 아닐 때만)
+    // 잔액 사전 확인 + 크레딧 확인 다이얼로그 + hold 획득
+    let holdToken: string | null = null;
     if (shouldBill) {
+      const check = checkCreditSufficiency(latestSub, authEnabled, estimatedCredits);
+      if (check.level === 'blocked') {
+        setInsufficientCredits(check.message ?? '크레딧이 부족합니다.');
+        return;
+      }
+      if (check.level !== 'ok') {
+        const confirmed = await requestCreditConfirmation({
+          level: check.level,
+          estimatedCredits,
+          balance: latestSub?.creditBalance ?? 0,
+          operationName: '채팅',
+          canResume: false,
+        });
+        if (!confirmed) return;
+      }
       try {
-        await ensureSufficientBalance(latestSub, authEnabled, estimatedCredits);
+        await ensureSufficientBalance(latestSub, authEnabled);
       } catch (err: unknown) {
         setInsufficientCredits(err instanceof Error ? err.message : '크레딧이 부족합니다.');
         return;
       }
-    }
 
-    // hold 획득
-    let holdToken: string | null = null;
-    if (shouldBill) {
-      const holdResult = await holdCredits(estimatedCredits, selectedModel, 4);
+      const holdAmount = check.level === 'warning'
+        ? Math.min(estimatedCredits, latestSub.creditBalance)
+        : estimatedCredits;
+      const holdResult = await holdCredits(holdAmount, selectedModel, 4);
       if (!holdResult.ok) {
         if (holdResult.status === 402) {
           setInsufficientCredits('크레딧이 부족합니다.');

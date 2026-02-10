@@ -129,7 +129,7 @@ export interface ModelInfo {
 }
 
 /** 모델 조회 실패 시 폴백 크레딧 값 (unknown 모델 기준 — 중간 가격대) */
-export const DEFAULT_CREDITS_PER_CHUNK = 15;
+export const DEFAULT_CREDITS_PER_CHUNK = 18;
 export const DEFAULT_CREDITS_PER_CHUNK_NO_LORE = 10;
 export const DEFAULT_CREDITS_PER_CHAT = 10;
 
@@ -148,7 +148,6 @@ export interface CuratedModelMeta {
 export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
   // 핵심 모델 (coreModel: true)
   'google/gemini-2.5-flash': { description: '경제적 (기본)', sortOrder: 10, coreModel: true },
-  'openai/gpt-5-nano': { description: '최저가', sortOrder: 20, coreModel: true },
   'openai/gpt-5-mini': { description: '추천', sortOrder: 25, coreModel: true },
   'anthropic/claude-haiku-4.5': { description: '균형', sortOrder: 30, coreModel: true },
   'anthropic/claude-sonnet-4.5': { description: '최고 품질', sortOrder: 40, coreModel: true },
@@ -166,18 +165,17 @@ export const CURATED_MODEL_META: Record<string, CuratedModelMeta> = {
  * creditsPerChunk/creditsPerChat 값은 서버 수식으로 사전 계산된 근사값.
  */
 export const FALLBACK_MODELS: ModelInfo[] = [
-  // 핵심 5종 (creditsPerChunkNoLore = 서버 computeCreditsPerChunk(model, dm, false) 근사치)
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 60.9, creditsPerChunkNoLore: 40, creditsPerChat: 12, description: '경제적 (기본)', coreModel: true },
-  { id: 'openai/gpt-5-nano', name: 'GPT-5 Nano', creditsPerChunk: 13.31, creditsPerChunkNoLore: 9, creditsPerChat: 3, description: '최저가', coreModel: true },
-  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', creditsPerChunk: 50.72, creditsPerChunkNoLore: 33, creditsPerChat: 10, description: '추천', coreModel: true },
-  { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5', creditsPerChunk: 107.51, creditsPerChunkNoLore: 70, creditsPerChat: 27, description: '균형', coreModel: true },
-  { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5', creditsPerChunk: 250.22, creditsPerChunkNoLore: 163, creditsPerChat: 61, description: '최고 품질', coreModel: true },
+  // 핵심 4종 (creditsPerChunkNoLore = 서버 computeCreditsPerChunk(model, dm, false) 근사치)
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', creditsPerChunk: 14.32, creditsPerChunkNoLore: 8.33, creditsPerChat: 12, description: '경제적 (기본)', coreModel: true },
+  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', creditsPerChunk: 12.08, creditsPerChunkNoLore: 7.05, creditsPerChat: 10, description: '추천', coreModel: true },
+  { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5', creditsPerChunk: 27.69, creditsPerChunkNoLore: 15.66, creditsPerChat: 27, description: '균형', coreModel: true },
+  { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5', creditsPerChunk: 64.04, creditsPerChunkNoLore: 35.98, creditsPerChat: 61, description: '최고 품질', coreModel: true },
   // 추가 5종
-  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', creditsPerChunk: 13.62, creditsPerChunkNoLore: 9, creditsPerChat: 5, description: '가장 저렴', coreModel: false },
-  { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3.2', creditsPerChunk: 14.17, creditsPerChunkNoLore: 10, creditsPerChat: 9, description: '가성비', coreModel: false },
-  { id: 'openai/gpt-5.1', name: 'GPT-5.1', creditsPerChunk: 184.06, creditsPerChunkNoLore: 120, creditsPerChat: 34, description: 'GPT 프리미엄', coreModel: false },
-  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', creditsPerChunk: 184.06, creditsPerChunkNoLore: 120, creditsPerChat: 34, description: 'Gemini 프리미엄', coreModel: false },
-  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', creditsPerChunk: 71.05, creditsPerChunkNoLore: 46, creditsPerChat: 16, description: '차세대 (실험)', coreModel: false },
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', creditsPerChunk: 4.07, creditsPerChunkNoLore: 2.50, creditsPerChat: 5, description: '가장 저렴', coreModel: false },
+  { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3.2', creditsPerChunk: 5.59, creditsPerChunkNoLore: 3.22, creditsPerChat: 9, description: '가성비', coreModel: false },
+  { id: 'openai/gpt-5.1', name: 'GPT-5.1', creditsPerChunk: 42.87, creditsPerChunkNoLore: 24.49, creditsPerChat: 34, description: 'GPT 프리미엄', coreModel: false },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', creditsPerChunk: 42.87, creditsPerChunkNoLore: 24.49, creditsPerChat: 34, description: 'Gemini 프리미엄', coreModel: false },
+  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', creditsPerChunk: 17.70, creditsPerChunkNoLore: 10.14, creditsPerChat: 16, description: '차세대 (실험)', coreModel: false },
 ];
 
 export const DEFAULT_MODEL = 'google/gemini-2.5-flash';

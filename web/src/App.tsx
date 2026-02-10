@@ -23,6 +23,7 @@ import { SavedDataGrid } from './components/SavedDataGrid';
 import { UserMenu } from './components/UserMenu';
 import { CreditBadge } from './components/CreditBadge';
 import { UsageSummary } from './components/UsageSummary';
+import { CreditConfirmDialog } from './components/CreditConfirmDialog';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { BalanceAlertBanner } from './components/BalanceAlertBanner';
 import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeGraphById } from './services/storage';
@@ -208,6 +209,7 @@ function App() {
           <SubscriptionPage onClose={() => setShowSubscriptionPage(false)} />
         )}
         <UsageSummary />
+        <CreditConfirmDialog />
       </div>
     );
   }
@@ -532,6 +534,9 @@ function App() {
 
       {/* 사용량 요약 모달 */}
       <UsageSummary />
+
+      {/* 크레딧 확인 다이얼로그 */}
+      <CreditConfirmDialog />
     </div>
   );
 }

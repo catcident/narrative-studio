@@ -333,6 +333,54 @@ export function estimateUsageFromText(text: string, model: string, dynamicModels
   return buildEstimate(chunks, model, dynamicModels, enableLorebook);
 }
 
+// ==================== 크레딧 충분성 체크 ====================
+
+export type CreditCheckLevel = 'ok' | 'caution' | 'warning' | 'blocked';
+
+export interface CreditCheckResult {
+  level: CreditCheckLevel;
+  message?: string;
+}
+
+/**
+ * 크레딧 충분성을 4단계로 판정.
+ * - blocked: 진행 불가 (구독 미로딩 또는 잔액 0)
+ * - warning: 잔액 < 추정 비용 (중단 가능성)
+ * - caution: 잔액 < 2× 추정 비용 (넉넉하지 않음)
+ * - ok: 충분
+ */
+export function checkCreditSufficiency(
+  subscription: BillingSubscription | null,
+  authEnabled?: boolean | null,
+  estimatedCredits?: number,
+): CreditCheckResult {
+  // billing 비활성
+  if (!subscription) {
+    if (authEnabled !== false) {
+      return { level: 'blocked', message: '구독 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.' };
+    }
+    return { level: 'ok' };
+  }
+
+  if (estimatedCredits === undefined || estimatedCredits <= 0) return { level: 'ok' };
+
+  const balance = subscription.creditBalance;
+
+  if (balance <= 0) {
+    return { level: 'blocked', message: '크레딧이 없습니다.' };
+  }
+
+  if (balance < estimatedCredits) {
+    return { level: 'warning', message: '크레딧이 부족하여 작업이 중단될 수 있습니다.' };
+  }
+
+  if (balance < 2 * estimatedCredits) {
+    return { level: 'caution', message: '예상 비용에 비해 넉넉하지 않습니다 — 추정은 부정확할 수 있습니다.' };
+  }
+
+  return { level: 'ok' };
+}
+
 // ==================== 잔액 사전 확인 ====================
 
 /** 분석 전 잔액 사전 확인 (잔액 > 0 여부만 확인) */
@@ -348,14 +396,16 @@ export async function checkSufficientBalance(): Promise<
 }
 
 /**
- * 구독이 활성화된 경우 잔액 부족 시 에러를 throw.
+ * 구독이 활성화된 경우 잔액 부족(0) 시 에러를 throw.
  * subscription=null + authEnabled=false → billing 비활성 → 통과 (Railway 데모).
  * subscription=null + authEnabled=true → 구독 로딩 미완료/실패 → 에러 (프로덕션 보호).
+ *
+ * estimatedCredits 비교는 checkCreditSufficiency()가 사전 확인 담당.
+ * 이 함수는 balance <= 0 체크 + subscription null 가드만 유지.
  */
 export async function ensureSufficientBalance(
   subscription: BillingSubscription | null,
   authEnabled?: boolean | null,
-  estimatedCredits?: number,
 ): Promise<void> {
   if (!subscription) {
     if (authEnabled !== false) {
@@ -365,15 +415,6 @@ export async function ensureSufficientBalance(
   }
   const result = await checkSufficientBalance();
   if (!result.sufficient) throw new Error(result.error);
-
-  // 예상 비용과 잔액 비교 (서버 hold가 최종 안전장치)
-  if (estimatedCredits !== undefined && estimatedCredits > 0) {
-    if (subscription.creditBalance < estimatedCredits) {
-      throw new Error(
-        `크레딧이 부족합니다. (필요: ~${estimatedCredits}, 잔액: ${subscription.creditBalance})`,
-      );
-    }
-  }
 }
 
 // ==================== Billing 콜백 ====================
@@ -453,17 +494,21 @@ export function getBalanceAlertLevel(
  * 고유 청크 인덱스 수만으로 계산하여 이중 계산 방지.
  *
  * 정확도 참고: 실제 정산은 서버 settle이 수행. 이 함수는 UI 표시용 근사치(폴백).
- * merger review sentinel(chunkIndex=totalChunks)이 +1 청크로 포함되어 creditsPerChunk 1단위 과추정 가능.
+ * 0토큰 엔트리(402 실패 청크)와 merger review sentinel은 제외하여 과추정 방지.
  */
 export function calculateSessionCreditsFromChunks(chunks: ChunkUsage[], dynamicModels?: ModelInfo[]): number {
   if (chunks.length === 0) return 0;
 
-  // 고유 청크 인덱스 수 = 실제 분석 청크 수 (+ merger review sentinel 포함)
-  const chunkIndices = new Set(chunks.map(c => c.chunkIndex));
+  // 실제 토큰 사용이 있는 엔트리만 필터 (402 실패로 0토큰인 청크 제외)
+  const effectiveChunks = chunks.filter(c => c.promptTokens > 0 || c.completionTokens > 0);
+  if (effectiveChunks.length === 0) return 0;
+
+  // 고유 청크 인덱스 수 = 실제 분석 성공한 청크 수
+  const chunkIndices = new Set(effectiveChunks.map(c => c.chunkIndex));
 
   // 가장 많이 사용된 모델의 creditsPerChunk 사용
   const modelCounts = new Map<string, number>();
-  for (const chunk of chunks) {
+  for (const chunk of effectiveChunks) {
     modelCounts.set(chunk.model, (modelCounts.get(chunk.model) ?? 0) + 1);
   }
   let dominantModel = '';

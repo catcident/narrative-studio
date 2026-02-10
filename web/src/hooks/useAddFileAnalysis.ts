@@ -7,7 +7,8 @@ import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText, checkCreditSufficiency } from '../services/billing';
+import { requestCreditConfirmation } from '../store';
 import { readFileAsText } from '../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
 
@@ -48,10 +49,27 @@ export function useAddFileAnalysis() {
 
       if (!isUsingPersonalKey) {
         const estimate = subscription ? estimateUsageFromText(text, model, allModels) : null;
-        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
+
+        const check = checkCreditSufficiency(subscription, authEnabled, estimate?.estimated_credits);
+        if (check.level === 'blocked') throw new Error(check.message);
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits: estimate?.estimated_credits ?? 0,
+            balance: subscription?.creditBalance ?? 0,
+            operationName: '파일 분석',
+            canResume: true,
+          });
+          if (!confirmed) return;
+        }
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimate) {
-          const holdResult = await holdCredits(estimate.estimated_credits, model, estimate.chunks);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimate.estimated_credits, subscription.creditBalance)
+            : estimate.estimated_credits;
+          const holdResult = await holdCredits(holdAmount, model, estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
@@ -77,7 +95,10 @@ export function useAddFileAnalysis() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 중단: ${fileName}`, updateCreditBalance);
+          const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `추가 분석 중단: ${fileName}`, updateCreditBalance);
+          if (settleResult.actualCredits !== null) {
+            useStore.getState().setSettledCredits(settleResult.actualCredits);
+          }
         }
         throw extractionErr;
       }

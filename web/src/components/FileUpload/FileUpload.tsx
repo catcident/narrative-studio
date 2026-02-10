@@ -6,7 +6,8 @@ import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis, useAuthEnabled } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, estimateUsageFromText } from '../../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, estimateUsageFromText, checkCreditSufficiency } from '../../services/billing';
+import { requestCreditConfirmation } from '../../store';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../../types';
@@ -342,10 +343,27 @@ export function FileUpload() {
 
       if (!isUsingPersonalKey) {
         const estimate = subscription ? estimateUsageFromText(combinedText, currentModel, allModels, enableLorebook) : null;
-        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
+
+        const check = checkCreditSufficiency(subscription, authEnabled, estimate?.estimated_credits);
+        if (check.level === 'blocked') throw new Error(check.message);
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits: estimate?.estimated_credits ?? 0,
+            balance: subscription?.creditBalance ?? 0,
+            operationName: '파일 분석',
+            canResume: true,
+          });
+          if (!confirmed) return false;
+        }
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimate) {
-          const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimate.estimated_credits, subscription.creditBalance)
+            : estimate.estimated_credits;
+          const holdResult = await holdCredits(holdAmount, currentModel, estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
@@ -370,7 +388,10 @@ export function FileUpload() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${combinedTitle}`, updateCreditBalance);
+          const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${combinedTitle}`, updateCreditBalance);
+          if (settleResult.actualCredits !== null) {
+            useStore.getState().setSettledCredits(settleResult.actualCredits);
+          }
         }
         throw extractionErr;
       }
@@ -400,7 +421,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, enableLorebook]);
+  }, [runExtraction, makeProgressCallback, currentModel, addChunkUsage, updateCreditBalance, subscription, bookTitle, bookAuthor, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, authEnabled, enableLorebook]);
 
   /**
    * handleDrop과 handleChange에서 공유하는 파일 처리 로직.
@@ -463,10 +484,27 @@ export function FileUpload() {
         const estimate = subscription && remainingChunks > 0
           ? estimateUsageLocally(remainingChunks * (CHUNK_SIZE - CHUNK_OVERLAP), resumeModel, allModels, resumeEnableLorebook)
           : null;
-        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
+
+        const check = checkCreditSufficiency(subscription, authEnabled, estimate?.estimated_credits);
+        if (check.level === 'blocked') throw new Error(check.message);
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits: estimate?.estimated_credits ?? 0,
+            balance: subscription?.creditBalance ?? 0,
+            operationName: '이어하기',
+            canResume: true,
+          });
+          if (!confirmed) return false;
+        }
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimate) {
-          const holdResult = await holdCredits(estimate.estimated_credits, resumeModel, remainingChunks);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimate.estimated_credits, subscription.creditBalance)
+            : estimate.estimated_credits;
+          const holdResult = await holdCredits(holdAmount, resumeModel, remainingChunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
@@ -493,7 +531,10 @@ export function FileUpload() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 중단: ${savedProgress.title}`, updateCreditBalance);
+          const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `이어하기 중단: ${savedProgress.title}`, updateCreditBalance);
+          if (settleResult.actualCredits !== null) {
+            useStore.getState().setSettledCredits(settleResult.actualCredits);
+          }
         }
         throw extractionErr;
       }
@@ -513,7 +554,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels, setPartialAnalysis, byokEnabled]);
+  }, [savedProgress, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, invalidSavedModel, currentModel, allModels, setPartialAnalysis, byokEnabled, authEnabled]);
 
   // 추가 분석 (기존 결과에 새 파일 병합) — useAddFileAnalysis 훅 위임
   const handleAddFile = useCallback(async (file: File) => {
@@ -613,10 +654,27 @@ export function FileUpload() {
 
       if (!isUsingPersonalKey) {
         const estimate = subscription ? estimateUsageFromText(text, currentModel, allModels, enableLorebook) : null;
-        await ensureSufficientBalance(subscription, authEnabled, estimate?.estimated_credits);
+
+        const check = checkCreditSufficiency(subscription, authEnabled, estimate?.estimated_credits);
+        if (check.level === 'blocked') throw new Error(check.message);
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits: estimate?.estimated_credits ?? 0,
+            balance: subscription?.creditBalance ?? 0,
+            operationName: '파일 분석',
+            canResume: true,
+          });
+          if (!confirmed) return false;
+        }
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimate) {
-          const holdResult = await holdCredits(estimate.estimated_credits, currentModel, estimate.chunks);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimate.estimated_credits, subscription.creditBalance)
+            : estimate.estimated_credits;
+          const holdResult = await holdCredits(holdAmount, currentModel, estimate.chunks);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
@@ -644,7 +702,10 @@ export function FileUpload() {
         });
       } catch (extractionErr: unknown) {
         if (holdToken) {
-          await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${title}`, updateCreditBalance);
+          const settleResult = await finalizeHold(holdToken, useStore.getState().currentUsage.chunks, `분석 중단: ${title}`, updateCreditBalance);
+          if (settleResult.actualCredits !== null) {
+            useStore.getState().setSettledCredits(settleResult.actualCredits);
+          }
         }
         throw extractionErr;
       }
@@ -724,7 +785,7 @@ export function FileUpload() {
       resetProgressState();
       return true;
     });
-  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, enableLorebook]);
+  }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, authEnabled, enableLorebook]);
 
   // ==================== 렌더링 ====================
 

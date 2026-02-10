@@ -61,7 +61,6 @@ export interface ServerModelInfo extends ModelInfo {
 export const SERVER_MODEL_COSTS: Record<string, { inputCost: number; outputCost: number }> = {
   // 핵심 모델
   'google/gemini-2.5-flash': { inputCost: 0.30, outputCost: 2.50 },
-  'openai/gpt-5-nano': { inputCost: 0.05, outputCost: 0.40 },
   'openai/gpt-5-mini': { inputCost: 0.25, outputCost: 2.00 },
   'anthropic/claude-haiku-4.5': { inputCost: 1.00, outputCost: 5.00 },
   'anthropic/claude-sonnet-4.5': { inputCost: 3.00, outputCost: 15.00 },
@@ -174,11 +173,11 @@ export function computeCreditsPerChunk(model: string, dynamicModels?: ServerMode
   const baseInputTokens = Math.ceil(CHUNK_SIZE / CHARS_PER_TOKEN);
   const estInputTokens = baseInputTokens + SYSTEM_PROMPT_OVERHEAD_TOKENS;
 
-  // Extractor (추정 전용 비율 사용 — 실제 출력은 입력 대비 ~2.5x)
+  // Extractor (추정 전용 비율 사용 — 구조화 JSON은 입력보다 작음 ~0.5x)
   const estExtOutputTokens = Math.ceil(estInputTokens * ESTIMATION_OUTPUT_RATIO);
   const estExtCost = tokenCostUsd(estInputTokens, estExtOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
 
-  // Lorebook (추정 전용 비율 — 추출보다 작은 출력)
+  // Lorebook (추정 전용 비율 — 추출보다 작은 출력 ~0.35x)
   const estLoreOutputTokens = Math.ceil(estInputTokens * ESTIMATION_LOREBOOK_RATIO);
   const estLoreCost = tokenCostUsd(estInputTokens, estLoreOutputTokens, extractorCosts.inputCost, extractorCosts.outputCost);
 

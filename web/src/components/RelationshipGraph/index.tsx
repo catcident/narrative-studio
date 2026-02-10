@@ -719,63 +719,63 @@ export function RelationshipGraph({ entities, edges, onNodeClick, selectedScene,
         )}
 
         {/* 뷰 모드 + 내보내기 컨트롤 */}
-        <div className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-lg p-2">
-          <div className="flex items-center justify-between gap-2 mb-2 border-b border-gray-100 pb-2">
+        <div className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-gray-100">
             <GraphExportPanel
               nodes={nodes}
               onShowSubscription={onShowSubscription}
             />
           </div>
-          <div className="flex items-center gap-1 mb-2">
-          <button
-            onClick={() => { setViewMode('full'); setFocusedCharIds([]); }}
-            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
-              viewMode === 'full'
-                ? 'bg-blue-100 text-blue-700 font-medium'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="전체 보기"
-          >
-            <Eye className="w-3 h-3" aria-hidden="true" />
-            전체
-          </button>
-          <button
-            onClick={() => { setViewMode('simple'); setFocusedCharIds([]); }}
-            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
-              viewMode === 'simple'
-                ? 'bg-green-100 text-green-700 font-medium'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="간소화 (인물만)"
-          >
-            <EyeOff className="w-3 h-3" aria-hidden="true" />
-            간소화
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { setViewMode('full'); setFocusedCharIds([]); }}
+              className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
+                viewMode === 'full'
+                  ? 'bg-blue-100 text-blue-700 font-medium'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="전체 보기"
+            >
+              <Eye className="w-3 h-3" aria-hidden="true" />
+              전체
+            </button>
+            <button
+              onClick={() => { setViewMode('simple'); setFocusedCharIds([]); }}
+              className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-all ${
+                viewMode === 'simple'
+                  ? 'bg-green-100 text-green-700 font-medium'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="간소화 (인물만)"
+            >
+              <EyeOff className="w-3 h-3" aria-hidden="true" />
+              간소화
+            </button>
           </div>
 
-        {/* 연결 횟수 필터 - 선택된 엔티티가 있을 때만 */}
-        {selectedEntityIds.length > 0 && (
-          <div className="border-t border-gray-100 pt-2 mt-2">
-            <div className="flex items-center gap-2">
-              <Filter className="w-3 h-3 text-gray-400" aria-hidden="true" />
-              <span className="text-[10px] text-gray-400">연결</span>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={minConnections}
-                onChange={(e) => setMinConnections(Number(e.target.value))}
-                className="w-16 h-1 accent-blue-500"
-              />
-              <span className="text-[10px] text-gray-600 font-medium w-4">{minConnections}+</span>
-            </div>
-            {minConnections > 1 && (
-              <div className="text-[9px] text-gray-400 mt-1">
-                {displayEntities.length}개 표시
+          {/* 연결 횟수 필터 - 선택된 엔티티가 있을 때만 */}
+          {selectedEntityIds.length > 0 && (
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <Filter className="w-3 h-3 text-gray-400" aria-hidden="true" />
+                <span className="text-[10px] text-gray-400">연결</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={minConnections}
+                  onChange={(e) => setMinConnections(Number(e.target.value))}
+                  className="w-16 h-1 accent-blue-500"
+                />
+                <span className="text-[10px] text-gray-600 font-medium w-4">{minConnections}+</span>
               </div>
-            )}
-          </div>
-        )}
+              {minConnections > 1 && (
+                <div className="text-[9px] text-gray-400 mt-1">
+                  {displayEntities.length}개 표시
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <ReactFlow

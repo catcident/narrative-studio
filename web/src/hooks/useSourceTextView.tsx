@@ -7,7 +7,8 @@ import { useStore, useIsValidating, useValidatingFileId, useBillingSubscription,
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile } from '../services/validation';
 import { hasApiKey, getApiKey } from '../services/extraction';
-import { ensureSufficientBalance, holdCredits, finalizeHold, estimateValidationCost } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold, estimateValidationCost, checkCreditSufficiency } from '../services/billing';
+import { requestCreditConfirmation } from '../store';
 import { useAddFileAnalysis } from './useAddFileAnalysis';
 import {
   getScenesByFile,
@@ -185,10 +186,27 @@ export function useSourceTextView() {
       // 단일 파일 검증: LLM 호출 1회 (첫 파일은 자동 통과 — validateFile 내부 처리)
       if (!isUsingPersonalKey) {
         const estimatedCredits = estimateValidationCost(2, validationModel, allModels); // 최소 1회 호출
-        await ensureSufficientBalance(subscription, authEnabled, estimatedCredits);
+
+        const check = checkCreditSufficiency(subscription, authEnabled, estimatedCredits);
+        if (check.level === 'blocked') throw new Error(check.message);
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits,
+            balance: subscription?.creditBalance ?? 0,
+            operationName: '파일 검증',
+            canResume: false,
+          });
+          if (!confirmed) return;
+        }
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimatedCredits > 0) {
-          const holdResult = await holdCredits(estimatedCredits, validationModel || 'validation', 1);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimatedCredits, subscription.creditBalance)
+            : estimatedCredits;
+          const holdResult = await holdCredits(holdAmount, validationModel || 'validation', 1);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
@@ -269,10 +287,30 @@ export function useSourceTextView() {
       if (!isUsingPersonalKey) {
         // fileCount = remainingFiles + 1 (startIndex 이전 파일은 이미 통과)
         const estimatedCredits = estimateValidationCost(remainingFiles + 1, validationModel, allModels);
-        await ensureSufficientBalance(subscription, authEnabled, estimatedCredits);
+
+        const check = checkCreditSufficiency(subscription, authEnabled, estimatedCredits);
+        if (check.level === 'blocked') throw new Error(check.message);
+        if (check.level !== 'ok') {
+          const confirmed = await requestCreditConfirmation({
+            level: check.level,
+            estimatedCredits,
+            balance: subscription?.creditBalance ?? 0,
+            operationName: '전체 검증',
+            canResume: false,
+          });
+          if (!confirmed) {
+            setIsValidatingAll(false);
+            return;
+          }
+        }
+
+        await ensureSufficientBalance(subscription, authEnabled);
 
         if (subscription && estimatedCredits > 0) {
-          const holdResult = await holdCredits(estimatedCredits, validationModel || 'validation', remainingFiles);
+          const holdAmount = check.level === 'warning'
+            ? Math.min(estimatedCredits, subscription.creditBalance)
+            : estimatedCredits;
+          const holdResult = await holdCredits(holdAmount, validationModel || 'validation', remainingFiles);
           if (!holdResult.ok) {
             throw new Error(holdResult.status === 402 ? '크레딧이 부족합니다.' : '과금 시스템 오류가 발생했습니다.');
           }
