@@ -5,10 +5,13 @@ import type { LegalFooterMeta } from '@/types/legalMeta';
 
 type FetchState = 'loading' | 'ready' | 'error';
 
+const CONTACT_LINK = { label: '문의하기', href: 'mailto:support@catcident.com' } as const;
+
 const FALLBACK_LEGAL_LINKS = [
   { label: '이용약관', href: 'https://catcident.com/ko/legal/terms/' },
   { label: '개인정보처리방침', href: 'https://catcident.com/ko/legal/privacy/' },
   { label: '사업자정보', href: 'https://catcident.com/ko/legal/terms/#business-info' },
+  CONTACT_LINK,
 ];
 
 export function Footer() {
@@ -49,6 +52,7 @@ export function Footer() {
       { label: '이용약관', href: meta.links.terms },
       { label: '개인정보처리방침', href: meta.links.privacy },
       { label: '사업자정보', href: meta.links.business_info },
+      CONTACT_LINK,
     ];
   }, [meta]);
 
@@ -57,6 +61,13 @@ export function Footer() {
       meta?.company.representative &&
       meta?.company.registration_number,
   );
+
+  const displayLinks =
+    state === 'ready' && legalLinks.length > 0
+      ? legalLinks
+      : state === 'error'
+        ? FALLBACK_LEGAL_LINKS
+        : null;
 
   return (
     <footer className="mt-auto w-full py-16 px-6">
@@ -98,31 +109,9 @@ export function Footer() {
           </div>
         )}
 
-        {state === 'ready' && legalLinks.length > 0 && (
+        {displayLinks && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-300">
-            {legalLinks.map((link, index) => (
-              <span key={link.label} className="flex items-center gap-3">
-                {index > 0 && (
-                  <span aria-hidden="true" className="text-gray-200">
-                    ·
-                  </span>
-                )}
-                <a
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener"
-                  className="hover:text-gray-500 transition-colors"
-                >
-                  {link.label}
-                </a>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {state === 'error' && (
-          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-300">
-            {FALLBACK_LEGAL_LINKS.map((link, index) => (
+            {displayLinks.map((link, index) => (
               <span key={link.label} className="flex items-center gap-3">
                 {index > 0 && (
                   <span aria-hidden="true" className="text-gray-200">
