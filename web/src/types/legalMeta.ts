@@ -6,6 +6,10 @@ export interface LegalFooterMeta {
     representative: string;
     address: string;
     phone: string;
+    email?: string;
+    fax?: string;
+    ecommerce_registration_number?: string;
+    reporting_authority?: string;
     extra_disclosure: string;
     updated_at: string | null;
   };

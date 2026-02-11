@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, X, ZoomIn, ZoomOut, Search } from 'lucide-react';
+import { AiGeneratedBadge } from '../AiGeneratedBadge';
 
 interface ChronicleHeaderProps {
   characterCount: number;
@@ -43,6 +44,7 @@ export function ChronicleHeader({
       <div className="flex items-center gap-2">
         <Clock className="w-4 h-4 text-gray-500" aria-hidden="true" />
         <span className="text-sm font-medium text-gray-700">캐릭터 연대기</span>
+        <AiGeneratedBadge />
         <span className="text-xs text-gray-400">
           {characterCount}명 · {totalSceneCount}개 장면
         </span>

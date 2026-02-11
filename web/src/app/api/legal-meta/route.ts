@@ -6,13 +6,17 @@ const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'https://catcident.co
 const PROXY_TIMEOUT_MS = 10000;
 
 const FALLBACK_META: LegalFooterMeta = {
-  schema_version: 1,
+  schema_version: 2,
   company: {
     name: '고양이의만행 주식회사',
     registration_number: '',
     representative: '',
     address: '',
     phone: '',
+    email: '',
+    fax: '',
+    ecommerce_registration_number: '',
+    reporting_authority: '',
     extra_disclosure: '',
     updated_at: null,
   },

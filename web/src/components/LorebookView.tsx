@@ -9,6 +9,7 @@ import {
   History, Target, Users, X, Cat, Box, Globe,
   ChevronDown, ChevronRight, RefreshCw, Loader2,
 } from 'lucide-react';
+import { AiGeneratedBadge } from './AiGeneratedBadge';
 import { useStore } from '../store';
 import { useLorebookExtraction } from '../hooks/useLorebookExtraction';
 import type { LoreEntry, LoreCategory, EntityCategory } from '../types';
@@ -205,6 +206,7 @@ export function LorebookView() {
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 font-medium">{entityCards.length}명</span>
+          <AiGeneratedBadge />
           <div className="relative w-48">
             <Search aria-hidden="true" className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input

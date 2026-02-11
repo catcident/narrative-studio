@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { X, User, MapPin, Building, Sword, Clock, Zap, Info, ArrowRight, Heart, Swords, Users, Film } from 'lucide-react';
+import { AiGeneratedBadge } from './AiGeneratedBadge';
 import { useStore, useSelectedEntity, useEntityEdges } from '../store';
 import type { EntityCategory, HyperEdge, Entity } from '../types';
 import { CATEGORY_LABELS, CATEGORY_BG_CLASSES, RELATION_LABELS } from '../constants';
@@ -304,7 +305,10 @@ export function DetailPanel() {
               <Icon aria-hidden="true" className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-800">{entity.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800">{entity.name}</h2>
+                <AiGeneratedBadge />
+              </div>
               {entity.aliases && entity.aliases.length > 0 && (
                 <p className="text-sm text-gray-500">
                   {entity.aliases.join(', ')}

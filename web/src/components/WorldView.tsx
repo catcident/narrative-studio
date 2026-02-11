@@ -5,6 +5,7 @@
 
 import { useState, useMemo } from 'react';
 import { MapPin, Building, Lightbulb, ChevronRight, ChevronDown, Package, Globe, Filter, Star, Link2, Quote, BookOpen } from 'lucide-react';
+import { AiGeneratedBadge } from './AiGeneratedBadge';
 import { useStore } from '../store';
 import type { Entity, HyperEdge, LoreEntry } from '../types';
 import { getEntitiesByCategory, getEdgesByEntity } from '../services/knowledgeGraphQueries';
@@ -460,7 +461,10 @@ export function WorldView() {
               <Globe className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-800">세계관 설정집</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800">세계관 설정집</h2>
+                <AiGeneratedBadge />
+              </div>
               <p className="text-xs text-gray-500">스토리의 배경과 요소들</p>
             </div>
           </div>

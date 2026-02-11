@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Loader2, Trash2, Settings, ChevronDown, History, Plus, X, MessageSquare, AlertTriangle, Key } from 'lucide-react';
+import { AiGeneratedBadge } from './AiGeneratedBadge';
 import ReactMarkdown from 'react-markdown';
 import { useStore, useModels, useBillingSubscription, useByokEnabled, useAuthEnabled } from '../store';
 import { sendChatMessage, estimateChatCost, generateMessageId, type ChatMessage } from '../services/chat';
@@ -683,6 +684,9 @@ export function ChatView() {
                 <ReactMarkdown>{streamingContent}</ReactMarkdown>
                 <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
               </div>
+              <div className="mt-2">
+                <AiGeneratedBadge />
+              </div>
             </div>
           </div>
         )}
@@ -810,6 +814,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           </div>
         )}
         <div className={`text-xs mt-2 flex items-center gap-2 ${isUser ? 'text-green-100' : 'text-gray-400'}`}>
+          {!isUser && <AiGeneratedBadge />}
           <span>{message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
           {!isUser && message.byok && (
             <span className="text-purple-500 flex items-center gap-0.5">

@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import { Clock, Users, ChevronDown, ChevronRight, Sparkles, BookOpen, Heart, Swords, MessageCircle } from 'lucide-react';
+import { AiGeneratedBadge } from './AiGeneratedBadge';
 import { useStore } from '../store';
 import type { HyperEdge, Entity, SceneSnapshot } from '../types';
 import { getSortedScenes, getEdgesByScene, getCharacters } from '../services/knowledgeGraphQueries';
@@ -161,7 +162,10 @@ export function TimelineView() {
               <Clock className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-800">스토리 타임라인</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800">스토리 타임라인</h2>
+                <AiGeneratedBadge />
+              </div>
               <p className="text-xs text-gray-500">{events.length}개의 장면</p>
             </div>
           </div>

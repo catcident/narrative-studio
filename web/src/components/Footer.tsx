@@ -71,13 +71,31 @@ export function Footer() {
         </a>
 
         {state === 'ready' && hasSummary && meta && (
-          <p className="text-xs text-gray-300 text-center break-keep">
-            상호: {meta.company.name}
-            <span className="mx-1">|</span>
-            대표자: {meta.company.representative}
-            <span className="mx-1">|</span>
-            사업자등록번호: {meta.company.registration_number}
-          </p>
+          <div className="text-xs text-gray-300 text-center break-keep space-y-0.5">
+            <p>
+              상호: {meta.company.name}
+              <span className="mx-1">|</span>
+              대표자: {meta.company.representative}
+              <span className="mx-1">|</span>
+              사업자등록번호: {meta.company.registration_number}
+            </p>
+            {(meta.company.ecommerce_registration_number || meta.company.email) && (
+              <p>
+                {meta.company.ecommerce_registration_number && (
+                  <>
+                    통신판매업신고: {meta.company.ecommerce_registration_number}
+                    {meta.company.reporting_authority && (
+                      <> ({meta.company.reporting_authority})</>
+                    )}
+                  </>
+                )}
+                {meta.company.ecommerce_registration_number && meta.company.email && (
+                  <span className="mx-1">|</span>
+                )}
+                {meta.company.email && <>이메일: {meta.company.email}</>}
+              </p>
+            )}
+          </div>
         )}
 
         {state === 'ready' && legalLinks.length > 0 && (
