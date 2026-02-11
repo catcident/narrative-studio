@@ -5,17 +5,18 @@ import type { LegalFooterMeta } from '@/types/legalMeta';
 const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'https://catcident.com';
 const PROXY_TIMEOUT_MS = 10000;
 
+// TODO: 배포 전 플레이스홀더를 실제 사업자 정보로 교체 필수
 const FALLBACK_META: LegalFooterMeta = {
   schema_version: 2,
   company: {
     name: '고양이의만행 주식회사',
-    registration_number: '',
-    representative: '',
-    address: '',
-    phone: '',
-    email: '',
+    registration_number: '<사업자등록번호>',
+    representative: '<대표자명>',
+    address: '<사업장 주소>',
+    phone: '<연락처>',
+    email: 'support@catcident.com',
     fax: '',
-    ecommerce_registration_number: '',
+    ecommerce_registration_number: '<통신판매업 신고번호>',
     reporting_authority: '',
     extra_disclosure: '',
     updated_at: null,
