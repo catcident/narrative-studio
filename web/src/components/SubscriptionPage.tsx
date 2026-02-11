@@ -240,38 +240,43 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
           return <div className="text-center text-gray-400 py-12">준비된 상품이 없습니다.</div>;
         }
         return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {packages.map(pkg => (
-              <div key={pkg.id} className="border border-gray-200 rounded-xl p-5 flex flex-col">
-                <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
-                <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
-                  {pkg.credits.toLocaleString()} 크레딧
-                </div>
-                {pkg.bonus_pct > 0 && (
-                  <div className="text-xs text-green-600 font-medium mb-1">
-                    +{pkg.bonus_pct}% 보너스
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {packages.map(pkg => (
+                <div key={pkg.id} className="border border-gray-200 rounded-xl p-5 flex flex-col">
+                  <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
+                  <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
+                    {pkg.credits.toLocaleString()} 크레딧
                   </div>
-                )}
-                <div className="text-sm text-gray-500 mb-1">
-                  {pkg.price_krw.toLocaleString()}원
-                  <span className="text-xs text-gray-400 ml-1">
-                    ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
-                  </span>
-                </div>
-                <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
-                <button
-                  onClick={() => window.open(
-                    `${billingBaseUrl}/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
-                    '_blank',
-                    'noopener'
+                  {pkg.bonus_pct > 0 && (
+                    <div className="text-xs text-green-600 font-medium mb-1">
+                      +{pkg.bonus_pct}% 보너스
+                    </div>
                   )}
-                  className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  구매하기
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div className="text-sm text-gray-500 mb-1">
+                    {pkg.price_krw.toLocaleString()}원
+                    <span className="text-xs text-gray-400 ml-1">
+                      ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
+                  <button
+                    onClick={() => window.open(
+                      `${billingBaseUrl}/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
+                      '_blank',
+                      'noopener'
+                    )}
+                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    구매하기
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-gray-400 text-center">
+              유상 크레딧 사용 시 사용분에 대한 환불이 제한됩니다.
+            </p>
+          </>
         );
 
       case 'history':
