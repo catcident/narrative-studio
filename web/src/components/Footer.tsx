@@ -5,6 +5,12 @@ import type { LegalFooterMeta } from '@/types/legalMeta';
 
 type FetchState = 'loading' | 'ready' | 'error';
 
+const FALLBACK_LEGAL_LINKS = [
+  { label: '이용약관', href: 'https://catcident.com/ko/legal/terms/' },
+  { label: '개인정보처리방침', href: 'https://catcident.com/ko/legal/privacy/' },
+  { label: '사업자정보', href: 'https://catcident.com/ko/legal/terms/#business-info' },
+];
+
 export function Footer() {
   const [meta, setMeta] = useState<LegalFooterMeta | null>(null);
   const [state, setState] = useState<FetchState>('loading');
@@ -97,7 +103,25 @@ export function Footer() {
         )}
 
         {state === 'error' && (
-          <p className="text-xs text-gray-300">법적 고지 정보를 불러오지 못했습니다.</p>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-300">
+            {FALLBACK_LEGAL_LINKS.map((link, index) => (
+              <span key={link.label} className="flex items-center gap-3">
+                {index > 0 && (
+                  <span aria-hidden="true" className="text-gray-200">
+                    ·
+                  </span>
+                )}
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="hover:text-gray-500 transition-colors"
+                >
+                  {link.label}
+                </a>
+              </span>
+            ))}
+          </div>
         )}
 
         <p className="text-[11px] text-gray-300">&copy; {new Date().getFullYear()} 고양이의 만행</p>
