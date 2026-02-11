@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { buildPlanFeatureStrings } from '../../services/billing';
 import type { PlanFeatures } from '../../types';
+import { useScrollReveal } from './useScrollReveal';
 
 /* ── 백엔드 응답 타입 ──────────────────────────────────── */
 
@@ -55,14 +56,14 @@ function PlanCard({ plan }: { plan: BackendPlan }) {
   const featureStrings = buildPlanFeatureStrings(plan.features);
 
   return (
-    <div className={`relative rounded-2xl p-8 border transition-all duration-300 flex flex-col ${
+    <div className={`relative rounded-2xl p-8 border transition-all duration-300 flex flex-col h-full ${
       style.highlighted
-        ? 'bg-white border-indigo-200 shadow-xl shadow-indigo-500/10 scale-[1.02]'
+        ? 'bg-white border-2 border-indigo-300 shadow-2xl shadow-indigo-500/15 scale-[1.02]'
         : 'bg-white border-gray-200 shadow-sm hover:shadow-md'
     }`}>
       {style.badge && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="px-3 py-1 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full shadow-sm">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+          <span className="px-4 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full shadow-md">
             {style.badge}
           </span>
         </div>
@@ -98,16 +99,6 @@ function PlanCard({ plan }: { plan: BackendPlan }) {
         ))}
       </ul>
 
-      <Link
-        href="/login"
-        className={`mt-8 block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all ${
-          style.highlighted
-            ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-sm hover:shadow-md'
-            : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-        }`}
-      >
-        무료로 시작하기
-      </Link>
     </div>
   );
 }
@@ -161,6 +152,7 @@ function isValidPlan(item: unknown): item is BackendPlan {
 export function PricingSection() {
   const [plans, setPlans] = useState<BackendPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const { ref, isVisible } = useScrollReveal();
 
   useEffect(() => {
     let cancelled = false;
@@ -194,8 +186,18 @@ export function PricingSection() {
 
   return (
     <section id="pricing" className="py-24 md:py-32">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-16 md:mb-20">
+      <div className="max-w-6xl mx-auto px-6" ref={ref}>
+        <div
+          className="text-center mb-16 md:mb-20"
+          style={{
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
+            transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+          }}
+        >
+          <span className="text-xs font-semibold text-indigo-500 tracking-widest uppercase mb-3 block">
+            PRICING
+          </span>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
             합리적인 요금제
           </h2>
@@ -207,11 +209,33 @@ export function PricingSection() {
         {loading ? (
           <PricingPlaceholder />
         ) : plans.length > 0 ? (
+          <>
           <div className={`grid gap-6 mx-auto ${getGridLayoutClass(plans.length)}`}>
-            {plans.map((plan) => (
-              <PlanCard key={plan.code} plan={plan} />
+            {plans.map((plan, i) => (
+              <div
+                key={plan.code}
+                style={{
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
+                  transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+                  transitionDelay: `${0.1 + i * 0.1}s`,
+                }}
+              >
+                <PlanCard plan={plan} />
+              </div>
             ))}
           </div>
+
+          <div className="text-center mt-12">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-violet-700 shadow-sm hover:shadow-md transition-all"
+            >
+              무료로 시작하기
+              <ArrowRight aria-hidden="true" className="w-4 h-4" />
+            </Link>
+          </div>
+          </>
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-400 text-sm">요금제 정보를 준비 중입니다</p>

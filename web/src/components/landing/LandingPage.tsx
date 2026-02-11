@@ -2,6 +2,7 @@ import { LandingHeader } from './LandingHeader';
 import { HeroSection } from './HeroSection';
 import { HowItWorks } from './HowItWorks';
 import { FeaturesSection } from './FeaturesSection';
+import { StatsSection } from './StatsSection';
 import { ChatShowcase } from './ChatShowcase';
 import { PricingSection } from './PricingSection';
 import { FinalCTA } from './FinalCTA';
@@ -15,6 +16,7 @@ export function LandingPage() {
         <HeroSection />
         <HowItWorks />
         <FeaturesSection />
+        <StatsSection />
         <ChatShowcase />
         <PricingSection />
         <FinalCTA />
