@@ -59,7 +59,9 @@ export function Footer() {
   const hasSummary = Boolean(
     meta?.company.name &&
       meta?.company.representative &&
-      meta?.company.registration_number,
+      meta?.company.registration_number &&
+      meta?.company.address &&
+      meta?.company.phone,
   );
 
   const displayLinks =
@@ -89,6 +91,11 @@ export function Footer() {
               대표자: {meta.company.representative}
               <span className="mx-1">|</span>
               사업자등록번호: {meta.company.registration_number}
+            </p>
+            <p>
+              주소: {meta.company.address}
+              <span className="mx-1">|</span>
+              전화: {meta.company.phone}
             </p>
             {(meta.company.ecommerce_registration_number || meta.company.email) && (
               <p>
