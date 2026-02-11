@@ -144,7 +144,7 @@ const LEGEND_ITEMS = [
   { label: '소속', color: '#a855f7' },
 ] as const;
 
-const IMPORTANCE_BARS = [10, 8, 6, 4] as const;
+const IMPORTANCE_BAR_COUNT = 4;
 
 const APPEARANCE_DOTS = [1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 13, 14] as const;
 
@@ -288,7 +288,7 @@ function AppMockup() {
               <div>
                 <div className="text-[7px] text-gray-400 uppercase tracking-wider">중요도</div>
                 <div className="flex items-center gap-0.5 mt-1">
-                  {IMPORTANCE_BARS.map((val, i) => (
+                  {Array.from({ length: IMPORTANCE_BAR_COUNT }).map((_, i) => (
                     <div
                       key={i}
                       className="h-2 rounded-sm"

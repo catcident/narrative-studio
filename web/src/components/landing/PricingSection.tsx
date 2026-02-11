@@ -117,7 +117,6 @@ function PricingPlaceholder() {
             <div className="h-4 bg-gray-100 rounded w-3/4" />
             <div className="h-4 bg-gray-100 rounded w-5/6" />
           </div>
-          <div className="h-11 bg-gray-100 rounded-xl mt-8" />
         </div>
       ))}
     </div>

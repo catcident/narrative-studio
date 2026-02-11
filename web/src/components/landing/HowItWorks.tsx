@@ -121,7 +121,6 @@ interface StepItem {
   description: string;
   illustration: () => React.ReactNode;
   accentFrom: string;
-  accentTo: string;
 }
 
 const STEPS: StepItem[] = [
@@ -131,7 +130,6 @@ const STEPS: StepItem[] = [
     description: 'TXT, PDF, MD 형식의 소설 파일을 드래그 앤 드롭으로 업로드하세요. 여러 파일을 순서대로 추가할 수도 있습니다.',
     illustration: UploadIllustration,
     accentFrom: '#3b82f6',
-    accentTo: '#8b5cf6',
   },
   {
     number: '02',
@@ -139,7 +137,6 @@ const STEPS: StepItem[] = [
     description: 'AI가 텍스트를 읽고 인물, 장소, 조직 등 엔티티를 추출합니다. 관계 유형과 장면별 변화도 자동으로 파악합니다.',
     illustration: AnalysisIllustration,
     accentFrom: '#8b5cf6',
-    accentTo: '#22c55e',
   },
   {
     number: '03',
@@ -147,13 +144,12 @@ const STEPS: StepItem[] = [
     description: '인터랙티브 그래프에서 인물 관계를 탐색하세요. 타임라인, 연대기, 세계관 등 6가지 뷰로 분석 결과를 확인합니다.',
     illustration: GraphIllustration,
     accentFrom: '#22c55e',
-    accentTo: '#22c55e',
   },
 ];
 
 /* ── 그라디언트 화살표 커넥터 ─────────────────────────────── */
 
-function ArrowConnector({ toColor }: { fromColor: string; toColor: string }) {
+function ArrowConnector({ toColor }: { toColor: string }) {
   return (
     <div className="hidden md:flex items-center justify-center w-12 lg:w-16 shrink-0" aria-hidden="true">
       <div
@@ -208,7 +204,7 @@ export function HowItWorks() {
               </div>
             );
             if (i < STEPS.length - 1) {
-              return [card, <ArrowConnector key={`arrow-${i}`} fromColor={step.accentFrom} toColor={STEPS[i + 1].accentFrom} />];
+              return [card, <ArrowConnector key={`arrow-${i}`} toColor={STEPS[i + 1].accentFrom} />];
             }
             return [card];
           })}
