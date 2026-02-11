@@ -64,12 +64,11 @@ export function Footer() {
       meta?.company.phone,
   );
 
-  const displayLinks =
-    state === 'ready' && legalLinks.length > 0
-      ? legalLinks
-      : state === 'error'
-        ? FALLBACK_LEGAL_LINKS
-        : null;
+  const displayLinks = useMemo(() => {
+    if (state === 'ready' && legalLinks.length > 0) return legalLinks;
+    if (state === 'error') return FALLBACK_LEGAL_LINKS;
+    return null;
+  }, [state, legalLinks]);
 
   return (
     <footer className="mt-auto w-full py-16 px-6">
