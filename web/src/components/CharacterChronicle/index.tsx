@@ -105,20 +105,14 @@ export function CharacterChronicle() {
       scenes.forEach((s) => sceneSet.add(s));
     });
 
-    // ⚠️ 장면 정렬: chapterNumber 먼저, 같은 장 내에서 order 사용
+    // 장면 정렬: order (글로벌 순서)로만 정렬
+    // chapterNumber는 파일 업로드 순서에 따라 달라질 수 있어 정렬 기준으로 부적합
     return Array.from(sceneSet)
       .sort((a, b) => {
         if (a === 'unknown') return 1;
         if (b === 'unknown') return -1;
         const snapshotA = knowledgeGraph.snapshots?.[a];
         const snapshotB = knowledgeGraph.snapshots?.[b];
-        // 1. chapterNumber로 먼저 정렬
-        const chapterA = snapshotA?.chapterNumber || 0;
-        const chapterB = snapshotB?.chapterNumber || 0;
-        if (chapterA !== chapterB) {
-          return chapterA - chapterB;
-        }
-        // 2. 같은 장 내에서는 order로 정렬
         return (snapshotA?.order || 0) - (snapshotB?.order || 0);
       })
       .map((sceneId): SceneInfo => {
