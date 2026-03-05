@@ -6,9 +6,10 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 
 ### 1. AI 기반 자동 분석
 - 소설 텍스트(.txt) 또는 PDF 파일 업로드
-- Google Gemini API를 사용한 자동 분석
+- OpenRouter API를 통한 LLM 자동 분석
 - 인물, 장소, 조직, 아이템 등 엔티티 추출
 - 관계(가족, 연인, 친구, 적대 등) 자동 감지
+- 5,000자 청크 단위 순차 분석 (이전 인물 컨텍스트 전달)
 
 ### 2. 인터랙티브 관계도
 - 드래그로 노드 이동 가능
@@ -24,37 +25,32 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 - 감정별 색상 구분 (긍정/부정/중립)
 
 ### 4. 데이터 관리
-- 로컬 스토리지 자동 저장
+- MongoDB 서버 저장 (사용자별 데이터 분리)
 - 버전 히스토리 (이전 버전 복원)
 - JSON 내보내기/가져오기
 - 파일 추가 분석 (기존 데이터와 병합)
+- 소설 원본 저장 및 조회
 
 ## 설치 및 실행
 
 ### 요구 사항
 - Node.js 18+
-- Google AI API 키 (Gemini)
-
-### 설치
-
-```bash
-# 저장소 클론
-git clone https://github.com/Catcident/Character-Relationship-Chart.git
-cd Character-Relationship-Chart
-
-# 의존성 설치
-cd web
-npm install
-```
+- OpenRouter API 키
+- MongoDB
 
 ### 환경 설정
 
 ```bash
-# .env 파일 생성
-cp .env.example .env
+# 필수 환경 변수
+OPENROUTER_API_KEY=your_openrouter_api_key
+MONGO_URL=mongodb://localhost:27017/storygraph
 
-# .env 파일 편집
-VITE_GEMINI_API_KEY=your_api_key_here
+# 선택 (인증 활성화 시)
+AUTH_SECRET=your_auth_secret
+AUTH_URL=https://your-domain.com
+AUTH_CATCIDENT_ISSUER=your_oauth_issuer
+AUTH_CATCIDENT_ID=your_client_id
+AUTH_CATCIDENT_SECRET=your_client_secret
 ```
 
 ### 실행 (Docker Compose 기반)
@@ -96,31 +92,33 @@ docker compose restart storygraph   # 재시작
 
 ## 기술 스택
 
-- **Frontend**: React 18, TypeScript, Vite
-- **UI**: Tailwind CSS, Lucide Icons
+- **Framework**: Next.js 15, React 19, TypeScript 5.9
+- **UI**: Tailwind CSS 4, Lucide Icons
 - **그래프**: @xyflow/react (React Flow)
-- **AI**: Google Gemini API
-- **PDF**: pdf.js
+- **AI**: OpenRouter API (LLM 프록시)
+- **PDF**: pdfjs-dist
 - **상태 관리**: Zustand
+- **DB**: MongoDB
+- **인증**: NextAuth.js 5 (OAuth/OIDC)
+- **배포**: Docker Compose + Caddy
 
 ## 프로젝트 구조
 
 ```
 Character-Relationship-Chart/
-├── web/                     # 웹 애플리케이션
+├── web/                     # Next.js 웹 애플리케이션
 │   ├── src/
+│   │   ├── app/             # Next.js App Router
+│   │   │   ├── api/         # API 라우트 (analyze, knowledge-graphs, novels)
+│   │   │   ├── login/       # 로그인 페이지
+│   │   │   └── page.tsx     # 메인 페이지
 │   │   ├── components/      # React 컴포넌트
-│   │   │   ├── RelationshipGraph.tsx   # 관계도 그래프
-│   │   │   ├── DetailPanel.tsx         # 상세 정보 패널
-│   │   │   ├── CharacterChronicle.tsx  # 연대기 뷰
-│   │   │   ├── FileUpload.tsx          # 파일 업로드
-│   │   │   └── SavedDataGrid.tsx       # 저장 데이터 그리드
-│   │   ├── services/
-│   │   │   ├── extraction.ts           # AI 분석 서비스
-│   │   │   └── storage.ts              # 로컬 스토리지
-│   │   ├── store.ts                    # Zustand 상태 관리
-│   │   └── types.ts                    # TypeScript 타입 정의
-│   └── package.json
+│   │   ├── services/        # 비즈니스 로직
+│   │   ├── lib/             # 유틸리티 (DB, Auth)
+│   │   ├── store.ts         # Zustand 상태 관리
+│   │   └── types.ts         # TypeScript 타입 정의
+│   ├── Dockerfile           # 프로덕션 Docker 이미지
+│   └── docker-compose.yml
 ├── docs/                    # 문서
 │   ├── FEATURES.md          # 기능 상세 설명
 │   └── KNOWLEDGE_GRAPH.md   # 지식 그래프 구조 설명
