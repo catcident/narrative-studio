@@ -134,6 +134,36 @@ Character-Relationship-Chart/
 - [기능 상세 설명](docs/FEATURES.md)
 - [지식 그래프 구조](docs/KNOWLEDGE_GRAPH.md)
 
+---
+
+## 스크린샷
+
+### 인물 관계 그래프
+
+<p align="center">
+  <img src="assets/relationship_graph.png" width="860"/>
+</p>
+
+### 인물 카드
+
+<p align="center">
+  <img src="assets/character_cards.png" width="860"/>
+</p>
+
+### 연대기
+
+<p align="center">
+  <img src="assets/timeline.png" width="860"/>
+</p>
+
+### 채팅
+
+<p align="center">
+  <img src="assets/chat.png" width="860"/>
+</p>
+
+---
+
 ## 라이선스
 
 MIT License
