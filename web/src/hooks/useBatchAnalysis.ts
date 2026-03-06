@@ -135,6 +135,7 @@ export function useBatchAnalysis() {
               });
             },
             model: item.model,
+            holdToken,
             fileNames: [item.fileName],
             onChunkBilling,
             availableModelIds: getAvailableModelIds(freshModels),

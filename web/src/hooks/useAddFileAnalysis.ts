@@ -88,6 +88,7 @@ export function useAddFileAnalysis() {
           title: graphToUse.metadata.title,
           onProgress: (msg) => setProgress(msg),
           model,
+          holdToken,
           fileNames: [fileName],
           existingGraph: graphToUse,
           onChunkBilling: createBillingCallback(addChunkUsage),

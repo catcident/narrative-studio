@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { updateBalanceCache } from '@/lib/balanceCache';
+import { clearHoldSession } from '@/lib/holdSessionCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
 
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 });
     }
 
+    clearHoldSession(userId, holdToken);
     updateBalanceCache(userId, data.balance_after);
     console.log(`[session] release for user ${userId}: refunded=${data.refunded}`);
 

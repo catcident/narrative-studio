@@ -44,6 +44,7 @@ export async function extractFromChunk(
   knownEntities: KnownEntity[] = [],
   model?: string,
   apiKeyOverride?: string,
+  holdToken?: string,
 ): Promise<ChunkExtractionResult> {
   // 이전에 발견된 엔티티 정보를 프롬프트에 추가 (카테고리별로 구분)
   const previousEntitiesText = buildPreviousEntitiesText(knownEntities);
@@ -62,7 +63,7 @@ export async function extractFromChunk(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model }),
+    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model, holdToken: holdToken || undefined }),
   }, 150000); // 2.5분 타임아웃
 
   if (!response.ok) {
@@ -220,6 +221,7 @@ export async function extractLorebook(
   knownEntities: KnownEntity[] = [],
   model?: string,
   apiKeyOverride?: string,
+  holdToken?: string,
 ): Promise<LoreExtractionResult> {
   const previousEntitiesText = buildPreviousEntitiesText(knownEntities);
 
@@ -232,7 +234,7 @@ export async function extractLorebook(
   const response = await fetchWithClientTimeout('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model }),
+    body: JSON.stringify({ prompt, apiKey: userApiKey || undefined, model, holdToken: holdToken || undefined }),
   }, 150000);
 
   if (!response.ok) {

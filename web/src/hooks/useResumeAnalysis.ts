@@ -105,6 +105,7 @@ export function useResumeAnalysis() {
           title: savedProgress.title,
           onProgress: (msg) => setProgress(msg),
           resumeFrom: resumeData,
+          holdToken,
           onChunkBilling: createBillingCallback(addChunkUsage),
           availableModelIds: getAvailableModelIds(allModels),
         });

@@ -302,6 +302,7 @@ export async function reviewEntityMerges(
   merged: MergedExtraction,
   model?: string,
   apiKeyOverride?: string,
+  holdToken?: string,
 ): Promise<{ result: MergedExtraction; billing: ChunkBilling | null }> {
   const { entities } = merged;
 
@@ -330,6 +331,7 @@ export async function reviewEntityMerges(
         prompt,
         apiKey: userApiKey || undefined,
         model: reviewModel,
+        holdToken: holdToken || undefined,
       }),
     }, 30000);
 

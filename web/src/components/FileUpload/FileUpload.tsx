@@ -381,6 +381,7 @@ export function FileUpload() {
           title: combinedTitle,
           onProgress: makeProgressCallback(),
           model: currentModel,
+          holdToken,
           fileNames: sortedFiles.map(f => f.name),
           onChunkBilling: createBillingCallback(addChunkUsage),
           availableModelIds: getAvailableModelIds(allModels),
@@ -526,6 +527,7 @@ export function FileUpload() {
           title: savedProgress.title,
           onProgress: makeProgressCallback(),
           resumeFrom: resumeData,
+          holdToken,
           onChunkBilling: createBillingCallback(addChunkUsage),
           availableModelIds: getAvailableModelIds(allModels),
         });
@@ -693,6 +695,7 @@ export function FileUpload() {
           title,
           onProgress: makeProgressCallback(),
           model: currentModel,
+          holdToken,
           fileNames: fileInfos.length > 0
             ? fileInfos.map(f => f.fileName)
             : (sourceFileName ? [sourceFileName] : undefined),

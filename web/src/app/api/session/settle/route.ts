@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { updateBalanceCache } from '@/lib/balanceCache';
+import { clearHoldSession } from '@/lib/holdSessionCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
 import { tokenCostUsd, getModelCosts, calculateMixedSessionCredits } from '@/lib/serverCosts';
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid response from billing service' }, { status: 502 });
     }
 
+    clearHoldSession(userId, holdToken);
     updateBalanceCache(userId, data.balance_after);
     console.log(`[session] settle for user ${userId}: deducted=${data.amount_deducted}, refunded=${data.refunded}, actual_credits=${actualCredits}`);
 

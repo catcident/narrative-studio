@@ -102,6 +102,7 @@ export function useLorebookExtraction(): UseLorebookExtractionResult {
         lorebook = await extractLorebookOnly({
           knowledgeGraph,
           model,
+          holdToken,
           onProgress: (msg, current, total) => {
             setProgress(msg);
             if (current !== undefined) setProgressCurrent(current);

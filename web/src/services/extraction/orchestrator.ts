@@ -98,7 +98,21 @@ export function clearProgress(): void {
 }
 
 export async function extractKnowledgeGraph(options: ExtractionOptions): Promise<NovelKnowledgeGraph> {
-  const { text, title, onProgress, resumeFrom, model, fileNames, existingGraph, onChunkBilling, availableModelIds, byokMode: optByokMode, creditBalance, enableLorebook: optEnableLorebook } = options;
+  const {
+    text,
+    title,
+    onProgress,
+    resumeFrom,
+    model,
+    holdToken,
+    fileNames,
+    existingGraph,
+    onChunkBilling,
+    availableModelIds,
+    byokMode: optByokMode,
+    creditBalance,
+    enableLorebook: optEnableLorebook,
+  } = options;
   const enableLorebook = resumeFrom?.enableLorebook ?? optEnableLorebook ?? true;
 
   // BYOK 모드에 따른 유효 API 키 결정 (세션 시작 시 1회)
@@ -222,7 +236,13 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         onProgress?.(`청크 ${i + 1}: 관련 엔티티 선별 중...`, i + 1, totalChunks, estimatedRemainingSeconds);
 
         // LLM으로 관련 엔티티 선별
-        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(chunks[i], accumulatedGraph, useModel, effectiveApiKey);
+        const { names: selectedNames, billing: selectionBilling } = await selectRelevantEntities(
+          chunks[i],
+          accumulatedGraph,
+          useModel,
+          effectiveApiKey,
+          holdToken || undefined,
+        );
 
         // 잔액 부족 감지 → graceful stop (billing 추적 전에 체크 — 0토큰 엔트리가 settle에 포함되면 Math.max(1,...) = 1 크레딧 차감)
         if (selectionBilling?.insufficient_balance) {
@@ -252,7 +272,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 
       // LLM A (관계 추출) + LLM B (로어북 추출) 병렬 호출
       const lorebookPromise = enableLorebook
-        ? extractLorebook(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey).catch(err => {
+        ? extractLorebook(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey, holdToken || undefined).catch(err => {
             const errMsg = err instanceof Error ? err.message : String(err);
             console.error(`[lorebook] 청크 ${i + 1} 로어북 추출 실패:`, errMsg);
             return { data: [] as RawLoreEntry[], billing: null };
@@ -260,7 +280,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
         : Promise.resolve({ data: [] as RawLoreEntry[], billing: null });
 
       const [extractionResult, lorebookResult] = await Promise.all([
-        extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey),
+        extractFromChunk(chunks[i], i + 1, entitiesToUse, useModel, effectiveApiKey, holdToken || undefined),
         lorebookPromise,
       ]);
 
@@ -400,13 +420,24 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
   // 결과 병합 (청크별 파일 인덱스 전달)
   const merged = mergeExtractions(allExtracted, chunkSourceFileIndices);
 
-  // LLM 병합 검토: 같은 대상인데 다른 이름으로 추출된 것을 병합
-  onProgress?.('엔티티 병합 검토 중...');
-  const { result: reviewed, billing: mergerBilling } = await reviewEntityMerges(merged, useModel, effectiveApiKey);
+  // 잔액 부족/조기 중단 상태에서는 후처리 LLM 호출을 생략해 추가 과금을 방지
+  let reviewed = merged;
+  if (loopCompleted) {
+    onProgress?.('엔티티 병합 검토 중...');
+    const { result: reviewedResult, billing: mergerBilling } = await reviewEntityMerges(
+      merged,
+      useModel,
+      effectiveApiKey,
+      holdToken || undefined,
+    );
+    reviewed = reviewedResult;
 
-  // merger review billing 추적 (토큰 사용량 누적)
-  if (mergerBilling && onChunkBilling) {
-    onChunkBilling(totalChunks, mergerBilling);
+    // merger review billing 추적 (토큰 사용량 누적)
+    if (mergerBilling && onChunkBilling) {
+      onChunkBilling(totalChunks, mergerBilling);
+    }
+  } else {
+    console.log('[extraction] 부분 분석 상태: 엔티티 병합 검토 생략');
   }
 
   // 후처리: 누락된 관계 자동 생성
@@ -516,6 +547,7 @@ export async function extractKnowledgeGraph(options: ExtractionOptions): Promise
 export interface ExtractLorebookOnlyOptions {
   knowledgeGraph: NovelKnowledgeGraph;
   model?: string;
+  holdToken?: string | null;
   onProgress?: (msg: string, current?: number, total?: number) => void;
   onChunkBilling?: ChunkBillingCallback;
   byokMode?: ByokMode;
@@ -528,7 +560,7 @@ export interface ExtractLorebookOnlyOptions {
  * sourceFiles 텍스트를 청크 분할 → 각 청크에 extractLorebook 호출 → 병합.
  */
 export async function extractLorebookOnly(options: ExtractLorebookOnlyOptions): Promise<Lorebook> {
-  const { knowledgeGraph, model, onProgress, onChunkBilling, byokMode: optByokMode, creditBalance } = options;
+  const { knowledgeGraph, model, holdToken, onProgress, onChunkBilling, byokMode: optByokMode, creditBalance } = options;
 
   const byokMode = optByokMode ?? getByokMode();
   const effectiveApiKey = getEffectiveApiKey(byokMode, creditBalance ?? null);
@@ -570,12 +602,21 @@ export async function extractLorebookOnly(options: ExtractLorebookOnlyOptions): 
 
   // 청크별 로어북 추출
   const allExtractedLore: RawLoreEntry[][] = [];
+  let stoppedByInsufficientBalance = false;
 
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(`로어북 추출: 청크 ${i + 1}/${totalChunks} 분석 중...`, i + 1, totalChunks);
 
     try {
-      const result = await extractLorebook(chunks[i], i + 1, knownEntities, useModel, effectiveApiKey);
+      const result = await extractLorebook(chunks[i], i + 1, knownEntities, useModel, effectiveApiKey, holdToken || undefined);
+
+      // 402 부족 응답은 0토큰 엔트리를 누적하지 않고 즉시 중단 (min 1크레딧 정산 방지)
+      if (result.billing?.insufficient_balance) {
+        console.warn(`[lorebook-only] 청크 ${i + 1}: 잔액 부족 감지, 로어북 추출 중단`);
+        onProgress?.(`크레딧이 부족하여 로어북 추출을 중단합니다 (${i}/${totalChunks}).`);
+        stoppedByInsufficientBalance = true;
+        break;
+      }
 
       if (result.billing && onChunkBilling) {
         onChunkBilling(i, result.billing);
@@ -586,6 +627,10 @@ export async function extractLorebookOnly(options: ExtractLorebookOnlyOptions): 
       console.error(`[lorebook-only] 청크 ${i + 1} 실패:`, err instanceof Error ? err.message : err);
       allExtractedLore.push([]);
     }
+  }
+
+  if (stoppedByInsufficientBalance) {
+    console.log(`[lorebook-only] 부분 완료: ${allExtractedLore.length}/${totalChunks} 청크`);
   }
 
   onProgress?.('로어북 병합 중...');
