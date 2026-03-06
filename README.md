@@ -11,6 +11,12 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 - 관계(가족, 연인, 친구, 적대 등) 자동 감지
 - 5,000자 청크 단위 순차 분석 (이전 인물 컨텍스트 전달)
 
+<p align="center">
+  <img src="assets/character_cards.png" width="860"/>
+</p>
+
+> 분석 결과 인물 카드 — 추출된 엔티티의 속성과 관계 요약 표시
+
 ### 2. 인터랙티브 관계도
 - 드래그로 노드 이동 가능
 - 노드 클릭 시 상세 정보 패널 표시
@@ -18,11 +24,23 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 - 중요도 필터링
 - 간소화 모드 (인물만 표시)
 
+<p align="center">
+  <img src="assets/relationship_graph.png" width="860"/>
+</p>
+
+> 인물 관계 그래프 — 드래그로 노드 이동, 클릭 시 상세 정보 표시
+
 ### 3. 연대기 뷰
 - 장면별 캐릭터 이벤트 타임라인
 - 드래그로 스크롤
 - 시간 경과 표시
 - 감정별 색상 구분 (긍정/부정/중립)
+
+<p align="center">
+  <img src="assets/timeline.png" width="860"/>
+</p>
+
+> 연대기 타임라인 — 장면별 캐릭터 이벤트와 감정 변화 시각화
 
 ### 4. 데이터 관리
 - MongoDB 서버 저장 (사용자별 데이터 분리)
@@ -30,6 +48,13 @@ AI가 소설을 분석하여 인물 관계도를 자동으로 생성하는 웹 �
 - JSON 내보내기/가져오기
 - 파일 추가 분석 (기존 데이터와 병합)
 - 소설 원본 저장 및 조회
+
+### 5. AI 채팅
+<p align="center">
+  <img src="assets/chat.png" width="860"/>
+</p>
+
+> AI 채팅 인터페이스 — 분석된 소설 내용에 대해 AI와 대화
 
 ## 설치 및 실행
 
@@ -129,34 +154,6 @@ Character-Relationship-Chart/
 
 - [기능 상세 설명](docs/FEATURES.md)
 - [지식 그래프 구조](docs/KNOWLEDGE_GRAPH.md)
-
----
-
-## 스크린샷
-
-### 인물 관계 그래프
-
-<p align="center">
-  <img src="assets/relationship_graph.png" width="860"/>
-</p>
-
-### 인물 카드
-
-<p align="center">
-  <img src="assets/character_cards.png" width="860"/>
-</p>
-
-### 연대기
-
-<p align="center">
-  <img src="assets/timeline.png" width="860"/>
-</p>
-
-### 채팅
-
-<p align="center">
-  <img src="assets/chat.png" width="860"/>
-</p>
 
 ---
 
