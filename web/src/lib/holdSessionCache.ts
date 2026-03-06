@@ -11,6 +11,7 @@ import { KRW_PER_CREDIT } from '@/lib/serverCosts';
 interface HoldSessionEntry {
   userId: string;
   holdToken: string;
+  initialKrw: number;
   remainingKrw: number;
   expiresAt: number;
   updatedAt: number;
@@ -20,6 +21,13 @@ const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_CACHE_SIZE = 500;
 
 const holdSessions = new Map<string, HoldSessionEntry>();
+
+function toBudgetSnapshot(entry: HoldSessionEntry): { remainingKrw: number; remainingCredits: number } {
+  return {
+    remainingKrw: entry.remainingKrw,
+    remainingCredits: Math.max(0, Math.ceil(entry.remainingKrw / KRW_PER_CREDIT)),
+  };
+}
 
 function cleanupStaleSessions(): void {
   const now = Date.now();
@@ -68,12 +76,14 @@ export function registerHoldSession(
     : Date.now() + DEFAULT_TTL_MS;
 
   const remainingCredits = Number.isFinite(amountCredits) ? Math.max(0, amountCredits) : 0;
+  const initialKrw = remainingCredits * KRW_PER_CREDIT;
 
   cleanupStaleSessions();
   holdSessions.set(holdToken, {
     userId,
     holdToken,
-    remainingKrw: remainingCredits * KRW_PER_CREDIT,
+    initialKrw,
+    remainingKrw: initialKrw,
     expiresAt,
     updatedAt: Date.now(),
   });
@@ -94,10 +104,49 @@ export function hasUsableHoldSession(userId: string, holdToken: string): boolean
   return !!entry && entry.remainingKrw > 0;
 }
 
+export function hasValidHoldSession(userId: string, holdToken: string): boolean {
+  return getValidSession(userId, holdToken) !== null;
+}
+
 export function getHoldRemainingKrw(userId: string, holdToken: string): number | null {
   const entry = getValidSession(userId, holdToken);
   if (!entry) return null;
   return entry.remainingKrw;
+}
+
+export function getHoldInitialCredits(userId: string, holdToken: string): number | null {
+  const entry = getValidSession(userId, holdToken);
+  if (!entry) return null;
+  return Math.max(0, Math.ceil(entry.initialKrw / KRW_PER_CREDIT));
+}
+
+/**
+ * 원자적 예산 예약:
+ * - 부족하면 null 반환 (차감하지 않음)
+ * - 충분하면 즉시 차감 후 남은 예산 반환
+ */
+export function reserveHoldSessionBudget(
+  userId: string,
+  holdToken: string,
+  requiredKrw: number,
+): { remainingKrw: number; remainingCredits: number } | null {
+  const entry = getValidSession(userId, holdToken);
+  if (!entry) return null;
+
+  if (!Number.isFinite(requiredKrw) || requiredKrw <= 0) {
+    entry.updatedAt = Date.now();
+    holdSessions.set(holdToken, entry);
+    return toBudgetSnapshot(entry);
+  }
+
+  if (entry.remainingKrw < requiredKrw) {
+    return null;
+  }
+
+  entry.remainingKrw -= requiredKrw;
+  entry.updatedAt = Date.now();
+  holdSessions.set(holdToken, entry);
+  return toBudgetSnapshot(entry);
 }
 
 export function consumeHoldSessionBudget(
@@ -113,11 +162,23 @@ export function consumeHoldSessionBudget(
   }
   entry.updatedAt = Date.now();
   holdSessions.set(holdToken, entry);
+  return toBudgetSnapshot(entry);
+}
 
-  return {
-    remainingKrw: entry.remainingKrw,
-    remainingCredits: Math.max(0, Math.ceil(entry.remainingKrw / KRW_PER_CREDIT)),
-  };
+export function refundHoldSessionBudget(
+  userId: string,
+  holdToken: string,
+  refundKrw: number,
+): { remainingKrw: number; remainingCredits: number } | null {
+  const entry = getValidSession(userId, holdToken);
+  if (!entry) return null;
+
+  if (Number.isFinite(refundKrw) && refundKrw > 0) {
+    entry.remainingKrw = Math.min(entry.initialKrw, entry.remainingKrw + refundKrw);
+  }
+  entry.updatedAt = Date.now();
+  holdSessions.set(holdToken, entry);
+  return toBudgetSnapshot(entry);
 }
 
 export function clearHoldSession(userId: string, holdToken: string): void {
@@ -126,4 +187,3 @@ export function clearHoldSession(userId: string, holdToken: string): void {
   if (entry.userId !== userId) return;
   holdSessions.delete(holdToken);
 }
-

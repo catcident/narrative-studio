@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
-import { hasActiveHoldSession, hasUsableHoldSession, getHoldRemainingKrw, consumeHoldSessionBudget } from '@/lib/holdSessionCache';
+import {
+  hasActiveHoldSession,
+  hasValidHoldSession as isValidHoldSession,
+  reserveHoldSessionBudget,
+  consumeHoldSessionBudget,
+  refundHoldSessionBudget,
+} from '@/lib/holdSessionCache';
 import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { getCachedServerModels } from '@/lib/modelCache';
@@ -24,6 +30,16 @@ const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍
 8. JSON만 출력 (설명 없이)`;
 
 export async function POST(request: NextRequest) {
+  let reservedHoldKrw = 0;
+  let refundUserId: string | null = null;
+  let refundHoldToken: string | null = null;
+  let refundHasValidHoldSession = false;
+  const refundReservedBudget = () => {
+    if (!AUTH_ENABLED || !refundUserId || !refundHoldToken || !refundHasValidHoldSession || reservedHoldKrw <= 0) return;
+    refundHoldSessionBudget(refundUserId, refundHoldToken, reservedHoldKrw);
+    reservedHoldKrw = 0;
+  };
+
   try {
     const rawBody = await request.json() as {
       prompt: string;
@@ -35,6 +51,7 @@ export async function POST(request: NextRequest) {
     const userApiKey = rawBody.apiKey;
     const userModel = rawBody.model;
     const holdToken = typeof rawBody.holdToken === 'string' ? rawBody.holdToken : null;
+    refundHoldToken = holdToken;
     if (typeof prompt !== 'string' || !prompt.trim()) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
@@ -65,10 +82,12 @@ export async function POST(request: NextRequest) {
         return authResult.error;
       }
       userId = authResult.userId;
+      refundUserId = userId;
       accessToken = authResult.accessToken;
 
       if (holdToken) {
-        hasValidHoldSession = hasUsableHoldSession(userId, holdToken);
+        hasValidHoldSession = isValidHoldSession(userId, holdToken);
+        refundHasValidHoldSession = hasValidHoldSession;
         if (!hasValidHoldSession) {
           return NextResponse.json(
             { error: 'Invalid or expired hold session. Please restart analysis.' },
@@ -92,22 +111,22 @@ export async function POST(request: NextRequest) {
         if (!holdToken) {
           return NextResponse.json({ error: 'Hold token is required for active hold session.' }, { status: 400 });
         }
-        const remainingKrw = getHoldRemainingKrw(userId, holdToken);
-        if (remainingKrw !== null && remainingKrw <= 0) {
-          return NextResponse.json({ error: 'Insufficient held credits. Please resume with more credits.' }, { status: 402 });
-        }
-        if (remainingKrw !== null) {
-          // preflight: 호출 전에 최소 필요 예산 추정 (한 호출 초과 사용 방지)
-          const dynamicModels = await getServerModels();
-          const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
-          const estPromptTokens = Math.ceil((prompt.length + SYSTEM_PROMPT.length) / CHARS_PER_TOKEN);
-          const estCompletionTokens = Math.ceil(estPromptTokens * OUTPUT_RATIO);
-          const estUsd = tokenCostUsd(estPromptTokens, estCompletionTokens, inputCost, outputCost);
-          const refChunkCost = calculateChunkCostUsd(model, dynamicModels);
-          const estKrw = estUsd * calculateMarkup(refChunkCost) * USD_TO_KRW;
-          if (remainingKrw < estKrw) {
+
+        // preflight: 호출 전에 최소 필요 예산을 원자적으로 예약 (동시 호출 시 초과 사용 방지)
+        const dynamicModels = await getServerModels();
+        const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
+        const estPromptTokens = Math.ceil((prompt.length + SYSTEM_PROMPT.length) / CHARS_PER_TOKEN);
+        const estCompletionTokens = Math.ceil(estPromptTokens * OUTPUT_RATIO);
+        const estUsd = tokenCostUsd(estPromptTokens, estCompletionTokens, inputCost, outputCost);
+        const refChunkCost = calculateChunkCostUsd(model, dynamicModels);
+        const estKrw = estUsd * calculateMarkup(refChunkCost) * USD_TO_KRW;
+
+        if (estKrw > 0) {
+          const reserved = reserveHoldSessionBudget(userId, holdToken, estKrw);
+          if (!reserved) {
             return NextResponse.json({ error: 'Insufficient held credits. Please resume with more credits.' }, { status: 402 });
           }
+          reservedHoldKrw = estKrw;
         }
       }
 
@@ -163,6 +182,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
+      refundReservedBudget();
       const errorBody = await response.text();
       console.error(`[analyze] API 오류: ${response.status} - ${errorBody.slice(0, 500)}`);
 
@@ -199,11 +219,28 @@ export async function POST(request: NextRequest) {
         const refChunkCost = calculateChunkCostUsd(model, dynamicModels);
         const costKrw = costUsd * calculateMarkup(refChunkCost) * USD_TO_KRW;
 
-        const budget = consumeHoldSessionBudget(userId, holdToken, costKrw);
+        let budget: { remainingKrw: number; remainingCredits: number } | null = null;
+        if (reservedHoldKrw > 0) {
+          const deltaKrw = costKrw - reservedHoldKrw;
+          if (deltaKrw > 0) {
+            budget = consumeHoldSessionBudget(userId, holdToken, deltaKrw);
+          } else if (deltaKrw < 0) {
+            budget = refundHoldSessionBudget(userId, holdToken, -deltaKrw);
+          } else {
+            budget = consumeHoldSessionBudget(userId, holdToken, 0);
+          }
+          reservedHoldKrw = 0;
+        } else {
+          // 예약 없이 들어온 경로(호환성)에서도 예산 차감 유지
+          budget = consumeHoldSessionBudget(userId, holdToken, costKrw);
+        }
+
         if (budget) {
           data._billing.hold_remaining_credits = budget.remainingCredits;
         }
       }
+    } else {
+      refundReservedBudget();
     }
 
     const content = data.choices?.[0]?.message?.content;
@@ -225,6 +262,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (err: unknown) {
+    refundReservedBudget();
     if (err instanceof Error && err.name === 'AbortError') {
       console.error(`[analyze] 타임아웃 (2분 초과)`);
       return NextResponse.json({ error: 'API request timed out (2 minutes). Try with a smaller text.' }, { status: 504 });

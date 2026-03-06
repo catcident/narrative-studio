@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { updateBalanceCache } from '@/lib/balanceCache';
-import { clearHoldSession } from '@/lib/holdSessionCache';
+import { clearHoldSession, getHoldInitialCredits } from '@/lib/holdSessionCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
 import { tokenCostUsd, getModelCosts, calculateMixedSessionCredits } from '@/lib/serverCosts';
@@ -72,10 +72,17 @@ export async function POST(request: NextRequest) {
 
     // 혼합 모델 대응: 각 청크의 모델별 마크업 적용 후 합산 → 1회 올림
     const actualCredits = calculateMixedSessionCredits(chunkCostData, dynamicModels);
+    const heldCredits = getHoldInitialCredits(userId, holdToken);
+    const settledCredits = heldCredits !== null
+      ? Math.min(actualCredits, heldCredits)
+      : actualCredits;
+    if (heldCredits !== null && actualCredits > heldCredits) {
+      console.warn(`[session] settle amount capped by hold: actual=${actualCredits}, hold=${heldCredits}`);
+    }
 
     const body = JSON.stringify({
       hold_token: holdToken,
-      actual_amount: actualCredits,
+      actual_amount: settledCredits,
       description: typeof rawBody.description === 'string' ? rawBody.description : undefined,
       metadata: typeof rawBody.metadata === 'object' && rawBody.metadata !== null ? rawBody.metadata : undefined,
       idempotency_key: typeof rawBody.idempotency_key === 'string'
@@ -104,9 +111,9 @@ export async function POST(request: NextRequest) {
 
     clearHoldSession(userId, holdToken);
     updateBalanceCache(userId, data.balance_after);
-    console.log(`[session] settle for user ${userId}: deducted=${data.amount_deducted}, refunded=${data.refunded}, actual_credits=${actualCredits}`);
+    console.log(`[session] settle for user ${userId}: deducted=${data.amount_deducted}, refunded=${data.refunded}, actual_credits=${settledCredits}, computed_actual=${actualCredits}`);
 
-    return NextResponse.json({ ...data, actual_credits: actualCredits });
+    return NextResponse.json({ ...data, actual_credits: settledCredits });
   } catch (err: unknown) {
     console.error('[session] settle error:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
