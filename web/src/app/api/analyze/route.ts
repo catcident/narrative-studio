@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
+import { resolveBillingContext } from '@/lib/billingContext';
+import {
+  hasActiveHoldSession,
+  hasValidHoldSession as isValidHoldSession,
+  reserveHoldSessionBudget,
+  consumeHoldSessionBudget,
+  refundHoldSessionBudget,
+} from '@/lib/holdSessionCache';
 import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
-import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
-import { resolveTokenBilling } from '@/lib/serverCosts';
+import { getCachedServerModels } from '@/lib/modelCache';
+import { resolveTokenBilling, tokenCostUsd, getModelCosts, calculateChunkCostUsd, calculateMarkup, USD_TO_KRW } from '@/lib/serverCosts';
+import { CHARS_PER_TOKEN, OUTPUT_RATIO } from '@/lib/modelCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -21,32 +30,114 @@ const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍
 8. JSON만 출력 (설명 없이)`;
 
 export async function POST(request: NextRequest) {
+  let reservedHoldKrw = 0;
+  let refundUserId: string | null = null;
+  let refundHoldToken: string | null = null;
+  let refundHasValidHoldSession = false;
+  const refundReservedBudget = () => {
+    if (!refundUserId || !refundHoldToken || !refundHasValidHoldSession || reservedHoldKrw <= 0) return;
+    refundHoldSessionBudget(refundUserId, refundHoldToken, reservedHoldKrw);
+    reservedHoldKrw = 0;
+  };
+
   try {
-    const { prompt, apiKey: userApiKey, model: userModel } = await request.json();
+    const rawBody = await request.json() as {
+      prompt: string;
+      apiKey?: string;
+      model?: string;
+      holdToken?: string;
+    };
+    const prompt = rawBody.prompt;
+    const userApiKey = rawBody.apiKey;
+    const userModel = rawBody.model;
+    const holdToken = typeof rawBody.holdToken === 'string' ? rawBody.holdToken : null;
+    refundHoldToken = holdToken;
+    if (typeof prompt !== 'string' || !prompt.trim()) {
+      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+    }
 
     // 사용자가 제공한 키 우선, 없으면 환경변수 키 사용
     const apiKey = userApiKey || ENV_API_KEY;
     // 사용자가 지정한 모델 사용, 없으면 기본 모델
     const model = userModel || DEFAULT_MODEL;
+    let cachedServerModels: Awaited<ReturnType<typeof getCachedServerModels>> | null = null;
+    const getServerModels = async () => {
+      if (!cachedServerModels) {
+        cachedServerModels = await getCachedServerModels();
+      }
+      return cachedServerModels;
+    };
 
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
     }
 
-    // 인증 + 잔액 확인 + Rate Limit (AUTH_ENABLED=true 시에만 활성)
+    const context = await resolveBillingContext(request);
+    if ('error' in context) {
+      return context.error;
+    }
+
+    // 인증/모의과금 컨텍스트 + 잔액 확인 + Rate Limit
     let userId: string | null = null;
     let accessToken: string | undefined;
-    if (AUTH_ENABLED) {
-      const authResult = await requireAuth();
-      if ('error' in authResult) {
-        return authResult.error;
-      }
-      userId = authResult.userId;
-      accessToken = authResult.accessToken;
+    let hasValidHoldSession = false;
+    if (context.kind !== 'none') {
+      userId = context.userId;
+      refundUserId = userId;
+      accessToken = context.kind === 'authenticated' ? context.accessToken : undefined;
 
-      const balanceError = await checkAnalyzeEligibility(userId, accessToken);
-      if (balanceError) {
-        return NextResponse.json({ error: balanceError }, { status: 402 });
+      if (holdToken) {
+        hasValidHoldSession = isValidHoldSession(userId, holdToken);
+        refundHasValidHoldSession = hasValidHoldSession;
+        if (!hasValidHoldSession) {
+          return NextResponse.json(
+            {
+              error: context.kind === 'mock'
+                ? 'Mock billing hold is invalid or expired. Restart it from /app/internal/billing-test and begin analysis again.'
+                : 'Invalid or expired hold session. Please restart analysis.',
+            },
+            { status: 403 },
+          );
+        }
+      } else if (hasActiveHoldSession(userId)) {
+        // hold가 살아있는 동안에는 hold_token 없는 analyze 호출을 차단해 무제한 호출을 방지
+        return NextResponse.json(
+          { error: 'Active hold session requires hold token.' },
+            { status: 409 },
+        );
+      }
+
+      if (context.kind === 'authenticated' && !hasValidHoldSession) {
+        const balanceError = await checkAnalyzeEligibility(userId, accessToken);
+        if (balanceError) {
+          return NextResponse.json({ error: balanceError }, { status: 402 });
+        }
+      } else if (context.kind === 'mock' && !hasValidHoldSession) {
+        return NextResponse.json(
+          { error: 'Active mock billing session requires a hold token. Start analysis from the app after creating a billing test session.' },
+          { status: 409 },
+        );
+      } else {
+        if (!holdToken) {
+          return NextResponse.json({ error: 'Hold token is required for active hold session.' }, { status: 400 });
+        }
+
+        // preflight: 호출 전에 최소 필요 예산을 원자적으로 예약 (동시 호출 시 초과 사용 방지)
+        const dynamicModels = await getServerModels();
+        const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
+        const estPromptTokens = Math.ceil((prompt.length + SYSTEM_PROMPT.length) / CHARS_PER_TOKEN);
+        const estCompletionTokens = Math.ceil(estPromptTokens * OUTPUT_RATIO);
+        const estUsd = tokenCostUsd(estPromptTokens, estCompletionTokens, inputCost, outputCost);
+        const refChunkCost = calculateChunkCostUsd(model, dynamicModels);
+        const estKrw = estUsd * calculateMarkup(refChunkCost) * USD_TO_KRW;
+
+        if (estKrw > 0) {
+          const reserved = reserveHoldSessionBudget(userId, holdToken, estKrw);
+          if (!reserved) {
+            return NextResponse.json({ error: 'Insufficient held credits. Please resume with more credits.' }, { status: 402 });
+          }
+          reservedHoldKrw = estKrw;
+        }
       }
 
       const planCode = getCachedPlanCode(userId);
@@ -66,7 +157,7 @@ export async function POST(request: NextRequest) {
     const isUsingPersonalKey = !!userApiKey && userApiKey !== ENV_API_KEY;
 
     // BYOK 권한 확인: AUTH_ENABLED이고 개인 키 사용 시 byok 플래그 필요
-    if (AUTH_ENABLED && isUsingPersonalKey && userId) {
+    if (context.kind === 'authenticated' && isUsingPersonalKey && userId) {
       const byokAllowed = isCachedByokEnabled(userId);
       if (!byokAllowed) {
         return NextResponse.json(
@@ -101,6 +192,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
+      refundReservedBudget();
       const errorBody = await response.text();
       console.error(`[analyze] API 오류: ${response.status} - ${errorBody.slice(0, 500)}`);
 
@@ -123,6 +215,42 @@ export async function POST(request: NextRequest) {
         model,
         byok: isUsingPersonalKey,
       };
+
+      // hold 세션이면 호출 단위로 예산을 차감하여 무제한 호출을 방지
+      if (userId && holdToken && hasValidHoldSession) {
+        const dynamicModels = await getServerModels();
+        const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
+        const costUsd = tokenCostUsd(
+          billing.prompt_tokens,
+          billing.completion_tokens,
+          inputCost,
+          outputCost,
+        );
+        const refChunkCost = calculateChunkCostUsd(model, dynamicModels);
+        const costKrw = costUsd * calculateMarkup(refChunkCost) * USD_TO_KRW;
+
+        let budget: { remainingKrw: number; remainingCredits: number } | null = null;
+        if (reservedHoldKrw > 0) {
+          const deltaKrw = costKrw - reservedHoldKrw;
+          if (deltaKrw > 0) {
+            budget = consumeHoldSessionBudget(userId, holdToken, deltaKrw);
+          } else if (deltaKrw < 0) {
+            budget = refundHoldSessionBudget(userId, holdToken, -deltaKrw);
+          } else {
+            budget = consumeHoldSessionBudget(userId, holdToken, 0);
+          }
+          reservedHoldKrw = 0;
+        } else {
+          // 예약 없이 들어온 경로(호환성)에서도 예산 차감 유지
+          budget = consumeHoldSessionBudget(userId, holdToken, costKrw);
+        }
+
+        if (budget) {
+          data._billing.hold_remaining_credits = budget.remainingCredits;
+        }
+      }
+    } else {
+      refundReservedBudget();
     }
 
     const content = data.choices?.[0]?.message?.content;
@@ -144,6 +272,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (err: unknown) {
+    refundReservedBudget();
     if (err instanceof Error && err.name === 'AbortError') {
       console.error(`[analyze] 타임아웃 (2분 초과)`);
       return NextResponse.json({ error: 'API request timed out (2 minutes). Try with a smaller text.' }, { status: 504 });

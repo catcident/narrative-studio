@@ -5,6 +5,7 @@
 
 import { Coins, Key } from 'lucide-react';
 import { useBillingSubscription, useByokMode } from '../store';
+import { isBillingTestSubscription } from '../services/billing';
 import { shouldUsePersonalKey, hasApiKey } from '../services/extraction';
 
 interface CreditBadgeProps {
@@ -20,7 +21,7 @@ export function CreditBadge({ onClick, className = '' }: CreditBadgeProps) {
 
   const balance = subscription.creditBalance;
   const isLow = balance < 10;
-  const isUsingByok = hasApiKey() && shouldUsePersonalKey(byokMode, balance);
+  const isUsingByok = !isBillingTestSubscription(subscription) && hasApiKey() && shouldUsePersonalKey(byokMode, balance);
 
   function getColorClass(): string {
     if (isUsingByok) return 'bg-purple-50 text-purple-700 hover:bg-purple-100';

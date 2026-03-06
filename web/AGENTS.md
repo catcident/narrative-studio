@@ -83,8 +83,8 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 - **`_billing` 응답에는 토큰 정보만 포함**: `{ model, prompt_tokens, completion_tokens, byok }`
 - **settle 시에만 실제 크레딧 차감** + CreditBadge 잔액 갱신
 
-> 상세 흐름도: [services/CLAUDE.md](src/services/CLAUDE.md#billing-추적-필수-규칙)
-> 서버 모듈 상세: [lib/CLAUDE.md](src/lib/CLAUDE.md#modelcoststs--모델-비용-공유-모듈)
+> 상세 흐름도: [services/AGENTS.md](src/services/AGENTS.md#billing-추적-필수-규칙)
+> 서버 모듈 상세: [lib/AGENTS.md](src/lib/AGENTS.md#modelcoststs--모델-비용-공유-모듈)
 
 **서버 측 방어선**:
 - 잔액 체크 (`balanceCache.ts`) + Rate Limiting (`rateLimit.ts`)
@@ -204,6 +204,6 @@ CATCIDENT_API_URL=http://catcident-backend-api-1:8000
 
 ## 하위 문서
 
-- [services/CLAUDE.md](src/services/CLAUDE.md) - AI 분석 + 스토리지 서비스
-- [components/CLAUDE.md](src/components/CLAUDE.md) - UI 컴포넌트
-- [lib/CLAUDE.md](src/lib/CLAUDE.md) - DB 연결 + 인증 헬퍼
+- [services/AGENTS.md](src/services/AGENTS.md) - AI 분석 + 스토리지 서비스
+- [components/AGENTS.md](src/components/AGENTS.md) - UI 컴포넌트
+- [lib/AGENTS.md](src/lib/AGENTS.md) - DB 연결 + 인증 헬퍼

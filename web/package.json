@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check": "npm run lint"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.38.0",

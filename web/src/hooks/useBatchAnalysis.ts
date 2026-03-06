@@ -7,7 +7,7 @@ import { useCallback, useRef } from 'react';
 import { useStore } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText, checkCreditSufficiency } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText, checkCreditSufficiency, isBillingTestSubscription } from '../services/billing';
 import { requestCreditConfirmation } from '../store';
 import { getAvailableModelIds } from '../types';
 import type { ChunkUsage } from '../types';
@@ -35,7 +35,7 @@ export function useBatchAnalysis() {
       const freshAuth = freshState.authEnabled;
       const freshByok = freshSub?.features?.byok ?? false;
       const freshModels = freshState.models;
-      const isPersonalKey = freshByok && hasApiKey();
+      const isPersonalKey = !isBillingTestSubscription(freshSub) && freshByok && hasApiKey();
 
       if (!isPersonalKey && freshSub) {
         const totalEstimated = pendingItems.reduce((sum, item) => {
@@ -81,7 +81,7 @@ export function useBatchAnalysis() {
         const freshByokEnabled = freshSubscription?.features?.byok ?? false;
         const freshModels = freshState.models;
 
-        const isUsingPersonalKey = freshByokEnabled && hasApiKey();
+        const isUsingPersonalKey = !isBillingTestSubscription(freshSubscription) && freshByokEnabled && hasApiKey();
         let holdToken: string | null = null;
 
         // 잔액 확인 + hold (billing 활성 시)
@@ -135,6 +135,7 @@ export function useBatchAnalysis() {
               });
             },
             model: item.model,
+            holdToken,
             fileNames: [item.fileName],
             onChunkBilling,
             availableModelIds: getAvailableModelIds(freshModels),

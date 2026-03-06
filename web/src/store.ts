@@ -277,10 +277,17 @@ export const useStore = create<AppState>((set, get) => ({
             status: info.status,
           },
         });
+        return;
       }
-      // !result.ok → subscription null 유지 (billing 미사용)
+
+      if (get().authEnabled === false) {
+        set({ subscription: null });
+      }
     } catch (err: unknown) {
       console.error('[billing] loadSubscription error:', err);
+      if (get().authEnabled === false) {
+        set({ subscription: null });
+      }
     }
   },
   updateCreditBalance: (n) => set((state) => ({

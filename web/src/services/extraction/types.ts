@@ -112,6 +112,7 @@ export interface ExtractionOptions {
   onProgress?: ProgressCallback;
   resumeFrom?: ExtractionProgress;
   model?: string;
+  holdToken?: string | null;  // 세션 hold 토큰 (있으면 /api/analyze에 전달)
   fileNames?: string[];  // 원본 파일명 배열
   existingGraph?: NovelKnowledgeGraph;
   onChunkBilling?: ChunkBillingCallback;

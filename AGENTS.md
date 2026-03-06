@@ -27,7 +27,7 @@ Character-Relationship-Chart/
 │   │   ├── store.ts        # Zustand 상태 관리
 │   │   └── types.ts        # TypeScript 타입 정의
 │   ├── Dockerfile          # 프로덕션 Docker 이미지
-│   └── CLAUDE.md           # 웹 앱 상세 문서
+│   └── AGENTS.md           # 웹 앱 상세 문서
 ├── src/                     # 핵심 라이브러리 (향후 확장용)
 ├── docs/                    # 문서
 │   ├── FEATURES.md         # 기능 상세 설명
@@ -114,7 +114,39 @@ Character-Relationship-Chart/
 
 ## 앱별 문서
 
-- [web/CLAUDE.md](web/CLAUDE.md) - Next.js 웹 앱 상세
-- [web/src/services/CLAUDE.md](web/src/services/CLAUDE.md) - 서비스 레이어
-- [web/src/components/CLAUDE.md](web/src/components/CLAUDE.md) - UI 컴포넌트
-- [web/src/lib/CLAUDE.md](web/src/lib/CLAUDE.md) - 유틸리티 모듈
+- [web/AGENTS.md](web/AGENTS.md) - Next.js 웹 앱 상세
+- [web/src/services/AGENTS.md](web/src/services/AGENTS.md) - 서비스 레이어
+- [web/src/components/AGENTS.md](web/src/components/AGENTS.md) - UI 컴포넌트
+- [web/src/lib/AGENTS.md](web/src/lib/AGENTS.md) - 유틸리티 모듈
+
+## Skills 활용 가이드
+
+프로젝트 진행 중 지식이 부족하거나 작업 도메인이 낯선 경우, 먼저 설치된 스킬을 참고하고 필요 시 `find-skills`를 통해 적절한 스킬을 검색/설치/관리하여 활용한다.
+
+### 기본 원칙
+- 작업 시작 전 관련 스킬이 있는지 확인하고 우선 활용한다.
+- 적절한 스킬이 없으면 `find-skills` 스킬 또는 `npx skills find <query>`로 후보를 검색한다.
+- 검토한 스킬 중 프로젝트에 적합한 것만 **프로젝트 로컬 스코프**(`.agents/skills`)로 설치한다.
+- 설치 후 `npx skills list`로 반영 여부를 확인하고, 주기적으로 점검/업데이트한다.
+- 스킬 **설치/업데이트/제거** 이력은 필요 시 커밋 메시지 또는 문서에 명시적으로 남긴다.
+- 더 이상 사용하지 않는 스킬은 정기적으로 `npx skills remove`로 정리한다.
+
+### 권장 명령어
+```bash
+# 스킬 검색
+npx skills find <query>
+
+# 스킬 설치 (프로젝트 로컬)
+npx skills add <owner/repo@skill> -y
+
+# 설치된 스킬 확인
+npx skills list
+
+# 업데이트 확인/적용
+npx skills check
+npx skills update
+
+# 스킬 제거/정리
+npx skills remove <skill-name> -y
+npx skills remove --all -y
+```

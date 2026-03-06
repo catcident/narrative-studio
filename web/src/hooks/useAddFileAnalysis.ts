@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractKnowledgeGraph, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText, checkCreditSufficiency } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageFromText, checkCreditSufficiency, isBillingTestSubscription } from '../services/billing';
 import { requestCreditConfirmation } from '../store';
 import { readFileAsText } from '../services/fileReader';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
@@ -43,7 +43,7 @@ export function useAddFileAnalysis() {
     resetCurrentUsage();
 
     try {
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
       const model = graphToUse.metadata.model || DEFAULT_MODEL;
       let holdToken: string | null = null;
 
@@ -88,6 +88,7 @@ export function useAddFileAnalysis() {
           title: graphToUse.metadata.title,
           onProgress: (msg) => setProgress(msg),
           model,
+          holdToken,
           fileNames: [fileName],
           existingGraph: graphToUse,
           onChunkBilling: createBillingCallback(addChunkUsage),
