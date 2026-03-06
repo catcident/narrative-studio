@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_MODEL } from '@/types';
 import { checkAnalyzeEligibility, isCachedByokEnabled, getCachedPlanCode } from '@/lib/balanceCache';
+import { resolveBillingContext } from '@/lib/billingContext';
 import {
   hasActiveHoldSession,
   hasValidHoldSession as isValidHoldSession,
@@ -9,7 +10,6 @@ import {
   refundHoldSessionBudget,
 } from '@/lib/holdSessionCache';
 import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
-import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
 import { getCachedServerModels } from '@/lib/modelCache';
 import { resolveTokenBilling, tokenCostUsd, getModelCosts, calculateChunkCostUsd, calculateMarkup, USD_TO_KRW } from '@/lib/serverCosts';
 import { CHARS_PER_TOKEN, OUTPUT_RATIO } from '@/lib/modelCosts';
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   let refundHoldToken: string | null = null;
   let refundHasValidHoldSession = false;
   const refundReservedBudget = () => {
-    if (!AUTH_ENABLED || !refundUserId || !refundHoldToken || !refundHasValidHoldSession || reservedHoldKrw <= 0) return;
+    if (!refundUserId || !refundHoldToken || !refundHasValidHoldSession || reservedHoldKrw <= 0) return;
     refundHoldSessionBudget(refundUserId, refundHoldToken, reservedHoldKrw);
     reservedHoldKrw = 0;
   };
@@ -72,25 +72,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API key not configured. Please provide your OpenRouter API key.' }, { status: 400 });
     }
 
-    // 인증 + 잔액 확인 + Rate Limit (AUTH_ENABLED=true 시에만 활성)
+    const context = await resolveBillingContext(request);
+    if ('error' in context) {
+      return context.error;
+    }
+
+    // 인증/모의과금 컨텍스트 + 잔액 확인 + Rate Limit
     let userId: string | null = null;
     let accessToken: string | undefined;
     let hasValidHoldSession = false;
-    if (AUTH_ENABLED) {
-      const authResult = await requireAuth();
-      if ('error' in authResult) {
-        return authResult.error;
-      }
-      userId = authResult.userId;
+    if (context.kind !== 'none') {
+      userId = context.userId;
       refundUserId = userId;
-      accessToken = authResult.accessToken;
+      accessToken = context.kind === 'authenticated' ? context.accessToken : undefined;
 
       if (holdToken) {
         hasValidHoldSession = isValidHoldSession(userId, holdToken);
         refundHasValidHoldSession = hasValidHoldSession;
         if (!hasValidHoldSession) {
           return NextResponse.json(
-            { error: 'Invalid or expired hold session. Please restart analysis.' },
+            {
+              error: context.kind === 'mock'
+                ? 'Mock billing hold is invalid or expired. Restart it from /app/internal/billing-test and begin analysis again.'
+                : 'Invalid or expired hold session. Please restart analysis.',
+            },
             { status: 403 },
           );
         }
@@ -98,15 +103,20 @@ export async function POST(request: NextRequest) {
         // hold가 살아있는 동안에는 hold_token 없는 analyze 호출을 차단해 무제한 호출을 방지
         return NextResponse.json(
           { error: 'Active hold session requires hold token.' },
-          { status: 409 },
+            { status: 409 },
         );
       }
 
-      if (!hasValidHoldSession) {
+      if (context.kind === 'authenticated' && !hasValidHoldSession) {
         const balanceError = await checkAnalyzeEligibility(userId, accessToken);
         if (balanceError) {
           return NextResponse.json({ error: balanceError }, { status: 402 });
         }
+      } else if (context.kind === 'mock' && !hasValidHoldSession) {
+        return NextResponse.json(
+          { error: 'Active mock billing session requires a hold token. Start analysis from the app after creating a billing test session.' },
+          { status: 409 },
+        );
       } else {
         if (!holdToken) {
           return NextResponse.json({ error: 'Hold token is required for active hold session.' }, { status: 400 });
@@ -147,7 +157,7 @@ export async function POST(request: NextRequest) {
     const isUsingPersonalKey = !!userApiKey && userApiKey !== ENV_API_KEY;
 
     // BYOK 권한 확인: AUTH_ENABLED이고 개인 키 사용 시 byok 플래그 필요
-    if (AUTH_ENABLED && isUsingPersonalKey && userId) {
+    if (context.kind === 'authenticated' && isUsingPersonalKey && userId) {
       const byokAllowed = isCachedByokEnabled(userId);
       if (!byokAllowed) {
         return NextResponse.json(
@@ -207,7 +217,7 @@ export async function POST(request: NextRequest) {
       };
 
       // hold 세션이면 호출 단위로 예산을 차감하여 무제한 호출을 방지
-      if (AUTH_ENABLED && userId && holdToken && hasValidHoldSession) {
+      if (userId && holdToken && hasValidHoldSession) {
         const dynamicModels = await getServerModels();
         const { inputCost, outputCost } = getModelCosts(model, dynamicModels);
         const costUsd = tokenCostUsd(

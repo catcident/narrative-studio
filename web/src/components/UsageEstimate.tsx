@@ -5,8 +5,8 @@
 
 import { useMemo, useDeferredValue } from 'react';
 import { Calculator, AlertTriangle, CheckCircle, Key } from 'lucide-react';
-import { estimateUsageLocally, estimateUsageFromText } from '../services/billing';
-import { useCreditBalance, useModels, useByokEnabled } from '../store';
+import { estimateUsageLocally, estimateUsageFromText, isBillingTestSubscription } from '../services/billing';
+import { useBillingSubscription, useCreditBalance, useModels, useByokEnabled } from '../store';
 import { hasApiKey } from '../services/extraction';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 
@@ -20,11 +20,12 @@ interface UsageEstimateProps {
 }
 
 export function UsageEstimate({ charCount, model, text, enableLorebook = true }: UsageEstimateProps) {
+  const subscription = useBillingSubscription();
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
-  const isUsingPersonalKey = byokEnabled && hasApiKey();
+  const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
 
   // 대용량 텍스트 입력 시 매 키스트로크마다 스마트 청커 실행 방지
   const deferredText = useDeferredValue(text);

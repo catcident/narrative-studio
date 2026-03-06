@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey } from '../services/extraction';
 import { saveKnowledgeGraph } from '../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, checkCreditSufficiency } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, checkCreditSufficiency, isBillingTestSubscription } from '../services/billing';
 import { requestCreditConfirmation } from '../store';
 import { DEFAULT_MODEL, getAvailableModelIds } from '../types';
 import { CHUNK_SIZE, CHUNK_OVERLAP } from '@/lib/modelCosts';
@@ -47,7 +47,7 @@ export function useResumeAnalysis() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     try {
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
 
       // 만료 모델이면 DEFAULT_MODEL로 대체
       const resumeModel = invalidSavedModel ? DEFAULT_MODEL : (savedProgress.model || DEFAULT_MODEL);

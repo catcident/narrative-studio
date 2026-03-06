@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Info, AlertTriangle, AlertCircle, X, Key } from 'lucide-react';
 import { useBillingSubscription, useByokMode } from '../store';
-import { getBalanceAlertLevel, type BalanceAlertLevel } from '../services/billing';
+import { getBalanceAlertLevel, isBillingTestSubscription, type BalanceAlertLevel } from '../services/billing';
 import { shouldUsePersonalKey, hasApiKey } from '../services/extraction';
 
 interface BalanceAlertBannerProps {
@@ -83,7 +83,7 @@ export function BalanceAlertBanner({ onShowSubscription }: BalanceAlertBannerPro
 
   const config = ALERT_CONFIG[level];
   const Icon = config.icon;
-  const isUsingByok = hasApiKey() && shouldUsePersonalKey(byokMode, subscription.creditBalance);
+  const isUsingByok = !isBillingTestSubscription(subscription) && hasApiKey() && shouldUsePersonalKey(byokMode, subscription.creditBalance);
   const message = getMessage(level, subscription.creditBalance, isUsingByok);
 
   const handleDismiss = () => {

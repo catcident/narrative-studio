@@ -136,6 +136,12 @@ export async function getSubscription(): Promise<BillingResult<SubscriptionInfo>
   return billingFetch<SubscriptionInfo>('/subscription');
 }
 
+export function isBillingTestSubscription(
+  subscription: Pick<BillingSubscription, 'plan'> | null | undefined,
+): boolean {
+  return subscription?.plan === 'billing-test';
+}
+
 // ==================== 크레딧 ====================
 
 export async function getCreditBalance(): Promise<BillingResult<{ balance: number; plan: string }>> {

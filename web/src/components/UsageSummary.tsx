@@ -4,7 +4,7 @@
 
 import { X, FileCheck, Key } from 'lucide-react';
 import { useStore, useCreditBalance, useModels, useByokEnabled, useSettledCredits } from '../store';
-import { calculateSessionCreditsFromChunks } from '../services/billing';
+import { calculateSessionCreditsFromChunks, isBillingTestSubscription } from '../services/billing';
 import { hasApiKey } from '../services/extraction';
 import { useShowTokenDetails } from '../lib/useShowTokenDetails';
 import { ModalOverlay } from './ModalOverlay';
@@ -13,12 +13,13 @@ export function UsageSummary() {
   const currentUsage = useStore((s) => s.currentUsage);
   const showUsageSummary = useStore((s) => s.showUsageSummary);
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
+  const subscription = useStore((s) => s.subscription);
   const creditBalance = useCreditBalance();
   const showTokenDetails = useShowTokenDetails();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
   const settledCredits = useSettledCredits();
-  const isUsingPersonalKey = byokEnabled && hasApiKey();
+  const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
 
   if (!showUsageSummary) return null;
 

@@ -1,37 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_ENABLED, requireAuth } from '@/lib/auth';
+import { AUTH_ENABLED } from '@/lib/auth';
 import { checkAnalyzeEligibility } from '@/lib/balanceCache';
+import { resolveBillingContext } from '@/lib/billingContext';
+import { createBillingTestHold } from '@/lib/billingTestSessionStore';
 import { registerHoldSession } from '@/lib/holdSessionCache';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { proxyToCatcident } from '@/services/billingProxy';
 
 export async function POST(request: NextRequest) {
   try {
-    if (!AUTH_ENABLED) {
+    const context = await resolveBillingContext(request);
+    if ('error' in context) return context.error;
+
+    if (!AUTH_ENABLED && context.kind === 'none') {
       return NextResponse.json({ error: 'Billing not available' }, { status: 400 });
     }
 
-    const authResult = await requireAuth();
-    if ('error' in authResult) return authResult.error;
-    const { userId, accessToken } = authResult;
+    const userId = context.kind === 'none' ? null : context.userId;
+    const accessToken = context.kind === 'authenticated' ? context.accessToken : undefined;
 
-    const limited = checkRateLimit(userId);
-    if (limited) {
-      return NextResponse.json(
-        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) } },
-      );
+    if (userId) {
+      const limited = checkRateLimit(userId);
+      if (limited) {
+        return NextResponse.json(
+          { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+          { status: 429, headers: { 'Retry-After': String(Math.ceil(limited.retryAfterMs / 1000)) } },
+        );
+      }
     }
 
     let rawBody: Record<string, unknown>;
     try {
       rawBody = await request.json();
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 },
+      );
     }
 
     // BYOK: hold 불필요 — 크레딧 차감 없음
     if (rawBody.byok === true) {
+      if (context.kind === 'mock') {
+        return NextResponse.json(
+          { error: 'Mock billing test session requires held credits.' },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ hold_token: null, byok: true });
     }
 
@@ -41,6 +56,31 @@ export async function POST(request: NextRequest) {
 
     if (typeof estimatedCredits !== 'number' || typeof model !== 'string' || typeof totalChunks !== 'number') {
       return NextResponse.json({ error: 'Missing required fields: estimated_credits, model, total_chunks' }, { status: 400 });
+    }
+
+    if (estimatedCredits <= 0) {
+      return NextResponse.json({ error: 'estimated_credits must be greater than 0' }, { status: 400 });
+    }
+
+    if (context.kind === 'mock') {
+      const data = createBillingTestHold(context.sessionId, estimatedCredits);
+      if (!data) {
+        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+      }
+
+      registerHoldSession(context.userId, data.holdToken, data.amount, data.expiresAt);
+      console.log(`[session] mock hold created for ${context.userId}: token=${data.holdToken}, amount=${data.amount}`);
+
+      return NextResponse.json({
+        hold_token: data.holdToken,
+        amount: data.amount,
+        expires_at: data.expiresAt,
+        balance_after: data.balanceAfter,
+      });
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Billing not available' }, { status: 400 });
     }
 
     // 잔액 확인 안전망

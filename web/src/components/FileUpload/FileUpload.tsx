@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useCanBatchAnalysis, useAuthEnabled } from '../../store';
 import { extractKnowledgeGraph, loadProgress, clearProgress, syncPartialAnalysis, hasApiKey, setApiKey, getApiKey, removeApiKey, validateApiKey, FILE_SEPARATOR, type ExtractionProgress } from '../../services/extraction';
 import { saveKnowledgeGraph, getSavedKnowledgeGraphList } from '../../services/storage';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, estimateUsageFromText, checkCreditSufficiency } from '../../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateUsageLocally, estimateUsageFromText, checkCreditSufficiency, isBillingTestSubscription } from '../../services/billing';
 import { requestCreditConfirmation } from '../../store';
 import { createEntityEmbeddings, createChunkEmbeddings, type ChunkData } from '../../services/embedding';
 import { readFileAsText } from '../../services/fileReader';
@@ -338,7 +338,7 @@ export function FileUpload() {
       }
 
       // 세션 hold: BYOK가 아닌 경우 잔액 확인 + billing 활성 시 hold
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {
@@ -472,7 +472,7 @@ export function FileUpload() {
     setProgress(`이어하기: ${savedProgress.processedChunks}/${savedProgress.totalChunks}부터...`);
 
     await runExtraction(async () => {
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
 
       // 만료 모델이면 현재 선택된 모델로 override
       const resumeModel = invalidSavedModel ? currentModel : (savedProgress.model || currentModel);
@@ -651,7 +651,7 @@ export function FileUpload() {
       }
 
       // 세션 hold: BYOK가 아닌 경우 잔액 확인 + billing 활성 시 hold
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
       let holdToken: string | null = null;
 
       if (!isUsingPersonalKey) {

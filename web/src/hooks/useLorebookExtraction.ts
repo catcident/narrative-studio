@@ -7,7 +7,7 @@ import { useState, useCallback } from 'react';
 import { useStore, useBillingSubscription, useModels, useByokEnabled, useAuthEnabled } from '../store';
 import { extractLorebookOnly } from '../services/extraction';
 import { hasApiKey, getByokMode } from '../services/extraction';
-import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateLorebookOnlyCost, checkCreditSufficiency } from '../services/billing';
+import { createBillingCallback, ensureSufficientBalance, holdCredits, finalizeHold, estimateLorebookOnlyCost, checkCreditSufficiency, isBillingTestSubscription } from '../services/billing';
 import { requestCreditConfirmation } from '../store';
 import { saveKnowledgeGraph } from '../services/storage';
 import { getAvailableModelIds } from '../types';
@@ -49,7 +49,7 @@ export function useLorebookExtraction(): UseLorebookExtractionResult {
 
     try {
       const model = knowledgeGraph.metadata.model;
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
 
       // 텍스트 길이 계산 (sourceFiles에서)
       const charCount = (knowledgeGraph.metadata.sourceFiles ?? [])

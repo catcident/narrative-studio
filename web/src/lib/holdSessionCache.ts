@@ -187,3 +187,12 @@ export function clearHoldSession(userId: string, holdToken: string): void {
   if (entry.userId !== userId) return;
   holdSessions.delete(holdToken);
 }
+
+export function clearHoldSessionsForUser(userId: string): void {
+  cleanupStaleSessions();
+  for (const [holdToken, entry] of holdSessions) {
+    if (entry.userId === userId) {
+      holdSessions.delete(holdToken);
+    }
+  }
+}

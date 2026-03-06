@@ -7,7 +7,7 @@ import { useStore, useIsValidating, useValidatingFileId, useBillingSubscription,
 import { updateKnowledgeGraph } from '../services/storage';
 import { validateFile } from '../services/validation';
 import { hasApiKey, getApiKey } from '../services/extraction';
-import { ensureSufficientBalance, holdCredits, finalizeHold, estimateValidationCost, checkCreditSufficiency } from '../services/billing';
+import { ensureSufficientBalance, holdCredits, finalizeHold, estimateValidationCost, checkCreditSufficiency, isBillingTestSubscription } from '../services/billing';
 import { requestCreditConfirmation } from '../store';
 import { useAddFileAnalysis } from './useAddFileAnalysis';
 import {
@@ -180,7 +180,7 @@ export function useSourceTextView() {
     const chunkUsages: ChunkUsage[] = [];
 
     try {
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
       const validationModel = knowledgeGraph.metadata.model;
 
       // 단일 파일 검증: LLM 호출 1회 (첫 파일은 자동 통과 — validateFile 내부 처리)
@@ -264,7 +264,7 @@ export function useSourceTextView() {
     abortValidationRef.current = false;
 
     try {
-      const isUsingPersonalKey = byokEnabled && hasApiKey();
+      const isUsingPersonalKey = !isBillingTestSubscription(subscription) && byokEnabled && hasApiKey();
       const validationModel = knowledgeGraph.metadata.model;
 
       let startIndex = 1;
