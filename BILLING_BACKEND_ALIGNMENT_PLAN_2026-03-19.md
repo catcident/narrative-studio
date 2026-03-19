@@ -1,362 +1,163 @@
 # Billing Backend Alignment Plan (2026-03-19)
 
-## 상태
+## 현재 결론
 
-2026-03-19 기준 `narrative-studio` 적용 완료.
+`catcident-backend`는 이제 StoryGraph 외부 연동에 필요한 canonical billing 계약을 제공한다.
 
-- 추가:
-  - `web/src/lib/billingBackend.ts`
-  - `web/src/app/api/billing/public-pricing/route.ts`
-- 갱신:
-  - `web/src/app/api/billing/subscription/route.ts`
-  - `web/src/app/api/billing/credits/balance/route.ts`
-  - `web/src/services/billing.ts`
-  - `web/src/components/landing/PricingSection.tsx`
-  - `web/src/components/SubscriptionPage.tsx`
-  - `web/src/lib/balanceCache.ts`
-  - `web/src/lib/versionHistory.ts`
-  - `web/src/middleware.ts`
-- 제거:
-  - `web/src/app/api/billing/plans/route.ts`
-  - `web/src/app/api/billing/packages/route.ts`
-
-검증 메모:
-
-- `npm run build` 통과
-- `next lint`는 저장소 ESLint 미설정으로 미실행
-- `npx tsc --noEmit`는 이번 변경과 무관한 기존 오류로 실패
-
-아래 본문은 구현 직전 분석/계획 기록이며, 위 상태 섹션이 현재 결과를 덮어쓴다.
-
-## 목적
-
-`narrative-studio`를 현재 `catcident-backend` billing 계약에 맞춘다.
-
-- 레거시 `/plans`, `/subscription`, `/packages` 전제를 제거
-- 현재 backend의 `billing` 경로/응답에 맞는 adapter를 프론트에 둔다
-- 랜딩 페이지 공개 pricing은 backend의 새 공개 endpoint를 사용한다
-
-기준 backend 브랜치/커밋:
-
-- `catcident-backend` `main`
-- `2355e73`
-
-## 현재 backend 계약
-
-### 1. 공개 pricing endpoint
-
-비로그인 사용자도 호출 가능:
-
-`GET /api/v1/billing/public/pricing/?service=<service_code>`
-
-예시:
-
-```json
-{
-  "service": {
-    "code": "storygraph",
-    "name": "StoryGraph - 인물 관계도",
-    "status": "active",
-    "base_url": "https://storygraph.catcident.com",
-    "allow_platform_topup": true
-  },
-  "plans": [
-    {
-      "id": 1,
-      "service_code": "storygraph",
-      "code": "free",
-      "name": "Free",
-      "sort_order": 0,
-      "monthly_credits": 50,
-      "included_service_credits": 50,
-      "price_krw": 0,
-      "features": { "...": "..." },
-      "feature_flags": { "...": "..." },
-      "is_public": true
-    }
-  ],
-  "topup_packages": [
-    {
-      "id": 1,
-      "code": "topup-550",
-      "service_code": "storygraph",
-      "name": "550 크레딧",
-      "credits": 550,
-      "price_krw": 4900,
-      "bonus_pct": 0,
-      "scope_type": "platform",
-      "bonus_policy": {}
-    }
-  ]
-}
-```
-
-### 2. 인증 필요 billing API
-
+- `GET /api/v1/billing/public/pricing/?service=storygraph`
+- `POST /api/v1/billing/subscriptions/bootstrap/`
 - `GET /api/v1/billing/subscriptions/`
-  - 사용자 구독 목록
-  - StoryGraph는 여기서 `service_code === "storygraph"` 인 row를 선택해야 함
-- `GET /api/v1/billing/topup-packages/`
-  - 인증 필요 충전 상품 목록
-  - 현재는 공개 pricing endpoint의 `topup_packages`를 먼저 쓰고, 필요 시 이 endpoint를 보조적으로 사용할 수 있음
-- `GET /api/v1/billing/credits/transactions/?service=storygraph`
-- `POST /api/v1/billing/credits/hold/`
-- `POST /api/v1/billing/credits/settle/`
-- `POST /api/v1/billing/credits/release/`
+- `GET /api/v1/billing/credits/wallet/`
 
-### 3. 현재 결제/구독 페이지 URL
+`narrative-studio`는 이미 공개 pricing과 `subscriptions/` read path에는 맞춰져 있지만, **`subscriptions/bootstrap/`는 아직 호출하지 않는다.**
+따라서 현재 코드는 로그인 직후에도 real `ServiceSubscription` row가 없을 수 있고, free fallback이 그 상태를 가려 주는 구조다.
 
-- 구독 시작:
-  - `/ko/billing/services/storygraph/subscribe/?plan=<plan_code>&return_url=<url>`
-- 충전 시작:
-  - `/ko/billing/credits/checkout/?package=<package_id>&return_url=<url>`
-- 레거시 제거됨:
-  - `/ko/billing/subscribe/`
-  - `/ko/billing/checkout/`
-  - `/ko/billing/subscription/`
+이 문서는 현재 코드 기준으로 남은 작업을 정리한 follow-up 계획이다.
 
-## 현재 narrative-studio에서 깨진 지점
+## 현재 코드 상태
 
-### 레거시 API 경로
+### 이미 맞춰진 부분
 
-- `web/src/app/api/billing/plans/route.ts`
-  - 현재 `/api/v1/billing/plans/?service=storygraph` 전제
+- 랜딩/구독 모달의 공개 pricing source는 `GET /api/billing/public-pricing`
+- 이 프록시는 backend `GET /api/v1/billing/public/pricing/?service=storygraph`를 사용
+- `GET /api/billing/subscription`은 backend `GET /api/v1/billing/subscriptions/`를 읽고 `storygraph` row를 선택
+- `GET /api/billing/credits/balance`도 같은 normalized subscription 어댑터를 사용
+- 외부 결제 진입 URL은 현재 billing portal 기준으로 이미 보정되어 있음
+
+### 아직 안 맞춰진 부분
+
+- `web/src/lib/billingBackend.ts`
+  - `fetchStorygraphSubscription()`은 `GET /api/v1/billing/subscriptions/`만 읽음
+  - `storygraph` row가 없으면 public pricing + wallet summary로 free fallback을 합성함
 - `web/src/app/api/billing/subscription/route.ts`
-  - 현재 `/api/v1/billing/subscription/?service=storygraph` 전제
-- `web/src/app/api/billing/packages/route.ts`
-  - 현재 `/api/v1/billing/packages/?service=storygraph` 전제
+  - authenticated 사용자여도 bootstrap 호출 없이 바로 `fetchStorygraphSubscription()`만 실행함
+- `web/src/lib/balanceCache.ts`, `web/src/lib/versionHistory.ts`
+  - 같은 helper를 재사용하므로 real row 대신 fallback subscription을 볼 수 있음
 
-### 레거시 checkout URL
+### 이 상태의 실제 영향
 
-- `web/src/components/SubscriptionPage.tsx`
-  - 현재 `/ko/billing/subscribe/?plan=...`
-  - 현재 `/ko/billing/checkout/?package=...`
-
-### 응답 shape mismatch
-
-현재 프론트가 기대하는 구독 shape:
-
-```ts
-{
-  subscription_id: number;
-  service_code: string;
-  plan: {
-    code: string;
-    name: string;
-    monthly_credits: number;
-    price_krw: number;
-  };
-  features: PlanFeatures;
-  credit_balance: number;
-  purchased_credit_balance: number;
-}
-```
-
-현재 backend `subscriptions/` row는 flat shape이다:
-
-```ts
-{
-  id: number;
-  service_code: string;
-  service_name: string;
-  plan_code: string;
-  plan_name: string;
-  plan_price_krw: number;
-  included_service_credits: number;
-  feature_flags: PlanFeatures;
-  credit_balance: number;
-  purchased_credit_balance: number;
-  status: string;
-  expires_at: string | null;
-  renewal_anchor_at: string | null;
-  auto_renew: boolean;
-}
-```
-
-즉, 프론트에서 adapter가 필요하다.
+- 로그인/OIDC 승인만으로 real `ServiceSubscription` row가 보장되지 않음
+- 첫 billing 진입이 `hold`가 아니면 signup bonus를 포함한 canonical 상태가 늦게 보일 수 있음
+- 현재 UI는 fallback 덕분에 바로 깨지지는 않지만, `subscription_id=0`인 synthetic 상태가 정상 경로를 대신하고 있음
+- 새로운 서비스 프론트가 같은 패턴을 복제하면 같은 문제가 다시 생길 수 있음
 
 ## 권장 구현 방향
 
-backend에 레거시 호환 endpoint를 더 붙이지 말고, `narrative-studio`에서 아래 adapter를 둔다.
+핵심 원칙은 다음과 같다.
 
-### A. 공개 pricing
-
-신규 프록시 route 추가:
-
-- `web/src/app/api/billing/public-pricing/route.ts`
-
-동작:
-
-- backend `/api/v1/billing/public/pricing/?service=storygraph` 프록시
-- 인증 불필요
-
-이 route는 아래 두 군데에서 공용 사용:
-
-- `web/src/components/landing/PricingSection.tsx`
-- `web/src/components/SubscriptionPage.tsx`
-
-### B. 구독 로딩
-
-`/subscription` singular endpoint를 더 이상 사용하지 않는다.
-
-- `web/src/app/api/billing/subscription/route.ts`
-  - backend `/api/v1/billing/subscriptions/` 호출
-  - 응답 배열에서 `service_code === "storygraph"`인 row 하나를 선택
-  - 없으면 free/default fallback 또는 `null`
-  - 선택한 row를 기존 `SubscriptionInfo` shape로 변환해서 반환
-
-권장 adapter 함수 예시:
-
-```ts
-function mapBackendSubscriptionRow(row: BackendSubscriptionRow): SubscriptionInfo {
-  return {
-    subscription_id: row.id,
-    service_code: row.service_code,
-    plan: {
-      code: row.plan_code,
-      name: row.plan_name,
-      monthly_credits: row.included_service_credits,
-      price_krw: row.plan_price_krw,
-    },
-    status: row.status,
-    credit_balance: row.credit_balance,
-    purchased_credit_balance: row.purchased_credit_balance,
-    credit_reset_at: row.renewal_anchor_at,
-    features: row.feature_flags,
-    started_at: '',
-    expires_at: row.expires_at,
-  };
-}
-```
-
-`started_at`이 현재 backend row에 꼭 필요하지 않다면 타입을 완화하는 편이 낫다.
-
-### C. 플랜/패키지 source 통합
-
-현재 `getPlans()`와 `getCreditPackages()`는 별도 legacy route를 쓴다.
-
-권장:
-
-- `getPlans()`는 `public-pricing` 응답의 `plans` 사용
-- `getCreditPackages()`는 `public-pricing` 응답의 `topup_packages` 사용
-
-즉, 요금제/패키지는 하나의 source로 통합한다.
-
-### D. Checkout URL 교체
-
-`web/src/components/SubscriptionPage.tsx`
-
-- 구독 버튼:
-  - 기존: `/ko/billing/subscribe/?plan=...`
-  - 변경: `/ko/billing/services/storygraph/subscribe/?plan=...`
-- 충전 버튼:
-  - 기존: `/ko/billing/checkout/?package=...`
-  - 변경: `/ko/billing/credits/checkout/?package=...`
+1. authenticated 사용자의 정상 경로는 **bootstrap -> read** 순서로 바꾼다.
+2. free fallback은 **장애/경계 상황 대비용 보조 경로**로만 남긴다.
+3. backend에 side-effect가 있는 GET을 만들지 않고, bootstrap은 명시적 POST로 유지한다.
 
 ## 파일별 작업 계획
 
-### 1. `web/src/services/billing.ts`
+### 1. `web/src/lib/billingBackend.ts`
 
-수정:
+추가할 것:
 
-- `getPlans()` 구현 교체
-- `getCreditPackages()` 구현 교체
-- `SubscriptionInfo` / `ServicePlan` / `CreditPackage` 타입을 새 backend contract와 맞게 재검토
-- backend row → UI type adapter 함수 추가
+- `bootstrapStorygraphSubscription(accessToken: string)` helper
+  - upstream: `POST /api/v1/billing/subscriptions/bootstrap/`
+  - body: `{ service_code: 'storygraph' }`
+- `ensureStorygraphSubscription(accessToken: string)` helper
+  - 순서:
+    1. bootstrap POST 시도
+    2. `GET /api/v1/billing/subscriptions/` 재조회
+    3. 그래도 row가 없으면 기존 fallback 사용
+
+정리할 것:
+
+- 현재 `fetchStorygraphSubscription()`의 역할을 read-only helper로 유지할지,
+  `ensureStorygraphSubscription()` 내부로 흡수할지 결정
+- public pricing + wallet 기반 fallback 로직은 유지하되, 이름/주석에서 "primary path"처럼 읽히지 않게 정리
+
+### 2. `web/src/app/api/billing/subscription/route.ts`
+
+권장 최소 변경:
+
+- authenticated 요청이면 `fetchStorygraphSubscription()` 대신 `ensureStorygraphSubscription()` 호출
+- mock/session 경로는 그대로 유지
+- bootstrap 실패 시에도 전체 요청을 즉시 hard fail하지 말고, 이후 read/fallback을 시도한 뒤 최종 실패만 502로 반환
+
+이 방식의 장점:
+
+- 클라이언트 API 계약을 바꾸지 않아도 됨
+- 기존 `loadSubscription()` 호출부를 전혀 건드리지 않아도 됨
+- 로그인 직후 첫 subscription fetch가 곧 canonical bootstrap 지점이 됨
+
+### 3. `web/src/lib/balanceCache.ts`
+
+검토 포인트:
+
+- analyze/chat 사전 자격 확인이 synthetic fallback이 아니라 canonical row를 우선 보게 할지 결정
+- 보수적으로는 현재 helper를 유지해도 되지만, 장기적으로는 `ensureStorygraphSubscription()`을 사용하는 편이 낫다
 
 권장:
 
-- backend raw type과 UI normalized type을 분리
+- authenticated + access token이 있을 때는 ensure helper 사용
+- 단, bootstrap 장애 시 fail-open 정책은 그대로 유지
 
-### 2. `web/src/app/api/billing/plans/route.ts`
+### 4. `web/src/lib/versionHistory.ts`
 
-권장:
-
-- 삭제하거나 deprecated 처리
-- 대신 `public-pricing/route.ts`로 통합
-
-### 3. `web/src/app/api/billing/packages/route.ts`
+현재는 단순 조회에서도 fallback subscription을 볼 수 있다.
 
 권장:
 
-- 삭제하거나 deprecated 처리
-- `public-pricing` 기반으로 대체
+- billing 상태를 화면 기준 canonical하게 맞추고 싶다면 ensure helper 사용
+- 만약 이 경로에 side effect를 넣고 싶지 않다면, 최소한 호출부 주석에 "fallback may be synthetic"를 명시
 
-### 4. `web/src/app/api/billing/public-pricing/route.ts`
+### 5. `web/src/lib/AGENTS.md`, `web/AGENTS.md`, `docs/BILLING_BLUEPRINT.md`, `docs/payment/*`
 
-신규:
+문서 정렬 필요:
 
-- backend 공개 pricing endpoint 프록시
-- 인증 불필요
+- backend에 `POST /api/v1/billing/subscriptions/bootstrap/`가 추가됐음을 반영
+- 현재 narrative-studio는 아직 bootstrap을 쓰지 않는다는 점을 명시
+- free fallback은 유지하지만, 앞으로의 정상 경로는 bootstrap-first라고 기록
 
-### 5. `web/src/app/api/billing/subscription/route.ts`
+## 권장 구현 순서
 
-수정:
+1. `billingBackend.ts`에 bootstrap helper 추가
+2. `subscription/route.ts`를 bootstrap-first로 전환
+3. `balanceCache.ts`/`versionHistory.ts`에서 helper 사용 범위 결정
+4. 관련 AGENTS/docs 업데이트
+5. 수동 검증 + 회귀 테스트 추가
 
-- `/subscription/` → `/subscriptions/`
-- 배열에서 storygraph row 선택
-- UI 구독 shape로 normalize
+## 테스트 / 검증 체크리스트
 
-### 6. `web/src/components/landing/PricingSection.tsx`
+### 자동화
 
-수정:
+- authenticated 사용자, 기존 `storygraph` subscription row 없음
+  - `GET /api/billing/subscription` 호출 후 real row 반환
+  - `subscription_id !== 0`
+- bootstrap 재호출
+  - 중복 row 생성 없음
+  - 기존 subscription 반환
+- bootstrap 실패 + subscriptions read 가능
+  - 기존 fallback 또는 read 결과로 graceful handling
+- mock billing session 경로
+  - 기존 동작 유지
 
-- fetch 경로를 `/api/billing/public-pricing`로 변경
-- `plans` 배열 parsing을 새 응답 shape에 맞게 단순화
+### 수동 확인
 
-### 7. `web/src/components/SubscriptionPage.tsx`
+- 신규 로그인 직후 첫 구독 조회에서 free 플랜과 signup bonus가 canonical 상태로 보이는지 확인
+- 첫 analyze 이전에도 `CreditBadge`/구독 모달이 synthetic row가 아닌 real row를 쓰는지 확인
+- billing backend가 일시적으로 느리거나 실패할 때 UI가 과도하게 깨지지 않는지 확인
 
-수정:
+## 비목표
 
-- plans/packages source를 `public-pricing` 기반으로 변경
-- checkout/subscribe URL 변경
-- 현재 구독 표시와 public catalog의 타입 차이를 adapter 기준으로 맞춤
+- backend의 OIDC 승인 흐름에 subscription 생성 side effect를 추가하지 않음
+- legacy singular `/api/v1/billing/subscription/`를 복구하지 않음
+- `/api/billing/subscription` 클라이언트 계약을 새 POST route로 분리하지 않음
+  - 필요 최소 변경 기준으로는 existing GET route 내부 bootstrap이 가장 단순함
 
-### 8. `web/src/store.ts`
+## 참고 파일
 
-수정:
-
-- `loadSubscription()`가 새 normalized 응답을 안정적으로 반영하도록 유지
-- `subscription === null` fallback 동작을 다시 점검
-
-## 구현 순서
-
-1. backend 공개 pricing endpoint를 사용하는 신규 프록시 route 추가
-2. `billing.ts`에 raw type / adapter 도입
-3. `subscription/route.ts`를 `subscriptions/` 기반으로 교체
-4. `PricingSection.tsx`를 신규 공개 pricing route 사용으로 변경
-5. `SubscriptionPage.tsx`를 신규 공개 pricing route + 새 checkout URL로 변경
-6. 사용되지 않는 legacy plans/packages route 제거 또는 deprecated 처리
-7. smoke test
-
-## 검증 체크리스트
-
-### 비로그인
-
-- 랜딩 페이지 pricing 카드 표시
-- free/basic/pro 가격 정상 표시
-- 플랜 feature 문구 표시
-
-### 로그인
-
-- 헤더 크레딧 배지 표시
-- 사용자 메뉴 플랜 배지 표시
-- 구독 모달에서 플랜 비교 표시
-- 구독 모달에서 충전 패키지 표시
-- 구독 버튼이 `/ko/billing/services/storygraph/subscribe/`로 이동
-- 충전 버튼이 `/ko/billing/credits/checkout/`로 이동
-
-### 회귀
-
-- hold / settle / release 동작 유지
-- mock billing session 모드 유지
-- AUTH_ENABLED=false fallback 유지
-
-## 메모
-
-장기적으로는 서비스 프론트 공통으로 사용할 billing client contract를 문서화하는 것이 좋다.
-
-후속 권장:
-
-- `catcident-backend` billing API 계약 문서 추가
-- `narrative-studio`에서 `raw backend response`와 `UI state type`을 명확히 분리
+- `web/src/lib/billingBackend.ts`
+- `web/src/app/api/billing/subscription/route.ts`
+- `web/src/lib/balanceCache.ts`
+- `web/src/lib/versionHistory.ts`
+- `web/src/store.ts`
+- `web/src/services/billing.ts`
+- `web/AGENTS.md`
+- `web/src/lib/AGENTS.md`
+- `docs/BILLING_BLUEPRINT.md`
+- `docs/payment/IMPLEMENTATION_AUDIT_2026-02-13.md`

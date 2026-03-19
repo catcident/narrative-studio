@@ -39,6 +39,7 @@
 
 - `GET /api/v1/billing/public/pricing/?service=storygraph`
 - `GET /api/v1/billing/subscriptions/`
+- `POST /api/v1/billing/subscriptions/bootstrap/` (backend available, narrative-studio 미채택)
 - `GET /api/v1/billing/credits/wallet/`
 - `GET /api/v1/billing/credits/transactions/?service=storygraph`
 - `POST /api/v1/billing/credits/hold/`
@@ -94,8 +95,9 @@
   - 인증 불필요
 - `GET /api/billing/subscription`
   - 업스트림: `/api/v1/billing/subscriptions/`
-  - `service_code === "storygraph"` row를 선택해 normalized subscription 반환
-  - row가 없으면 공개 pricing의 free 플랜 + wallet grants로 fallback 합성
+  - 현재는 `service_code === "storygraph"` row를 선택해 normalized subscription 반환
+  - backend에는 `POST /api/v1/billing/subscriptions/bootstrap/`가 추가됐지만, narrative-studio는 아직 이 bootstrap을 호출하지 않음
+  - 따라서 row가 없으면 공개 pricing의 free 플랜 + wallet grants로 fallback 합성
 - `GET /api/billing/credits/balance`
   - 위와 동일한 정규화 결과에서 `{ balance, plan }` 스냅샷 반환
 - `GET /api/billing/credits/transactions?page=N`
@@ -165,9 +167,13 @@ storygraph는 결제 포털 진입만 제공한다.
 - 장점: 장애 전파 완화
 - 단점: 과금 시스템 장애 시 비용 통제 약화
 
-### 7.4 [Medium] free fallback 경로 자동화 검증 부족
+### 7.4 [Medium] authenticated bootstrap 미채택
 
-`subscriptions/`에 `storygraph` row가 없는 신규 사용자에 대한 fallback은 구현되어 있으나, 전용 회귀 테스트는 아직 없다.
+backend는 `POST /api/v1/billing/subscriptions/bootstrap/`를 제공하지만, 현재 narrative-studio는 이를 사용하지 않는다.
+
+- 결과적으로 `subscriptions/`에 `storygraph` row가 없는 신규 사용자는 free fallback에 의존한다
+- 이 fallback은 UI 안정성에는 도움이 되지만, canonical row와 signup bonus를 즉시 보장하지는 않는다
+- 전용 bootstrap adoption과 회귀 테스트가 후속 작업으로 필요하다
 
 ## 8. 확인된 제거 사항
 

@@ -31,6 +31,7 @@ billing 서비스 미응답 또는 익명 사용자일 때 기본 제한:
 - `DEFAULT_MAX_SAVED_GRAPHS = 3` (그래프 수)
 - `DEFAULT_MAX_VERSIONS = 3` (버전 히스토리 수, FIFO)
 - 인증 사용자는 normalized subscription adapter(`subscriptions/` + free fallback)에서 플랜 features를 조회
+- backend `subscriptions/bootstrap/` 채택 전까지는 이 subscription이 synthetic fallback일 수 있음
 
 유료 사용자는 플랜 features에서 값을 받으므로 영향 없음.
 

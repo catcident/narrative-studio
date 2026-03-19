@@ -10,8 +10,8 @@
   - backend billing 계약 정렬 결과와 잔여 리스크
 
 - `../BILLING_BACKEND_ALIGNMENT_PLAN_2026-03-19.md`
-  - backend 계약 정렬 작업 계획과 구현 범위
-  - 레거시 `/plans` / `/packages` / singular `/subscription` 제거 배경
+  - 2026-03-19 기준 backend 정렬 이후 남은 narrative-studio follow-up 계획
+  - 핵심 주제: `subscriptions/bootstrap/` 채택, fallback의 보조 경로화, 관련 파일별 수정 순서
 
 - `../launch/05-결제시스템-TossPayments.md`
   - catcident-backend 결제 포털 및 TossPayments 연동 설계

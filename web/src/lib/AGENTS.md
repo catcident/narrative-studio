@@ -182,6 +182,7 @@ catcident-backend의 현재 billing 계약을 StoryGraph 프론트 전용 shape�
 
 - `fetchStorygraphPublicPricing()` → `/api/v1/billing/public/pricing/?service=storygraph`
 - `fetchStorygraphSubscription()` → `/api/v1/billing/subscriptions/`에서 `service_code === "storygraph"` row 선택 후 normalized 구독 반환
+- backend는 `POST /api/v1/billing/subscriptions/bootstrap/`도 제공하지만, 2026-03-19 현재 narrative-studio helper는 아직 이를 호출하지 않는다
 - `fetchStorygraphBalanceSnapshot()` → 정규화된 구독에서 `{ balance, plan }` 스냅샷 생성
 - `fetchStorygraphWalletSummary()` → `/api/v1/billing/credits/wallet/`
 
@@ -190,7 +191,7 @@ catcident-backend의 현재 billing 계약을 StoryGraph 프론트 전용 shape�
 - usable balance는 `platform` grant와 `serviceCode === "storygraph"` grant만 합산
 - `purchased_credit_balance`는 wallet summary에 source 구분이 없으므로 fallback에서는 `0`
 
-이 모듈은 다음 서버 소비 지점의 단일 진실 원천이다:
+이 모듈은 다음 서버 소비 지점의 단일 진실 원천이다. 다만 authenticated happy path는 이후 `bootstrap -> read` 순서로 보강하는 것이 권장된다:
 - `/api/billing/subscription`
 - `/api/billing/credits/balance`
 - `balanceCache.ts`
@@ -239,7 +240,7 @@ updateBalanceCache(userId, balance_after);
 동일 request 내 `requireAuth()` 중복 호출을 방지하기 위해, 호출자가 사전 해결한 `userId`와 `accessToken`을 전달해야 함.
 
 **⚠️ free fallback 영향**: backend `subscriptions/` row가 아직 없더라도 `storygraph` free 플랜 fallback으로 잔액/feature 판단이 이루어진다.
-따라서 신규 로그인 사용자도 첫 hold 이전에 플랜/잔액 UX가 안정적으로 동작한다.
+현재는 신규 로그인 사용자도 첫 hold 이전에 플랜/잔액 UX가 안정적으로 동작하지만, 이 값은 synthetic 상태일 수 있으므로 향후 `subscriptions/bootstrap/` 채택 뒤에는 fallback을 보조 경로로만 유지하는 편이 맞다.
 
 **⚠️ BYOK fail-open**: `isCachedByokEnabled()`는 캐시 미스 시 `true` 반환.
 `checkAnalyzeEligibility()`가 먼저 실행되어 캐시를 갱신하므로, 캐시 미스는 billing 서비스 장애를 의미.

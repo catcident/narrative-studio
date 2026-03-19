@@ -8,8 +8,10 @@ catcident-backend(플랫폼)과 narrative-studio(서비스)에 걸친 전체 구
 > - 현재 StoryGraph 공개 pricing source는 `GET /api/v1/billing/public/pricing/?service=storygraph`다.
 > - 현재 인증 구독 source는 `GET /api/v1/billing/subscriptions/`이며, StoryGraph는 여기서 `service_code === "storygraph"` row를 선택한다.
 > - 현재 wallet summary source는 `GET /api/v1/billing/credits/wallet/`이다.
+> - backend는 `POST /api/v1/billing/subscriptions/bootstrap/`도 제공한다.
 > - narrative-studio 공개 프록시는 `GET /api/billing/public-pricing`를 사용한다.
 > - narrative-studio는 레거시 `/api/billing/plans`, `/api/billing/packages`, backend singular `/subscription/`, `/credits/estimate`, `/usage/`를 사용하지 않는다.
+> - 다만 2026-03-19 현재 authenticated 정상 경로의 `subscriptions/bootstrap/` 채택은 아직 남아 있고, `subscriptions/` row가 없을 때는 free fallback이 대신 사용된다.
 > - 실제 과금은 `/api/session/hold`, `/api/session/settle`, `/api/session/release` 세션 흐름으로 오케스트레이션된다.
 
 ## 설계 원칙
