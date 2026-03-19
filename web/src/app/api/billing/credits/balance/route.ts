@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchStorygraphBalanceSnapshot } from '@/lib/billingBackend';
+import { ensureStorygraphBalanceSnapshot, isConfigBillingBackendError } from '@/lib/billingBackend';
 import { resolveBillingContext } from '@/lib/billingContext';
 import { getBillingTestSession } from '@/lib/billingTestSessionStore';
 import { buildBillingTestBalance } from '@/lib/billingTestResponses';
@@ -24,9 +24,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const balance = await fetchStorygraphBalanceSnapshot(context.accessToken);
+    const balance = await ensureStorygraphBalanceSnapshot(context.accessToken);
     return NextResponse.json(balance);
   } catch (err: unknown) {
+    if (isConfigBillingBackendError(err)) {
+      console.error('[billing] credits/balance GET config error:', err.message);
+      return NextResponse.json({ error: 'Billing configuration error' }, { status: 502 });
+    }
     console.error('[billing] credits/balance GET error:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Billing service error' }, { status: 502 });
   }

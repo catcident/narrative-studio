@@ -30,7 +30,7 @@ interface StorageLimits {
   maxSavedGraphs: number;
 }
 
-/** subscription API에서 스토리지 제한을 조회. 실패 시 DEFAULT 폴백. */
+/** subscription API에서 스토리지 제한을 조회. side effect를 피하기 위해 read-only helper를 사용하며, 실패 시 DEFAULT 폴백. */
 export async function fetchStorageLimits(accessToken: string | undefined): Promise<StorageLimits> {
   if (!accessToken) {
     return {

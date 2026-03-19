@@ -11,7 +11,8 @@ catcident-backend(플랫폼)과 narrative-studio(서비스)에 걸친 전체 구
 > - backend는 `POST /api/v1/billing/subscriptions/bootstrap/`도 제공한다.
 > - narrative-studio 공개 프록시는 `GET /api/billing/public-pricing`를 사용한다.
 > - narrative-studio는 레거시 `/api/billing/plans`, `/api/billing/packages`, backend singular `/subscription/`, `/credits/estimate`, `/usage/`를 사용하지 않는다.
-> - 다만 2026-03-19 현재 authenticated 정상 경로의 `subscriptions/bootstrap/` 채택은 아직 남아 있고, `subscriptions/` row가 없을 때는 free fallback이 대신 사용된다.
+> - narrative-studio의 canonical 경로는 `subscriptions/` read-first, miss 시 `subscriptions/bootstrap/`이며, transient 장애에서만 free fallback을 보조 경로로 사용한다.
+> - `versionHistory.ts`의 storage limit 조회는 side effect를 피하기 위해 read-only helper를 유지한다.
 > - 실제 과금은 `/api/session/hold`, `/api/session/settle`, `/api/session/release` 세션 흐름으로 오케스트레이션된다.
 
 ## 설계 원칙
@@ -390,10 +391,10 @@ web/src/app/api/billing/
 ├── public-pricing/
 │   └── route.ts          # GET → catcident /billing/public/pricing/?service=storygraph
 ├── subscription/
-│   └── route.ts          # GET → catcident /billing/subscriptions/ → storygraph row normalize
+│   └── route.ts          # GET → subscriptions read-first, miss 시 bootstrap → normalize
 ├── credits/
 │   ├── balance/
-│   │   └── route.ts      # GET → normalized subscription/wallet snapshot
+│   │   └── route.ts      # GET → canonical subscription 우선 balance snapshot
 │   └── transactions/
 │       └── route.ts      # GET → catcident /billing/credits/transactions/
 ```

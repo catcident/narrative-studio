@@ -7,7 +7,7 @@
  */
 
 import { AUTH_ENABLED } from '@/lib/auth';
-import { fetchStorygraphSubscription } from '@/lib/billingBackend';
+import { ensureStorygraphSubscription, isConfigBillingBackendError } from '@/lib/billingBackend';
 
 interface CacheEntry {
   balance: number;
@@ -69,7 +69,7 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
       return null;
     }
 
-    const subscription = await fetchStorygraphSubscription(accessToken);
+    const subscription = await ensureStorygraphSubscription(accessToken);
     if (!subscription) {
       return null;
     }
@@ -89,6 +89,11 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
 
     return null;
   } catch (err: unknown) {
+    if (isConfigBillingBackendError(err)) {
+      console.error(`[analyze] Billing configuration error: ${err.message}`);
+      return 'Billing is unavailable for this service. Please contact support.';
+    }
+
     // Network error or timeout — fail-open
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[analyze] Balance check failed (allowing analysis): ${message}`);

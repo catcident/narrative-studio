@@ -5,6 +5,8 @@ import { proxyToCatcident } from '@/services/billingProxy';
 
 const STORYGRAPH_SERVICE_CODE = 'storygraph';
 
+type BillingBackendErrorKind = 'transient' | 'config';
+
 export interface NormalizedSubscriptionInfo {
   subscription_id: number;
   service_code: string;
@@ -99,17 +101,60 @@ interface PaginatedResponse<T> {
   results: T[];
 }
 
-async function readUpstreamJson<T>(
+export class BillingBackendError extends Error {
+  readonly kind: BillingBackendErrorKind;
+  readonly status?: number;
+
+  constructor(message: string, kind: BillingBackendErrorKind, status?: number) {
+    super(message);
+    this.name = 'BillingBackendError';
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
+export function isBillingBackendError(error: unknown): error is BillingBackendError {
+  return error instanceof BillingBackendError;
+}
+
+export function isTransientBillingBackendError(error: unknown): error is BillingBackendError {
+  return isBillingBackendError(error) && error.kind === 'transient';
+}
+
+export function isConfigBillingBackendError(error: unknown): error is BillingBackendError {
+  return isBillingBackendError(error) && error.kind === 'config';
+}
+
+function classifyStatus(status: number): BillingBackendErrorKind {
+  return status >= 500 ? 'transient' : 'config';
+}
+
+async function requestUpstreamJson<T>(
   path: string,
   accessToken?: string,
-): Promise<{ ok: true; data: T } | { ok: false; status: number }> {
-  const response = await proxyToCatcident(path, accessToken);
-  if (!response.ok) {
-    return { ok: false, status: response.status };
+  options?: { method?: 'GET' | 'POST'; body?: string },
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await proxyToCatcident(path, accessToken, options);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new BillingBackendError(`${path} request failed: ${message}`, 'transient');
   }
 
-  const data = await response.json() as T;
-  return { ok: true, data };
+  if (!response.ok) {
+    throw new BillingBackendError(
+      `${path} upstream error: ${response.status}`,
+      classifyStatus(response.status),
+      response.status,
+    );
+  }
+
+  try {
+    return await response.json() as T;
+  } catch {
+    throw new BillingBackendError(`${path} invalid JSON response`, 'transient');
+  }
 }
 
 export function mapBackendSubscriptionRow(row: BackendSubscriptionRow): NormalizedSubscriptionInfo {
@@ -138,7 +183,7 @@ function pickFreePlan(catalog: BackendPublicPricingCatalog): BackendPublicPlan |
   return catalog.plans[0] ?? null;
 }
 
-function computeScopedWalletBalance(wallet: BackendWalletSummary): number {
+function computeScopedWalletBalance(wallet: BackendWalletSummary, serviceCode: string): number {
   if (!Array.isArray(wallet.grants) || wallet.grants.length === 0) {
     return wallet.availableTotal ?? 0;
   }
@@ -147,8 +192,8 @@ function computeScopedWalletBalance(wallet: BackendWalletSummary): number {
   for (const grant of wallet.grants) {
     const remaining = typeof grant.remainingCredits === 'number' ? grant.remainingCredits : 0;
     const isPlatform = grant.scopeType === 'platform';
-    const isStorygraph = grant.scopeType === 'service' && grant.serviceCode === STORYGRAPH_SERVICE_CODE;
-    if (isPlatform || isStorygraph) {
+    const isScopedService = grant.scopeType === 'service' && grant.serviceCode === serviceCode;
+    if (isPlatform || isScopedService) {
       total += remaining;
     }
   }
@@ -156,18 +201,19 @@ function computeScopedWalletBalance(wallet: BackendWalletSummary): number {
 }
 
 function buildFreeFallbackSubscription(
+  serviceCode: string,
   catalog: BackendPublicPricingCatalog,
   wallet: BackendWalletSummary,
 ): NormalizedSubscriptionInfo | null {
   const freePlan = pickFreePlan(catalog);
   if (!freePlan) return null;
 
-  const walletBalance = computeScopedWalletBalance(wallet);
+  const walletBalance = computeScopedWalletBalance(wallet, serviceCode);
   const bootstrapCredits = freePlan.included_service_credits ?? freePlan.monthly_credits ?? 0;
 
   return {
     subscription_id: 0,
-    service_code: STORYGRAPH_SERVICE_CODE,
+    service_code: serviceCode,
     plan: {
       code: freePlan.code,
       name: freePlan.name,
@@ -184,56 +230,118 @@ function buildFreeFallbackSubscription(
   };
 }
 
-export async function fetchStorygraphPublicPricing(): Promise<BackendPublicPricingCatalog> {
-  const result = await readUpstreamJson<BackendPublicPricingCatalog>(
-    `/public/pricing/?service=${STORYGRAPH_SERVICE_CODE}`,
+function extractSubscriptionRows(
+  data: PaginatedResponse<BackendSubscriptionRow> | BackendSubscriptionRow[],
+): BackendSubscriptionRow[] {
+  return Array.isArray(data) ? data : data.results;
+}
+
+async function fetchPublicPricingForService(serviceCode: string): Promise<BackendPublicPricingCatalog> {
+  return requestUpstreamJson<BackendPublicPricingCatalog>(
+    `/public/pricing/?service=${serviceCode}`,
     undefined,
   );
-  if (!result.ok) {
-    throw new Error(`public pricing upstream error: ${result.status}`);
-  }
-  return result.data;
 }
 
-export async function fetchStorygraphWalletSummary(accessToken: string): Promise<BackendWalletSummary> {
-  const result = await readUpstreamJson<BackendWalletSummary>('/credits/wallet/', accessToken);
-  if (!result.ok) {
-    throw new Error(`wallet upstream error: ${result.status}`);
-  }
-  return result.data;
+async function fetchWalletSummary(accessToken: string): Promise<BackendWalletSummary> {
+  return requestUpstreamJson<BackendWalletSummary>('/credits/wallet/', accessToken);
 }
 
-export async function fetchStorygraphSubscription(
+async function fetchSubscriptionRowForService(
   accessToken: string,
-): Promise<NormalizedSubscriptionInfo | null> {
-  const subscriptionsResult = await readUpstreamJson<PaginatedResponse<BackendSubscriptionRow> | BackendSubscriptionRow[]>(
+  serviceCode: string,
+): Promise<BackendSubscriptionRow | null> {
+  const data = await requestUpstreamJson<PaginatedResponse<BackendSubscriptionRow> | BackendSubscriptionRow[]>(
     '/subscriptions/',
     accessToken,
   );
+  const rows = extractSubscriptionRows(data);
+  return rows.find((item) => item.service_code === serviceCode) ?? null;
+}
 
-  if (!subscriptionsResult.ok) {
-    throw new Error(`subscriptions upstream error: ${subscriptionsResult.status}`);
+async function bootstrapSubscriptionForService(
+  accessToken: string,
+  serviceCode: string,
+): Promise<BackendSubscriptionRow> {
+  return requestUpstreamJson<BackendSubscriptionRow>(
+    '/subscriptions/bootstrap/',
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify({ service_code: serviceCode }),
+    },
+  );
+}
+
+async function buildFallbackSubscriptionForService(
+  accessToken: string,
+  serviceCode: string,
+): Promise<NormalizedSubscriptionInfo> {
+  const [catalog, wallet] = await Promise.all([
+    fetchPublicPricingForService(serviceCode),
+    fetchWalletSummary(accessToken),
+  ]);
+
+  const fallback = buildFreeFallbackSubscription(serviceCode, catalog, wallet);
+  if (!fallback) {
+    throw new BillingBackendError(`${serviceCode} free plan not found`, 'config');
   }
+  return fallback;
+}
 
-  const rows = Array.isArray(subscriptionsResult.data)
-    ? subscriptionsResult.data
-    : subscriptionsResult.data.results;
-  const row = rows.find((item) => item.service_code === STORYGRAPH_SERVICE_CODE);
+async function ensureSubscriptionForService(
+  accessToken: string,
+  serviceCode: string,
+): Promise<NormalizedSubscriptionInfo> {
+  let row: BackendSubscriptionRow | null;
+  try {
+    row = await fetchSubscriptionRowForService(accessToken, serviceCode);
+  } catch (err: unknown) {
+    if (!isTransientBillingBackendError(err)) {
+      throw err;
+    }
+    console.warn(`[billing] ${serviceCode} subscription read failed, using fallback:`, err.message);
+    return buildFallbackSubscriptionForService(accessToken, serviceCode);
+  }
 
   if (row) {
     return mapBackendSubscriptionRow(row);
   }
 
-  const [catalog, wallet] = await Promise.all([
-    fetchStorygraphPublicPricing(),
-    fetchStorygraphWalletSummary(accessToken),
-  ]);
-
-  const fallback = buildFreeFallbackSubscription(catalog, wallet);
-  if (!fallback) {
-    throw new Error('storygraph free plan not found');
+  try {
+    const bootstrapRow = await bootstrapSubscriptionForService(accessToken, serviceCode);
+    return mapBackendSubscriptionRow(bootstrapRow);
+  } catch (err: unknown) {
+    if (!isTransientBillingBackendError(err)) {
+      throw err;
+    }
+    console.warn(`[billing] ${serviceCode} subscription bootstrap failed, using fallback:`, err.message);
+    return buildFallbackSubscriptionForService(accessToken, serviceCode);
   }
-  return fallback;
+}
+
+export async function fetchStorygraphPublicPricing(): Promise<BackendPublicPricingCatalog> {
+  return fetchPublicPricingForService(STORYGRAPH_SERVICE_CODE);
+}
+
+export async function fetchStorygraphWalletSummary(accessToken: string): Promise<BackendWalletSummary> {
+  return fetchWalletSummary(accessToken);
+}
+
+export async function fetchStorygraphSubscription(
+  accessToken: string,
+): Promise<NormalizedSubscriptionInfo | null> {
+  const row = await fetchSubscriptionRowForService(accessToken, STORYGRAPH_SERVICE_CODE);
+
+  if (row) {
+    return mapBackendSubscriptionRow(row);
+  }
+
+  return buildFallbackSubscriptionForService(accessToken, STORYGRAPH_SERVICE_CODE);
+}
+
+export async function ensureStorygraphSubscription(accessToken: string): Promise<NormalizedSubscriptionInfo> {
+  return ensureSubscriptionForService(accessToken, STORYGRAPH_SERVICE_CODE);
 }
 
 export async function fetchStorygraphBalanceSnapshot(
@@ -243,6 +351,16 @@ export async function fetchStorygraphBalanceSnapshot(
   if (!subscription) {
     return { balance: 0, plan: 'free' };
   }
+  return {
+    balance: subscription.credit_balance,
+    plan: subscription.plan.code,
+  };
+}
+
+export async function ensureStorygraphBalanceSnapshot(
+  accessToken: string,
+): Promise<{ balance: number; plan: string }> {
+  const subscription = await ensureStorygraphSubscription(accessToken);
   return {
     balance: subscription.credit_balance,
     plan: subscription.plan.code,

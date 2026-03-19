@@ -7,11 +7,7 @@
 - `IMPLEMENTATION_AUDIT_2026-02-13.md`
   - 2026-03-19 기준 결제/구독 UI/프록시 감사 문서
   - `/api/billing/public-pricing`, `/api/billing/subscription`, `/api/session/*` 구조
-  - backend billing 계약 정렬 결과와 잔여 리스크
-
-- `../BILLING_BACKEND_ALIGNMENT_PLAN_2026-03-19.md`
-  - 2026-03-19 기준 backend 정렬 이후 남은 narrative-studio follow-up 계획
-  - 핵심 주제: `subscriptions/bootstrap/` 채택, fallback의 보조 경로화, 관련 파일별 수정 순서
+  - `subscriptions/bootstrap/` 채택 결과와 잔여 리스크
 
 - `../launch/05-결제시스템-TossPayments.md`
   - catcident-backend 결제 포털 및 TossPayments 연동 설계

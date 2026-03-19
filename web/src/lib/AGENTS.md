@@ -181,17 +181,18 @@ const response = await fetchWithTimeout(url, options, 120000);
 catcident-backend의 현재 billing 계약을 StoryGraph 프론트 전용 shape로 정규화하는 서버 전용 헬퍼.
 
 - `fetchStorygraphPublicPricing()` → `/api/v1/billing/public/pricing/?service=storygraph`
-- `fetchStorygraphSubscription()` → `/api/v1/billing/subscriptions/`에서 `service_code === "storygraph"` row 선택 후 normalized 구독 반환
-- backend는 `POST /api/v1/billing/subscriptions/bootstrap/`도 제공하지만, 2026-03-19 현재 narrative-studio helper는 아직 이를 호출하지 않는다
-- `fetchStorygraphBalanceSnapshot()` → 정규화된 구독에서 `{ balance, plan }` 스냅샷 생성
+- `fetchStorygraphSubscription()` → read-only helper. `/api/v1/billing/subscriptions/`에서 row를 찾고, 없으면 synthetic fallback 반환
+- `ensureStorygraphSubscription()` → `subscriptions/` read-first, miss 시 `POST /api/v1/billing/subscriptions/bootstrap/`, transient 실패 시에만 fallback 허용
+- `ensureStorygraphBalanceSnapshot()` → canonical 구독 우선 기준 `{ balance, plan }` 스냅샷 생성
 - `fetchStorygraphWalletSummary()` → `/api/v1/billing/credits/wallet/`
 
 **free fallback 규칙**:
 - `subscriptions/`에 `storygraph` row가 없으면 공개 pricing의 free 플랜 + wallet grants로 fallback 구독을 합성
 - usable balance는 `platform` grant와 `serviceCode === "storygraph"` grant만 합산
 - `purchased_credit_balance`는 wallet summary에 source 구분이 없으므로 fallback에서는 `0`
+- fallback은 이제 transient 장애 대비용 보조 경로이며, canonical happy path는 bootstrap-first다
 
-이 모듈은 다음 서버 소비 지점의 단일 진실 원천이다. 다만 authenticated happy path는 이후 `bootstrap -> read` 순서로 보강하는 것이 권장된다:
+이 모듈은 다음 서버 소비 지점의 단일 진실 원천이다:
 - `/api/billing/subscription`
 - `/api/billing/credits/balance`
 - `balanceCache.ts`
@@ -216,7 +217,7 @@ catcident-backend의 현재 billing 계약을 StoryGraph 프론트 전용 shape�
 - 5분 TTL, 최대 100 엔트리
 - Fail-open: billing 서비스 장애 시 분석 허용
 - `AUTH_ENABLED=false`이면 항상 통과
-- 구독/잔액 조회는 `billingBackend.ts`의 정규화 어댑터를 사용
+- 구독/잔액 조회는 `billingBackend.ts`의 `ensureStorygraphSubscription()`을 사용해 canonical row를 우선 조회
 - **BYOK 캐시**: `CacheEntry.byok` 플래그로 개인 키 사용 권한 캐싱
 - **BYOK 사용자 zero balance 보존**: `updateBalanceCache()`에서 byok=true면 zero balance여도 캐시 유지
 
@@ -239,8 +240,8 @@ updateBalanceCache(userId, balance_after);
 **⚠️ 주의**: `checkAnalyzeEligibility()`는 내부적으로 `requireAuth()`를 호출하지 않음.
 동일 request 내 `requireAuth()` 중복 호출을 방지하기 위해, 호출자가 사전 해결한 `userId`와 `accessToken`을 전달해야 함.
 
-**⚠️ free fallback 영향**: backend `subscriptions/` row가 아직 없더라도 `storygraph` free 플랜 fallback으로 잔액/feature 판단이 이루어진다.
-현재는 신규 로그인 사용자도 첫 hold 이전에 플랜/잔액 UX가 안정적으로 동작하지만, 이 값은 synthetic 상태일 수 있으므로 향후 `subscriptions/bootstrap/` 채택 뒤에는 fallback을 보조 경로로만 유지하는 편이 맞다.
+**⚠️ free fallback 영향**: 신규 로그인 사용자는 기본적으로 bootstrap으로 canonical row를 먼저 확보한다.
+다만 backend timeout/network/5xx 시에는 여전히 `storygraph` free 플랜 fallback이 보조 경로로 사용될 수 있다.
 
 **⚠️ BYOK fail-open**: `isCachedByokEnabled()`는 캐시 미스 시 `true` 반환.
 `checkAnalyzeEligibility()`가 먼저 실행되어 캐시를 갱신하므로, 캐시 미스는 billing 서비스 장애를 의미.

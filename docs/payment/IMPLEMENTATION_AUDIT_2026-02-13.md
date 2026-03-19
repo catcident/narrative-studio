@@ -6,6 +6,7 @@
 ## 1. 문서 목적과 범위
 
 이 문서는 `narrative-studio`의 결제/구독 UI와 프록시 API를 현재 코드 기준으로 다시 정리한 감사 문서다.
+이 문서가 2026-03-19 billing alignment 후속 계획 문서를 대체한다.
 
 - 점검 기준일: 2026-03-19
 - 기준 backend: `catcident-backend main@2355e73`
@@ -39,7 +40,7 @@
 
 - `GET /api/v1/billing/public/pricing/?service=storygraph`
 - `GET /api/v1/billing/subscriptions/`
-- `POST /api/v1/billing/subscriptions/bootstrap/` (backend available, narrative-studio 미채택)
+- `POST /api/v1/billing/subscriptions/bootstrap/`
 - `GET /api/v1/billing/credits/wallet/`
 - `GET /api/v1/billing/credits/transactions/?service=storygraph`
 - `POST /api/v1/billing/credits/hold/`
@@ -56,7 +57,8 @@
 - 구독 정보 로드
   - 로그인 후 `loadSubscription()` 호출
   - 포커스/탭 복귀 시 재조회
-  - backend `subscriptions/`에 `storygraph` row가 없으면 free fallback 합성
+  - `subscriptions/`에 row가 없으면 bootstrap으로 canonical free row를 확보
+  - bootstrap의 transient 실패에서만 free fallback 합성
 - 플랜 비교 UI
   - 현재 플랜 강조
   - 유료 플랜 선택 시 `https://catcident.com/ko/billing/services/storygraph/subscribe/`로 이동
@@ -95,11 +97,12 @@
   - 인증 불필요
 - `GET /api/billing/subscription`
   - 업스트림: `/api/v1/billing/subscriptions/`
-  - 현재는 `service_code === "storygraph"` row를 선택해 normalized subscription 반환
-  - backend에는 `POST /api/v1/billing/subscriptions/bootstrap/`가 추가됐지만, narrative-studio는 아직 이 bootstrap을 호출하지 않음
-  - 따라서 row가 없으면 공개 pricing의 free 플랜 + wallet grants로 fallback 합성
+  - `service_code === "storygraph"` row를 먼저 찾고, 없으면 `/api/v1/billing/subscriptions/bootstrap/` 호출
+  - bootstrap 성공 응답을 canonical subscription으로 바로 사용
+  - bootstrap의 timeout/network/5xx에서만 공개 pricing + wallet grants fallback 허용
+  - bootstrap 4xx는 설정 오류로 간주해 `502` billing error 반환
 - `GET /api/billing/credits/balance`
-  - 위와 동일한 정규화 결과에서 `{ balance, plan }` 스냅샷 반환
+  - 위와 동일한 ensure 경로에서 `{ balance, plan }` 스냅샷 반환
 - `GET /api/billing/credits/transactions?page=N`
   - 업스트림 거래 내역 페이지네이션 프록시
 
@@ -167,13 +170,13 @@ storygraph는 결제 포털 진입만 제공한다.
 - 장점: 장애 전파 완화
 - 단점: 과금 시스템 장애 시 비용 통제 약화
 
-### 7.4 [Medium] authenticated bootstrap 미채택
+### 7.4 [Low] read-only storage limits는 여전히 synthetic fallback 가능
 
-backend는 `POST /api/v1/billing/subscriptions/bootstrap/`를 제공하지만, 현재 narrative-studio는 이를 사용하지 않는다.
+`/api/billing/subscription`, `/api/billing/credits/balance`, `balanceCache.ts`는 bootstrap-first로 정렬됐다.
+다만 `versionHistory.ts`의 storage limit 조회는 side effect를 피하기 위해 read-only helper를 유지한다.
 
-- 결과적으로 `subscriptions/`에 `storygraph` row가 없는 신규 사용자는 free fallback에 의존한다
-- 이 fallback은 UI 안정성에는 도움이 되지만, canonical row와 signup bonus를 즉시 보장하지는 않는다
-- 전용 bootstrap adoption과 회귀 테스트가 후속 작업으로 필요하다
+- 따라서 storage limits 조회는 bootstrap 이전의 transient 상황에서 synthetic fallback을 볼 수 있다
+- UI/분석 차단 경로는 이미 canonical row 우선으로 정렬되어 영향은 제한적이다
 
 ## 8. 확인된 제거 사항
 

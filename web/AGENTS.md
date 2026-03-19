@@ -80,10 +80,10 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 
 **정규화 계층**:
 - `lib/billingBackend.ts`가 backend raw 응답을 StoryGraph 전용 normalized shape로 변환
-- `/api/billing/subscription`은 현재 `subscriptions/` row를 선택하여 UI 구독 shape로 반환
-- backend는 `subscriptions/bootstrap/`를 제공하지만, 2026-03-19 현재 narrative-studio는 아직 이 endpoint를 호출하지 않는다
-- 그래서 `storygraph` row가 아직 없으면 공개 pricing + wallet 요약으로 free fallback을 합성한다
-- `/api/billing/credits/balance`는 동일 정규화 결과에서 `{ balance, plan }` 스냅샷을 반환
+- `/api/billing/subscription`은 `subscriptions/`를 먼저 읽고, row가 없으면 `subscriptions/bootstrap/`으로 canonical free row를 보장한다
+- `/api/billing/credits/balance`와 `balanceCache.ts`도 같은 ensure 경로를 사용해 로그인 직후 canonical 잔액을 우선 본다
+- bootstrap이 timeout/network/5xx로 실패할 때만 공개 pricing + wallet 요약 기반 free fallback을 보조 경로로 사용한다
+- bootstrap 4xx는 설정 오류로 간주하고 fallback으로 숨기지 않는다
 - `/api/billing/public-pricing`는 랜딩/구독 모달 공용 source
 
 **과금 흐름 (세션 hold/settle/release)**:
@@ -168,8 +168,8 @@ export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST'
 | `GET /api/knowledge-graphs/[id]/versions` | 버전 히스토리 |
 | `POST /api/knowledge-graphs/[id]/restore/[version]` | 특정 버전 복원 |
 | `GET /api/billing/public-pricing` | 공개 pricing 카탈로그 (`public/pricing` 프록시) |
-| `GET /api/billing/subscription` | StoryGraph 구독 정보 조회 (`subscriptions/` row → normalized, 현재는 row 없으면 fallback 가능) |
-| `GET /api/billing/credits/balance` | 정규화된 구독/지갑 기준 크레딧 스냅샷 |
+| `GET /api/billing/subscription` | StoryGraph 구독 정보 조회 (`subscriptions/` read-first, miss 시 `subscriptions/bootstrap/`) |
+| `GET /api/billing/credits/balance` | canonical 구독 우선 기준 크레딧 스냅샷 |
 | `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
 | `POST /api/session/hold` | 분석 세션 크레딧 선점 (hold) |
 | `POST /api/session/settle` | 분석 세션 정산 (실제 차감) |
