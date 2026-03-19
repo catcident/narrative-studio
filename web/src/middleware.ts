@@ -26,8 +26,7 @@ export async function middleware(request: NextRequest) {
     const isPublicApi = pathname === '/api/config'
       || pathname === '/api/models'
       || pathname === '/api/legal-meta'
-      || pathname === '/api/billing/plans'
-      || pathname === '/api/billing/packages';
+      || pathname === '/api/billing/public-pricing';
     const isLoginPage = pathname === '/login';
     const isLandingPage = pathname === '/';
     const isPublicPage = isLandingPage

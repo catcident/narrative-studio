@@ -5,7 +5,18 @@
 ## 문서 목록
 
 - `IMPLEMENTATION_AUDIT_2026-02-13.md`
-  - 구독/크레딧 UI 구조
-  - `/api/billing` 및 `/api/session` 프록시 구조
-  - 현재 기능 범위와 미구현 항목
-  - 운영 리스크 및 개선 우선순위
+  - 2026-03-19 기준 결제/구독 UI/프록시 감사 문서
+  - `/api/billing/public-pricing`, `/api/billing/subscription`, `/api/session/*` 구조
+  - backend billing 계약 정렬 결과와 잔여 리스크
+
+- `../BILLING_BACKEND_ALIGNMENT_PLAN_2026-03-19.md`
+  - backend 계약 정렬 작업 계획과 구현 범위
+  - 레거시 `/plans` / `/packages` / singular `/subscription` 제거 배경
+
+- `../launch/05-결제시스템-TossPayments.md`
+  - catcident-backend 결제 포털 및 TossPayments 연동 설계
+  - 2026-03-19 기준 StoryGraph 외부 진입 URL 보정 반영
+
+- `../BILLING_BLUEPRINT.md`
+  - 서비스별 billing 초기 청사진
+  - 현행 구현과 다른 구간은 상단 "현재 구현 기준 메모"를 우선 참조

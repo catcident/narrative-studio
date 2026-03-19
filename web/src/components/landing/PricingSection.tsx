@@ -3,19 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
-import { buildPlanFeatureStrings } from '../../services/billing';
-import type { PlanFeatures } from '../../types';
+import { buildPlanFeatureStrings, getPublicPricingCatalog, type ServicePlan } from '../../services/billing';
 import { useScrollReveal } from './useScrollReveal';
-
-/* ── 백엔드 응답 타입 ──────────────────────────────────── */
-
-interface BackendPlan {
-  code: string;
-  name: string;
-  price_krw: number;
-  monthly_credits: number;
-  features: PlanFeatures;
-}
 
 /* ── 플랜별 스타일 ──────────────────────────────────────── */
 
@@ -50,7 +39,7 @@ function getGridLayoutClass(planCount: number): string {
 
 /* ── PlanCard ───────────────────────────────────────────── */
 
-function PlanCard({ plan }: { plan: BackendPlan }) {
+function PlanCard({ plan }: { plan: ServicePlan }) {
   const style = getPlanStyle(plan.code);
   const isPaid = plan.price_krw > 0;
   const featureStrings = buildPlanFeatureStrings(plan.features);
@@ -125,61 +114,30 @@ function PricingPlaceholder() {
 
 /* ── PricingSection ─────────────────────────────────────── */
 
-/** DRF 페이지네이션 형식 { results: [...] } 또는 flat array 모두 처리 */
-function extractPlanItems(data: unknown): unknown[] {
-  if (typeof data === 'object' && data !== null && 'results' in data) {
-    const results = (data as Record<string, unknown>).results;
-    if (Array.isArray(results)) return results;
-  }
-  if (Array.isArray(data)) return data;
-  return [];
-}
-
-function isValidPlan(item: unknown): item is BackendPlan {
-  if (typeof item !== 'object' || item === null) return false;
-  const r = item as Record<string, unknown>;
-  return (
-    typeof r.code === 'string' &&
-    typeof r.name === 'string' &&
-    typeof r.price_krw === 'number' &&
-    typeof r.monthly_credits === 'number' &&
-    typeof r.features === 'object' &&
-    r.features !== null
-  );
-}
-
 export function PricingSection() {
-  const [plans, setPlans] = useState<BackendPlan[]>([]);
+  const [plans, setPlans] = useState<ServicePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const { ref, isVisible } = useScrollReveal();
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    fetch('/api/billing/plans', { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load plans');
-        return res.json();
-      })
-      .then((data: unknown) => {
+    getPublicPricingCatalog()
+      .then((result) => {
         if (cancelled) return;
-        setPlans(extractPlanItems(data).filter(isValidPlan));
-      })
-      .catch((err: unknown) => {
-        if (!controller.signal.aborted) {
-          console.error('[landing] plans load error:', err);
+        if (result.ok) {
+          setPlans(result.data.plans);
         }
       })
+      .catch((err: unknown) => {
+        console.error('[landing] plans load error:', err);
+      })
       .finally(() => {
-        clearTimeout(timeoutId);
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
-      controller.abort();
     };
   }, []);
 

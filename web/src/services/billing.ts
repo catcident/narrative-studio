@@ -128,7 +128,7 @@ export interface SubscriptionInfo {
   purchased_credit_balance: number;
   credit_reset_at: string | null;
   features: PlanFeatures;
-  started_at: string;
+  started_at?: string | null;
   expires_at: string | null;
 }
 
@@ -168,15 +168,36 @@ export interface ServicePlan {
   service_code: string;
   code: string;
   name: string;
+  included_service_credits?: number;
   monthly_credits: number;
   price_krw: number;
   features: PlanFeatures;
   sort_order: number;
-  is_active: boolean;
+  is_public?: boolean;
+}
+
+export interface BillingServiceSummary {
+  code: string;
+  name: string;
+  status: string;
+  base_url: string;
+  allow_platform_topup: boolean;
+}
+
+export interface PublicPricingCatalog {
+  service: BillingServiceSummary;
+  plans: ServicePlan[];
+  topup_packages: CreditPackage[];
+}
+
+export async function getPublicPricingCatalog(): Promise<BillingResult<PublicPricingCatalog>> {
+  return billingFetch<PublicPricingCatalog>('/public-pricing');
 }
 
 export async function getPlans(): Promise<BillingListResult<ServicePlan>> {
-  return billingFetchList<ServicePlan>('/plans');
+  const result = await getPublicPricingCatalog();
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.plans };
 }
 
 /** 플랜 features → UI 표시용 문자열 배열 (SubscriptionPage, PricingSection 공용) */
@@ -213,16 +234,20 @@ export function buildPlanFeatureStrings(f: PlanFeatures): string[] {
 
 export interface CreditPackage {
   id: number;
+  code: string;
   service_code: string;
   name: string;
   credits: number;
   price_krw: number;
   bonus_pct: number;
-  sort_order: number;
+  scope_type: string;
+  bonus_policy?: Record<string, unknown>;
 }
 
 export async function getCreditPackages(): Promise<BillingListResult<CreditPackage>> {
-  return billingFetchList<CreditPackage>('/packages');
+  const result = await getPublicPricingCatalog();
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.topup_packages };
 }
 
 // ==================== 세션 API 함수 ====================

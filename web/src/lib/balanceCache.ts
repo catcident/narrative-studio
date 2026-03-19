@@ -7,7 +7,7 @@
  */
 
 import { AUTH_ENABLED } from '@/lib/auth';
-import { proxyToCatcident } from '@/services/billingProxy';
+import { fetchStorygraphSubscription } from '@/lib/billingBackend';
 
 interface CacheEntry {
   balance: number;
@@ -65,21 +65,17 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
 
   // Fetch fresh subscription info (balance + byok) from billing service
   try {
-    const response = await proxyToCatcident(
-      '/subscription/?service=storygraph',
-      accessToken
-    );
-
-    if (!response.ok) {
-      // Billing service returned an error — fail-open
-      console.error(`[analyze] Balance check upstream error ${response.status}, allowing analysis`);
+    if (!accessToken) {
       return null;
     }
 
-    const data: { credit_balance: number; plan?: { code?: string }; features?: { byok?: boolean } } = await response.json();
-    const balance = data.credit_balance;
-    const byok = data.features?.byok ?? false;
-    const planCode = data.plan?.code ?? 'free';
+    const subscription = await fetchStorygraphSubscription(accessToken);
+    if (!subscription) {
+      return null;
+    }
+    const balance = subscription.credit_balance;
+    const byok = subscription.features?.byok ?? false;
+    const planCode = subscription.plan?.code ?? 'free';
 
     // Cache all balances (including zero/negative) to enable fast blocking.
     // Admin-added credits take effect after TTL (5min) — security over immediacy.
@@ -134,4 +130,3 @@ export function getCachedPlanCode(userId: string): string | undefined {
   if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return undefined;
   return cached.planCode;
 }
-

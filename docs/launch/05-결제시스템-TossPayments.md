@@ -1,6 +1,12 @@
 # 05. 결제 시스템 — TossPayments 연동
 
 > catcident-backend에 TossPayments 결제 게이트웨이 구현
+>
+> 2026-03-19 기준 StoryGraph 연동 URL:
+> - 구독 시작: `/ko/billing/services/storygraph/subscribe/`
+> - 크레딧 충전: `/ko/billing/credits/checkout/`
+>
+> 이 문서는 backend 결제 설계 중심 문서다. StoryGraph 쪽 레거시 `/ko/billing/subscribe/`, `/ko/billing/checkout/` 경로는 더 이상 사용하지 않는다.
 
 ## 아키텍처 개요
 
@@ -13,8 +19,8 @@
   │ "업그레이드" / "크레딧 충전" 버튼
   │
   ↓ 리다이렉트
-[catcident.com/billing/checkout/]     ← 크레딧 패키지 결제
-[catcident.com/billing/subscribe/]    ← 플랜 구독 결제
+[catcident.com/ko/billing/credits/checkout/]            ← 크레딧 패키지 결제
+[catcident.com/ko/billing/services/storygraph/subscribe/] ← 플랜 구독 결제
   │
   │ TossPayments SDK v2 (프론트엔드)
   │ 결제 위젯 → 카드/간편결제 선택
@@ -182,7 +188,7 @@ Alpine.data('confirmPayment', () => ({
     }
 
     try {
-      const res = await fetch('/api/v1/billing/confirm-credit-purchase/', {
+      const res = await fetch('/api/v1/billing/checkout/topup/confirm/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -724,7 +730,7 @@ storygraph의 `SubscriptionPage` 모달에서:
 // "업그레이드" 버튼 → catcident.com 결제 페이지로 이동
 const handleUpgrade = (planId: string) => {
   window.open(
-    `https://catcident.com/ko/billing/subscribe/?plan=${planId}&return_url=${encodeURIComponent(window.location.href)}`,
+    `https://catcident.com/ko/billing/services/storygraph/subscribe/?plan=${planId}&return_url=${encodeURIComponent(window.location.href)}`,
     '_blank'
   );
 };
@@ -732,7 +738,7 @@ const handleUpgrade = (planId: string) => {
 // "크레딧 충전" 버튼 → catcident.com 결제 페이지로 이동
 const handleBuyCredits = () => {
   window.open(
-    `https://catcident.com/ko/billing/checkout/?return_url=${encodeURIComponent(window.location.href)}`,
+    `https://catcident.com/ko/billing/credits/checkout/?return_url=${encodeURIComponent(window.location.href)}`,
     '_blank'
   );
 };

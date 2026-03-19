@@ -1,5 +1,5 @@
 import type { Db } from 'mongodb';
-import { proxyToCatcident } from '@/services/billingProxy';
+import { fetchStorygraphSubscription } from '@/lib/billingBackend';
 
 // ── 절대 상한 (플랜 설정과 무관한 하드 리밋) ──
 const HARD_LIMIT_SAVED_GRAPHS = 300;
@@ -32,17 +32,21 @@ interface StorageLimits {
 
 /** subscription API에서 스토리지 제한을 조회. 실패 시 DEFAULT 폴백. */
 export async function fetchStorageLimits(accessToken: string | undefined): Promise<StorageLimits> {
+  if (!accessToken) {
+    return {
+      maxVersions: DEFAULT_MAX_VERSIONS,
+      maxSavedGraphs: DEFAULT_MAX_SAVED_GRAPHS,
+    };
+  }
+
   try {
-    const response = await proxyToCatcident('/subscription/?service=storygraph', accessToken);
-    if (response.ok) {
-      const data = await response.json();
-      const features = data.features;
-      if (features) {
-        return {
-          maxVersions: resolveMaxVersions(features.max_versions ?? DEFAULT_MAX_VERSIONS),
-          maxSavedGraphs: resolveMaxSavedGraphs(features.max_saved_graphs ?? DEFAULT_MAX_SAVED_GRAPHS),
-        };
-      }
+    const subscription = await fetchStorygraphSubscription(accessToken);
+    const features = subscription?.features;
+    if (features) {
+      return {
+        maxVersions: resolveMaxVersions(features.max_versions ?? DEFAULT_MAX_VERSIONS),
+        maxSavedGraphs: resolveMaxSavedGraphs(features.max_saved_graphs ?? DEFAULT_MAX_SAVED_GRAPHS),
+      };
     }
   } catch (err: unknown) {
     console.warn('[storage] subscription 조회 실패, 기본 제한 적용:', err instanceof Error ? err.message : err);

@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
-import { getPlans, getCreditPackages, buildPlanFeatureStrings, type ServicePlan, type CreditPackage } from '../services/billing';
+import { getPublicPricingCatalog, buildPlanFeatureStrings, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
 import type { ByokMode } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
@@ -41,12 +41,15 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getPlans(), getCreditPackages()])
-      .then(([plansResult, packagesResult]) => {
+    getPublicPricingCatalog()
+      .then((result) => {
         if (cancelled) return;
-        if (plansResult.ok) setPlans(plansResult.data);
-        if (packagesResult.ok) setPackages(packagesResult.data);
-        if (!plansResult.ok || !packagesResult.ok) setLoadError(true);
+        if (result.ok) {
+          setPlans(result.data.plans);
+          setPackages(result.data.topup_packages);
+        } else {
+          setLoadError(true);
+        }
       })
       .catch((err: unknown) => {
         console.error('[billing] SubscriptionPage load error:', err);
@@ -211,7 +214,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                     {!isCurrent && plan.price_krw > 0 && (
                       <button
                         onClick={() => window.open(
-                          `${billingBaseUrl}/subscribe/?plan=${plan.code}&return_url=${returnUrlParam}`,
+                          `${billingBaseUrl}/services/storygraph/subscribe/?plan=${plan.code}&return_url=${returnUrlParam}`,
                           '_blank',
                           'noopener'
                         )}
@@ -262,7 +265,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                   <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
                   <button
                     onClick={() => window.open(
-                      `${billingBaseUrl}/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
+                      `${billingBaseUrl}/credits/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
                       '_blank',
                       'noopener'
                     )}

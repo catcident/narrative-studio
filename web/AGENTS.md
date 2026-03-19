@@ -65,9 +65,24 @@ AUTH_ENABLED === 'false'  → false (Railway 퍼블릭 데모용)
 catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 
 ```
-클라이언트 → /api/billing/* → billingProxy.ts → catcident-backend
+클라이언트 → /api/billing/public-pricing, /api/billing/subscription, /api/billing/credits/*
+서버 → billingBackend.ts / billingProxy.ts → catcident-backend
 클라이언트 → /api/session/* → 세션 hold/settle/release
 ```
+
+**현재 backend 정렬 계약**:
+- 공개 pricing 카탈로그: `/api/v1/billing/public/pricing/?service=storygraph`
+- 인증 구독 목록: `/api/v1/billing/subscriptions/`
+- wallet 요약: `/api/v1/billing/credits/wallet/`
+- 거래 내역: `/api/v1/billing/credits/transactions/?service=storygraph`
+- hold/settle/release: `/api/v1/billing/credits/*`
+
+**정규화 계층**:
+- `lib/billingBackend.ts`가 backend raw 응답을 StoryGraph 전용 normalized shape로 변환
+- `/api/billing/subscription`은 `subscriptions/` row를 선택하여 UI 구독 shape로 반환
+- `storygraph` row가 아직 없으면 공개 pricing + wallet 요약으로 free fallback을 합성
+- `/api/billing/credits/balance`는 동일 정규화 결과에서 `{ balance, plan }` 스냅샷을 반환
+- `/api/billing/public-pricing`는 랜딩/구독 모달 공용 source
 
 **과금 흐름 (세션 hold/settle/release)**:
 
@@ -116,11 +131,11 @@ catcident-backend의 billing API를 서버 사이드 프록시로 연동:
 
 **프록시 라우트 패턴** (`billingProxy.ts` 팩토리 사용):
 ```typescript
-// GET 프록시: billingGetHandler(path, logLabel)
-export const GET = billingGetHandler('/plans/?service=storygraph', 'plans GET');
+// 공개 pricing: custom route + proxyToCatcident (비인증)
+const response = await proxyToCatcident('/public/pricing/?service=storygraph', undefined);
 
-// POST 프록시: billingPostHandler(path, logLabel)
-export const POST = billingPostHandler('/session/hold/', 'session/hold POST');
+// 인증 POST 프록시: billingPostHandler(path, logLabel)
+export const POST = billingPostHandler('/credits/deduct/', 'credits/deduct POST');
 ```
 
 ### 스토리지 (서버 전용)
@@ -150,11 +165,10 @@ export const POST = billingPostHandler('/session/hold/', 'session/hold POST');
 | `DELETE /api/knowledge-graphs/[id]` | 그래프 삭제 |
 | `GET /api/knowledge-graphs/[id]/versions` | 버전 히스토리 |
 | `POST /api/knowledge-graphs/[id]/restore/[version]` | 특정 버전 복원 |
-| `GET /api/billing/subscription` | 구독 정보 조회 (catcident 프록시) |
-| `GET /api/billing/credits/balance` | 크레딧 잔액 조회 |
+| `GET /api/billing/public-pricing` | 공개 pricing 카탈로그 (`public/pricing` 프록시) |
+| `GET /api/billing/subscription` | StoryGraph 구독 정보 조회 (`subscriptions/` row → normalized) |
+| `GET /api/billing/credits/balance` | 정규화된 구독/지갑 기준 크레딧 스냅샷 |
 | `GET /api/billing/credits/transactions` | 거래 내역 (페이지네이션) |
-| `GET /api/billing/plans` | 요금제 목록 |
-| `GET /api/billing/packages` | 크레딧 상품 목록 |
 | `POST /api/session/hold` | 분석 세션 크레딧 선점 (hold) |
 | `POST /api/session/settle` | 분석 세션 정산 (실제 차감) |
 | `POST /api/session/release` | 분석 세션 해제 (hold 복원) |

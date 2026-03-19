@@ -393,9 +393,13 @@ try {
   // UI에 에러 상태 표시 또는 null 반환
 }
 
-// ✅ Promise.all에서도 .catch + .finally
-Promise.all([getPlans(), getCreditPackages()])
-  .then(([p, pkg]) => { setPlans(p); setPackages(pkg); })
+// ✅ 공용 catalog source 1회 로드 + .catch + .finally
+getPublicPricingCatalog()
+  .then((result) => {
+    if (!result.ok) return;
+    setPlans(result.data.plans);
+    setPackages(result.data.topup_packages);
+  })
   .catch((error) => console.error('[billing] load error:', error))
   .finally(() => setLoading(false));
 ```

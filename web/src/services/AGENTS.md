@@ -228,9 +228,9 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 ### 공통 패턴
 
 내부 헬퍼 `billingFetch<T>()` / `billingFetchList<T>()`로 중복 제거:
-- null 반환 (단건) 또는 빈 배열 반환 (목록)
+- `BillingResult<T>` / `BillingListResult<T>` discriminated union 반환
 - `[billing]` 접두사 로그
-- 네트워크 에러 시 silent fail (UI에서 처리)
+- 네트워크 에러 시 fail-open 또는 UI fallback은 호출부에서 결정
 
 ### 주요 함수
 
@@ -239,8 +239,9 @@ importKnowledgeGraph(file)  // JSON 파일 로드
 getSubscription()           // 구독 정보 (plan, balance, purchased_credit_balance, features)
 getCreditBalance()          // 잔액만 조회
 getUsageHistory(page)       // 거래 내역 (페이지네이션)
-getPlans()                  // 요금제 목록
-getCreditPackages()         // 크레딧 상품 목록
+getPublicPricingCatalog()   // 공개 pricing 카탈로그 (service + plans + topup_packages)
+getPlans()                  // public-pricing의 plans thin wrapper
+getCreditPackages()         // public-pricing의 topup_packages thin wrapper
 
 // 모델 조회 공유 헬퍼 (chat.ts에서도 import하여 사용)
 findModel(model, dynamicModels?)  // dynamicModels → FALLBACK_MODELS 폴백
@@ -280,6 +281,7 @@ createBillingCallback(addChunkUsage)  // extractKnowledgeGraph에 전달할 onCh
 
 - **charCount vs bytes**: 분석 함수에 전달하는 charCount는 문자 수. `file.size`는 bytes이므로 반드시 변환 (`Math.ceil(bytes / 3)` for UTF-8 한글)
 - **세션 패턴**: hold → 분석 → settle (성공) / release (실패). `/api/analyze`는 과금 없이 토큰 정보만 반환
+- **pricing source 단일화**: 랜딩/구독 모달의 요금제와 크레딧 상품은 `/api/billing/public-pricing` 하나만 source로 사용
 - **billing guard 시퀀스**: `checkCreditSufficiency()` → dialog → `ensureSufficientBalance()` → `holdCredits()`. 새 진입점 추가 시 이 순서 준수
 - **잔액 확인**: 모든 분석 진입점에서 `ensureSufficientBalance(subscription, authEnabled)` 호출 필수 (잔액 > 0 가드만 담당)
 - **토큰 누적**: `onChunkBilling` 콜백은 토큰 사용량 누적만 수행 — 잔액 갱신은 settle 시에만
@@ -400,20 +402,24 @@ catcident-backend billing API로의 서버 사이드 프록시 유틸리티
 ### 새 billing 라우트 추가 시
 
 ```typescript
-// 1줄로 라우트 생성 가능
+// 인증 GET 프록시라면 1줄로 생성 가능
 // api/billing/new-endpoint/route.ts
 import { billingGetHandler } from '@/services/billingProxy';
-export const GET = billingGetHandler('/new-endpoint/?service=storygraph', 'new-endpoint GET');
+export const GET = billingGetHandler('/topup-packages/', 'topup-packages GET');
 ```
+
+공개 GET 라우트는 `billingGetHandler` 대신 `proxyToCatcident(path, undefined)`를 직접 사용한다.
+예: `/api/billing/public-pricing` → `/public/pricing/?service=storygraph`
 
 **POST 라우트 추가 시 반드시 `ALLOWED_POST_FIELDS`에 화이트리스트 등록:**
 
 ```typescript
 // billingProxy.ts 내부
 const ALLOWED_POST_FIELDS: Record<string, string[]> = {
-  '/session/hold/': ['estimated_credits', 'description', 'metadata'],
-  '/session/settle/': ['session_id', 'actual_usage', 'metadata'],
-  '/session/release/': ['session_id'],
+  '/credits/deduct/': ['amount', 'description', 'metadata', 'idempotency_key'],
+  '/credits/hold/': ['amount', 'metadata'],
+  '/credits/settle/': ['hold_token', 'actual_amount', 'description', 'metadata', 'idempotency_key'],
+  '/credits/release/': ['hold_token'],
   '/new-endpoint/': ['field1', 'field2'],  // ← 새 라우트 추가
 };
 ```

@@ -30,6 +30,7 @@ fail-safe: cascade 실패해도 primary delete 성공 응답 유지.
 billing 서비스 미응답 또는 익명 사용자일 때 기본 제한:
 - `DEFAULT_MAX_SAVED_GRAPHS = 3` (그래프 수)
 - `DEFAULT_MAX_VERSIONS = 3` (버전 히스토리 수, FIFO)
+- 인증 사용자는 normalized subscription adapter(`subscriptions/` + free fallback)에서 플랜 features를 조회
 
 유료 사용자는 플랜 features에서 값을 받으므로 영향 없음.
 
@@ -48,8 +49,8 @@ billing 서비스 미응답 또는 익명 사용자일 때 기본 제한:
 
 | 컬렉션 | 증가 방식 | 제어 메커니즘 |
 |--------|----------|-------------|
-| `knowledgeGraphs` | 사용자 저장 | `max_saved_graphs` (플랜) / `DEFAULT_MAX_SAVED_GRAPHS=5` (폴백) |
-| `knowledgeGraphVersions` | 저장 시 이전 버전 보관 | `max_versions` (플랜) / `DEFAULT_MAX_VERSIONS=10` (폴백), FIFO 삭제 |
+| `knowledgeGraphs` | 사용자 저장 | `max_saved_graphs` (플랜) / `DEFAULT_MAX_SAVED_GRAPHS=3` (폴백) |
+| `knowledgeGraphVersions` | 저장 시 이전 버전 보관 | `max_versions` (플랜) / `DEFAULT_MAX_VERSIONS=3` (폴백), FIFO 삭제 |
 | `novels` | 사용자 업로드 | `MAX_NOVELS_PER_USER=20`, `MAX_NOVEL_TEXT_LENGTH=5M자` |
 | `entityEmbeddings` | 분석 시 생성 | 그래프 삭제 시 cascade, `deleteMany` 호출로 재분석 시 교체 |
 | `chunkEmbeddings` | 분석 시 생성 | 그래프 삭제 시 cascade, `deleteMany` 호출로 재분석 시 교체 |

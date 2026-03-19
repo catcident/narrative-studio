@@ -1,7 +1,16 @@
 # 서비스별 구독 + 크레딧 시스템 청사진
 
-StoryGraph 수익화를 위한 과금 시스템 설계 문서.
-catcident-backend(플랫폼)과 narrative-studio(서비스)에 걸친 전체 구현 청사진.
+StoryGraph 수익화를 위한 과금 시스템 초기 설계 문서.
+catcident-backend(플랫폼)과 narrative-studio(서비스)에 걸친 전체 구현 청사진이다.
+
+> 2026-03-19 현재 구현 기준 메모
+> - 이 문서는 초기 청사진이며, 현행 구현은 일부 경로와 흐름이 달라졌다.
+> - 현재 StoryGraph 공개 pricing source는 `GET /api/v1/billing/public/pricing/?service=storygraph`다.
+> - 현재 인증 구독 source는 `GET /api/v1/billing/subscriptions/`이며, StoryGraph는 여기서 `service_code === "storygraph"` row를 선택한다.
+> - 현재 wallet summary source는 `GET /api/v1/billing/credits/wallet/`이다.
+> - narrative-studio 공개 프록시는 `GET /api/billing/public-pricing`를 사용한다.
+> - narrative-studio는 레거시 `/api/billing/plans`, `/api/billing/packages`, backend singular `/subscription/`, `/credits/estimate`, `/usage/`를 사용하지 않는다.
+> - 실제 과금은 `/api/session/hold`, `/api/session/settle`, `/api/session/release` 세션 흐름으로 오케스트레이션된다.
 
 ## 설계 원칙
 
@@ -33,9 +42,9 @@ catcident-backend(플랫폼)과 narrative-studio(서비스)에 걸친 전체 구
 │                                └──────────────────────────────────────┘ │
 │                                                                         │
 │  OAuth Endpoints                 Billing API Endpoints                  │
-│  /oauth/token/                   /api/v1/billing/subscription/          │
-│  /oauth/userinfo/                /api/v1/billing/credits/               │
-│  /.well-known/openid-config      /api/v1/billing/usage/                 │
+│  /oauth/token/                   /api/v1/billing/public/pricing/        │
+│  /oauth/userinfo/                /api/v1/billing/subscriptions/         │
+│  /.well-known/openid-config      /api/v1/billing/credits/               │
 └────────────┬──────────────────────────────┬─────────────────────────────┘
              │ OAuth (OIDC)                 │ REST API (Bearer Token)
              │                              │
@@ -45,11 +54,13 @@ catcident-backend(플랫폼)과 narrative-studio(서비스)에 걸친 전체 구
 │  수정 ──────────────────────   신규 ─────────────────────────────────── │
 │  ┌──────────────────────┐      ┌──────────────────────────────────────┐ │
 │  │ /api/analyze          │      │ /api/billing/         catcident 프록시│ │
-│  │  + usage 캡처         │      │   subscription/       구독 조회      │ │
-│  │  + 크레딧 차감 호출   │      │   credits/balance     잔액 조회      │ │
-│  │  + BYOK 분기          │      │   credits/estimate    예상 비용      │ │
+│  │  + BYOK 분기          │      │   public-pricing/     공개 pricing   │ │
+│  │  + 토큰 usage 반환    │      │   subscription/       구독 조회      │ │
+│  │                       │      │   credits/balance     잔액 조회      │ │
 │  │                       │      │   credits/deduct      차감 (내부)    │ │
-│  │ store.ts              │      │   usage/              사용 내역      │ │
+│  │                       │      │   credits/transactions 사용 내역     │ │
+│  │                       │      │ /api/session/         hold/settle     │ │
+│  │ store.ts              │      │                                      │ │
 │  │  + billingSlice       │      │                                      │ │
 │  │                       │      │ components/                          │ │
 │  │ App.tsx               │      │   CreditBadge.tsx     헤더 잔액      │ │
@@ -335,7 +346,7 @@ CreditPackageAdmin          # 충전 상품 관리
 
 ## 2. narrative-studio: 백엔드 (API Routes)
 
-### 2-1. `/api/analyze` 수정
+### 2-1. `/api/analyze` 현재 구현 메모
 
 ```
 현재 흐름:
@@ -348,9 +359,7 @@ CreditPackageAdmin          # 충전 상품 관리
          ├── BYOK=true: 사용자 키로 OpenRouter 호출, 크레딧 차감 없음
          └── BYOK=false: 서버 키로 OpenRouter 호출
     → 3. OpenRouter 응답에서 usage 추출 {prompt_tokens, completion_tokens}
-    → 4. 크레딧 비용 계산
-    → 5. catcident에 차감 요청 (POST /billing/credits/deduct/)
-    → 6. response + usage 정보 반환
+    → 4. response + usage 정보 반환
 ```
 
 응답에 `_billing` 필드 추가:
@@ -361,33 +370,30 @@ CreditPackageAdmin          # 충전 상품 관리
   "_billing": {
     "prompt_tokens": 12500,
     "completion_tokens": 3200,
-    "credits_used": 8,
-    "balance_after": 79
+    "byok": false
   }
 }
 ```
 
-차감 시점: 전체 분석 완료 후 한 번에 차감 (청크별 차감 X).
-- 중간 실패 시 부분 차감 환불이 복잡해지므로
-- 전체 완료 후 정확한 실사용량으로 1회 차감이 단순하고 정확
+현재 차감 시점은 `/api/analyze` 내부가 아니라 세션 정산 단계다.
 
-### 2-2. `/api/billing/` 프록시 라우트 (신규)
+- 분석 시작 전: `/api/session/hold`
+- 성공 후: `/api/session/settle`
+- 실패/취소 시: `/api/session/release`
+
+### 2-2. `/api/billing/` 프록시 라우트 (현재 구현 기준)
 
 ```
 web/src/app/api/billing/
+├── public-pricing/
+│   └── route.ts          # GET → catcident /billing/public/pricing/?service=storygraph
 ├── subscription/
-│   └── route.ts          # GET → catcident /billing/subscription/?service=storygraph
+│   └── route.ts          # GET → catcident /billing/subscriptions/ → storygraph row normalize
 ├── credits/
 │   ├── balance/
-│   │   └── route.ts      # GET → catcident /billing/credits/balance/
-│   ├── estimate/
-│   │   └── route.ts      # POST → catcident /billing/credits/estimate/
+│   │   └── route.ts      # GET → normalized subscription/wallet snapshot
 │   └── transactions/
 │       └── route.ts      # GET → catcident /billing/credits/transactions/
-├── packages/
-│   └── route.ts          # GET → catcident /billing/packages/
-└── plans/
-    └── route.ts          # GET → catcident /billing/plans/
 ```
 
 프론트엔드는 catcident를 직접 호출하지 않고, Next.js API 라우트를 통해 프록시.

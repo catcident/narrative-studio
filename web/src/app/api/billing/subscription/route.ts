@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchStorygraphSubscription } from '@/lib/billingBackend';
 import { resolveBillingContext } from '@/lib/billingContext';
 import { getBillingTestSession } from '@/lib/billingTestSessionStore';
 import { buildBillingTestSubscription } from '@/lib/billingTestResponses';
-import { billingGetHandler } from '@/services/billingProxy';
-
-const fallbackGet = billingGetHandler('/subscription/?service=storygraph', 'subscription GET');
 
 export async function GET(request: NextRequest) {
   const context = await resolveBillingContext(request);
@@ -21,5 +19,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(buildBillingTestSubscription(session));
   }
 
-  return fallbackGet();
+  if (context.kind !== 'authenticated' || !context.accessToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const subscription = await fetchStorygraphSubscription(context.accessToken);
+    return NextResponse.json(subscription);
+  } catch (err: unknown) {
+    console.error('[billing] subscription GET error:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Billing service error' }, { status: 502 });
+  }
 }
