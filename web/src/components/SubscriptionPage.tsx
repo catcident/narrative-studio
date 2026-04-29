@@ -6,7 +6,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
-import { getPublicPricingCatalog, buildPlanFeatureStrings, type BillingMode, type ServicePlan, type CreditPackage } from '../services/billing';
+import {
+  getPublicPricingCatalog,
+  buildPlanFeatureStrings,
+  type BillingMode,
+  type ServicePlan,
+  type CreditPackage,
+  type PaymentRouteSummary,
+} from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
 import type { ByokMode } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
@@ -20,6 +27,38 @@ interface SubscriptionPageProps {
 
 function normalizeBillingMode(value: unknown): BillingMode | null {
   return value === 'live' || value === 'test' ? value : null;
+}
+
+function hasPaymentRouteField(item: ServicePlan | CreditPackage): boolean {
+  return Object.prototype.hasOwnProperty.call(item, 'payment_route');
+}
+
+function isTestRoute(route: PaymentRouteSummary | null | undefined): boolean {
+  return route?.enabled === true && (route.is_test || route.mode === 'sandbox');
+}
+
+function isUnavailableRoute(route: PaymentRouteSummary | null | undefined): boolean {
+  return !!route && !route.enabled;
+}
+
+function routeBadge(route: PaymentRouteSummary | null | undefined): { label: string; className: string } | null {
+  if (!route) return null;
+  if (!route.enabled) {
+    return {
+      label: route.mode === 'missing' ? '결제 설정 필요' : '결제 불가',
+      className: 'bg-gray-100 text-gray-600 border-gray-200',
+    };
+  }
+  if (isTestRoute(route)) {
+    return {
+      label: '테스트 결제',
+      className: 'bg-amber-50 text-amber-700 border-amber-200',
+    };
+  }
+  return {
+    label: '실결제',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  };
 }
 
 export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
@@ -64,21 +103,6 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/config')
-      .then((res) => res.json())
-      .then((data: { billingMode?: unknown }) => {
-        if (cancelled) return;
-        const mode = normalizeBillingMode(data.billingMode);
-        if (mode) setBillingMode(mode);
-      })
-      .catch((err: unknown) => {
-        console.error('[config] SubscriptionPage billing mode load error:', err instanceof Error ? err.message : err);
       });
     return () => { cancelled = true; };
   }, []);
@@ -148,7 +172,31 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
   const billingBaseUrl = 'https://catcident.com/ko/billing';
   const returnUrlParam = useMemo(() => encodeURIComponent(window.location.origin + '/app'), []);
-  const showTestModeBanner = billingMode === 'test';
+  const hasBackendPaymentRouteInfo = useMemo(
+    () => plans.some(hasPaymentRouteField) || packages.some(hasPaymentRouteField),
+    [plans, packages],
+  );
+  const hasPlanTestRoute = useMemo(
+    () => plans.some((plan) => plan.price_krw > 0 && isTestRoute(plan.payment_route)),
+    [plans],
+  );
+  const hasPackageTestRoute = useMemo(
+    () => packages.some((pkg) => isTestRoute(pkg.payment_route)),
+    [packages],
+  );
+  const showLegacyTestModeBanner = !hasBackendPaymentRouteInfo && billingMode === 'test';
+  const showTestModeBanner =
+    showLegacyTestModeBanner ||
+    (activeTab === 'plans' && hasPlanTestRoute) ||
+    (activeTab === 'packages' && hasPackageTestRoute);
+  const testModeBannerTitle = (() => {
+    if (showLegacyTestModeBanner) return '현재 결제 시스템은 테스트 모드로 운영 중입니다';
+    if (activeTab === 'packages') return '일부 크레딧 상품은 테스트 결제로 진행됩니다';
+    return '일부 구독 플랜은 테스트 결제로 진행됩니다';
+  })();
+  const testModeBannerDescription = showLegacyTestModeBanner
+    ? '실제 결제가 이루어지지 않습니다. 정식 오픈 시 안내드리겠습니다.'
+    : '테스트 라우팅이 적용된 항목은 실제 결제가 이루어지지 않습니다.';
 
   function getPlanCardStyle(code: string, isCurrent: boolean, isPopular: boolean): string {
     if (isCurrent) return planColor(code) + ' ring-2 ring-blue-500';
@@ -182,6 +230,8 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
               {plans.map(plan => {
                 const isCurrent = subscription?.plan === plan.code;
                 const isPopular = plan.code === 'pro';
+                const badge = routeBadge(plan.payment_route);
+                const isPaymentUnavailable = isUnavailableRoute(plan.payment_route);
                 return (
                   <div
                     key={plan.id}
@@ -193,14 +243,21 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                       </span>
                     )}
 
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       {planIcon(plan.code)}
                       <h3 className="font-bold text-gray-800">{plan.name}</h3>
-                      {isCurrent && (
-                        <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full ml-auto whitespace-nowrap">
-                          현재
-                        </span>
-                      )}
+                      <div className="ml-auto flex flex-wrap justify-end gap-1">
+                        {isCurrent && (
+                          <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full whitespace-nowrap">
+                            현재
+                          </span>
+                        )}
+                        {badge && (
+                          <span className={`text-xs px-2 py-0.5 border rounded-full whitespace-nowrap ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mb-4">
@@ -236,14 +293,19 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
                     {!isCurrent && plan.price_krw > 0 && (
                       <button
+                        disabled={isPaymentUnavailable}
                         onClick={() => window.open(
                           `${billingBaseUrl}/services/storygraph/subscribe/?plan=${plan.code}&return_url=${returnUrlParam}`,
                           '_blank',
                           'noopener'
                         )}
-                        className="mt-4 w-full py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                        className={`mt-4 w-full py-2 px-4 text-white text-sm font-medium rounded-lg transition-colors ${
+                          isPaymentUnavailable
+                            ? 'bg-gray-300 cursor-not-allowed'
+                            : 'bg-indigo-600 hover:bg-indigo-700'
+                        }`}
                       >
-                        {subscription?.plan === 'free' ? '구독 시작' : '플랜 변경'}
+                        {isPaymentUnavailable ? '현재 결제 불가' : subscription?.plan === 'free' ? '구독 시작' : '플랜 변경'}
                       </button>
                     )}
                   </div>
@@ -268,36 +330,52 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
         return (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {packages.map(pkg => (
-                <div key={pkg.id} className="border border-gray-200 rounded-xl p-5 flex flex-col">
-                  <h3 className="font-bold text-gray-800 mb-2">{pkg.name}</h3>
-                  <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
-                    {pkg.credits.toLocaleString()} 크레딧
-                  </div>
-                  {pkg.bonus_pct > 0 && (
-                    <div className="text-xs text-green-600 font-medium mb-1">
-                      +{pkg.bonus_pct}% 보너스
+              {packages.map(pkg => {
+                const badge = routeBadge(pkg.payment_route);
+                const isPaymentUnavailable = isUnavailableRoute(pkg.payment_route);
+                return (
+                  <div key={pkg.id} className="border border-gray-200 rounded-xl p-5 flex flex-col">
+                    <div className="flex items-start gap-2 mb-2">
+                      <h3 className="font-bold text-gray-800">{pkg.name}</h3>
+                      {badge && (
+                        <span className={`ml-auto text-xs px-2 py-0.5 border rounded-full whitespace-nowrap ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <div className="text-sm text-gray-500 mb-1">
-                    {pkg.price_krw.toLocaleString()}원
-                    <span className="text-xs text-gray-400 ml-1">
-                      ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
-                  <button
-                    onClick={() => window.open(
-                      `${billingBaseUrl}/credits/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
-                      '_blank',
-                      'noopener'
+                    <div className="text-3xl font-bold text-blue-600 mb-1 tabular-nums">
+                      {pkg.credits.toLocaleString()} 크레딧
+                    </div>
+                    {pkg.bonus_pct > 0 && (
+                      <div className="text-xs text-green-600 font-medium mb-1">
+                        +{pkg.bonus_pct}% 보너스
+                      </div>
                     )}
-                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    구매하기
-                  </button>
-                </div>
-              ))}
+                    <div className="text-sm text-gray-500 mb-1">
+                      {pkg.price_krw.toLocaleString()}원
+                      <span className="text-xs text-gray-400 ml-1">
+                        ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
+                    <button
+                      disabled={isPaymentUnavailable}
+                      onClick={() => window.open(
+                        `${billingBaseUrl}/credits/checkout/?package=${pkg.id}&return_url=${returnUrlParam}`,
+                        '_blank',
+                        'noopener'
+                      )}
+                      className={`w-full py-2 px-4 text-white rounded-lg text-sm font-medium transition-colors ${
+                        isPaymentUnavailable
+                          ? 'bg-gray-300 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      {isPaymentUnavailable ? '현재 결제 불가' : '구매하기'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
             <p className="mt-4 text-xs text-gray-400 text-center">
               유상 크레딧 사용 시 사용분에 대한 환불이 제한됩니다.
@@ -454,9 +532,9 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
             <div role="status" className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
               <Info aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-800">현재 결제 시스템은 테스트 모드로 운영 중입니다</p>
+                <p className="text-sm font-medium text-amber-800">{testModeBannerTitle}</p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  실제 결제가 이루어지지 않습니다. 정식 오픈 시 안내드리겠습니다.
+                  {testModeBannerDescription}
                 </p>
               </div>
             </div>

@@ -62,6 +62,16 @@ interface BackendServiceSummary {
   allow_platform_topup: boolean;
 }
 
+export type BackendPaymentRouteMode = 'live' | 'sandbox' | 'disabled' | 'missing';
+
+export interface BackendPaymentRouteSummary {
+  scope: string;
+  mode: BackendPaymentRouteMode;
+  enabled: boolean;
+  is_test: boolean;
+  provider_env: 'live' | 'sandbox' | null;
+}
+
 interface BackendPublicPlan {
   id: number;
   service_code: string;
@@ -74,6 +84,7 @@ interface BackendPublicPlan {
   features: PlanFeatures;
   feature_flags: PlanFeatures;
   is_public: boolean;
+  payment_route?: BackendPaymentRouteSummary | null;
 }
 
 interface BackendTopupPackage {
@@ -86,6 +97,7 @@ interface BackendTopupPackage {
   bonus_pct: number;
   scope_type: string;
   bonus_policy: Record<string, unknown>;
+  payment_route?: BackendPaymentRouteSummary | null;
 }
 
 export interface BackendPublicPricingCatalog {

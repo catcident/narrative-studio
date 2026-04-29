@@ -174,6 +174,7 @@ export interface ServicePlan {
   features: PlanFeatures;
   sort_order: number;
   is_public?: boolean;
+  payment_route?: PaymentRouteSummary | null;
 }
 
 export interface BillingServiceSummary {
@@ -185,12 +186,21 @@ export interface BillingServiceSummary {
 }
 
 export type BillingMode = 'live' | 'test';
+export type PaymentRouteMode = 'live' | 'sandbox' | 'disabled' | 'missing';
+
+export interface PaymentRouteSummary {
+  scope: string;
+  mode: PaymentRouteMode;
+  enabled: boolean;
+  is_test: boolean;
+  provider_env: 'live' | 'sandbox' | null;
+}
 
 export interface PublicPricingCatalog {
   service: BillingServiceSummary;
   plans: ServicePlan[];
   topup_packages: CreditPackage[];
-  billing_mode: BillingMode;
+  billing_mode?: BillingMode;
 }
 
 export async function getPublicPricingCatalog(): Promise<BillingResult<PublicPricingCatalog>> {
@@ -245,6 +255,7 @@ export interface CreditPackage {
   bonus_pct: number;
   scope_type: string;
   bonus_policy?: Record<string, unknown>;
+  payment_route?: PaymentRouteSummary | null;
 }
 
 export async function getCreditPackages(): Promise<BillingListResult<CreditPackage>> {
