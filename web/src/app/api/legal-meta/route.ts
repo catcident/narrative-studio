@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { LegalFooterMeta } from '@/types/legalMeta';
 
-const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'https://catcident.com';
+const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'http://caddy:8081';
+const CATCIDENT_PUBLIC_API_URL = process.env.CATCIDENT_PUBLIC_API_URL || 'https://catcident.com';
 const PROXY_TIMEOUT_MS = 10000;
 
 const FALLBACK_META: LegalFooterMeta = {
@@ -29,44 +30,60 @@ const FALLBACK_META: LegalFooterMeta = {
 };
 
 export async function GET() {
-  const url = `${CATCIDENT_API_URL}/api/v1/legal/public/footer-meta/?lang=ko`;
+  const primary = CATCIDENT_API_URL.replace(/\/+$/, '');
+  const fallback = CATCIDENT_PUBLIC_API_URL.replace(/\/+$/, '');
+  const baseUrls = primary === fallback ? [primary] : [primary, fallback];
 
-  try {
-    const response = await fetchWithTimeout(
-      url,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Forwarded-Proto': 'https',
-        },
-      },
-      PROXY_TIMEOUT_MS,
-    );
+  for (let index = 0; index < baseUrls.length; index += 1) {
+    const url = `${baseUrls[index]}/api/v1/legal/public/footer-meta/?lang=ko`;
+    const isFallback = index > 0;
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => '');
-      console.error('[legal-meta] upstream error:', response.status, errorBody);
-      return NextResponse.json(FALLBACK_META, {
-        headers: { 'X-Fallback': 'true' },
-      });
-    }
-
-    let data: unknown;
     try {
-      data = await response.json();
-    } catch {
-      console.error('[legal-meta] invalid JSON from upstream');
+      const response = await fetchWithTimeout(
+        url,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Forwarded-Proto': 'https',
+          },
+        },
+        PROXY_TIMEOUT_MS,
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        console.error('[legal-meta] upstream error:', response.status, errorBody);
+        if (!isFallback && response.status >= 500 && baseUrls.length > 1) continue;
+        return NextResponse.json(FALLBACK_META, {
+          headers: { 'X-Fallback': 'true' },
+        });
+      }
+
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        console.error('[legal-meta] invalid JSON from upstream');
+        return NextResponse.json(FALLBACK_META, {
+          headers: { 'X-Fallback': 'true' },
+        });
+      }
+
+      return NextResponse.json(data);
+    } catch (err: unknown) {
+      if (!isFallback && baseUrls.length > 1) {
+        console.error('[legal-meta] primary proxy error; retrying public fallback', err instanceof Error ? err.message : err);
+        continue;
+      }
+      console.error('[legal-meta] proxy error:', err instanceof Error ? err.message : err);
       return NextResponse.json(FALLBACK_META, {
         headers: { 'X-Fallback': 'true' },
       });
     }
-
-    return NextResponse.json(data);
-  } catch (err: unknown) {
-    console.error('[legal-meta] proxy error:', err instanceof Error ? err.message : err);
-    return NextResponse.json(FALLBACK_META, {
-      headers: { 'X-Fallback': 'true' },
-    });
   }
+
+  return NextResponse.json(FALLBACK_META, {
+    headers: { 'X-Fallback': 'true' },
+  });
 }

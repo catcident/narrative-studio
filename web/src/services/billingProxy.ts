@@ -11,13 +11,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
-const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'https://catcident.com';
+const CATCIDENT_API_URL = process.env.CATCIDENT_API_URL || 'http://caddy:8081';
+const CATCIDENT_PUBLIC_API_URL = process.env.CATCIDENT_PUBLIC_API_URL || 'https://catcident.com';
 const CATCIDENT_SERVICE_KEY = process.env.CATCIDENT_SERVICE_KEY || '';
 const PROXY_TIMEOUT_MS = 15000;
 
 interface ProxyOptions {
   method?: string;
   body?: string | null;
+}
+
+function uniqueBaseUrls(method: string): string[] {
+  const primary = CATCIDENT_API_URL.replace(/\/+$/, '');
+  const fallback = CATCIDENT_PUBLIC_API_URL.replace(/\/+$/, '');
+  if (method !== 'GET' || primary === fallback) return [primary];
+  return [primary, fallback];
 }
 
 export async function proxyToCatcident(
@@ -42,18 +50,37 @@ export async function proxyToCatcident(
     headers['X-Service-Key'] = CATCIDENT_SERVICE_KEY;
   }
 
-  const url = `${CATCIDENT_API_URL}/api/v1/billing${path}`;
+  const baseUrls = uniqueBaseUrls(method);
 
-  try {
-    return await fetchWithTimeout(url, {
-      method,
-      headers,
-      body: method !== 'GET' ? body : undefined,
-    }, PROXY_TIMEOUT_MS);
-  } catch (err: unknown) {
-    console.error(`[billing] Proxy error: ${path}`, err instanceof Error ? err.message : err);
-    throw err;
+  for (let index = 0; index < baseUrls.length; index += 1) {
+    const baseUrl = baseUrls[index];
+    const url = `${baseUrl}/api/v1/billing${path}`;
+    const isFallback = index > 0;
+
+    try {
+      const response = await fetchWithTimeout(url, {
+        method,
+        headers,
+        body: method !== 'GET' ? body : undefined,
+      }, PROXY_TIMEOUT_MS);
+
+      if (method === 'GET' && response.status >= 500 && !isFallback && baseUrls.length > 1) {
+        console.error(`[billing] Primary upstream error ${response.status}: ${path}; retrying public fallback`);
+        continue;
+      }
+
+      return response;
+    } catch (err: unknown) {
+      if (!isFallback && baseUrls.length > 1) {
+        console.error(`[billing] Primary proxy error: ${path}; retrying public fallback`, err instanceof Error ? err.message : err);
+        continue;
+      }
+      console.error(`[billing] Proxy error: ${path}`, err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
+
+  throw new Error(`Billing proxy failed without a response: ${path}`);
 }
 
 /** 업스트림 응답을 처리하여 NextResponse 반환 (에러 차단 + JSON 파싱) */
