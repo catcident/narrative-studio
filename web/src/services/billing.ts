@@ -184,10 +184,13 @@ export interface BillingServiceSummary {
   allow_platform_topup: boolean;
 }
 
+export type BillingMode = 'live' | 'test';
+
 export interface PublicPricingCatalog {
   service: BillingServiceSummary;
   plans: ServicePlan[];
   topup_packages: CreditPackage[];
+  billing_mode: BillingMode;
 }
 
 export async function getPublicPricingCatalog(): Promise<BillingResult<PublicPricingCatalog>> {

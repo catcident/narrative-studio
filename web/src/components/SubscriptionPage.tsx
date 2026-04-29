@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Crown, Zap, Star, ShoppingCart, Check, Key, Loader2, Trash2, ExternalLink, Info } from 'lucide-react';
 import { useBillingSubscription, useByokEnabled, useByokMode, useStore } from '../store';
-import { getPublicPricingCatalog, buildPlanFeatureStrings, type ServicePlan, type CreditPackage } from '../services/billing';
+import { getPublicPricingCatalog, buildPlanFeatureStrings, type BillingMode, type ServicePlan, type CreditPackage } from '../services/billing';
 import { hasApiKey, getApiKey, setApiKey, removeApiKey, validateApiKey } from '../services/extraction';
 import type { ByokMode } from '../services/extraction';
 import { UsageHistory } from './UsageHistory';
@@ -18,6 +18,10 @@ interface SubscriptionPageProps {
   onClose: () => void;
 }
 
+function normalizeBillingMode(value: unknown): BillingMode | null {
+  return value === 'live' || value === 'test' ? value : null;
+}
+
 export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const subscription = useBillingSubscription();
   const byokEnabled = useByokEnabled();
@@ -26,6 +30,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>('plans');
   const [plans, setPlans] = useState<ServicePlan[]>([]);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
+  const [billingMode, setBillingMode] = useState<BillingMode | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   // API 키 탭 상태
@@ -47,6 +52,8 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
         if (result.ok) {
           setPlans(result.data.plans);
           setPackages(result.data.topup_packages);
+          const mode = normalizeBillingMode(result.data.billing_mode);
+          if (mode) setBillingMode(mode);
         } else {
           setLoadError(true);
         }
@@ -57,6 +64,21 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data: { billingMode?: unknown }) => {
+        if (cancelled) return;
+        const mode = normalizeBillingMode(data.billingMode);
+        if (mode) setBillingMode(mode);
+      })
+      .catch((err: unknown) => {
+        console.error('[config] SubscriptionPage billing mode load error:', err instanceof Error ? err.message : err);
       });
     return () => { cancelled = true; };
   }, []);
@@ -126,6 +148,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
   const billingBaseUrl = 'https://catcident.com/ko/billing';
   const returnUrlParam = useMemo(() => encodeURIComponent(window.location.origin + '/app'), []);
+  const showTestModeBanner = billingMode === 'test';
 
   function getPlanCardStyle(code: string, isCurrent: boolean, isPopular: boolean): string {
     if (isCurrent) return planColor(code) + ' ring-2 ring-blue-500';
@@ -427,16 +450,17 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
 
         {/* 본문 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* 테스트 모드 배너 */}
-          <div role="status" className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-            <Info aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">현재 결제 시스템은 테스트 모드로 운영 중입니다</p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                실제 결제가 이루어지지 않습니다. 정식 오픈 시 안내드리겠습니다.
-              </p>
+          {showTestModeBanner && (
+            <div role="status" className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+              <Info aria-hidden="true" className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">현재 결제 시스템은 테스트 모드로 운영 중입니다</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  실제 결제가 이루어지지 않습니다. 정식 오픈 시 안내드리겠습니다.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {renderTabContent()}
         </div>
