@@ -3,10 +3,13 @@
  * /api/embeddings와 /api/chunk-embeddings에서 공유
  */
 
+import { isAiEnabled } from './aiAvailability';
+
 /**
  * 텍스트를 임베딩 벡터로 변환 (OpenAI embedding API via OpenRouter)
  */
 export async function getEmbeddings(texts: string[], apiKey: string): Promise<number[][]> {
+  if (!isAiEnabled()) throw new Error('ai_disabled');
   const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
     method: 'POST',
     headers: {

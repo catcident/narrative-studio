@@ -3,6 +3,8 @@ import type { NextAuthConfig } from 'next-auth';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { headers } from 'next/headers';
+import { isWithdrawnSubject } from '@/lib/withdrawnSubjects';
+import { invalidateWithdrawnToken, WITHDRAWN_ACCOUNT_ERROR } from '@/lib/withdrawalTokenGuard';
 
 // 인증은 기본 활성 — AUTH_ENABLED=false로 명시적 비활성화만 가능 (보안 기본값)
 export const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
@@ -112,6 +114,9 @@ export const authConfig: NextAuthConfig = {
       // 초기 로그인: account/profile에서 토큰 정보 저장
       if (account && profile) {
         const p = profile as CatcidentProfile;
+        if (await isWithdrawnSubject(p.sub)) {
+          throw new Error(WITHDRAWN_ACCOUNT_ERROR);
+        }
         token.id = p.sub;
         token.nickname = p.nickname;
         token.memberType = p.member_type;
@@ -124,6 +129,10 @@ export const authConfig: NextAuthConfig = {
         return token;
       }
 
+      if (token.id && await isWithdrawnSubject(token.id)) {
+        return invalidateWithdrawnToken(token);
+      }
+
       // 토큰 갱신: 만료 60초 전이면 refresh 시도
       const needsRefresh =
         token.accessTokenExpires &&
@@ -133,10 +142,14 @@ export const authConfig: NextAuthConfig = {
       return needsRefresh ? refreshAccessToken(token) : token;
     },
     async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.nickname = token.nickname;
-      session.user.memberType = token.memberType;
-      session.user.roles = token.roles;
+      const isWithdrawn = token.error === WITHDRAWN_ACCOUNT_ERROR;
+      session.user.id = isWithdrawn || typeof token.id !== 'string' ? '' : token.id;
+      session.user.email = isWithdrawn ? '' : session.user.email;
+      session.user.name = isWithdrawn ? null : session.user.name;
+      session.user.image = isWithdrawn ? null : session.user.image;
+      session.user.nickname = isWithdrawn ? null : token.nickname;
+      session.user.memberType = isWithdrawn ? null : token.memberType;
+      session.user.roles = isWithdrawn ? [] : token.roles;
       session.error = token.error;
       return session;
     },
@@ -156,7 +169,13 @@ export async function getAuthUserId(): Promise<string | null> {
     return 'anonymous'; // 인증 비활성화 시 기본 userId
   }
   const session = await auth();
-  return session?.user?.id || null;
+  const userId = session?.user?.id;
+  if (!userId) return null;
+  try {
+    return await isWithdrawnSubject(userId) ? null : userId;
+  } catch {
+    return null;
+  }
 }
 
 export async function requireAuth(): Promise<{ userId: string; accessToken?: string } | { error: Response }> {
@@ -166,6 +185,13 @@ export async function requireAuth(): Promise<{ userId: string; accessToken?: str
   const session = await auth();
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  }
+  try {
+    if (await isWithdrawnSubject(session.user.id)) {
+      return { error: NextResponse.json({ error: 'Account unavailable' }, { status: 403 }) };
+    }
+  } catch {
+    return { error: NextResponse.json({ error: 'Authentication unavailable' }, { status: 503 }) };
   }
   // JWT에서 직접 accessToken 읽기 (클라이언트 세션에 노출하지 않음)
   const headerStore = await headers();

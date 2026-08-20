@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
+import { runWithSubjectWriteFence } from '@/lib/subjectWriteFence';
 import {
   fetchStorageLimits,
   saveVersionHistory,
@@ -89,79 +90,87 @@ export async function POST(request: NextRequest) {
     }
 
     if (existing) {
-      const newVersion = (existing.version ?? 1) + 1;
-
-      // 새로 추가된 파일명 추출 (기존 소스 파일 수와 비교)
-      const existingFileCount = existing.data?.metadata?.sourceFiles?.length || 0;
-      const newSourceFiles = data.metadata?.sourceFiles || [];
-      const addedFiles = newSourceFiles.slice(existingFileCount);
-      const addedFileNames = addedFiles.map((f: { fileName?: string }) => f.fileName).join(', ');
-
-      // 이전 버전을 히스토리에 저장 (text 제거 + FIFO)
-      try {
+      const persisted = await runWithSubjectWriteFence(db, userId, async (session) => {
+        const currentExisting = await collection.findOne(
+          { _id: existing._id, userId },
+          { session },
+        );
+        if (!currentExisting) throw new Error('Existing graph not found');
+        const newVersion = (currentExisting.version ?? 1) + 1;
+        const existingFileCount = currentExisting.data?.metadata?.sourceFiles?.length || 0;
+        const newSourceFiles = data.metadata?.sourceFiles || [];
+        const addedFiles = newSourceFiles.slice(existingFileCount);
+        const addedFileNames = addedFiles.map((f: { fileName?: string }) => f.fileName).join(', ');
         const maxVersions = limits?.maxVersions ?? DEFAULT_MAX_VERSIONS;
         await saveVersionHistory({
           db,
-          existingDoc: existing,
-          note: addedFileNames ? `+${addedFileNames}` : `v${existing.version ?? 1}: ${existing.title}`,
+          existingDoc: currentExisting,
+          note: addedFileNames ? `+${addedFileNames}` : `v${currentExisting.version ?? 1}: ${currentExisting.title}`,
           maxVersions,
           userId,
           addedFiles: addedFileNames || null,
+          session,
         });
-      } catch (versionErr: unknown) {
-        console.error('[api] POST version history error:', versionErr);
-      }
-
-      await collection.updateOne({ _id: existing._id }, {
-        $set: {
-          title,
-          data,
-          version: newVersion,
-          updatedAt: now,
-          entityCount,
-          edgeCount,
-          sceneCount,
-          novelId: novelId || existing.novelId,
-        }
+        await collection.updateOne({ _id: existing._id, userId }, {
+          $set: {
+            title,
+            data,
+            version: newVersion,
+            updatedAt: now,
+            entityCount,
+            edgeCount,
+            sceneCount,
+            novelId: novelId || currentExisting.novelId,
+          },
+        }, { session });
+        return {
+          createdAt: currentExisting.createdAt,
+          newVersion,
+          novelId: novelId || currentExisting.novelId,
+        };
       });
       return NextResponse.json({
         id: existing._id.toString(),
         title,
-        savedAt: existing.createdAt?.toISOString(),
+        savedAt: persisted.createdAt?.toISOString(),
         updatedAt: now.toISOString(),
-        version: newVersion,
+        version: persisted.newVersion,
         entityCount,
         edgeCount,
         sceneCount,
         userId,
-        novelId: novelId || existing.novelId,
+        novelId: persisted.novelId,
         model: data.metadata?.model || null,
       });
     } else {
       // 저장 그래프 수 제한 (새 그래프 insert 시에만)
       const maxSavedGraphs = limits?.maxSavedGraphs ?? DEFAULT_MAX_SAVED_GRAPHS;
-      const existingCount = await collection.countDocuments({ userId });
-      if (existingCount >= maxSavedGraphs) {
+      const persisted = await runWithSubjectWriteFence(db, userId, async (session) => {
+        const existingCount = await collection.countDocuments({ userId }, { session });
+        if (existingCount >= maxSavedGraphs) return { limitExceeded: true as const };
+        const result = await collection.insertOne({
+          title,
+          data,
+          userId,
+          novelId,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+          entityCount,
+          edgeCount,
+          sceneCount,
+        }, { session });
+        return { limitExceeded: false as const, insertedId: result.insertedId };
+      });
+      if (persisted.limitExceeded) {
         return NextResponse.json(
           { error: `저장 가능한 그래프 수를 초과했습니다 (최대 ${maxSavedGraphs}개). 기존 그래프를 삭제하거나 상위 플랜으로 업그레이드해주세요.` },
           { status: 403 }
         );
       }
 
-      const result = await collection.insertOne({
-        title,
-        data,
-        userId,
-        novelId,
-        version: 1,
-        createdAt: now,
-        updatedAt: now,
-        entityCount,
-        edgeCount,
-        sceneCount
-      });
       return NextResponse.json({
-        id: result.insertedId.toString(),
+        id: persisted.insertedId.toString(),
         title,
         savedAt: now.toISOString(),
         updatedAt: now.toISOString(),

@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
 import { fetchStorageLimits, saveVersionHistory, DEFAULT_MAX_VERSIONS } from '@/lib/versionHistory';
+import { runWithSubjectWriteFence } from '@/lib/subjectWriteFence';
 
 // 단일 조회 (원본 텍스트 포함 옵션, 사용자 소유권 확인)
 export async function GET(
@@ -110,38 +111,39 @@ export async function PUT(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // 이전 버전을 히스토리에 저장 (fail-safe: 실패해도 업데이트 진행)
-    try {
-      // anonymous는 fetchStorageLimits 네트워크 호출 불필요 (accessToken 없음)
-      const maxVersions = userId !== 'anonymous'
-        ? (await fetchStorageLimits(accessToken)).maxVersions
-        : DEFAULT_MAX_VERSIONS;
+    const maxVersions = userId !== 'anonymous'
+      ? (await fetchStorageLimits(accessToken)).maxVersions
+      : DEFAULT_MAX_VERSIONS;
+    const result = await runWithSubjectWriteFence(db, userId, async (session) => {
+      const currentExisting = await db.collection('knowledgeGraphs').findOne(
+        { _id: new ObjectId(id), userId },
+        { session },
+      );
+      if (!currentExisting) throw new Error('Existing graph not found');
       await saveVersionHistory({
         db,
-        existingDoc: existing,
-        note: `v${existing.version ?? 1}: ${existing.title}`,
+        existingDoc: currentExisting,
+        note: `v${currentExisting.version ?? 1}: ${currentExisting.title}`,
         maxVersions,
         userId,
+        session,
       });
-    } catch (versionErr: unknown) {
-      console.error('[api] PUT version history error:', versionErr);
-    }
-
-    // 업데이트
-    const result = await db.collection('knowledgeGraphs').updateOne(
-      { _id: new ObjectId(id), userId },
-      {
-        $set: {
-          data: knowledgeGraph,
-          title: knowledgeGraph.metadata?.title || existing.title,
-          updatedAt: now,
-          entityCount: Object.keys(knowledgeGraph.entities || {}).length,
-          edgeCount: Object.keys(knowledgeGraph.hyperedges || {}).length,
-          sceneCount: Object.keys(knowledgeGraph.snapshots || {}).length,
+      return db.collection('knowledgeGraphs').updateOne(
+        { _id: new ObjectId(id), userId },
+        {
+          $set: {
+            data: knowledgeGraph,
+            title: knowledgeGraph.metadata?.title || currentExisting.title,
+            updatedAt: now,
+            entityCount: Object.keys(knowledgeGraph.entities || {}).length,
+            edgeCount: Object.keys(knowledgeGraph.hyperedges || {}).length,
+            sceneCount: Object.keys(knowledgeGraph.snapshots || {}).length,
+          },
+          $inc: { version: 1 },
         },
-        $inc: { version: 1 },
-      }
-    );
+        { session },
+      );
+    });
 
     return NextResponse.json({ success: result.modifiedCount > 0 });
   } catch (err: unknown) {
@@ -162,22 +164,20 @@ export async function DELETE(
 
     const { id } = await params;
     const db = await connectMongo();
-    const result = await db.collection('knowledgeGraphs').deleteOne({
-      _id: new ObjectId(id),
-      userId,
-    });
-
-    if (result.deletedCount > 0) {
-      try {
+    const result = await runWithSubjectWriteFence(db, userId, async (session) => {
+      const deletion = await db.collection('knowledgeGraphs').deleteOne({
+        _id: new ObjectId(id),
+        userId,
+      }, { session });
+      if (deletion.deletedCount > 0) {
         await Promise.all([
-          db.collection('knowledgeGraphVersions').deleteMany({ dataId: id }),
-          db.collection('entityEmbeddings').deleteMany({ graphId: id, userId }),
-          db.collection('chunkEmbeddings').deleteMany({ graphId: id, userId }),
+          db.collection('knowledgeGraphVersions').deleteMany({ dataId: id }, { session }),
+          db.collection('entityEmbeddings').deleteMany({ graphId: id, userId }, { session }),
+          db.collection('chunkEmbeddings').deleteMany({ graphId: id, userId }, { session }),
         ]);
-      } catch (cleanupErr: unknown) {
-        console.error('[api] knowledge-graphs/[id] DELETE cascade cleanup error:', cleanupErr);
       }
-    }
+      return deletion;
+    });
 
     return NextResponse.json({ success: result.deletedCount > 0 });
   } catch (err: unknown) {

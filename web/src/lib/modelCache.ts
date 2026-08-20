@@ -11,6 +11,7 @@
  */
 
 import { FALLBACK_MODELS, CURATED_MODEL_META, type ModelInfo } from '@/types';
+import { isAiEnabled } from '@/lib/aiAvailability';
 import {
   SERVER_MODEL_COSTS,
   computeCreditsPerChunk,
@@ -206,6 +207,10 @@ function buildFallbackCache(): ModelCache {
 }
 
 async function ensureCache(): Promise<ModelCache> {
+  if (!isAiEnabled() || process.env.MODEL_CATALOG_REMOTE_ENABLED === 'false') {
+    return buildFallbackCache();
+  }
+
   // 캐시가 유효한 경우 즉시 반환
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache;

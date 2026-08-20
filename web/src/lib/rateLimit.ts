@@ -4,6 +4,8 @@
  * 슬라이딩 윈도우 방식으로 사용자별 API 호출을 제한한다.
  */
 
+import { isSubjectLocallyBlocked } from '@/lib/subjectWriteFence';
+
 interface RateWindow {
   timestamps: number[];
 }
@@ -13,6 +15,10 @@ const windows = new Map<string, RateWindow>();
 const DEFAULT_MAX_REQUESTS = 60;
 const DEFAULT_WINDOW_MS = 60_000; // 1분
 const MAX_ENTRIES = 10_000;
+
+export function clearRateLimitForKey(key: string): void {
+  windows.delete(key);
+}
 
 /** 플랜별 분당 요청 제한 */
 const PLAN_RATE_LIMITS: Record<string, number> = {
@@ -48,6 +54,10 @@ export function checkRateLimit(
   maxRequests = DEFAULT_MAX_REQUESTS,
   windowMs = DEFAULT_WINDOW_MS,
 ): { retryAfterMs: number } | null {
+  if (isSubjectLocallyBlocked(key)) {
+    clearRateLimitForKey(key);
+    return { retryAfterMs: windowMs };
+  }
   const now = Date.now();
   const cutoff = now - windowMs;
 

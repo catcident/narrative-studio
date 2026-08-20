@@ -79,7 +79,7 @@ export function WorldView() {
   const sceneOrderMap = useMemo(() => {
     if (!knowledgeGraph) return {} as Record<string, number>;
     const map: Record<string, number> = {};
-    for (const snapshot of Object.values(knowledgeGraph.sceneSnapshots || {})) {
+    for (const snapshot of Object.values(knowledgeGraph.snapshots || {})) {
       map[snapshot.sceneId] = snapshot.order;
     }
     return map;

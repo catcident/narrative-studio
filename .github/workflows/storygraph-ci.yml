@@ -1,0 +1,54 @@
+name: StoryGraph CI
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/storygraph-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/storygraph-ci.yml'
+
+concurrency:
+  group: storygraph-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Typecheck and fence inventory
+        run: >-
+          docker compose --env-file /dev/null -f docker-compose.integration.yml
+          run --build --rm --no-deps integration-tests npm run check
+
+      - name: Reject critical production dependency advisories
+        run: >-
+          docker compose --env-file /dev/null -f docker-compose.integration.yml
+          run --rm --no-deps integration-tests npm run check:security
+
+      - name: Rehearse standalone volume to replica-set transition
+        run: bash scripts/rehearse-replica-transition.sh
+
+      - name: Build and run replica-set integration tests
+        run: >-
+          docker compose --env-file /dev/null -f docker-compose.integration.yml
+          up --build --abort-on-container-exit --exit-code-from integration-tests integration-tests
+
+      - name: Remove integration resources
+        if: always()
+        run: >-
+          docker compose --env-file /dev/null -f docker-compose.integration.yml
+          down -v --remove-orphans

@@ -4,6 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import {
   BookOpen, User, Search, Quote, Eye, Shirt, Brain, Swords,
   History, Target, Users, X, Cat, Box, Globe,
@@ -341,8 +342,8 @@ function PokemonCard({
         borderStyle: 'solid',
         borderColor: isSelected ? theme.accent : theme.border + '60',
         boxShadow: isSelected ? `0 4px 20px ${theme.glow}` : undefined,
-        ringColor: theme.accent,
-      }}
+        '--tw-ring-color': theme.accent,
+      } as CSSProperties}
     >
       {/* 카드 상단 그라데이션 헤더 */}
       <div

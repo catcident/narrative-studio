@@ -27,7 +27,7 @@ import { CreditConfirmDialog } from './components/CreditConfirmDialog';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { BalanceAlertBanner } from './components/BalanceAlertBanner';
 import { saveKnowledgeGraph, saveNovelText, loadKnowledgeGraph as loadKnowledgeGraphById } from './services/storage';
-import { syncPartialAnalysis } from './services/extraction';
+import { removeApiKey, syncPartialAnalysis } from './services/extraction';
 import { useAddFileAnalysis } from './hooks/useAddFileAnalysis';
 import { useResumeAnalysis } from './hooks/useResumeAnalysis';
 import { Footer } from './components/Footer';
@@ -48,6 +48,12 @@ function App() {
   const originalText = useStore((s) => s.originalText);
   const currentDataId = useStore((s) => s.currentDataId);
   const viewMode = useStore((s) => s.viewMode);
+  const aiEnabled = useStore((s) => s.aiEnabled);
+  const setAiEnabled = useStore((s) => s.setAiEnabled);
+  const setHasEnvKey = useStore((s) => s.setHasEnvKey);
+  const setAuthEnabled = useStore((s) => s.setAuthEnabled);
+  const setByokMode = useStore((s) => s.setByokMode);
+  const loadModels = useStore((s) => s.loadModels);
   const setViewMode = useStore((s) => s.setViewMode);
   const reset = useStore((s) => s.reset);
   const setKnowledgeGraph = useStore((s) => s.setKnowledgeGraph);
@@ -85,6 +91,41 @@ function App() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [loadSubscription]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/config')
+      .then(async (response) => response.json())
+      .then((data) => {
+        if (cancelled) return;
+        const enabled = data.aiEnabled === true && data.serviceReady === true;
+        setAiEnabled(enabled);
+        setHasEnvKey(enabled && data.hasEnvKey === true);
+        setAuthEnabled(data.authEnabled !== false);
+        if (enabled) {
+          void loadModels();
+        } else {
+          removeApiKey();
+          setByokMode('disabled');
+        }
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.error('[config] Failed to load app configuration:', error instanceof Error ? error.message : error);
+        setAiEnabled(false);
+        setHasEnvKey(false);
+        setAuthEnabled(true);
+        removeApiKey();
+        setByokMode('disabled');
+      });
+    return () => { cancelled = true; };
+  }, [loadModels, setAiEnabled, setAuthEnabled, setByokMode, setHasEnvKey]);
+
+  useEffect(() => {
+    if (aiEnabled !== true && viewMode === 'chat') {
+      setViewMode('graph');
+    }
+  }, [aiEnabled, setViewMode, viewMode]);
 
   // 마운트 시 sessionStorage에서 세션 복원
   useEffect(() => {
@@ -344,7 +385,7 @@ function App() {
 
             {/* 뷰 전환 탭 */}
             <div className="flex bg-gray-100 rounded-lg p-1">
-              {VIEW_TABS.map(({ mode, label, icon: Icon }) => (
+              {VIEW_TABS.filter(({ mode }) => mode !== 'chat' || aiEnabled === true).map(({ mode, label, icon: Icon }) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
@@ -387,7 +428,7 @@ function App() {
             </button>
 
             {/* 파일 추가 */}
-            <label
+            {aiEnabled === true && <label
               aria-label="파일 추가"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer ${
               isAddingFile
@@ -416,7 +457,7 @@ function App() {
                 className="hidden"
                 disabled={isAddingFile}
               />
-            </label>
+            </label>}
 
             {/* 리셋 */}
             <button
@@ -438,7 +479,7 @@ function App() {
       <BalanceAlertBanner onShowSubscription={() => setShowSubscriptionPage(true)} />
 
       {/* 부분 분석 배너 */}
-      {partialAnalysis && (
+      {aiEnabled === true && partialAnalysis && (
         <PartialAnalysisBanner
           partialAnalysis={partialAnalysis}
           onResume={resume}
@@ -492,14 +533,14 @@ function App() {
 
           {viewMode === 'source' && <SourceTextView />}
 
-          {viewMode === 'chat' && <ChatView />}
+          {aiEnabled === true && viewMode === 'chat' && <ChatView />}
         </div>
 
         {/* 오른쪽: 상세 패널 */}
         <div className={`border-l border-gray-200 flex-shrink-0 overflow-hidden ${
-          viewMode === 'chat' ? 'w-[720px]' : 'w-96'
+          aiEnabled === true && viewMode === 'chat' ? 'w-[720px]' : 'w-96'
         }`}>
-          {viewMode === 'chat' && !selectedEntityId ? <ChatMentionedPanel /> : <DetailPanel />}
+          {aiEnabled === true && viewMode === 'chat' && !selectedEntityId ? <ChatMentionedPanel /> : <DetailPanel />}
         </div>
       </main>
 

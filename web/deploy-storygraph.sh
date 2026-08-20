@@ -2,7 +2,7 @@
 # StoryGraph 프론트엔드 배포 스크립트
 # web/ 디렉토리에서 실행
 
-set -e # 오류 발생 시 스크립트 중단
+set -euo pipefail # 오류·미정의 변수·파이프 실패 시 즉시 중단
 
 # --- 설정 ---
 # 환경 변수 파일: .env (기본값) + .env.local (프로덕션 민감 정보)
@@ -43,40 +43,29 @@ if [ ! -f ".env.local" ]; then
     fi
 fi
 
-# 1. 도커 이미지 빌드 (환경 변수로 캐시 옵션 제어)
+# 1. 검증 이미지에서 typecheck·fence inventory·critical advisory gate 실행
+STEP_START=$(date +%s)
+echo "🧪 배포 전 검증 중..."
+docker compose $ENV_FILES $COMPOSE_FILES --profile tools run --build --rm storygraph-tools
+docker compose $ENV_FILES $COMPOSE_FILES --profile tools run --rm storygraph-tools npm run check:security
+print_elapsed $STEP_START "배포 전 검증 완료"
+
+# 2. 도커 이미지 빌드 (환경 변수로 캐시 옵션 제어)
 STEP_START=$(date +%s)
 NO_CACHE="${NO_CACHE:-false}"
 if [ "$NO_CACHE" = "true" ]; then
     echo "🔨 도커 이미지 빌드 중... (캐시 없음)"
-    docker compose $ENV_FILES $COMPOSE_FILES build --no-cache
+    docker compose $ENV_FILES $COMPOSE_FILES build --no-cache storygraph
 else
     echo "🔨 도커 이미지 빌드 중... (캐시 사용)"
-    docker compose $ENV_FILES $COMPOSE_FILES build
-fi
-if [ $? -ne 0 ]; then
-    echo "❌ 도커 이미지 빌드 실패"
-    exit 1
+    docker compose $ENV_FILES $COMPOSE_FILES build storygraph
 fi
 print_elapsed $STEP_START "빌드 완료"
 
-# 2. 기존 컨테이너 중지 (볼륨은 유지 — mongodb_data 보존)
-STEP_START=$(date +%s)
-echo "🛑 기존 컨테이너 중지 중..."
-docker compose $ENV_FILES $COMPOSE_FILES down --remove-orphans
-if [ $? -ne 0 ]; then
-    echo "❌ 컨테이너 중지 실패"
-    exit 1
-fi
-print_elapsed $STEP_START "중지 완료"
-
-# 3. 새 컨테이너 시작 (백그라운드)
+# 3. 볼륨을 유지하고 새 이미지로 전진 배포
 STEP_START=$(date +%s)
 echo "🚀 새 컨테이너 시작 중..."
-docker compose $ENV_FILES $COMPOSE_FILES up -d
-if [ $? -ne 0 ]; then
-    echo "❌ 컨테이너 시작 실패"
-    exit 1
-fi
+docker compose $ENV_FILES $COMPOSE_FILES up -d --remove-orphans
 
 # 4. StoryGraph 서비스 준비 대기
 # 127.0.0.1: Alpine에서 localhost→IPv6 해석 방지
@@ -102,17 +91,10 @@ done
 if [ $ELAPSED -ge $HEALTHCHECK_TIMEOUT ]; then
     echo "❌ 헬스체크 타임아웃 (${HEALTHCHECK_TIMEOUT}초)"
     echo "컨테이너 로그 확인: docker compose $ENV_FILES $COMPOSE_FILES logs storygraph"
+    echo "탈퇴 보호 기능이 없는 과거 이미지로 롤백하지 마십시오. 서비스를 중지한 채 forward-fix합니다."
+    docker compose $ENV_FILES $COMPOSE_FILES stop storygraph
     exit 1
 fi
-
-# 5. 도커 시스템 정리
-STEP_START=$(date +%s)
-echo "🧹 미사용 도커 리소스 정리 중..."
-docker system prune -af
-if [ $? -ne 0 ]; then
-    echo "⚠️ 도커 시스템 정리 중 오류 발생, 하지만 배포 프로세스는 계속 진행됨"
-fi
-print_elapsed $STEP_START "정리 완료"
 
 echo ""
 echo "✅ StoryGraph 배포 완료!"

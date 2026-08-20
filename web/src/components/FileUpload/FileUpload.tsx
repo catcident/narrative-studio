@@ -74,13 +74,14 @@ export function FileUpload() {
   const setShowUsageSummary = useStore((s) => s.setShowUsageSummary);
   const updateCreditBalance = useStore((s) => s.updateCreditBalance);
   const loadSubscription = useStore((s) => s.loadSubscription);
-  const loadModels = useStore((s) => s.loadModels);
   const setPartialAnalysis = useStore((s) => s.setPartialAnalysis);
   const subscription = useBillingSubscription();
   const allModels = useModels();
   const byokEnabled = useByokEnabled();
   const canBatchAnalysis = useCanBatchAnalysis();
   const authEnabled = useAuthEnabled();
+  const aiEnabled = useStore((s) => s.aiEnabled);
+  const hasEnvKey = useStore((s) => s.hasEnvKey) === true;
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -92,7 +93,6 @@ export function FileUpload() {
   const [savedProgress, setSavedProgress] = useState<ExtractionProgress | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [hasLocalKey, setHasLocalKey] = useState(false);
-  const [hasEnvKey, setHasEnvKey] = useState(true);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [duplicateFileName, setDuplicateFileName] = useState<string | null>(null);
@@ -207,22 +207,6 @@ export function FileUpload() {
 
   useEffect(() => {
     let cancelled = false;
-
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => {
-        if (cancelled) return;
-        setHasEnvKey(data.hasEnvKey);
-        useStore.getState().setAuthEnabled(data.authEnabled ?? false);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        console.error('[config] Failed to load app configuration:', err instanceof Error ? err.message : err);
-        setHasEnvKey(false);
-        useStore.getState().setAuthEnabled(false);
-      });
-
-    loadModels();
 
     setHasLocalKey(hasApiKey());
     setSavedProgress(loadProgress());
@@ -791,6 +775,15 @@ export function FileUpload() {
   }, [canRegister, selectedFiles, directText, bookTitle, bookAuthor, currentModel, runExtraction, makeProgressCallback, addChunkUsage, updateCreditBalance, subscription, setKnowledgeGraph, resetProgressState, allModels, setPartialAnalysis, byokEnabled, authEnabled, enableLorebook]);
 
   // ==================== 렌더링 ====================
+
+  if (aiEnabled !== true) {
+    return (
+      <div role="status" className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+        <h2 className="font-semibold text-gray-800">AI 분석 기능이 일시 중단되어 있습니다</h2>
+        <p className="mt-2 text-sm text-gray-500">저장된 관계도는 계속 조회할 수 있습니다.</p>
+      </div>
+    );
+  }
 
   const uploadArea = (
     <UploadArea
