@@ -8,6 +8,7 @@
 
 import { AUTH_ENABLED } from '@/lib/auth';
 import { ensureStorygraphSubscription, isConfigBillingBackendError } from '@/lib/billingBackend';
+import { isSubjectLocallyBlocked } from '@/lib/subjectWriteFence';
 
 interface CacheEntry {
   balance: number;
@@ -20,6 +21,10 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_SIZE = 100;
 
 const balanceCache = new Map<string, CacheEntry>();
+
+export function clearBalanceCacheForUser(userId: string): void {
+  balanceCache.delete(userId);
+}
 
 /** Evict entries older than TTL; if still over limit, evict oldest first */
 function evictStaleEntries(): void {
@@ -47,6 +52,10 @@ function evictStaleEntries(): void {
  * Requires pre-resolved auth (avoids double requireAuth() call in route).
  */
 export async function checkAnalyzeEligibility(userId: string, accessToken: string | undefined): Promise<string | null> {
+  if (isSubjectLocallyBlocked(userId)) {
+    clearBalanceCacheForUser(userId);
+    return 'This account is no longer available.';
+  }
   // Skip check entirely when auth is disabled (public demo)
   if (!AUTH_ENABLED) {
     return null;
@@ -80,6 +89,10 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
     // Cache all balances (including zero/negative) to enable fast blocking.
     // Admin-added credits take effect after TTL (5min) — security over immediacy.
     evictStaleEntries();
+    if (isSubjectLocallyBlocked(userId)) {
+      clearBalanceCacheForUser(userId);
+      return 'This account is no longer available.';
+    }
     balanceCache.set(userId, { balance, byok, planCode, cachedAt: Date.now() });
 
     if (balance <= 0 && !byok) {
@@ -103,6 +116,10 @@ export async function checkAnalyzeEligibility(userId: string, accessToken: strin
 
 /** deduct 응답 후 캐시 즉시 갱신 (byok 플래그는 기존 캐시에서 유지) */
 export function updateBalanceCache(userId: string, balance: number): void {
+  if (isSubjectLocallyBlocked(userId)) {
+    clearBalanceCacheForUser(userId);
+    return;
+  }
   if (typeof balance !== 'number' || !Number.isFinite(balance)) {
     console.warn(`[analyze] Invalid balance value for cache update: ${balance}`);
     return;
@@ -123,6 +140,7 @@ export function updateBalanceCache(userId: string, balance: number): void {
  * AUTH_ENABLED=false 시 항상 false.
  */
 export function isCachedByokEnabled(userId: string): boolean {
+  if (isSubjectLocallyBlocked(userId)) return false;
   if (!AUTH_ENABLED) return false;
   const cached = balanceCache.get(userId);
   if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return true; // fail-open
@@ -131,6 +149,7 @@ export function isCachedByokEnabled(userId: string): boolean {
 
 /** 캐시에서 planCode 조회. 캐시 미스 시 undefined 반환. */
 export function getCachedPlanCode(userId: string): string | undefined {
+  if (isSubjectLocallyBlocked(userId)) return undefined;
   const cached = balanceCache.get(userId);
   if (!cached || Date.now() - cached.cachedAt > CACHE_TTL_MS) return undefined;
   return cached.planCode;

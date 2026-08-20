@@ -5,12 +5,14 @@
  */
 
 import { fetchWithTimeout } from './fetchWithTimeout';
+import { isAiEnabled } from './aiAvailability';
 
 const EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 const EMBEDDING_TIMEOUT_MS = 120000;
 
 /** 텍스트를 임베딩 벡터로 변환 (OpenRouter embedding API) */
 export async function getEmbeddings(texts: string[], apiKey: string): Promise<number[][]> {
+  if (!isAiEnabled()) throw new Error('ai_disabled');
   const response = await fetchWithTimeout('https://openrouter.ai/api/v1/embeddings', {
     method: 'POST',
     headers: {

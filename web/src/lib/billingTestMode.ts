@@ -34,7 +34,7 @@ export function getBillingTestUserId(sessionId: string): string {
 export function getBillingTestCookieOptions() {
   return {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: Math.floor(BILLING_TEST_SESSION_TTL_MS / 1000),

@@ -4,10 +4,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:20-alpine AS builder
+FROM deps AS tools
+RUN apk add --no-cache bash
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+FROM tools AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

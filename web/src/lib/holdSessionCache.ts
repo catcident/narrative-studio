@@ -7,6 +7,7 @@
 
 import 'server-only';
 import { KRW_PER_CREDIT } from '@/lib/serverCosts';
+import { isSubjectLocallyBlocked } from '@/lib/subjectWriteFence';
 
 interface HoldSessionEntry {
   userId: string;
@@ -55,6 +56,10 @@ function getValidSession(userId: string, holdToken: string): HoldSessionEntry | 
   const entry = holdSessions.get(holdToken);
   if (!entry) return null;
   if (entry.userId !== userId) return null;
+  if (isSubjectLocallyBlocked(userId)) {
+    holdSessions.delete(holdToken);
+    return null;
+  }
   if (entry.expiresAt <= Date.now()) {
     holdSessions.delete(holdToken);
     return null;
@@ -68,7 +73,7 @@ export function registerHoldSession(
   amountCredits: number,
   expiresAtIso?: string | null,
 ): void {
-  if (!holdToken || !userId) return;
+  if (!holdToken || !userId || isSubjectLocallyBlocked(userId)) return;
 
   const parsedExpiresAt = expiresAtIso ? Date.parse(expiresAtIso) : NaN;
   const expiresAt = Number.isFinite(parsedExpiresAt)
@@ -90,6 +95,10 @@ export function registerHoldSession(
 }
 
 export function hasActiveHoldSession(userId: string): boolean {
+  if (isSubjectLocallyBlocked(userId)) {
+    clearHoldSessionsForUser(userId);
+    return false;
+  }
   cleanupStaleSessions();
   for (const entry of holdSessions.values()) {
     if (entry.userId === userId && entry.expiresAt > Date.now()) {

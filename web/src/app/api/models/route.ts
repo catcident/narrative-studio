@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getCachedClientModels } from '@/lib/modelCache';
+import { aiDisabledResponse, isAiEnabled } from '@/lib/aiAvailability';
 
 export async function GET() {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   try {
     const models = await getCachedClientModels();
     return NextResponse.json({ models });

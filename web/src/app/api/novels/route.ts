@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
+import { runWithSubjectWriteFence } from '@/lib/subjectWriteFence';
 
 // 소설 저장 제한
 const MAX_NOVEL_TEXT_LENGTH = 5_000_000;
@@ -63,53 +64,55 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
 
-    // userId + title 조합으로 찾기
-    const existing = await collection.findOne({ title, userId });
-
-    if (existing) {
-      await collection.updateOne({ _id: existing._id }, {
-        $set: {
-          text,
-          updatedAt: now,
-          knowledgeGraphId: knowledgeGraphId || existing.knowledgeGraphId,
-        }
-      });
-      return NextResponse.json({
-        id: existing._id.toString(),
-        title,
-        savedAt: existing.createdAt?.toISOString(),
-        updatedAt: now.toISOString(),
-        textLength: text.length,
-        userId,
-        knowledgeGraphId: knowledgeGraphId || existing.knowledgeGraphId,
-      });
-    } else {
-      const novelCount = await collection.countDocuments({ userId });
-      if (novelCount >= MAX_NOVELS_PER_USER) {
-        return NextResponse.json(
-          { error: `저장 가능한 소설 수를 초과했습니다 (최대 ${MAX_NOVELS_PER_USER}개). 기존 소설을 삭제해주세요.` },
-          { status: 403 }
+    const persisted = await runWithSubjectWriteFence(db, userId, async (session) => {
+      const existing = await collection.findOne({ title, userId }, { session });
+      if (existing) {
+        const persistedKnowledgeGraphId = knowledgeGraphId || existing.knowledgeGraphId || null;
+        await collection.updateOne(
+          { _id: existing._id, userId },
+          { $set: { text, updatedAt: now, knowledgeGraphId: persistedKnowledgeGraphId } },
+          { session },
         );
+        return {
+          limitExceeded: false as const,
+          id: existing._id.toString(),
+          savedAt: existing.createdAt?.toISOString(),
+          knowledgeGraphId: persistedKnowledgeGraphId,
+        };
       }
-
+      const novelCount = await collection.countDocuments({ userId }, { session });
+      if (novelCount >= MAX_NOVELS_PER_USER) return { limitExceeded: true as const };
+      const persistedKnowledgeGraphId = knowledgeGraphId || null;
       const result = await collection.insertOne({
         title,
         text,
         userId,
-        knowledgeGraphId: knowledgeGraphId || null,
+        knowledgeGraphId: persistedKnowledgeGraphId,
         createdAt: now,
         updatedAt: now,
-      });
-      return NextResponse.json({
+      }, { session });
+      return {
+        limitExceeded: false as const,
         id: result.insertedId.toString(),
-        title,
         savedAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-        textLength: text.length,
-        userId,
-        knowledgeGraphId,
-      });
+        knowledgeGraphId: persistedKnowledgeGraphId,
+      };
+    });
+    if (persisted.limitExceeded) {
+        return NextResponse.json(
+          { error: `저장 가능한 소설 수를 초과했습니다 (최대 ${MAX_NOVELS_PER_USER}개). 기존 소설을 삭제해주세요.` },
+          { status: 403 }
+        );
     }
+    return NextResponse.json({
+      id: persisted.id,
+      title,
+      savedAt: persisted.savedAt,
+      updatedAt: now.toISOString(),
+      textLength: text.length,
+      userId,
+      knowledgeGraphId: persisted.knowledgeGraphId,
+    });
   } catch (err: unknown) {
     console.error('[api] novels POST error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

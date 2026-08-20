@@ -79,6 +79,10 @@ interface AppState {
   // Config (앱 수준 — reset()에서 유지)
   authEnabled: boolean | null;
   setAuthEnabled: (enabled: boolean) => void;
+  aiEnabled: boolean | null;
+  setAiEnabled: (enabled: boolean) => void;
+  hasEnvKey: boolean | null;
+  setHasEnvKey: (enabled: boolean) => void;
 
   // 액션
   setKnowledgeGraph: (knowledgeGraph: NovelKnowledgeGraph, originalText?: string, dataId?: string) => void;
@@ -151,6 +155,10 @@ export const useStore = create<AppState>((set, get) => ({
   models: FALLBACK_MODELS,
   modelsLoaded: false,
   loadModels: async () => {
+    if (get().aiEnabled !== true) {
+      set({ models: FALLBACK_MODELS, modelsLoaded: true });
+      return;
+    }
     try {
       const res = await fetch('/api/models');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -171,8 +179,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   authEnabled: null,
+  aiEnabled: null,
+  hasEnvKey: null,
 
   setAuthEnabled: (authEnabled) => set({ authEnabled }),
+  setAiEnabled: (aiEnabled) => set({ aiEnabled }),
+  setHasEnvKey: (hasEnvKey) => set({ hasEnvKey }),
   setKnowledgeGraph: (knowledgeGraph, originalText, dataId) => {
     if (dataId) {
       sessionStorage.setItem('currentDataId', dataId);
@@ -333,6 +345,7 @@ export const useBillingSubscription = () => useStore((s) => s.subscription);
 export const useCreditBalance = () => useStore((s) => s.subscription?.creditBalance ?? null);
 export const usePurchasedCreditBalance = () => useStore((s) => s.subscription?.purchasedCreditBalance ?? null);
 export const useAuthEnabled = () => useStore((s) => s.authEnabled);
+export const useAiEnabled = () => useStore((s) => s.aiEnabled);
 export const useModels = () => useStore((s) => s.models);
 export const useModelsLoaded = () => useStore((s) => s.modelsLoaded);
 export const usePartialAnalysis = () => useStore((s) => s.partialAnalysis);

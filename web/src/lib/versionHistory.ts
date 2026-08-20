@@ -1,4 +1,4 @@
-import type { Db } from 'mongodb';
+import type { ClientSession, Db } from 'mongodb';
 import { fetchStorygraphSubscription } from '@/lib/billingBackend';
 
 // ── 절대 상한 (플랜 설정과 무관한 하드 리밋) ──
@@ -95,6 +95,7 @@ interface SaveVersionHistoryParams {
   maxVersions: number;
   userId: string;
   addedFiles?: string | null;
+  session: ClientSession;
 }
 
 /**
@@ -108,6 +109,7 @@ export async function saveVersionHistory({
   maxVersions,
   userId,
   addedFiles,
+  session,
 }: SaveVersionHistoryParams): Promise<void> {
   const versionsCollection = db.collection('knowledgeGraphVersions');
   const graphDocId = existingDoc._id.toString();
@@ -126,21 +128,21 @@ export async function saveVersionHistory({
     data: strippedData,
     addedFiles: addedFiles || null,
     userId,
-  });
+  }, { session });
 
   // FIFO: 오래된 버전부터 삭제
-  const versionCount = await versionsCollection.countDocuments({ dataId: graphDocId });
+  const versionCount = await versionsCollection.countDocuments({ dataId: graphDocId }, { session });
   if (versionCount > maxVersions) {
     const excess = versionCount - maxVersions;
     const oldestVersions = await versionsCollection
-      .find({ dataId: graphDocId })
+      .find({ dataId: graphDocId }, { session })
       .sort({ savedAt: 1 })
       .limit(excess)
       .toArray();
     if (oldestVersions.length > 0) {
       await versionsCollection.deleteMany({
         _id: { $in: oldestVersions.map(v => v._id) },
-      });
+      }, { session });
     }
   }
 }

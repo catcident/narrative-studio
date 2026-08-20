@@ -1,0 +1,108 @@
+services:
+  mongodb-integration:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_DATABASE: character_relationship_chart
+    volumes:
+      - mongodb_integration_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  mongodb-integration-init:
+    image: mongo:7
+    depends_on:
+      mongodb-integration:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -lc
+      - >
+        mongosh "mongodb://mongodb-integration:27017/admin"
+        --quiet --eval
+        "try { rs.status().ok } catch (error) { rs.initiate({_id:'rs0', members:[{_id:0, host:'mongodb-integration:27017'}]}).ok }"
+
+  storygraph-integration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      mongodb-integration:
+        condition: service_healthy
+      mongodb-integration-init:
+        condition: service_completed_successfully
+    environment:
+      AUTH_ENABLED: "false"
+      AI_ENABLED: "true"
+      MODEL_CATALOG_REMOTE_ENABLED: "false"
+      AUTH_SECRET: integration-test-secret
+      BILLING_TEST_MODE: "true"
+      BILLING_TEST_SECRET: integration-billing-secret
+      CATCIDENT_SERVICE_KEY: integration-storygraph-service-key
+      WITHDRAWAL_SUBJECT_PEPPER: integration-withdrawal-subject-pepper
+      OPENROUTER_API_KEY: integration-test-key
+      MONGO_URL: mongodb://mongodb-integration:27017/character_relationship_chart?replicaSet=rs0&directConnection=true
+      PORT: 3300
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3300/api/config"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+  storygraph-ai-off-integration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      mongodb-integration:
+        condition: service_healthy
+      mongodb-integration-init:
+        condition: service_completed_successfully
+    environment:
+      AUTH_ENABLED: "false"
+      AI_ENABLED: "false"
+      MODEL_CATALOG_REMOTE_ENABLED: "false"
+      AUTH_SECRET: integration-test-secret
+      BILLING_TEST_MODE: "true"
+      BILLING_TEST_SECRET: integration-billing-secret
+      CATCIDENT_SERVICE_KEY: integration-storygraph-service-key
+      WITHDRAWAL_SUBJECT_PEPPER: integration-withdrawal-subject-pepper
+      OPENROUTER_API_KEY: must-not-be-used-while-ai-is-disabled
+      MONGO_URL: mongodb://mongodb-integration:27017/character_relationship_chart?replicaSet=rs0&directConnection=true
+      PORT: 3301
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3301/api/config"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+  integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    depends_on:
+      storygraph-integration:
+        condition: service_healthy
+      storygraph-ai-off-integration:
+        condition: service_healthy
+    environment:
+      TEST_BASE_URL: http://storygraph-integration:3300
+      TEST_AI_OFF_BASE_URL: http://storygraph-ai-off-integration:3301
+      TEST_CATCIDENT_SERVICE_KEY: integration-storygraph-service-key
+      TEST_WITHDRAWAL_SUBJECT_PEPPER: integration-withdrawal-subject-pepper
+      WITHDRAWAL_SUBJECT_PEPPER: integration-withdrawal-subject-pepper
+      TEST_MONGO_URL: mongodb://mongodb-integration:27017/character_relationship_chart?replicaSet=rs0&directConnection=true
+    command: ["sh", "-lc", "node --test tests/integration/*.test.mjs"]
+
+volumes:
+  mongodb_integration_data:

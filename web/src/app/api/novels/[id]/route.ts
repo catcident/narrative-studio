@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
+import { runWithSubjectWriteFence } from '@/lib/subjectWriteFence';
 
 // 소설 원본 텍스트 단일 조회 (사용자 소유권 확인)
 export async function GET(
@@ -51,10 +52,12 @@ export async function DELETE(
 
     const { id } = await params;
     const db = await connectMongo();
-    const result = await db.collection('novels').deleteOne({
-      _id: new ObjectId(id),
-      userId,
-    });
+    const result = await runWithSubjectWriteFence(db, userId, (session) => (
+      db.collection('novels').deleteOne({
+        _id: new ObjectId(id),
+        userId,
+      }, { session })
+    ));
 
     return NextResponse.json({ success: result.deletedCount > 0 });
   } catch (err: unknown) {

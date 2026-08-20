@@ -63,6 +63,7 @@ function routeBadge(route: PaymentRouteSummary | null | undefined): { label: str
 
 export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   const subscription = useBillingSubscription();
+  const aiEnabled = useStore((s) => s.aiEnabled);
   const byokEnabled = useByokEnabled();
   const byokMode = useByokMode();
   const setByokMode = useStore((s) => s.setByokMode);
@@ -82,6 +83,12 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
   useEffect(() => {
     setHasLocalKey(hasApiKey());
   }, []);
+
+  useEffect(() => {
+    if (aiEnabled !== true && activeTab === 'apikey') {
+      setActiveTab('plans');
+    }
+  }, [activeTab, aiEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +118,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
     { id: 'plans', label: '플랜 비교' },
     { id: 'packages', label: '크레딧 구매' },
     { id: 'history', label: '사용 내역' },
-    ...(byokEnabled ? [{ id: 'apikey' as Tab, label: 'API 키' }] : []),
+    ...(aiEnabled === true && byokEnabled ? [{ id: 'apikey' as Tab, label: 'API 키' }] : []),
   ];
 
   const handleSaveKey = async () => {
@@ -357,7 +364,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
                         ({Math.round(pkg.price_krw / pkg.credits * 10) / 10}원/cr)
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 mt-auto pt-4">만료 없음</div>
+                    <div className="text-xs text-gray-400 mt-auto pt-4">사용기간: 결제일로부터 365일</div>
                     <button
                       disabled={isPaymentUnavailable}
                       onClick={() => window.open(
@@ -378,7 +385,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
               })}
             </div>
             <p className="mt-4 text-xs text-gray-400 text-center">
-              유상 크레딧 사용 시 사용분에 대한 환불이 제한됩니다.
+              유상 크레딧은 결제일로부터 365일간 사용할 수 있으며, 사용한 크레딧에 대해서는 환불이 제한될 수 있습니다.
             </p>
           </>
         );
@@ -387,6 +394,7 @@ export function SubscriptionPage({ onClose }: SubscriptionPageProps) {
         return <UsageHistory />;
 
       case 'apikey':
+        if (aiEnabled !== true) return null;
         return (
           <div className="space-y-6">
             <div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { aiDisabledResponse, isAiEnabled } from '@/lib/aiAvailability';
 
 // IP 기반 간단 Rate Limit (분당 10회)
 const ipRequests = new Map<string, number[]>();
@@ -23,6 +24,8 @@ function checkIpRateLimit(ip: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   // IP 기반 Rate Limit
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   if (checkIpRateLimit(ip)) {

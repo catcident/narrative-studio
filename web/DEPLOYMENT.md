@@ -72,14 +72,23 @@ nano .env.local
 # ==========================================
 # MongoDB 설정
 # ==========================================
-MONGO_URL=mongodb://storygraph_admin:YOUR_SECURE_PASSWORD@mongodb:27017/character_relationship_chart?authSource=admin
-MONGO_USER=storygraph_admin
-MONGO_PASSWORD=YOUR_SECURE_PASSWORD
+MONGO_URL=mongodb://storygraph_admin:YOUR_SECURE_PASSWORD@mongodb:27017/character_relationship_chart?authSource=admin&replicaSet=rs0
+MONGO_INITDB_ROOT_USERNAME=storygraph_admin
+MONGO_INITDB_ROOT_PASSWORD=YOUR_SECURE_PASSWORD
+MONGO_REPLICA_SET_KEY=REPLICA_SET_INTERNAL_KEY
+
+# 탈퇴 처리와 사용자 저장 commit fence용 고정 pepper
+WITHDRAWAL_SUBJECT_PEPPER=SEPARATE_LONG_RANDOM_PEPPER
+
+# Catcident backend의 STORYGRAPH_SERVICE_KEY와 동일한 최소권한 키
+CATCIDENT_SERVICE_KEY=STORYGRAPH_SERVICE_KEY
+CATCIDENT_SERVICE_KEY_PREVIOUS=
 
 # ==========================================
 # OpenRouter API (LLM 분석용)
 # ==========================================
 OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AI_ENABLED=false
 
 # ==========================================
 # NextAuth.js 설정
@@ -112,7 +121,20 @@ openssl rand -base64 32
 openssl rand -base64 24
 ```
 
-`MONGO_PASSWORD`와 `MONGO_URL`의 비밀번호 부분을 동일하게 설정합니다.
+`MONGO_INITDB_ROOT_PASSWORD`와 `MONGO_URL`의 비밀번호 부분을 동일하게 설정합니다.
+
+replica-set 내부 키와 탈퇴 subject pepper는 서로 다른 난수로 생성합니다.
+
+```bash
+openssl rand -base64 48
+openssl rand -base64 48
+```
+
+`WITHDRAWAL_SUBJECT_PEPPER`는 기존 tombstone 조회에 필요한 장기 고정값입니다. 일반적인 키 회전 대상으로 보지 않으며, 분실·변경하면 권위 있는 탈퇴 subject 목록으로 tombstone을 재구축해야 합니다.
+
+### 3.5 AI 기능 비활성화
+
+`AI_ENABLED=false`를 유지하면 OpenRouter 키가 존재해도 모델 조회·분석·채팅·임베딩·키 검증 라우트는 provider 호출 전에 404 `ai_disabled`로 종료합니다. 자체 분석 로그는 별도 운영할 수 있지만, AI provider 외부 전송과는 분리됩니다.
 
 ---
 
@@ -158,6 +180,62 @@ docker network create caddy
 ---
 
 ## 5. 배포 실행
+
+### 5.0 최초 replica-set 전환 — 기존 volume 보존
+
+탈퇴 삭제와 사용자 저장을 하나의 commit fence로 순서화하려면 MongoDB transaction이 필수입니다. 기존 standalone volume을 삭제하지 말고 다음 순서로 단일 노드 replica set으로 전환합니다.
+
+1. 현재 volume과 컨테이너를 확정하고 앱 쓰기를 중단합니다.
+
+   ```bash
+   docker compose ps
+   docker volume ls
+   docker compose stop storygraph
+   ```
+
+2. MongoDB를 정상 상태로 둔 채 논리 백업을 생성하고 백업 파일을 volume 밖으로 복사합니다.
+
+   ```bash
+   docker compose exec mongodb sh -lc 'mongodump --authenticationDatabase=admin --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --archive=/data/storygraph-pre-rs0.archive'
+   docker cp "$(docker compose ps -q mongodb):/data/storygraph-pre-rs0.archive" ./storygraph-pre-rs0.archive
+   ```
+
+3. `.env.local`에 `MONGO_REPLICA_SET_KEY`, `WITHDRAWAL_SUBJECT_PEPPER`, 두 서비스 키를 설정하고 `MONGO_URL`에 `replicaSet=rs0`를 추가합니다. 기존 `mongodb_data` volume 이름은 변경하지 않습니다.
+
+4. DB와 초기화 작업만 시작하고 replica set을 확인합니다.
+
+   ```bash
+   docker compose up -d mongodb
+   docker compose up mongodb-init
+   docker compose exec mongodb sh -lc 'mongosh "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/admin?authSource=admin&replicaSet=rs0" --quiet --eval "rs.status().ok"'
+   ```
+
+   기대값은 `1`입니다. 실패하면 storygraph를 시작하지 말고 DB 로그와 설정을 수정합니다.
+
+5. 새 이미지를 빌드하고 CI와 통합 테스트를 통과한 뒤에만 앱을 시작합니다.
+
+   ```bash
+   docker compose --profile tools run --rm storygraph-tools
+   bash scripts/rehearse-replica-transition.sh
+   docker compose -f docker-compose.integration.yml up --build --abort-on-container-exit --exit-code-from integration-tests integration-tests
+   docker compose -f docker-compose.integration.yml down -v --remove-orphans
+   docker compose build storygraph
+   docker compose up -d storygraph
+   curl -fsS https://storygraph.catcident.com/api/config
+   ```
+
+   `/api/config`는 `serviceReady: true`이어야 합니다. AI를 꺼 둔 운영 상태에서는 `aiEnabled: false`, `hasEnvKey: false`가 정상입니다.
+
+### 5.0.1 롤백 금지 경계
+
+탈퇴 endpoint가 한 번이라도 외부에 열린 후에는 다음 롤백을 금지합니다.
+
+- `withdrawnSubjects` tombstone 조회, stale JWT 무효화, subject write fence 중 하나라도 없는 이미지로 롤백
+- MongoDB를 standalone으로 되돌리거나 `replicaSet=rs0`가 없는 `MONGO_URL`로 롤백
+- 탈퇴 처리 전 백업·volume snapshot을 그대로 복원하여 삭제된 개인정보를 부활
+- `WITHDRAWAL_SUBJECT_PEPPER`를 교체하면서 기존 tombstone을 재구축하지 않는 롤백
+
+앱 회귀가 필요하면 withdrawal-aware 기준 이미지(동일 tombstone·JWT·fence 계약을 보존한 최소 버전)으로만 회귀합니다. 그런 이미지가 없으면 트래픽과 storygraph를 중지한 채 forward-fix 이미지를 배포합니다. 백업 복원이 불가피하면 복원 전 오류 발생 시점 이후의 모든 권위 있는 탈퇴 목록을 재적용하고 삭제 receipt를 재검증하기 전에는 트래픽을 열지 않습니다.
 
 ### 5.1 코드 가져오기
 
@@ -252,7 +330,7 @@ curl -vI https://storygraph.catcident.com/ 2>&1 | grep "SSL certificate"
 **증상**: `MongoServerError: Authentication failed`
 
 **해결**:
-1. `MONGO_PASSWORD`와 `MONGO_URL`의 비밀번호 일치 확인
+1. `MONGO_INITDB_ROOT_PASSWORD`와 `MONGO_URL`의 비밀번호 일치 확인
 2. MongoDB 컨테이너 재시작: `docker compose restart mongodb`
 
 ### 7.3 502 Bad Gateway
@@ -295,11 +373,9 @@ docker compose logs -f --tail=100 storygraph
 docker compose down
 ```
 
-### 데이터 포함 완전 삭제 (주의!)
+### 데이터 포함 완전 삭제
 
-```bash
-docker compose down -v
-```
+운영에서 `docker compose down -v`는 금지합니다. 이 명령은 사용자 데이터와 탈퇴 tombstone을 함께 삭제하여 이전에 삭제된 계정의 재가입·데이터 부활을 허용할 수 있습니다. 일회성 로컬 통합 환경은 `docker-compose.integration.yml`의 정확한 자원만 CI cleanup 단계에서 제거합니다.
 
 ### 이미지 재빌드
 
@@ -312,7 +388,9 @@ docker compose up -d
 
 ## 9. 보안 체크리스트
 
-- [ ] `.env.local`에 강력한 `MONGO_PASSWORD` 설정
+- [ ] `.env.local`에 강력한 `MONGO_INITDB_ROOT_PASSWORD` 설정
+- [ ] `MONGO_URL`에 `replicaSet=rs0` 설정
+- [ ] `MONGO_REPLICA_SET_KEY`와 별도의 고정 `WITHDRAWAL_SUBJECT_PEPPER` 설정
 - [ ] `.env.local`에 고유한 `AUTH_SECRET` 설정
 - [ ] `.env.local` 파일 권한 제한: `chmod 600 .env.local`
 - [ ] HTTPS 강제 적용 확인
@@ -330,6 +408,8 @@ docker cp $(docker compose ps -q mongodb):/data/backup ./backup_$(date +%Y%m%d)
 ```
 
 ### 복원
+
+운영 복원 전에는 트래픽과 storygraph 쓰기를 중지합니다. 탈퇴 endpoint 활성화 후 생성된 백업만 그대로 복원할 수 있습니다. 그보다 오래된 백업은 복원 시점 이후의 모든 권위 있는 탈퇴 subject를 재적용하고 삭제 receipt를 재검증하기 전에는 운영에 열지 않습니다.
 
 ```bash
 docker cp ./backup_YYYYMMDD $(docker compose ps -q mongodb):/data/backup

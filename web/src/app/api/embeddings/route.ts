@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/lib/mongo';
 import { requireAuth } from '@/lib/auth';
 import { getEmbeddings, cosineSimilarity } from '@/lib/embeddingUtils';
+import { aiDisabledResponse, isAiEnabled } from '@/lib/aiAvailability';
+import { runWithSubjectWriteFence } from '@/lib/subjectWriteFence';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
 // POST: 엔티티 임베딩 생성 및 저장
 export async function POST(request: NextRequest) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   try {
     const authResult = await requireAuth();
     if ('error' in authResult) return authResult.error;
@@ -44,10 +48,6 @@ export async function POST(request: NextRequest) {
     const db = await connectMongo();
     const collection = db.collection('entityEmbeddings');
 
-    // 기존 임베딩 삭제
-    await collection.deleteMany({ graphId, userId });
-
-    // 새 임베딩 저장
     const documents = entities.map((entity: { id: string; name: string }, idx: number) => ({
       graphId,
       userId,
@@ -57,9 +57,12 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     }));
 
-    if (documents.length > 0) {
-      await collection.insertMany(documents);
-    }
+    await runWithSubjectWriteFence(db, userId, async (session) => {
+      await collection.deleteMany({ graphId, userId }, { session });
+      if (documents.length > 0) {
+        await collection.insertMany(documents, { session });
+      }
+    });
 
     console.log(`[embeddings] ${documents.length}개 임베딩 저장 완료`);
 
@@ -76,6 +79,8 @@ export async function POST(request: NextRequest) {
 
 // GET: 키워드로 유사 엔티티 검색
 export async function GET(request: NextRequest) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   try {
     const authResult = await requireAuth();
     if ('error' in authResult) return authResult.error;

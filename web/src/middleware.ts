@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isActiveSession } from '@/lib/withdrawalTokenGuard';
 
 // 인증은 기본 활성 — AUTH_ENABLED=false로 명시적 비활성화만 가능 (보안 기본값)
 const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
 
 // 인증 비활성화 시: / → /app 리다이렉트만 적용
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname === '/api/internal/account-withdrawal') {
+    return NextResponse.next();
+  }
+
   if (!AUTH_ENABLED) {
     // AUTH_ENABLED=false에서도 /app으로 라우팅
     if (request.nextUrl.pathname === '/') {
@@ -18,8 +23,8 @@ export async function middleware(request: NextRequest) {
   const { auth } = await import('@/lib/auth');
 
   // @ts-expect-error - NextAuth middleware 타입 호환성
-  return auth((req: NextRequest & { auth?: { user?: unknown } }) => {
-    const isLoggedIn = !!req.auth;
+  return auth((req: NextRequest & { auth?: { user?: { id?: unknown }; error?: unknown } }) => {
+    const isLoggedIn = isActiveSession(req.auth);
     const { pathname } = req.nextUrl;
     const isApiRoute = pathname.startsWith('/api');
     const isAuthRoute = pathname.startsWith('/api/auth');
@@ -64,4 +69,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  runtime: 'nodejs',
 };

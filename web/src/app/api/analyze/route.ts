@@ -14,6 +14,7 @@ import { getCachedServerModels } from '@/lib/modelCache';
 import { resolveTokenBilling, tokenCostUsd, getModelCosts, calculateChunkCostUsd, calculateMarkup, USD_TO_KRW } from '@/lib/serverCosts';
 import { CHARS_PER_TOKEN, OUTPUT_RATIO } from '@/lib/modelCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { aiDisabledResponse, isAiEnabled } from '@/lib/aiAvailability';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -30,6 +31,8 @@ const SYSTEM_PROMPT = `당신은 소설 세계관 분석 전문가입니다. 텍
 8. JSON만 출력 (설명 없이)`;
 
 export async function POST(request: NextRequest) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   let reservedHoldKrw = 0;
   let refundUserId: string | null = null;
   let refundHoldToken: string | null = null;

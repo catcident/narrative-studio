@@ -11,6 +11,7 @@ import { checkRateLimit, getRateLimitForPlan } from '@/lib/rateLimit';
 import { CHARS_PER_TOKEN } from '@/lib/modelCosts';
 import { resolveTokenBilling } from '@/lib/serverCosts';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { aiDisabledResponse, isAiEnabled } from '@/lib/aiAvailability';
 
 const ENV_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -22,6 +23,8 @@ interface ChatRequestBody {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   console.log('[chat] POST 요청 수신');
   try {
     let body: ChatRequestBody;
